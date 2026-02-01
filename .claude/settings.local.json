@@ -23,7 +23,10 @@
       "Bash(npm run dev:*)",
       "Bash(curl:*)",
       "Bash(robocopy:*)",
-      "Bash(xcopy:*)"
+      "Bash(xcopy:*)",
+      "Bash(find:*)",
+      "Bash(cmd /c \"rmdir /s /q F:\\\\AByte-POS\\\\client\")",
+      "Bash(test:*)"
     ]
   }
 }

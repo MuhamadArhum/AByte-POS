@@ -10,7 +10,7 @@ const pool = mariadb.createPool({
   multipleStatements: true,
 });
 
-async function seed() {
+async function setup() {
   let conn;
   try {
     conn = await pool.getConnection();
@@ -19,7 +19,8 @@ async function seed() {
     await conn.query('CREATE DATABASE IF NOT EXISTS abyte_pos');
     await conn.query('USE abyte_pos');
 
-    // Create tables
+    // ========== TABLES ==========
+
     await conn.query(`
       CREATE TABLE IF NOT EXISTS roles (
         role_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -108,68 +109,33 @@ async function seed() {
       )
     `);
 
-    // Seed default customer
+    // ========== DEFAULT DATA (required for system to work) ==========
+
+    // Walk-in Customer (default, required for POS)
     await conn.query(`INSERT IGNORE INTO customers (customer_id, customer_name, phone_number) VALUES (1, 'Walk-in Customer', 'N/A')`);
 
-    // Seed users with proper bcrypt hashes
+    // Default Admin account
     const adminHash = await bcrypt.hash('Admin@123', 10);
-    const managerHash = await bcrypt.hash('Manager@123', 10);
-    const cashierHash = await bcrypt.hash('Cashier@123', 10);
+    await conn.query(
+      `INSERT IGNORE INTO users (name, email, password_hash, role_id) VALUES (?, ?, ?, ?)`,
+      ['Admin', 'admin@pos.com', adminHash, 1]
+    );
 
-    await conn.query(`INSERT IGNORE INTO users (name, email, password_hash, role_id) VALUES (?, ?, ?, ?)`,
-      ['Admin', 'admin@pos.com', adminHash, 1]);
-    await conn.query(`INSERT IGNORE INTO users (name, email, password_hash, role_id) VALUES (?, ?, ?, ?)`,
-      ['Manager', 'manager@pos.com', managerHash, 2]);
-    await conn.query(`INSERT IGNORE INTO users (name, email, password_hash, role_id) VALUES (?, ?, ?, ?)`,
-      ['Cashier', 'cashier@pos.com', cashierHash, 3]);
-
-    // Seed categories
-    await conn.query(`INSERT IGNORE INTO categories (category_name) VALUES ('General Store'), ('Mobile & Electronics'), ('Pharmacy'), ('Garments')`);
-
-    // Seed products
-    const products = [
-      ['Basmati Rice 5kg', 1, 850.00, 50, '8901234560001'],
-      ['Flour 10kg', 1, 650.00, 40, '8901234560002'],
-      ['Sugar 1kg', 1, 150.00, 100, '8901234560003'],
-      ['Cooking Oil 1L', 1, 480.00, 60, '8901234560004'],
-      ['iPhone 14', 2, 249999.00, 5, '1901234560005'],
-      ['Samsung Galaxy S23', 2, 179999.00, 8, '1901234560006'],
-      ['USB-C Charger', 2, 1500.00, 30, '1901234560007'],
-      ['Wireless Earbuds', 2, 3500.00, 20, '1901234560008'],
-      ['Paracetamol 500mg', 3, 50.00, 200, '2901234560009'],
-      ['Antibiotics Strip', 3, 350.00, 80, '2901234560010'],
-      ['Bandages Pack', 3, 120.00, 150, '2901234560011'],
-      ['Cough Syrup', 3, 180.00, 90, '2901234560012'],
-      ['Cotton T-Shirt', 4, 799.00, 45, '3901234560013'],
-      ['Denim Jeans', 4, 2499.00, 25, '3901234560014'],
-      ['Winter Jacket', 4, 4999.00, 15, '3901234560015'],
-      ['Sports Shoes', 4, 3499.00, 20, '3901234560016'],
-    ];
-
-    for (const p of products) {
-      try {
-        const result = await conn.query(
-          'INSERT IGNORE INTO products (product_name, category_id, price, stock_quantity, barcode) VALUES (?, ?, ?, ?, ?)',
-          p
-        );
-        if (result.affectedRows > 0) {
-          await conn.query(
-            'INSERT IGNORE INTO inventory (product_id, available_stock) VALUES (?, ?)',
-            [Number(result.insertId), p[3]]
-          );
-        }
-      } catch (e) {
-        // skip duplicates
-      }
-    }
-
-    console.log('Database seeded successfully!');
-    console.log('Default users:');
-    console.log('  Admin:   admin@pos.com   / Admin@123');
-    console.log('  Manager: manager@pos.com / Manager@123');
-    console.log('  Cashier: cashier@pos.com / Cashier@123');
+    console.log('');
+    console.log('  Database setup complete!');
+    console.log('  ========================');
+    console.log('  Database:  abyte_pos');
+    console.log('  Tables:    8 created');
+    console.log('');
+    console.log('  Default Admin Account:');
+    console.log('  Email:     admin@pos.com');
+    console.log('  Password:  Admin@123');
+    console.log('');
+    console.log('  Login and create Manager/Cashier accounts from the Users page.');
+    console.log('  Add your products, categories, and customers from the dashboard.');
+    console.log('');
   } catch (err) {
-    console.error('Seed error:', err);
+    console.error('Setup error:', err);
   } finally {
     if (conn) conn.release();
     await pool.end();
@@ -177,4 +143,4 @@ async function seed() {
   }
 }
 
-seed();
+setup();

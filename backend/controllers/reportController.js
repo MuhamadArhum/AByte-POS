@@ -1,5 +1,18 @@
-const { query } = require('../config/database');
+// =============================================================
+// reportController.js - Reports Controller
+// Generates sales and inventory reports for business insights.
+// All reports are read-only (SELECT queries only).
+// Only Admin and Manager roles can access these endpoints.
+// Used by: /api/reports routes
+// =============================================================
 
+const { query } = require('../config/database');  // Database query helper
+
+// --- Daily Report ---
+// Returns a summary of today's sales activity.
+// Includes: total transactions, total sales, total discount, total revenue.
+// COALESCE(value, 0) returns 0 instead of NULL when there are no sales today.
+// Used on the Reports page "Daily" tab.
 exports.dailyReport = async (req, res) => {
   try {
     const summary = await query(
@@ -10,20 +23,30 @@ exports.dailyReport = async (req, res) => {
          COALESCE(SUM(net_amount), 0) as total_revenue
        FROM sales WHERE DATE(sale_date) = CURDATE()`
     );
-    res.json(summary[0]);
+    res.json(summary[0]);  // Return single object (not array)
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
+// --- Date Range Report ---
+// Returns sales summary and daily breakdown for a specified date range.
+// Query params: ?start_date=2024-01-01&end_date=2024-01-31
+// Returns:
+//   summary: { total_transactions, total_sales, total_discount, total_revenue, avg_transaction }
+//   daily: [{ date, transactions, revenue }, ...] - one row per day
+// Used on the Reports page "Date Range" tab.
 exports.dateRangeReport = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
+
+    // Both dates are required
     if (!start_date || !end_date) {
       return res.status(400).json({ message: 'Start and end dates are required' });
     }
 
+    // Overall summary for the date range
     const summary = await query(
       `SELECT
          COUNT(*) as total_transactions,
@@ -35,6 +58,7 @@ exports.dateRangeReport = async (req, res) => {
       [start_date, end_date]
     );
 
+    // Daily breakdown - GROUP BY date to show revenue per day
     const daily = await query(
       `SELECT
          DATE(sale_date) as date,
@@ -52,9 +76,16 @@ exports.dateRangeReport = async (req, res) => {
   }
 };
 
+// --- Product Sales Report ---
+// Shows which products have been sold, how many, and their revenue contribution.
+// Optionally filtered by date range (?start_date=...&end_date=...).
+// Also calculates each product's percentage of total revenue.
+// Used on the Reports page "Product" tab.
 exports.productReport = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
+
+    // Build query: aggregate sale_details grouped by product
     let sql = `SELECT
          p.product_name,
          SUM(sd.quantity) as total_quantity,
@@ -64,14 +95,17 @@ exports.productReport = async (req, res) => {
        JOIN sales s ON sd.sale_id = s.sale_id`;
     const params = [];
 
+    // Optional date range filter
     if (start_date && end_date) {
       sql += ' WHERE DATE(s.sale_date) BETWEEN ? AND ?';
       params.push(start_date, end_date);
     }
 
+    // Group by product and sort by highest revenue first
     sql += ' GROUP BY p.product_id, p.product_name ORDER BY total_revenue DESC';
     const rows = await query(sql, params);
 
+    // Calculate each product's percentage of total revenue
     const totalRevenue = rows.reduce((sum, r) => sum + parseFloat(r.total_revenue), 0);
     const withPercentage = rows.map(r => ({
       ...r,
@@ -85,8 +119,14 @@ exports.productReport = async (req, res) => {
   }
 };
 
+// --- Inventory Report ---
+// Returns a complete inventory snapshot with stock analysis.
+// Includes: all products, low stock items (1-9), out of stock (0),
+// total inventory value (price * stock for each product, summed).
+// Used on the Reports page "Inventory" tab.
 exports.inventoryReport = async (req, res) => {
   try {
+    // Fetch all products with their stock levels and calculated stock value
     const all = await query(
       `SELECT p.product_name, p.price, i.available_stock, c.category_name,
               (p.price * i.available_stock) as stock_value
@@ -96,16 +136,20 @@ exports.inventoryReport = async (req, res) => {
        ORDER BY p.product_name`
     );
 
+    // Filter into categories in JavaScript (more readable than multiple SQL queries)
     const lowStock = all.filter(r => r.available_stock > 0 && r.available_stock < 10);
     const outOfStock = all.filter(r => r.available_stock === 0);
+
+    // Calculate total value of all inventory (sum of price * stock for each product)
     const totalValue = all.reduce((sum, r) => sum + parseFloat(r.stock_value || 0), 0);
 
+    // Return comprehensive inventory data
     res.json({
-      products: all,
-      low_stock: lowStock,
-      out_of_stock: outOfStock,
-      total_inventory_value: totalValue,
-      total_products: all.length,
+      products: all,                        // All products with stock info
+      low_stock: lowStock,                  // Products with stock 1-9
+      out_of_stock: outOfStock,             // Products with stock 0
+      total_inventory_value: totalValue,    // Total Rs value of all stock
+      total_products: all.length,           // Count of products
     });
   } catch (err) {
     console.error(err);

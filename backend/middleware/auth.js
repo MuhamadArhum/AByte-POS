@@ -1,28 +1,51 @@
-const jwt = require('jsonwebtoken');
-const { query } = require('../config/database');
+// =============================================================
+// auth.js - Authentication & Authorization Middleware
+// This file provides two middleware functions:
+// 1. authenticate - Verifies the JWT token on protected routes
+// 2. authorize    - Checks if the user's role has permission
+// These are applied to routes to protect them from unauthorized access.
+// =============================================================
 
+const jwt = require('jsonwebtoken');         // Library to verify JSON Web Tokens
+const { query } = require('../config/database');  // Database query helper
+
+// --- authenticate Middleware ---
+// Runs on every protected route to verify the user is logged in.
+// Flow: Extract token from header -> Verify token -> Fetch user from DB -> Attach to req.user
+// If any step fails, returns 401 Unauthorized.
 const authenticate = async (req, res, next) => {
   try {
+    // Step 1: Get the Authorization header (format: "Bearer <token>")
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
+    // Step 2: Extract the token part (everything after "Bearer ")
     const token = authHeader.split(' ')[1];
+
+    // Step 3: Verify the token using the secret key from .env
+    // jwt.verify() throws an error if the token is invalid or expired
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    // Step 4: Fetch the full user data from the database using the userId stored in the token
+    // JOIN with roles table to get the role_name (Admin, Manager, or Cashier)
     const rows = await query(
       'SELECT u.user_id, u.name, u.email, r.role_name FROM users u JOIN roles r ON u.role_id = r.role_id WHERE u.user_id = ?',
       [decoded.userId]
     );
 
+    // Step 5: Check if the user still exists in the database
     if (rows.length === 0) {
       return res.status(401).json({ message: 'User not found' });
     }
 
+    // Step 6: Attach user data to the request object
+    // All subsequent middleware and route handlers can access req.user
     req.user = rows[0];
-    next();
+    next();  // Continue to the next middleware or route handler
   } catch (err) {
+    // Handle specific JWT errors
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({ message: 'Token expired' });
     }
@@ -30,12 +53,17 @@ const authenticate = async (req, res, next) => {
   }
 };
 
+// --- authorize Middleware ---
+// Checks if the authenticated user's role is in the allowed roles list.
+// Must be used AFTER authenticate middleware (needs req.user to be set).
+// Usage: authorize('Admin', 'Manager') -> only Admin and Manager can access
+// Returns 403 Forbidden if the user's role is not allowed.
 const authorize = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role_name)) {
       return res.status(403).json({ message: 'Access denied' });
     }
-    next();
+    next();  // Role is allowed, continue to the route handler
   };
 };
 

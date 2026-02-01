@@ -1,8 +1,26 @@
-const { query } = require('../config/database');
+// =============================================================
+// productController.js - Product & Category Management Controller
+// Handles CRUD operations for products and categories.
+// Products are the items sold through the POS system.
+// Used by: /api/products routes
+// =============================================================
 
+const { query } = require('../config/database');  // Database query helper
+
+// --- Get All Products ---
+// Returns all products with their category names and stock levels.
+// Supports optional filters via query parameters:
+//   ?search=keyword  - Search by product name or barcode
+//   ?category=id     - Filter by category
+//   ?stock=low       - Show only low stock (1-9 units)
+//   ?stock=out       - Show only out of stock (0 units)
 exports.getAll = async (req, res) => {
   try {
-    const { search, category, stock } = req.query;
+    const { search, category, stock } = req.query;  // Get filter parameters from URL
+
+    // Base query: JOIN products with categories and inventory tables
+    // LEFT JOIN because a product might not have a category or inventory record
+    // WHERE 1=1 is a trick that makes it easy to append AND conditions dynamically
     let sql = `SELECT p.*, c.category_name, i.available_stock
                FROM products p
                LEFT JOIN categories c ON p.category_id = c.category_id
@@ -10,21 +28,24 @@ exports.getAll = async (req, res) => {
                WHERE 1=1`;
     const params = [];
 
+    // If search keyword provided, filter by product name or barcode (partial match)
     if (search) {
       sql += ' AND (p.product_name LIKE ? OR p.barcode LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`);
+      params.push(`%${search}%`, `%${search}%`);  // % = wildcard for partial matching
     }
+    // If category filter provided, filter by exact category ID
     if (category) {
       sql += ' AND p.category_id = ?';
       params.push(category);
     }
+    // Stock level filters
     if (stock === 'low') {
-      sql += ' AND i.available_stock > 0 AND i.available_stock < 10';
+      sql += ' AND i.available_stock > 0 AND i.available_stock < 10';  // Low: 1-9 units
     } else if (stock === 'out') {
-      sql += ' AND (i.available_stock = 0 OR i.available_stock IS NULL)';
+      sql += ' AND (i.available_stock = 0 OR i.available_stock IS NULL)';  // Out of stock
     }
 
-    sql += ' ORDER BY p.created_at DESC';
+    sql += ' ORDER BY p.created_at DESC';  // Newest products first
     const rows = await query(sql, params);
     res.json(rows);
   } catch (err) {
@@ -33,6 +54,9 @@ exports.getAll = async (req, res) => {
   }
 };
 
+// --- Get Product By ID ---
+// Returns a single product with its category name and stock level.
+// Used when viewing or editing a specific product.
 exports.getById = async (req, res) => {
   try {
     const rows = await query(
@@ -51,19 +75,26 @@ exports.getById = async (req, res) => {
   }
 };
 
+// --- Create New Product ---
+// Adds a new product to the system and creates its inventory record.
+// Two tables are updated: products (product info) and inventory (stock tracking).
+// Only Admin and Manager can create products.
 exports.create = async (req, res) => {
   try {
     const { product_name, category_id, price, stock_quantity, barcode } = req.body;
 
+    // Validate required fields
     if (!product_name || !price) {
       return res.status(400).json({ message: 'Product name and price are required' });
     }
 
+    // Insert the product into the products table
     const result = await query(
       'INSERT INTO products (product_name, category_id, price, stock_quantity, barcode) VALUES (?, ?, ?, ?, ?)',
       [product_name, category_id || null, price, stock_quantity || 0, barcode || null]
     );
 
+    // Also create a corresponding inventory record to track stock separately
     const productId = Number(result.insertId);
     await query(
       'INSERT INTO inventory (product_id, available_stock) VALUES (?, ?)',
@@ -72,6 +103,7 @@ exports.create = async (req, res) => {
 
     res.status(201).json({ message: 'Product created', product_id: productId });
   } catch (err) {
+    // Handle duplicate barcode error from the UNIQUE constraint
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Barcode already exists' });
     }
@@ -80,16 +112,21 @@ exports.create = async (req, res) => {
   }
 };
 
+// --- Update Product ---
+// Updates product details and syncs the inventory stock level.
+// Both products and inventory tables are updated to keep stock in sync.
 exports.update = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params;  // Product ID from URL
     const { product_name, category_id, price, stock_quantity, barcode } = req.body;
 
+    // Update the product record
     await query(
       'UPDATE products SET product_name = ?, category_id = ?, price = ?, stock_quantity = ?, barcode = ? WHERE product_id = ?',
       [product_name, category_id || null, price, stock_quantity, barcode || null, id]
     );
 
+    // Sync the inventory table with the new stock quantity
     await query(
       'UPDATE inventory SET available_stock = ? WHERE product_id = ?',
       [stock_quantity, id]
@@ -105,15 +142,21 @@ exports.update = async (req, res) => {
   }
 };
 
+// --- Delete Product ---
+// Removes a product from the system.
+// SAFETY CHECK: Cannot delete a product that has been sold (to preserve sale history).
+// Deletes from inventory first (child), then products (parent) to respect foreign keys.
 exports.remove = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Check if this product appears in any sale records
     const sales = await query('SELECT sale_detail_id FROM sale_details WHERE product_id = ? LIMIT 1', [id]);
     if (sales.length > 0) {
       return res.status(400).json({ message: 'Cannot delete product with sales history' });
     }
 
+    // Delete inventory record first (foreign key constraint), then the product
     await query('DELETE FROM inventory WHERE product_id = ?', [id]);
     await query('DELETE FROM products WHERE product_id = ?', [id]);
     res.json({ message: 'Product deleted' });
@@ -123,6 +166,9 @@ exports.remove = async (req, res) => {
   }
 };
 
+// --- Get All Categories ---
+// Returns all product categories sorted alphabetically.
+// Used in product forms and filter dropdowns.
 exports.getCategories = async (req, res) => {
   try {
     const rows = await query('SELECT * FROM categories ORDER BY category_name');
@@ -133,6 +179,9 @@ exports.getCategories = async (req, res) => {
   }
 };
 
+// --- Create New Category ---
+// Adds a new product category (e.g., "Beverages", "Snacks").
+// Category names must be unique (enforced by DB constraint).
 exports.createCategory = async (req, res) => {
   try {
     const { category_name } = req.body;
@@ -141,6 +190,7 @@ exports.createCategory = async (req, res) => {
     const result = await query('INSERT INTO categories (category_name) VALUES (?)', [category_name]);
     res.status(201).json({ message: 'Category created', category_id: Number(result.insertId) });
   } catch (err) {
+    // Handle duplicate category name
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Category already exists' });
     }

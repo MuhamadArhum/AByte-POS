@@ -1,4 +1,5 @@
--- AByte POS Database Schema
+-- AByte POS Database Schema (Reference Only)
+-- To setup database, run: npm run seed
 CREATE DATABASE IF NOT EXISTS abyte_pos;
 USE abyte_pos;
 
