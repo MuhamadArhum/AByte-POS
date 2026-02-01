@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm init:*)",
+      "Bash(npm create:*)",
+      "Bash(npm run build:*)",
+      "Bash(where mysql)",
+      "Bash(where:*)",
+      "Bash(mysql:*)",
+      "Bash(\"C:/Program Files/MariaDB 12.1/bin/mariadb.exe\" -u root -e \"SELECT user, host, plugin FROM mysql.user;\")",
+      "Bash(\"C:/Program Files/MariaDB 12.1/bin/mariadb.exe\" -e \"SELECT 1;\")",
+      "Bash(\"C:/Program Files/MariaDB 12.1/bin/mariadb.exe\" --user=root --password=root -e \"SELECT 1;\")",
+      "Bash(sc query:*)",
+      "Bash(net start)",
+      "Bash(findstr:*)",
+      "Bash(sc queryex:*)",
+      "Bash(tasklist:*)",
+      "Bash(netstat -aon)",
+      "Bash(cmd /c \"tasklist /FI \"\"PID eq 5456\"\"\")",
+      "Bash(wmic:*)",
+      "Bash(powershell:*)",
+      "Bash(\"C:/Program Files/MariaDB 12.1/bin/mysql.exe\":*)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(robocopy:*)",
+      "Bash(xcopy:*)"
+    ]
+  }
+}
