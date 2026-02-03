@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';  // Auth context for login function
 import { toast } from 'react-toastify';               // Toast notifications
+import { FiMail, FiLock } from 'react-icons/fi';
 
 export default function Login() {
   // Local state for form fields and loading indicator
@@ -50,25 +51,31 @@ export default function Login() {
           {/* Email field */}
           <div className="form-group">
             <label>Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              required
-            />
+            <div className="input-with-icon">
+              <FiMail />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                required
+              />
+            </div>
           </div>
 
           {/* Password field */}
           <div className="form-group">
             <label>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-            />
+            <div className="input-with-icon">
+              <FiLock />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+              />
+            </div>
           </div>
 
           {/* Submit button - disabled while loading to prevent double-click */}

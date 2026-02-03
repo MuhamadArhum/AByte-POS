@@ -87,13 +87,13 @@ export default function ProductList() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+        <select className="input w-48" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
           <option value="">All Categories</option>
           {categories.map((c) => (
             <option key={c.category_id} value={c.category_id}>{c.category_name}</option>
           ))}
         </select>
-        <select value={stockFilter} onChange={(e) => setStockFilter(e.target.value)}>
+        <select className="input w-44" value={stockFilter} onChange={(e) => setStockFilter(e.target.value)}>
           <option value="">All Stock</option>
           <option value="low">Low Stock (&lt;10)</option>
           <option value="out">Out of Stock</option>
@@ -101,7 +101,7 @@ export default function ProductList() {
       </div>
 
       <div className="table-container">
-        <table>
+        <table className="table">
           <thead>
             <tr>
               <th>Name</th>

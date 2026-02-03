@@ -43,7 +43,7 @@ export default function InventoryList() {
       </div>
 
       <div className="table-container">
-        <table>
+        <table className="table">
           <thead>
             <tr>
               <th>Product</th>
