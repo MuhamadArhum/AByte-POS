@@ -7,6 +7,7 @@
 // =============================================================
 
 const { getConnection, query } = require('../config/database');  // DB helpers (getConnection for transactions)
+const { logAction } = require('../services/auditService');
 
 // --- Create Sale (Checkout) ---
 exports.createSale = async (req, res) => {
@@ -135,6 +136,21 @@ exports.createSale = async (req, res) => {
       [sale_id]
     );
 
+    // Update cash register if cash sale
+    if (status === 'completed' && (payment_method || 'cash') === 'cash') {
+      const openRegister = await query("SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1");
+      if (openRegister.length > 0) {
+        await query('UPDATE cash_registers SET cash_sales_total = cash_sales_total + ? WHERE register_id = ?', [total_amount, openRegister[0].register_id]);
+      }
+    } else if (status === 'completed' && payment_method === 'card') {
+      const openRegister = await query("SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1");
+      if (openRegister.length > 0) {
+        await query('UPDATE cash_registers SET card_sales_total = card_sales_total + ? WHERE register_id = ?', [total_amount, openRegister[0].register_id]);
+      }
+    }
+
+    await logAction(req.user.user_id, req.user.name, 'SALE_CREATED', 'sale', sale_id, { total_amount, status, items_count: items.length }, req.ip);
+
     res.status(201).json({ ...newSale[0], items: saleDetails });
 
   } catch (error) {
@@ -150,7 +166,7 @@ exports.createSale = async (req, res) => {
 exports.getPending = async (req, res) => {
   try {
     const sales = await query(`
-      SELECT s.*, c.name as customer_name, u.name as cashier_name 
+      SELECT s.*, c.customer_name, u.name as cashier_name 
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
@@ -182,10 +198,53 @@ exports.completeSale = async (req, res) => {
       [payment_method || 'cash', amount_paid || sale[0].total_amount, id]
     );
 
+    await logAction(req.user.user_id, req.user.name, 'SALE_COMPLETED', 'sale', id, { payment_method: payment_method || 'cash' }, req.ip);
+
     res.json({ message: 'Sale completed successfully', sale_id: id });
   } catch (error) {
     console.error('Complete sale error:', error);
     res.status(500).json({ message: 'Failed to complete sale' });
+  }
+};
+
+// --- Delete/Void Sale ---
+exports.deleteSale = async (req, res) => {
+  let conn;
+  try {
+    const { id } = req.params;
+    
+    conn = await getConnection();
+    await conn.beginTransaction();
+
+    // Check sale status
+    const sale = await conn.query('SELECT status FROM sales WHERE sale_id = ?', [id]);
+    if (sale.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Sale not found' });
+    }
+
+    // Restore stock
+    const items = await conn.query('SELECT product_id, quantity FROM sale_details WHERE sale_id = ?', [id]);
+    for (const item of items) {
+      await conn.query('UPDATE inventory SET available_stock = available_stock + ? WHERE product_id = ?', [item.quantity, item.product_id]);
+      await conn.query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?', [item.quantity, item.product_id]);
+    }
+
+    // Delete records
+    await conn.query('DELETE FROM sale_details WHERE sale_id = ?', [id]);
+    await conn.query('DELETE FROM sales WHERE sale_id = ?', [id]);
+
+    await conn.commit();
+
+    await logAction(req.user.user_id, req.user.name, 'SALE_DELETED', 'sale', id, { previous_status: sale[0].status }, req.ip);
+
+    res.json({ message: 'Sale deleted and stock restored' });
+  } catch (error) {
+    if (conn) await conn.rollback();
+    console.error('Delete sale error:', error);
+    res.status(500).json({ message: 'Failed to delete sale' });
+  } finally {
+    if (conn) conn.release();
   }
 };
 
@@ -194,11 +253,11 @@ exports.getToday = async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     const sales = await query(`
-      SELECT s.*, c.name as customer_name, u.name as cashier_name 
+      SELECT s.*, c.customer_name, u.name as cashier_name 
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
-      WHERE DATE(s.sale_date) = ? AND s.status = 'completed'
+      WHERE DATE(s.sale_date) = ? AND (s.status = 'completed' OR s.status = 'refunded')
       ORDER BY s.sale_date DESC
     `, [today]);
     res.json(sales);
@@ -212,7 +271,7 @@ exports.getToday = async (req, res) => {
 exports.getAll = async (req, res) => {
   try {
     const sales = await query(`
-      SELECT s.*, c.name as customer_name, u.name as cashier_name 
+      SELECT s.*, c.customer_name, u.name as cashier_name 
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
@@ -229,7 +288,7 @@ exports.getAll = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
     const sale = await query(`
-      SELECT s.*, c.name as customer_name, u.name as cashier_name 
+      SELECT s.*, c.customer_name, u.name as cashier_name 
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
@@ -251,5 +310,50 @@ exports.getById = async (req, res) => {
   } catch (error) {
     console.error('Get sale error:', error);
     res.status(500).json({ message: 'Failed to fetch sale details' });
+  }
+};
+
+// --- Refund Sale ---
+exports.refundSale = async (req, res) => {
+  let conn;
+  try {
+    const { id } = req.params;
+    
+    conn = await getConnection();
+    await conn.beginTransaction();
+
+    // Check sale status
+    const sale = await conn.query('SELECT status FROM sales WHERE sale_id = ? FOR UPDATE', [id]);
+    if (sale.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Sale not found' });
+    }
+    
+    if (sale[0].status === 'refunded') {
+      await conn.rollback();
+      return res.status(400).json({ message: 'Sale is already refunded' });
+    }
+
+    // Restore stock
+    const items = await conn.query('SELECT product_id, quantity FROM sale_details WHERE sale_id = ?', [id]);
+    for (const item of items) {
+      await conn.query('UPDATE inventory SET available_stock = available_stock + ? WHERE product_id = ?', [item.quantity, item.product_id]);
+      await conn.query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?', [item.quantity, item.product_id]);
+    }
+
+    // Update status
+    await conn.query('UPDATE sales SET status = "refunded" WHERE sale_id = ?', [id]);
+
+    await conn.commit();
+
+    await logAction(req.user.user_id, req.user.name, 'SALE_REFUNDED', 'sale', id, {}, req.ip);
+
+    res.json({ message: 'Sale refunded and stock restored' });
+  } catch (error) {
+    if (conn) await conn.rollback();
+    console.error('Refund sale error:', error);
+    res.status(500).json({ message: 'Failed to refund sale' });
+  } finally {
+    if (conn) conn.release();
   }
 };

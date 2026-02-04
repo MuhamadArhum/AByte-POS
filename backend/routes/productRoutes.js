@@ -31,6 +31,7 @@ router.post('/categories', authorize('Admin', 'Manager'), productController.crea
 router.get('/', productController.getAll);                                              // All roles can view
 router.get('/:id', productController.getById);                                         // All roles can view
 router.post('/', authorize('Admin', 'Manager'), productController.create);              // Admin/Manager only
+router.post('/:id/generate-barcode', authorize('Admin', 'Manager'), productController.generateBarcode);
 router.put('/:id', authorize('Admin', 'Manager'), productController.update);            // Admin/Manager only
 router.delete('/:id', authorize('Admin', 'Manager'), productController.remove);         // Admin/Manager only
 

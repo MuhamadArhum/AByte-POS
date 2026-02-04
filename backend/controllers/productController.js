@@ -6,6 +6,7 @@
 // =============================================================
 
 const { query } = require('../config/database');  // Database query helper
+const { logAction } = require('../services/auditService');
 
 // --- Get All Products ---
 // Returns all products with their category names and stock levels.
@@ -101,6 +102,8 @@ exports.create = async (req, res) => {
       [productId, stock_quantity || 0]
     );
 
+    await logAction(req.user.user_id, req.user.name, 'PRODUCT_CREATED', 'product', productId, { product_name, price }, req.ip);
+
     res.status(201).json({ message: 'Product created', product_id: productId });
   } catch (err) {
     // Handle duplicate barcode error from the UNIQUE constraint
@@ -132,6 +135,8 @@ exports.update = async (req, res) => {
       [stock_quantity, id]
     );
 
+    await logAction(req.user.user_id, req.user.name, 'PRODUCT_UPDATED', 'product', parseInt(id), { product_name, price }, req.ip);
+
     res.json({ message: 'Product updated' });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
@@ -156,9 +161,16 @@ exports.remove = async (req, res) => {
       return res.status(400).json({ message: 'Cannot delete product with sales history' });
     }
 
+    // Get product name before deleting for audit log
+    const product = await query('SELECT product_name FROM products WHERE product_id = ?', [id]);
+    const productName = product.length > 0 ? product[0].product_name : 'Unknown';
+
     // Delete inventory record first (foreign key constraint), then the product
     await query('DELETE FROM inventory WHERE product_id = ?', [id]);
     await query('DELETE FROM products WHERE product_id = ?', [id]);
+
+    await logAction(req.user.user_id, req.user.name, 'PRODUCT_DELETED', 'product', parseInt(id), { product_name: productName }, req.ip);
+
     res.json({ message: 'Product deleted' });
   } catch (err) {
     console.error(err);
@@ -193,6 +205,39 @@ exports.createCategory = async (req, res) => {
     // Handle duplicate category name
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Category already exists' });
+    }
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Generate Barcode for Product ---
+exports.generateBarcode = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await query('SELECT product_id, barcode FROM products WHERE product_id = ?', [id]);
+    if (product.length === 0) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    if (product[0].barcode) {
+      return res.json({ barcode: product[0].barcode, message: 'Product already has a barcode' });
+    }
+
+    // Generate unique barcode: ABP + product_id padded + random digits
+    const paddedId = String(id).padStart(5, '0');
+    const random = String(Math.floor(Math.random() * 100000)).padStart(5, '0');
+    const barcode = `ABP${paddedId}${random}`;
+
+    await query('UPDATE products SET barcode = ? WHERE product_id = ?', [barcode, id]);
+
+    await logAction(req.user.user_id, req.user.name, 'BARCODE_GENERATED', 'product', parseInt(id), { barcode }, req.ip);
+
+    res.json({ barcode, message: 'Barcode generated successfully' });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ message: 'Barcode collision. Please try again.' });
     }
     console.error(err);
     res.status(500).json({ message: 'Server error' });

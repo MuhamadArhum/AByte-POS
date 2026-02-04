@@ -7,6 +7,7 @@
 const bcrypt = require('bcryptjs');          // Library to compare hashed passwords
 const jwt = require('jsonwebtoken');         // Library to create and verify JWT tokens
 const { query } = require('../config/database');  // Database query helper
+const { logAction } = require('../services/auditService');
 
 // --- Login Handler ---
 // Called when user submits email and password on the login page.
@@ -54,6 +55,9 @@ exports.login = async (req, res) => {
       process.env.JWT_SECRET,                            // Secret key for signing
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' } // Token expiry time
     );
+
+    // Log login action
+    await logAction(user.user_id, user.name, 'USER_LOGIN', 'user', user.user_id, { email }, req.ip);
 
     // Send the token and user info back to the frontend
     // Frontend stores the token in localStorage and sends it with every request

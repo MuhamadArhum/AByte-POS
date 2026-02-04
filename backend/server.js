@@ -21,6 +21,10 @@ const customerRoutes = require('./routes/customerRoutes');   // Manage customer 
 const reportRoutes = require('./routes/reportRoutes');       // Sales and inventory reports
 const settingsRoutes = require('./routes/settingsRoutes');   // Store settings
 const aiRoutes = require('./routes/aiRoutes');               // AI Assistant routes
+const auditRoutes = require('./routes/auditRoutes');         // Audit log routes
+const registerRoutes = require('./routes/registerRoutes');   // Cash register routes
+const returnRoutes = require('./routes/returnRoutes');       // Returns/exchange routes
+const backupRoutes = require('./routes/backupRoutes');       // Backup & restore routes
 
 // Create the Express application instance
 const app = express();
@@ -44,6 +48,10 @@ app.use('/api/customers', customerRoutes);  // Customer management routes
 app.use('/api/reports', reportRoutes);      // Report generation routes
 app.use('/api/settings', settingsRoutes);   // Store settings routes
 app.use('/api/ai', aiRoutes);               // AI Assistant routes
+app.use('/api/audit', auditRoutes);         // Audit log routes
+app.use('/api/register', registerRoutes);   // Cash register routes
+app.use('/api/returns', returnRoutes);      // Returns/exchange routes
+app.use('/api/backup', backupRoutes);       // Backup & restore routes
 
 // Health check endpoint - used to verify server is running
 // Example: GET /api/health returns { status: 'ok' }

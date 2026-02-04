@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Search, ShoppingCart, Trash2, Minus, Plus, Save, Clock, RefreshCw, Archive, Barcode, Scan, FileText } from 'lucide-react';
+import { Search, ShoppingCart, Trash2, Minus, Plus, Save, Clock, RefreshCw, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart } from 'lucide-react';
 import { useCart, Product } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import ProductCard from '../components/ProductCard';
 import CheckoutModal from '../components/CheckoutModal';
+import AddCustomerModal from '../components/AddCustomerModal';
+import DoneOrdersModal from '../components/DoneOrdersModal';
+import DailyReportModal from '../components/DailyReportModal';
 import api from '../utils/api';
 
 const POS = () => {
@@ -17,6 +20,8 @@ const POS = () => {
   const { user } = useAuth();
   
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchName, setSearchName] = useState('');
   const [searchBarcode, setSearchBarcode] = useState('');
   const [searchCode, setSearchCode] = useState('');
@@ -27,8 +32,16 @@ const POS = () => {
   const [isPendingModalOpen, setIsPendingModalOpen] = useState(false);
   const [pendingSales, setPendingSales] = useState<any[]>([]);
   const [selectedPendingSale, setSelectedPendingSale] = useState<any>(null);
+  
+  const [isDoneModalOpen, setIsDoneModalOpen] = useState(false);
+  const [isDailyReportOpen, setIsDailyReportOpen] = useState(false);
 
-  // Fetch products
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [searchCustomer, setSearchCustomer] = useState('');
+
+  // Fetch products and customers
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -45,8 +58,74 @@ const POS = () => {
         setLoading(false);
       }
     };
+
+    const fetchCategories = async () => {
+      try {
+        const res = await api.get('/products/categories');
+        setCategories(res.data);
+      } catch (error) {
+        console.error("Failed to fetch categories", error);
+      }
+    };
+
+    fetchCustomers();
+    fetchCategories();
     fetchProducts();
   }, []);
+
+  // Barcode Auto-Add & Hotkeys
+  useEffect(() => {
+    // Auto-add if exact barcode match
+    if (searchBarcode) {
+      const match = products.find(p => p.barcode === searchBarcode);
+      if (match) {
+        if (match.stock_quantity > 0) {
+          addToCart(match);
+          setSearchBarcode(''); // Clear after adding
+          // Optional: Play beep sound here
+        } else {
+          alert('Product Out of Stock!');
+          setSearchBarcode('');
+        }
+      }
+    }
+  }, [searchBarcode, products, addToCart]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // F2: Focus Search Barcode
+      if (e.key === 'F2') {
+        e.preventDefault();
+        const input = document.getElementById('barcode-input');
+        if (input) input.focus();
+      }
+      // F9: Open Checkout (if cart has items)
+      if (e.key === 'F9') {
+        e.preventDefault();
+        if (cart.length > 0) setIsCheckoutOpen(true);
+      }
+      // Esc: Close Modals
+      if (e.key === 'Escape') {
+        setIsCheckoutOpen(false);
+        setIsPendingModalOpen(false);
+        setIsDoneModalOpen(false);
+        setIsDailyReportOpen(false);
+        setIsCustomerModalOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [cart, setIsCheckoutOpen]);
+
+  const fetchCustomers = async () => {
+    try {
+      const res = await api.get('/customers');
+      setCustomers(res.data);
+    } catch (error) {
+      console.error("Failed to fetch customers", error);
+    }
+  };
 
   const fetchPendingSales = async () => {
     try {
@@ -54,6 +133,17 @@ const POS = () => {
       setPendingSales(res.data);
     } catch (error) {
       console.error("Failed to fetch pending sales", error);
+    }
+  };
+
+  const handleDeletePending = async (saleId: number) => {
+    if (!confirm('Are you sure you want to delete this pending order?')) return;
+    try {
+      await api.delete(`/sales/${saleId}`);
+      fetchPendingSales();
+    } catch (error) {
+      console.error('Failed to delete pending order', error);
+      alert('Failed to delete pending order');
     }
   };
 
@@ -66,6 +156,9 @@ const POS = () => {
   const handleHoldOrder = async () => {
     if (cart.length === 0) return;
     
+    const note = prompt("Enter Reference / Table No / Customer Name (Optional):");
+    if (note === null) return; // Cancelled by user
+
     try {
       const payload = {
         items: cart.map(item => ({
@@ -81,7 +174,8 @@ const POS = () => {
         user_id: user?.user_id,
         status: 'pending',
         tax_percent: taxRate,
-        additional_charges_percent: additionalRate
+        additional_charges_percent: additionalRate,
+        note: note || ''
       };
 
       await api.post('/sales', payload);
@@ -99,7 +193,12 @@ const POS = () => {
     // Assuming 'searchCode' might match product_id or another code field. Using product_id for now as "Item Code"
     const matchCode = searchCode ? p.product_id.toString().includes(searchCode) : true;
     
-    return matchName && matchBarcode && matchCode;
+    // Category Filter
+    const matchCategory = selectedCategory === 'All' 
+      ? true 
+      : (p.category_id && p.category_id.toString() === selectedCategory);
+
+    return matchName && matchBarcode && matchCode && matchCategory;
   });
 
   return (
@@ -118,14 +217,29 @@ const POS = () => {
               <Clock size={20} />
               Pending Orders
             </button>
+            <button 
+              onClick={() => setIsDoneModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-200"
+            >
+              <FileText size={20} />
+              Done Orders
+            </button>
+            <button 
+              onClick={() => setIsDailyReportOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium border border-blue-200"
+            >
+              <BarChart size={20} />
+              Daily Report
+            </button>
           </div>
           
           <div className="grid grid-cols-3 gap-4">
             <div className="relative">
               <Scan className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input
+                id="barcode-input"
                 type="text"
-                placeholder="Scan Barcode"
+                placeholder="Scan Barcode (F2)"
                 className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
                 value={searchBarcode}
                 onChange={(e) => setSearchBarcode(e.target.value)}
@@ -153,6 +267,33 @@ const POS = () => {
               />
             </div>
           </div>
+        </div>
+
+        {/* Categories Bar */}
+        <div className="px-4 py-3 bg-white border-b border-gray-100 flex gap-2 overflow-x-auto shadow-sm z-0">
+          <button
+            onClick={() => setSelectedCategory('All')}
+            className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
+              selectedCategory === 'All' 
+              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200' 
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
+            }`}
+          >
+            All Items
+          </button>
+          {categories.map(cat => (
+            <button
+              key={cat.category_id}
+              onClick={() => setSelectedCategory(cat.category_id.toString())}
+              className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
+                selectedCategory === cat.category_id.toString()
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
+              }`}
+            >
+              {cat.category_name}
+            </button>
+          ))}
         </div>
 
         {/* Product Grid */}
@@ -195,6 +336,62 @@ const POS = () => {
               {cart.length} items
             </span>
           </div>
+        </div>
+
+        {/* Customer Selection */}
+        <div className="px-4 py-3 bg-white border-b border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-600 flex items-center gap-1">
+              <User size={16} />
+              Customer
+            </span>
+            <button 
+              onClick={() => setIsCustomerModalOpen(true)}
+              className="text-xs flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-medium bg-emerald-50 px-2 py-1 rounded-md transition-colors"
+            >
+              <UserPlus size={14} />
+              Add New
+            </button>
+          </div>
+          
+          {selectedCustomer ? (
+            <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 p-2 rounded-lg">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs shrink-0">
+                  {selectedCustomer.customer_name.charAt(0).toUpperCase()}
+                </div>
+                <div className="truncate">
+                  <p className="text-sm font-bold text-gray-800 truncate">{selectedCustomer.customer_name}</p>
+                  <p className="text-xs text-gray-500 truncate">{selectedCustomer.phone_number}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedCustomer(null)}
+                className="text-gray-400 hover:text-red-500 p-1 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <select
+                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none appearance-none cursor-pointer"
+                onChange={(e) => {
+                  const customer = customers.find(c => c.customer_id.toString() === e.target.value);
+                  setSelectedCustomer(customer || null);
+                }}
+                value={selectedCustomer?.customer_id || ""}
+              >
+                <option value="">Select Walk-in Customer</option>
+                {customers.map(c => (
+                  <option key={c.customer_id} value={c.customer_id}>
+                    {c.customer_name} {c.phone_number ? `(${c.phone_number})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Cart Items */}
@@ -313,9 +510,32 @@ const POS = () => {
         onSuccess={() => {
           setIsCheckoutOpen(false);
           setSelectedPendingSale(null);
+          setSelectedCustomer(null);
           fetchPendingSales(); // Refresh pending list if needed
         }}
         pendingSale={selectedPendingSale}
+        selectedCustomer={selectedCustomer}
+      />
+
+      {/* Add Customer Modal */}
+      <AddCustomerModal
+        isOpen={isCustomerModalOpen}
+        onClose={() => setIsCustomerModalOpen(false)}
+        onSuccess={() => {
+          fetchCustomers();
+          // Optionally select the newly added customer here if we returned it from the API/Modal
+        }}
+      />
+
+      {/* Done Orders Modal */}
+      <DoneOrdersModal 
+        isOpen={isDoneModalOpen}
+        onClose={() => setIsDoneModalOpen(false)}
+      />
+
+      <DailyReportModal 
+        isOpen={isDailyReportOpen}
+        onClose={() => setIsDailyReportOpen(false)}
       />
 
       {/* Pending Sales Modal */}
@@ -361,18 +581,33 @@ const POS = () => {
                           <span className="text-gray-500">Customer:</span>
                           <span>{sale.customer_name || 'Walk-in'}</span>
                         </p>
+                        {sale.note && (
+                          <p className="text-sm flex justify-between">
+                            <span className="text-gray-500">Note:</span>
+                            <span className="font-medium text-gray-800 italic">{sale.note}</span>
+                          </p>
+                        )}
                       </div>
 
-                      <button
-                        onClick={() => {
-                          setSelectedPendingSale(sale);
-                          setIsPendingModalOpen(false);
-                          setIsCheckoutOpen(true);
-                        }}
-                        className="w-full mt-2 bg-emerald-600 text-white py-2 rounded-lg font-medium hover:bg-emerald-700 transition-colors"
-                      >
-                        Pay & Complete
-                      </button>
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => handleDeletePending(sale.sale_id)}
+                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                          title="Delete Order"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedPendingSale(sale);
+                            setIsPendingModalOpen(false);
+                            setIsCheckoutOpen(true);
+                          }}
+                          className="flex-1 bg-emerald-600 text-white py-2 rounded-lg font-medium hover:bg-emerald-700 transition-colors"
+                        >
+                          Pay & Complete
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

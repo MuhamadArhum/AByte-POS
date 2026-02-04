@@ -7,6 +7,10 @@ import Customers from './pages/Customers';
 import Reports from './pages/Reports';
 import SettingsPage from './pages/Settings';
 import Login from './pages/Login';
+import CashRegister from './pages/CashRegister';
+import Returns from './pages/Returns';
+import AuditLog from './pages/AuditLog';
+import Backup from './pages/Backup';
 import Layout from './components/Layout';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -58,30 +62,55 @@ function App() {
                     <Routes>
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/pos" element={<POS />} />
-                      <Route 
-                        path="/inventory" 
+                      <Route path="/cash-register" element={<CashRegister />} />
+                      <Route
+                        path="/inventory"
                         element={
                           <RoleRoute allowedRoles={['Admin', 'Manager']}>
                             <Inventory />
                           </RoleRoute>
-                        } 
+                        }
                       />
-                      <Route 
-                        path="/reports" 
+                      <Route
+                        path="/returns"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <Returns />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/reports"
                         element={
                           <RoleRoute allowedRoles={['Admin', 'Manager']}>
                             <Reports />
                           </RoleRoute>
-                        } 
+                        }
                       />
                       <Route path="/customers" element={<Customers />} />
-                      <Route 
-                        path="/settings" 
+                      <Route
+                        path="/audit-log"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <AuditLog />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/backup"
+                        element={
+                          <RoleRoute allowedRoles={['Admin']}>
+                            <Backup />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/settings"
                         element={
                           <RoleRoute allowedRoles={['Admin']}>
                             <SettingsPage />
                           </RoleRoute>
-                        }  
+                        }
                       />
                     </Routes>
                   </Layout>

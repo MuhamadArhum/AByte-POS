@@ -6,8 +6,8 @@ import { Lock, Mail, Loader2, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@pos.com');
+  const [password, setPassword] = useState('Admin@123');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();

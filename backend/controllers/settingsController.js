@@ -1,4 +1,5 @@
 const { query } = require('../config/database');
+const { logAction } = require('../services/auditService');
 
 // --- Get Store Settings ---
 // Returns the single row of store settings (store name, address, etc.)
@@ -37,6 +38,8 @@ exports.updateSettings = async (req, res) => {
       [store_name, address, phone, email, website, receipt_footer]
     );
     
+    await logAction(req.user.user_id, req.user.name, 'SETTINGS_UPDATED', 'settings', 1, { store_name }, req.ip);
+
     res.json({ message: 'Settings updated successfully' });
   } catch (err) {
     console.error(err);

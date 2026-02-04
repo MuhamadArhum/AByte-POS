@@ -7,6 +7,7 @@
 
 const bcrypt = require('bcryptjs');          // Library to hash passwords before storing
 const { query } = require('../config/database');  // Database query helper
+const { logAction } = require('../services/auditService');
 
 // --- Get All Users ---
 // Returns a list of all users with their roles, ordered by newest first.
@@ -60,8 +61,11 @@ exports.create = async (req, res) => {
       [name, email, password_hash, role_id]
     );
 
+    const newUserId = Number(result.insertId);
+    await logAction(req.user.user_id, req.user.name, 'USER_CREATED', 'user', newUserId, { name, email, role_id }, req.ip);
+
     // Return success with the new user's ID
-    res.status(201).json({ message: 'User created', user_id: Number(result.insertId) });
+    res.status(201).json({ message: 'User created', user_id: newUserId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -103,6 +107,9 @@ exports.update = async (req, res) => {
     params.push(id);
 
     await query(updateQuery, params);
+
+    await logAction(req.user.user_id, req.user.name, 'USER_UPDATED', 'user', parseInt(id), { name, email }, req.ip);
+
     res.json({ message: 'User updated' });
   } catch (err) {
     console.error(err);
@@ -126,6 +133,9 @@ exports.remove = async (req, res) => {
 
     // Safe to delete - no sales history
     await query('DELETE FROM users WHERE user_id = ?', [id]);
+
+    await logAction(req.user.user_id, req.user.name, 'USER_DELETED', 'user', parseInt(id), {}, req.ip);
+
     res.json({ message: 'User deleted' });
   } catch (err) {
     console.error(err);

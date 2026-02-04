@@ -6,6 +6,7 @@
 // =============================================================
 
 const { query } = require('../config/database');  // Database query helper
+const { logAction } = require('../services/auditService');
 
 // --- Get All Inventory ---
 // Returns all products with their current stock levels, prices, and categories.
@@ -42,8 +43,15 @@ exports.updateStock = async (req, res) => {
     }
 
     // Update both tables to keep stock values consistent
+    // Get old stock for audit
+    const oldStock = await query('SELECT available_stock FROM inventory WHERE product_id = ?', [id]);
+    const oldValue = oldStock.length > 0 ? oldStock[0].available_stock : null;
+
     await query('UPDATE inventory SET available_stock = ? WHERE product_id = ?', [available_stock, id]);
     await query('UPDATE products SET stock_quantity = ? WHERE product_id = ?', [available_stock, id]);
+
+    await logAction(req.user.user_id, req.user.name, 'STOCK_UPDATED', 'inventory', parseInt(id), { old_stock: oldValue, new_stock: available_stock }, req.ip);
+
     res.json({ message: 'Stock updated' });
   } catch (err) {
     console.error(err);

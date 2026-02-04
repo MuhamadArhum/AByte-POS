@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, AlertTriangle, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, AlertTriangle, Edit, Trash2, Barcode } from 'lucide-react';
 import api from '../utils/api';
 import AddProductModal from '../components/AddProductModal';
+import BarcodeModal from '../components/BarcodeModal';
 
 interface InventoryItem {
   inventory_id: number;
@@ -19,6 +20,7 @@ const Inventory = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [barcodeProduct, setBarcodeProduct] = useState<InventoryItem | null>(null);
 
   useEffect(() => {
     fetchInventory();
@@ -156,10 +158,17 @@ const Inventory = () => {
                 </td>
                 <td className="p-4">
                   <div className="flex gap-2">
+                    <button
+                      className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                      title="Barcode"
+                      onClick={() => setBarcodeProduct(product)}
+                    >
+                      <Barcode size={16} />
+                    </button>
                     <button className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                       <Edit size={16} />
                     </button>
-                    <button 
+                    <button
                       className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       onClick={() => handleDelete(product.product_id)}
                     >
@@ -179,6 +188,12 @@ const Inventory = () => {
           </tbody>
         </table>
       </div>
+      <BarcodeModal
+        isOpen={!!barcodeProduct}
+        onClose={() => setBarcodeProduct(null)}
+        product={barcodeProduct}
+        onBarcodeGenerated={fetchInventory}
+      />
     </div>
   );
 };

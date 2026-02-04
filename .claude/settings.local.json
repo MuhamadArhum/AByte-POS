@@ -26,7 +26,8 @@
       "Bash(xcopy:*)",
       "Bash(find:*)",
       "Bash(cmd /c \"rmdir /s /q F:\\\\AByte-POS\\\\client\")",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(xargs cat:*)"
     ]
   }
 }

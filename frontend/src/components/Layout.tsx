@@ -1,18 +1,24 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Package, 
-  Users, 
-  BarChart3, 
-  Settings, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  Package,
+  Users,
+  BarChart3,
+  Settings,
+  LogOut,
   Menu,
   Bell,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   User,
-  Search
+  Search,
+  Wallet,
+  RotateCcw,
+  ScrollText,
+  Database
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,13 +29,18 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   
   const allMenuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/', roles: ['Admin', 'Manager', 'Cashier'] },
     { icon: ShoppingCart, label: 'POS', path: '/pos', roles: ['Admin', 'Manager', 'Cashier'] },
+    { icon: Wallet, label: 'Cash Register', path: '/cash-register', roles: ['Admin', 'Manager', 'Cashier'] },
     { icon: Package, label: 'Inventory', path: '/inventory', roles: ['Admin', 'Manager'] },
+    { icon: RotateCcw, label: 'Returns', path: '/returns', roles: ['Admin', 'Manager'] },
     { icon: Users, label: 'Customers', path: '/customers', roles: ['Admin', 'Manager', 'Cashier'] },
     { icon: BarChart3, label: 'Reports', path: '/reports', roles: ['Admin', 'Manager'] },
+    { icon: ScrollText, label: 'Audit Log', path: '/audit-log', roles: ['Admin', 'Manager'] },
+    { icon: Database, label: 'Backup', path: '/backup', roles: ['Admin'] },
     { icon: Settings, label: 'Settings', path: '/settings', roles: ['Admin'] },
   ];
 
@@ -45,15 +56,31 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="flex h-screen bg-gray-50 font-sans">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm z-20">
-        <div className="h-16 flex items-center px-6 border-b border-gray-100">
-          <div className="flex items-center gap-2 text-emerald-600">
-            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center text-white text-lg font-bold shadow-md">A</div>
-            <span className="text-xl font-bold tracking-tight">AByte POS</span>
-          </div>
+      <aside 
+        className={`${isCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-gray-200 flex flex-col shadow-sm z-20 transition-all duration-300 ease-in-out relative`}
+      >
+        <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100">
+          {!isCollapsed && (
+            <div className="flex items-center gap-2 text-emerald-600 overflow-hidden whitespace-nowrap">
+              <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center text-white text-lg font-bold shadow-md flex-shrink-0">A</div>
+              <span className="text-xl font-bold tracking-tight">AByte POS</span>
+            </div>
+          )}
+          {isCollapsed && (
+            <div className="w-full flex justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center text-white text-lg font-bold shadow-md">A</div>
+            </div>
+          )}
+          
+          <button 
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className={`p-1.5 rounded-lg bg-gray-50 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors absolute -right-3 top-20 border border-gray-200 shadow-sm z-30 hidden md:flex`}
+          >
+             {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          </button>
         </div>
         
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -61,14 +88,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
+                className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative ${
                   isActive 
                     ? 'bg-emerald-50 text-emerald-600 font-semibold shadow-sm' 
                     : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                }`}
+                } ${isCollapsed ? 'justify-center' : ''}`}
+                title={isCollapsed ? item.label : ''}
               >
-                <Icon size={20} className={isActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-gray-600'} />
-                {item.label}
+                <Icon size={22} className={`flex-shrink-0 ${isActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
+                {!isCollapsed && <span className="whitespace-nowrap overflow-hidden">{item.label}</span>}
               </Link>
             );
           })}

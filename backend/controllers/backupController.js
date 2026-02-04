@@ -1,0 +1,93 @@
+const path = require('path');
+const { query } = require('../config/database');
+const { logAction } = require('../services/auditService');
+const backupService = require('../services/backupService');
+
+exports.createBackup = async (req, res) => {
+  try {
+    const result = await backupService.createBackup(req.user.user_id, 'manual');
+
+    await logAction(req.user.user_id, req.user.name, 'BACKUP_CREATED', 'backup', null,
+      { filename: result.filename }, req.ip);
+
+    res.status(201).json({ message: 'Backup created successfully', filename: result.filename });
+  } catch (error) {
+    console.error('Create backup error:', error);
+    res.status(500).json({ message: error.message || 'Failed to create backup' });
+  }
+};
+
+exports.listBackups = async (req, res) => {
+  try {
+    const backups = await query('SELECT b.*, u.name as created_by_name FROM backups b JOIN users u ON b.created_by = u.user_id ORDER BY b.created_at DESC');
+    res.json(backups);
+  } catch (error) {
+    console.error('List backups error:', error);
+    res.status(500).json({ message: 'Failed to list backups' });
+  }
+};
+
+exports.restoreBackup = async (req, res) => {
+  try {
+    const { filename } = req.body;
+    if (!filename) {
+      return res.status(400).json({ message: 'Filename is required' });
+    }
+
+    // Create a backup before restoring
+    try {
+      await backupService.createBackup(req.user.user_id, 'manual');
+    } catch (preBackupErr) {
+      console.error('Pre-restore backup failed:', preBackupErr);
+    }
+
+    await backupService.restoreBackup(filename);
+
+    await logAction(req.user.user_id, req.user.name, 'BACKUP_RESTORED', 'backup', null,
+      { filename }, req.ip);
+
+    res.json({ message: 'Backup restored successfully' });
+  } catch (error) {
+    console.error('Restore backup error:', error);
+    res.status(500).json({ message: error.message || 'Failed to restore backup' });
+  }
+};
+
+exports.downloadBackup = async (req, res) => {
+  try {
+    const { filename } = req.params;
+
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return res.status(400).json({ message: 'Invalid filename' });
+    }
+
+    const filepath = path.join(backupService.getBackupDir(), filename);
+    res.download(filepath, filename, (err) => {
+      if (err) {
+        if (!res.headersSent) {
+          res.status(404).json({ message: 'Backup file not found' });
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Download backup error:', error);
+    res.status(500).json({ message: 'Failed to download backup' });
+  }
+};
+
+exports.deleteBackup = async (req, res) => {
+  try {
+    const { filename } = req.params;
+
+    backupService.deleteBackupFile(filename);
+    await query('DELETE FROM backups WHERE filename = ?', [filename]);
+
+    await logAction(req.user.user_id, req.user.name, 'BACKUP_DELETED', 'backup', null,
+      { filename }, req.ip);
+
+    res.json({ message: 'Backup deleted' });
+  } catch (error) {
+    console.error('Delete backup error:', error);
+    res.status(500).json({ message: error.message || 'Failed to delete backup' });
+  }
+};
