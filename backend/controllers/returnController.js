@@ -154,8 +154,30 @@ exports.getReturns = async (req, res) => {
     sql += ' ORDER BY r.return_date DESC LIMIT ? OFFSET ?';
     params.push(parseInt(limit), (parseInt(page) - 1) * parseInt(limit));
 
+    // Get total count for pagination
+    const countSql = `SELECT COUNT(*) as total FROM returns r WHERE 1=1` + 
+      (date_start ? ' AND r.return_date >= ?' : '') + 
+      (date_end ? ' AND r.return_date <= ?' : '');
+    
+    // Use a separate params array for count query to avoid issues with limit/offset params
+    const countParams = [];
+    if (date_start) countParams.push(date_start);
+    if (date_end) countParams.push(date_end + ' 23:59:59');
+
+    const countResult = await query(countSql, countParams);
+    const total = countResult[0].total;
+
     const returns = await query(sql, params);
-    res.json(returns);
+    
+    res.json({
+      data: returns,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / parseInt(limit))
+      }
+    });
   } catch (error) {
     console.error('Get returns error:', error);
     res.status(500).json({ message: 'Failed to fetch returns' });

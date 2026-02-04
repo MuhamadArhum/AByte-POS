@@ -24,6 +24,28 @@ exports.getAll = async (req, res) => {
       params.push(`%${search}%`, `%${search}%`);
     }
 
+    // Pagination
+    const { page, limit } = req.query;
+    if (page && limit) {
+      const pageNum = parseInt(page);
+      const limitNum = parseInt(limit);
+      const offset = (pageNum - 1) * limitNum;
+
+      const countSql = 'SELECT COUNT(*) as total FROM customers' + (search ? ' WHERE customer_name LIKE ? OR phone_number LIKE ?' : '');
+      const countParams = [...params];
+      const countResult = await query(countSql, countParams);
+      const total = countResult[0].total;
+
+      sql += ' ORDER BY customer_name LIMIT ? OFFSET ?';
+      params.push(limitNum, offset);
+      
+      const rows = await query(sql, params);
+      return res.json({
+          data: rows,
+          pagination: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) }
+      });
+    }
+
     sql += ' ORDER BY customer_name';  // Alphabetical order
     const rows = await query(sql, params);
     res.json(rows);
@@ -65,6 +87,41 @@ exports.getById = async (req, res) => {
     // Fetch the customer record
     const rows = await query('SELECT * FROM customers WHERE customer_id = ?', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ message: 'Customer not found' });
+
+    // Pagination for purchases
+    const { page, limit } = req.query;
+    
+    if (page && limit) {
+      const pageNum = parseInt(page);
+      const limitNum = parseInt(limit);
+      const offset = (pageNum - 1) * limitNum;
+
+      // Count total purchases
+      const countResult = await query(
+        'SELECT COUNT(*) as total FROM sales WHERE customer_id = ?', 
+        [req.params.id]
+      );
+      const total = Number(countResult[0].total);
+
+      // Fetch paginated purchases
+      const purchases = await query(
+        `SELECT s.sale_id, s.sale_date, s.net_amount, u.name as cashier_name
+         FROM sales s LEFT JOIN users u ON s.user_id = u.user_id
+         WHERE s.customer_id = ? ORDER BY s.sale_date DESC LIMIT ? OFFSET ?`,
+        [req.params.id, limitNum, offset]
+      );
+
+      return res.json({ 
+        ...rows[0], 
+        purchases,
+        pagination: { 
+          total, 
+          page: pageNum, 
+          limit: limitNum, 
+          totalPages: Math.ceil(total / limitNum) 
+        } 
+      });
+    }
 
     // Fetch all sales made to this customer (with cashier name)
     const purchases = await query(

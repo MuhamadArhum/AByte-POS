@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, ChevronLeft, ChevronRight, ScrollText, Clock, User } from 'lucide-react';
+import { Search, Filter, ScrollText, Clock, User } from 'lucide-react';
 import api from '../utils/api';
+import Pagination from '../components/Pagination';
 
 interface AuditEntry {
   log_id: number;
@@ -46,6 +47,7 @@ const AuditLog = () => {
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
   const [page, setPage] = useState(1);
+  const [itemsPerPage] = useState(30);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [expandedLog, setExpandedLog] = useState<number | null>(null);
@@ -70,7 +72,7 @@ const AuditLog = () => {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: '30' });
+      const params = new URLSearchParams({ page: String(page), limit: String(itemsPerPage) });
       if (selectedAction) params.append('action', selectedAction);
       if (dateStart) params.append('date_start', dateStart);
       if (dateEnd) params.append('date_end', dateEnd);
@@ -212,29 +214,13 @@ const AuditLog = () => {
             </table>
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50">
-                <span className="text-sm text-gray-500">
-                  Page {page} of {totalPages}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="p-2 rounded-lg border border-gray-200 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <button
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    className="p-2 rounded-lg border border-gray-200 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-            )}
+            <Pagination 
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              totalItems={total}
+              itemsPerPage={itemsPerPage}
+            />
           </>
         )}
       </div>

@@ -46,6 +46,45 @@ exports.getAll = async (req, res) => {
       sql += ' AND (i.available_stock = 0 OR i.available_stock IS NULL)';  // Out of stock
     }
 
+    // Pagination
+    const { page, limit } = req.query;
+    if (page && limit) {
+      const pageNum = parseInt(page);
+      const limitNum = parseInt(limit);
+      const offset = (pageNum - 1) * limitNum;
+
+      // Count total records for pagination
+      const countSql = `SELECT COUNT(*) as total 
+                        FROM products p 
+                        LEFT JOIN categories c ON p.category_id = c.category_id
+                        LEFT JOIN inventory i ON p.product_id = i.product_id
+                        WHERE 1=1 ` + 
+                        (search ? ' AND (p.product_name LIKE ? OR p.barcode LIKE ?)' : '') +
+                        (category ? ' AND p.category_id = ?' : '') +
+                        (stock === 'low' ? ' AND i.available_stock > 0 AND i.available_stock < 10' : '') +
+                        (stock === 'out' ? ' AND (i.available_stock = 0 OR i.available_stock IS NULL)' : '');
+      
+      // params for count query (same as main query up to this point)
+      const countParams = [...params]; 
+      const countResult = await query(countSql, countParams);
+      const total = countResult[0].total;
+
+      sql += ' ORDER BY p.created_at DESC LIMIT ? OFFSET ?';
+      params.push(limitNum, offset);
+
+      const rows = await query(sql, params);
+      
+      return res.json({
+        data: rows,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(total / limitNum)
+        }
+      });
+    }
+
     sql += ' ORDER BY p.created_at DESC';  // Newest products first
     const rows = await query(sql, params);
     res.json(rows);

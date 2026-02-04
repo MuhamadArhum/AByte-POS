@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Search, ShoppingCart, Trash2, Minus, Plus, Save, Clock, RefreshCw, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Search, ShoppingCart, Trash2, Minus, Plus, Save, Clock, RefreshCw, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X } from 'lucide-react';
 import { useCart, Product } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import ProductCard from '../components/ProductCard';
@@ -7,6 +7,7 @@ import CheckoutModal from '../components/CheckoutModal';
 import AddCustomerModal from '../components/AddCustomerModal';
 import DoneOrdersModal from '../components/DoneOrdersModal';
 import DailyReportModal from '../components/DailyReportModal';
+import Pagination from '../components/Pagination';
 import api from '../utils/api';
 
 const POS = () => {
@@ -187,10 +188,9 @@ const POS = () => {
     }
   };
 
-  const filteredProducts = products.filter(p => {
+  const filteredProducts = useMemo(() => products.filter(p => {
     const matchName = searchName ? p.product_name.toLowerCase().includes(searchName.toLowerCase()) : true;
     const matchBarcode = searchBarcode ? (p.barcode && p.barcode.includes(searchBarcode)) : true;
-    // Assuming 'searchCode' might match product_id or another code field. Using product_id for now as "Item Code"
     const matchCode = searchCode ? p.product_id.toString().includes(searchCode) : true;
     
     // Category Filter
@@ -199,7 +199,7 @@ const POS = () => {
       : (p.category_id && p.category_id.toString() === selectedCategory);
 
     return matchName && matchBarcode && matchCode && matchCategory;
-  });
+  }), [products, searchName, searchBarcode, searchCode, selectedCategory]);
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -613,6 +613,17 @@ const POS = () => {
                 </div>
               )}
             </div>
+            {pendingSales.length > 0 && (
+              <div className="p-4 border-t border-gray-100">
+                <Pagination 
+                  currentPage={pendingPage}
+                  totalPages={pendingTotalPages}
+                  onPageChange={setPendingPage}
+                  totalItems={pendingTotalItems}
+                  itemsPerPage={pendingItemsPerPage}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -621,24 +632,3 @@ const POS = () => {
 };
 
 export default POS;
-
-// Simple X icon component for local use if needed, but imported from lucide-react above
-function X({ size, className }: { size?: number, className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || 24} 
-      height={size || 24} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-      className={className}
-    >
-      <line x1="18" y1="6" x2="6" y2="18"></line>
-      <line x1="6" y1="6" x2="18" y2="18"></line>
-    </svg>
-  );
-}

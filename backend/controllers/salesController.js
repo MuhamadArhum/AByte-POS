@@ -165,14 +165,37 @@ exports.createSale = async (req, res) => {
 // --- Get Pending Sales ---
 exports.getPending = async (req, res) => {
   try {
-    const sales = await query(`
+    const { page, limit } = req.query;
+    
+    let sql = `
       SELECT s.*, c.customer_name, u.name as cashier_name 
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
       WHERE s.status = 'pending'
-      ORDER BY s.sale_date DESC
-    `);
+    `;
+    const params = [];
+
+    if (page && limit) {
+      const pageNum = parseInt(page);
+      const limitNum = parseInt(limit);
+      const offset = (pageNum - 1) * limitNum;
+
+      const countResult = await query("SELECT COUNT(*) as total FROM sales WHERE status = 'pending'");
+      const total = Number(countResult[0].total);
+
+      sql += ' ORDER BY s.sale_date DESC LIMIT ? OFFSET ?';
+      params.push(limitNum, offset);
+      
+      const rows = await query(sql, params);
+      return res.json({
+        data: rows,
+        pagination: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) }
+      });
+    }
+
+    sql += ' ORDER BY s.sale_date DESC';
+    const sales = await query(sql, params);
     res.json(sales);
   } catch (error) {
     console.error('Get pending sales error:', error);
@@ -270,13 +293,77 @@ exports.getToday = async (req, res) => {
 // --- Get All Sales ---
 exports.getAll = async (req, res) => {
   try {
-    const sales = await query(`
+    const { page, limit, search, status } = req.query;
+    let sql = `
       SELECT s.*, c.customer_name, u.name as cashier_name 
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
-      ORDER BY s.sale_date DESC
-    `);
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (status) {
+      if (status.includes(',')) {
+        const statuses = status.split(',');
+        sql += ` AND s.status IN (${statuses.map(() => '?').join(',')})`;
+        params.push(...statuses);
+      } else {
+        sql += ' AND s.status = ?';
+        params.push(status);
+      }
+    }
+
+    if (search) {
+      sql += ' AND (s.sale_id LIKE ? OR c.customer_name LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    if (page && limit) {
+      const pageNum = parseInt(page);
+      const limitNum = parseInt(limit);
+      const offset = (pageNum - 1) * limitNum;
+
+      // Count query for pagination
+      let countSql = `
+        SELECT COUNT(*) as total 
+        FROM sales s
+        LEFT JOIN customers c ON s.customer_id = c.customer_id
+        WHERE 1=1
+      `;
+      const countParams = [];
+
+      if (status) {
+        if (status.includes(',')) {
+          const statuses = status.split(',');
+          countSql += ` AND s.status IN (${statuses.map(() => '?').join(',')})`;
+          countParams.push(...statuses);
+        } else {
+          countSql += ' AND s.status = ?';
+          countParams.push(status);
+        }
+      }
+
+      if (search) {
+        countSql += ' AND (s.sale_id LIKE ? OR c.customer_name LIKE ?)';
+        countParams.push(`%${search}%`, `%${search}%`);
+      }
+
+      const countResult = await query(countSql, countParams);
+      const total = Number(countResult[0].total);
+
+      sql += ' ORDER BY s.sale_date DESC LIMIT ? OFFSET ?';
+      params.push(limitNum, offset);
+
+      const rows = await query(sql, params);
+      return res.json({
+        data: rows,
+        pagination: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) }
+      });
+    }
+
+    sql += ' ORDER BY s.sale_date DESC';
+    const sales = await query(sql, params);
     res.json(sales);
   } catch (error) {
     console.error('Get all sales error:', error);

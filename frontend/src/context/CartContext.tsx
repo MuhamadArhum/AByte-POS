@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 export interface Product {
   product_id: number;
@@ -35,7 +35,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [taxRate, setTaxRate] = useState(16); // Default 16%
   const [additionalRate, setAdditionalRate] = useState(5); // Default 5%
 
-  const addToCart = (product: Product) => {
+  const addToCart = useCallback((product: Product) => {
     setCart(prev => {
       const existing = prev.find(item => item.product_id === product.product_id);
       if (existing) {
@@ -57,13 +57,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       return [...prev, { ...product, quantity: 1 }];
     });
-  };
+  }, []);
 
-  const removeFromCart = (productId: number) => {
+  const removeFromCart = useCallback((productId: number) => {
     setCart(prev => prev.filter(item => item.product_id !== productId));
-  };
+  }, []);
 
-  const updateQuantity = (productId: number, quantity: number) => {
+  const updateQuantity = useCallback((productId: number, quantity: number) => {
     if (quantity <= 0) {
       removeFromCart(productId);
       return;
@@ -73,31 +73,33 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         item.product_id === productId ? { ...item, quantity } : item
       )
     );
-  };
+  }, [removeFromCart]);
 
-  const clearCart = () => setCart([]);
+  const clearCart = useCallback(() => setCart([]), []);
 
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const taxAmount = subtotal * (taxRate / 100);
-  const additionalAmount = subtotal * (additionalRate / 100);
-  const total = subtotal + taxAmount + additionalAmount;
+  const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.price * item.quantity, 0), [cart]);
+  const taxAmount = useMemo(() => subtotal * (taxRate / 100), [subtotal, taxRate]);
+  const additionalAmount = useMemo(() => subtotal * (additionalRate / 100), [subtotal, additionalRate]);
+  const total = useMemo(() => subtotal + taxAmount + additionalAmount, [subtotal, taxAmount, additionalAmount]);
+
+  const value = useMemo(() => ({
+    cart, 
+    addToCart, 
+    removeFromCart, 
+    updateQuantity, 
+    clearCart, 
+    subtotal,
+    taxRate,
+    setTaxRate,
+    additionalRate,
+    setAdditionalRate,
+    taxAmount,
+    additionalAmount,
+    total 
+  }), [cart, addToCart, removeFromCart, updateQuantity, clearCart, subtotal, taxRate, additionalRate, taxAmount, additionalAmount, total]);
 
   return (
-    <CartContext.Provider value={{ 
-      cart, 
-      addToCart, 
-      removeFromCart, 
-      updateQuantity, 
-      clearCart, 
-      subtotal,
-      taxRate,
-      setTaxRate,
-      additionalRate,
-      setAdditionalRate,
-      taxAmount,
-      additionalAmount,
-      total 
-    }}>
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );

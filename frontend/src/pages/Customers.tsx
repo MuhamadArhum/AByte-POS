@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit, Trash2, User, Phone, ShoppingBag, Clock } from 'lucide-react';
 import api from '../utils/api';
 import AddCustomerModal from '../components/AddCustomerModal';
+import Pagination from '../components/Pagination';
 
 interface Purchase {
   sale_id: number;
@@ -28,32 +29,75 @@ const Customers = () => {
   const [purchaseHistory, setPurchaseHistory] = useState<Purchase[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
-  const fetchCustomers = async () => {
+  // History Pagination State
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyItemsPerPage] = useState(5);
+  const [historyTotalItems, setHistoryTotalItems] = useState(0);
+  const [historyTotalPages, setHistoryTotalPages] = useState(0);
+
+  const fetchCustomers = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await api.get('/customers');
-      setCustomers(res.data);
+      const res = await api.get('/customers', {
+        params: {
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm
+        }
+      });
+      
+      if (res.data.pagination) {
+        setCustomers(res.data.data);
+        setTotalItems(res.data.pagination.total);
+        setTotalPages(res.data.pagination.totalPages);
+      } else {
+        setCustomers(res.data);
+      }
     } catch (error) {
       console.error("Failed to fetch customers", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, itemsPerPage, searchTerm]);
 
-  const fetchCustomerDetails = async (id: number) => {
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
+
+  const fetchCustomerDetails = useCallback(async (id: number, page: number) => {
     setHistoryLoading(true);
     try {
-      const res = await api.get(`/customers/${id}`);
-      setPurchaseHistory(res.data.purchases || []);
+      const res = await api.get(`/customers/${id}`, {
+        params: {
+          page: page,
+          limit: historyItemsPerPage
+        }
+      });
+      if (res.data.pagination) {
+        setPurchaseHistory(res.data.purchases);
+        setHistoryTotalItems(res.data.pagination.total);
+        setHistoryTotalPages(res.data.pagination.totalPages);
+      } else {
+        setPurchaseHistory(res.data.purchases || []);
+      }
     } catch (error) {
       console.error("Failed to fetch customer history", error);
     } finally {
       setHistoryLoading(false);
     }
-  };
+  }, [historyItemsPerPage]);
+
+  useEffect(() => {
+    if (selectedCustomer) {
+      fetchCustomerDetails(selectedCustomer.customer_id, historyPage);
+    }
+  }, [selectedCustomer, historyPage, fetchCustomerDetails]);
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('Are you sure you want to delete this customer?')) return;
@@ -75,16 +119,22 @@ const Customers = () => {
   };
 
   const handleSelectCustomer = (customer: Customer) => {
-    setSelectedCustomer(customer);
-    fetchCustomerDetails(customer.customer_id);
+    if (selectedCustomer?.customer_id !== customer.customer_id) {
+      setHistoryPage(1);
+      setSelectedCustomer(customer);
+    }
   };
 
-  const filteredCustomers = customers.filter(c =>
-    c.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (c.phone_number && c.phone_number.includes(searchTerm))
-  );
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
-  if (loading) {
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to page 1 on search
+  };
+
+  if (loading && customers.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
@@ -122,7 +172,7 @@ const Customers = () => {
                 placeholder="Search by name or phone..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearch}
               />
             </div>
           </div>
@@ -137,7 +187,7 @@ const Customers = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm">
-                {filteredCustomers.map((customer) => (
+                {customers.map((customer) => (
                   <tr 
                     key={customer.customer_id} 
                     className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedCustomer?.customer_id === customer.customer_id ? 'bg-emerald-50' : ''}`}
@@ -173,6 +223,13 @@ const Customers = () => {
               </tbody>
             </table>
           </div>
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+          />
         </div>
 
         {/* Right Side: Customer Details */}
@@ -230,6 +287,17 @@ const Customers = () => {
                   </div>
                 )}
               </div>
+              {purchaseHistory.length > 0 && (
+                <div className="p-2 border-t border-gray-100">
+                   <Pagination 
+                    currentPage={historyPage}
+                    totalPages={historyTotalPages}
+                    onPageChange={setHistoryPage}
+                    totalItems={historyTotalItems}
+                    itemsPerPage={historyItemsPerPage}
+                  />
+                </div>
+              )}
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-8 text-center">

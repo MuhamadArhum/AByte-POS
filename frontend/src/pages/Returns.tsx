@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { RotateCcw, Search, Loader2, Check, AlertTriangle, Package } from 'lucide-react';
 import api from '../utils/api';
+import Pagination from '../components/Pagination';
 
 interface SaleItem {
   product_id: number;
@@ -47,6 +48,10 @@ const Returns = () => {
   // Recent returns
   const [recentReturns, setRecentReturns] = useState<any[]>([]);
   const [showRecent, setShowRecent] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const searchSale = async () => {
     if (!saleId.trim()) return;
@@ -129,15 +134,33 @@ const Returns = () => {
     }
   };
 
-  const loadRecentReturns = async () => {
+  const loadRecentReturns = useCallback(async () => {
     try {
-      const res = await api.get('/returns');
-      setRecentReturns(res.data);
+      const res = await api.get('/returns', {
+        params: {
+          page: currentPage,
+          limit: itemsPerPage
+        }
+      });
+      
+      if (res.data.pagination) {
+        setRecentReturns(res.data.data);
+        setTotalItems(res.data.pagination.total);
+        setTotalPages(res.data.pagination.totalPages);
+      } else {
+        setRecentReturns(res.data);
+      }
       setShowRecent(true);
     } catch (error) {
       console.error('Failed to fetch returns', error);
     }
-  };
+  }, [currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    if (showRecent) {
+      loadRecentReturns();
+    }
+  }, [showRecent, currentPage, loadRecentReturns]);
 
   return (
     <div className="p-8">
@@ -150,7 +173,7 @@ const Returns = () => {
           <p className="text-gray-500 mt-1">Process returns and exchanges for completed sales</p>
         </div>
         <button
-          onClick={loadRecentReturns}
+          onClick={() => setShowRecent(true)}
           className="text-gray-600 hover:text-gray-800 text-sm border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
         >
           View Recent Returns
@@ -384,6 +407,13 @@ const Returns = () => {
                 ))}
               </tbody>
             </table>
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+            />
           </div>
         </div>
       )}

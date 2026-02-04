@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Wallet, Plus, Minus, Lock, Unlock, Clock, ArrowDownCircle, ArrowUpCircle, History, Loader2 } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import CashMovementModal from '../components/CashMovementModal';
 import RegisterCloseModal from '../components/RegisterCloseModal';
+import Pagination from '../components/Pagination';
 
 interface CashMovement {
   movement_id: number;
@@ -44,6 +45,10 @@ const CashRegister = () => {
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [history, setHistory] = useState<Register[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     fetchRegister();
@@ -78,15 +83,32 @@ const CashRegister = () => {
     }
   };
 
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     try {
-      const res = await api.get('/register/history');
-      setHistory(res.data.registers);
+      const res = await api.get('/register/history', {
+        params: {
+          page: currentPage,
+          limit: itemsPerPage
+        }
+      });
+      if (res.data.pagination) {
+        setHistory(res.data.registers);
+        setTotalItems(res.data.pagination.total);
+        setTotalPages(res.data.pagination.totalPages);
+      } else {
+        setHistory(res.data.registers);
+      }
       setShowHistory(true);
     } catch (error) {
       console.error('Failed to fetch history', error);
     }
-  };
+  }, [currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    if (showHistory) {
+      fetchHistory();
+    }
+  }, [showHistory, currentPage, fetchHistory]);
 
   if (loading) {
     return (
@@ -187,6 +209,13 @@ const CashRegister = () => {
                   ))}
                 </tbody>
               </table>
+              <Pagination 
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+              />
             </div>
           </div>
         )}
