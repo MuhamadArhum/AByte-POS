@@ -21,5 +21,7 @@ router.use(authenticate);
 router.get('/', customerController.getAll);      // List/search customers
 router.post('/', customerController.create);     // Add new customer
 router.get('/:id', customerController.getById);  // Customer details + purchase history
+router.put('/:id', customerController.update);   // Update customer
+router.delete('/:id', customerController.remove);// Delete customer
 
 module.exports = router;

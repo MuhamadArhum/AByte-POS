@@ -20,6 +20,8 @@ const { authenticate } = require('../middleware/auth');
 router.use(authenticate);
 
 router.post('/', salesController.createSale);    // Create new sale (POS checkout)
+router.get('/pending', salesController.getPending); // Get pending sales
+router.put('/:id/complete', salesController.completeSale); // Complete a pending sale
 router.get('/today', salesController.getToday);  // Today's sales (must be before /:id)
 router.get('/', salesController.getAll);         // All sales history
 router.get('/:id', salesController.getById);     // Single sale with details

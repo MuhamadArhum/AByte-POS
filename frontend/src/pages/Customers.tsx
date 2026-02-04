@@ -1,0 +1,259 @@
+import { useState, useEffect } from 'react';
+import { Plus, Search, Edit, Trash2, User, Phone, ShoppingBag, Clock } from 'lucide-react';
+import api from '../utils/api';
+import AddCustomerModal from '../components/AddCustomerModal';
+
+interface Purchase {
+  sale_id: number;
+  sale_date: string;
+  net_amount: string;
+  cashier_name: string;
+}
+
+interface Customer {
+  customer_id: number;
+  customer_name: string;
+  phone_number: string;
+  created_at: string;
+  purchases?: Purchase[];
+}
+
+const Customers = () => {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [purchaseHistory, setPurchaseHistory] = useState<Purchase[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const fetchCustomers = async () => {
+    try {
+      const res = await api.get('/customers');
+      setCustomers(res.data);
+    } catch (error) {
+      console.error("Failed to fetch customers", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCustomerDetails = async (id: number) => {
+    setHistoryLoading(true);
+    try {
+      const res = await api.get(`/customers/${id}`);
+      setPurchaseHistory(res.data.purchases || []);
+    } catch (error) {
+      console.error("Failed to fetch customer history", error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this customer?')) return;
+    try {
+      await api.delete(`/customers/${id}`);
+      fetchCustomers();
+      if (selectedCustomer?.customer_id === id) {
+        setSelectedCustomer(null);
+      }
+    } catch (error: any) {
+      console.error("Failed to delete customer", error);
+      alert(error.response?.data?.message || 'Failed to delete customer');
+    }
+  };
+
+  const handleEdit = (customer: Customer) => {
+    setEditingCustomer(customer);
+    setIsModalOpen(true);
+  };
+
+  const handleSelectCustomer = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    fetchCustomerDetails(customer.customer_id);
+  };
+
+  const filteredCustomers = customers.filter(c =>
+    c.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (c.phone_number && c.phone_number.includes(searchTerm))
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-8 h-[calc(100vh-64px)] overflow-hidden flex flex-col">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Customers</h1>
+          <p className="text-gray-600">Manage customer profiles and history</p>
+        </div>
+        <button
+          onClick={() => {
+            setEditingCustomer(null);
+            setIsModalOpen(true);
+          }}
+          className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-emerald-700 flex items-center gap-2 shadow-sm transition-colors"
+        >
+          <Plus size={20} />
+          Add Customer
+        </button>
+      </div>
+
+      <div className="flex gap-6 flex-1 overflow-hidden">
+        {/* Left Side: Customer List */}
+        <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-gray-100">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="text"
+                placeholder="Search by name or phone..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="overflow-y-auto flex-1">
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 text-gray-600 font-medium text-sm sticky top-0">
+                <tr>
+                  <th className="p-4">Name</th>
+                  <th className="p-4">Phone</th>
+                  <th className="p-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-sm">
+                {filteredCustomers.map((customer) => (
+                  <tr 
+                    key={customer.customer_id} 
+                    className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedCustomer?.customer_id === customer.customer_id ? 'bg-emerald-50' : ''}`}
+                    onClick={() => handleSelectCustomer(customer)}
+                  >
+                    <td className="p-4 font-medium text-gray-800 flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs">
+                        {customer.customer_name.charAt(0)}
+                      </div>
+                      {customer.customer_name}
+                    </td>
+                    <td className="p-4 text-gray-600">{customer.phone_number || 'N/A'}</td>
+                    <td className="p-4">
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleEdit(customer); }}
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        {customer.customer_id !== 1 && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleDelete(customer.customer_id); }}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Right Side: Customer Details */}
+        <div className="w-96 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
+          {selectedCustomer ? (
+            <>
+              <div className="p-6 border-b border-gray-100 bg-emerald-50/50 text-center">
+                <div className="w-20 h-20 rounded-full bg-white border-4 border-emerald-100 flex items-center justify-center text-emerald-600 text-3xl font-bold mx-auto mb-3 shadow-sm">
+                  {selectedCustomer.customer_name.charAt(0)}
+                </div>
+                <h2 className="text-xl font-bold text-gray-800">{selectedCustomer.customer_name}</h2>
+                <p className="text-gray-500 flex items-center justify-center gap-2 mt-1">
+                  <Phone size={14} />
+                  {selectedCustomer.phone_number || 'No Phone'}
+                </p>
+                <div className="mt-4 flex justify-center gap-2 text-sm text-gray-600">
+                  <span className="flex items-center gap-1 bg-white px-3 py-1 rounded-full border border-gray-200">
+                    <ShoppingBag size={14} className="text-emerald-500" />
+                    {purchaseHistory.length} Orders
+                  </span>
+                  <span className="flex items-center gap-1 bg-white px-3 py-1 rounded-full border border-gray-200">
+                    <Clock size={14} className="text-blue-500" />
+                    Joined {new Date(selectedCustomer.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4 border-b border-gray-100 bg-gray-50">
+                <h3 className="font-semibold text-gray-700">Purchase History</h3>
+              </div>
+
+              <div className="overflow-y-auto flex-1 p-4 space-y-3">
+                {historyLoading ? (
+                  <div className="flex justify-center py-10">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                  </div>
+                ) : purchaseHistory.length > 0 ? (
+                  purchaseHistory.map((purchase) => (
+                    <div key={purchase.sale_id} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center">
+                      <div>
+                        <p className="font-semibold text-gray-800">${parseFloat(purchase.net_amount).toFixed(2)}</p>
+                        <p className="text-xs text-gray-500">{new Date(purchase.sale_date).toLocaleDateString()} • {new Date(purchase.sale_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">
+                          #{purchase.sale_id}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-10 text-gray-400">
+                    <ShoppingBag size={32} className="mx-auto mb-2 opacity-20" />
+                    <p>No purchase history</p>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-8 text-center">
+              <User size={48} className="mb-4 opacity-20" />
+              <h3 className="text-lg font-semibold text-gray-500 mb-2">Select a Customer</h3>
+              <p className="text-sm">Click on a customer from the list to view their profile and purchase history.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <AddCustomerModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => {
+          fetchCustomers();
+          if (selectedCustomer) {
+            fetchCustomerDetails(selectedCustomer.customer_id);
+          }
+        }}
+        customerToEdit={editingCustomer}
+      />
+    </div>
+  );
+};
+
+export default Customers;

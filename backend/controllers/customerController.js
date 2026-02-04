@@ -81,3 +81,49 @@ exports.getById = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// --- Update Customer ---
+// Updates an existing customer's details.
+exports.update = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { customer_name, phone_number } = req.body;
+
+    if (!customer_name) return res.status(400).json({ message: 'Customer name is required' });
+
+    await query(
+      'UPDATE customers SET customer_name = ?, phone_number = ? WHERE customer_id = ?',
+      [customer_name, phone_number || null, id]
+    );
+
+    res.json({ message: 'Customer updated' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Delete Customer ---
+// Deletes a customer.
+// SAFETY CHECK: Cannot delete "Walk-in Customer" (ID 1) or customers with sales history.
+exports.remove = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (id == 1) {
+      return res.status(400).json({ message: 'Cannot delete default Walk-in Customer' });
+    }
+
+    // Check for sales history
+    const sales = await query('SELECT sale_id FROM sales WHERE customer_id = ? LIMIT 1', [id]);
+    if (sales.length > 0) {
+      return res.status(400).json({ message: 'Cannot delete customer with purchase history' });
+    }
+
+    await query('DELETE FROM customers WHERE customer_id = ?', [id]);
+    res.json({ message: 'Customer deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};

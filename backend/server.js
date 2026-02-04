@@ -19,6 +19,8 @@ const inventoryRoutes = require('./routes/inventoryRoutes'); // View and update 
 const salesRoutes = require('./routes/salesRoutes');         // Create sales and view sale history
 const customerRoutes = require('./routes/customerRoutes');   // Manage customer records
 const reportRoutes = require('./routes/reportRoutes');       // Sales and inventory reports
+const settingsRoutes = require('./routes/settingsRoutes');   // Store settings
+const aiRoutes = require('./routes/aiRoutes');               // AI Assistant routes
 
 // Create the Express application instance
 const app = express();
@@ -40,6 +42,8 @@ app.use('/api/inventory', inventoryRoutes); // Inventory/stock routes
 app.use('/api/sales', salesRoutes);         // Sales transaction routes
 app.use('/api/customers', customerRoutes);  // Customer management routes
 app.use('/api/reports', reportRoutes);      // Report generation routes
+app.use('/api/settings', settingsRoutes);   // Store settings routes
+app.use('/api/ai', aiRoutes);               // AI Assistant routes
 
 // Health check endpoint - used to verify server is running
 // Example: GET /api/health returns { status: 'ok' }
