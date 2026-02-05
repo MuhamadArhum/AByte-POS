@@ -28,20 +28,35 @@ const Backup = () => {
   const [restoring, setRestoring] = useState<string | null>(null);
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  useEffect(() => {
-    fetchBackups();
-  }, []);
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
-  const fetchBackups = async () => {
+  const fetchBackups = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await api.get('/backup');
-      setBackups(res.data);
+      const res = await api.get('/backup', {
+        params: { page: currentPage, limit: itemsPerPage }
+      });
+      if (res.data.pagination) {
+        setBackups(res.data.data);
+        setTotalItems(res.data.pagination.total);
+        setTotalPages(res.data.pagination.totalPages);
+      } else {
+        setBackups(Array.isArray(res.data) ? res.data : []);
+      }
     } catch (error) {
       console.error('Failed to fetch backups', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    fetchBackups();
+  }, [fetchBackups]);
 
   const handleCreate = async () => {
     setCreating(true);

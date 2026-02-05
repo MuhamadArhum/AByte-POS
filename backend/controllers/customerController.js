@@ -60,19 +60,35 @@ exports.getAll = async (req, res) => {
 // The new customer can then be selected when making a sale.
 exports.create = async (req, res) => {
   try {
-    const { customer_name, phone_number } = req.body;
+    const { customer_name, phone_number, address } = req.body;
 
-    // Customer name is required
     if (!customer_name) return res.status(400).json({ message: 'Customer name is required' });
 
-    // Insert the new customer (phone_number is null if not provided)
+    // Normalize empty phone to null for UNIQUE constraint
+    const phone = phone_number && phone_number.trim() ? phone_number.trim() : null;
+
     const result = await query(
       'INSERT INTO customers (customer_name, phone_number) VALUES (?, ?)',
-      [customer_name, phone_number || null]
+      [customer_name, phone]
     );
 
-    res.status(201).json({ message: 'Customer created', customer_id: Number(result.insertId) });
+    const customerId = Number(result.insertId);
+
+    // Save address if provided
+    if (address && address.trim()) {
+      await query(
+        'INSERT INTO customer_addresses (customer_id, address_text, is_default) VALUES (?, ?, 1)',
+        [customerId, address.trim()]
+      );
+    }
+
+    // Return full customer object for auto-selection in POS
+    const newCustomer = await query('SELECT * FROM customers WHERE customer_id = ?', [customerId]);
+    res.status(201).json({ message: 'Customer created', customer_id: customerId, customer: newCustomer[0] });
   } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ message: 'Phone number already exists for another customer' });
+    }
     console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
@@ -144,17 +160,35 @@ exports.getById = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { customer_name, phone_number } = req.body;
+    const { customer_name, phone_number, address } = req.body;
 
     if (!customer_name) return res.status(400).json({ message: 'Customer name is required' });
 
+    const phone = phone_number && phone_number.trim() ? phone_number.trim() : null;
+
     await query(
       'UPDATE customers SET customer_name = ?, phone_number = ? WHERE customer_id = ?',
-      [customer_name, phone_number || null, id]
+      [customer_name, phone, id]
     );
+
+    // Upsert default address if provided
+    if (address && address.trim()) {
+      const existing = await query(
+        'SELECT address_id FROM customer_addresses WHERE customer_id = ? AND is_default = 1',
+        [id]
+      );
+      if (existing.length > 0) {
+        await query('UPDATE customer_addresses SET address_text = ? WHERE address_id = ?', [address.trim(), existing[0].address_id]);
+      } else {
+        await query('INSERT INTO customer_addresses (customer_id, address_text, is_default) VALUES (?, ?, 1)', [id, address.trim()]);
+      }
+    }
 
     res.json({ message: 'Customer updated' });
   } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ message: 'Phone number already exists for another customer' });
+    }
     console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
@@ -179,6 +213,37 @@ exports.remove = async (req, res) => {
 
     await query('DELETE FROM customers WHERE customer_id = ?', [id]);
     res.json({ message: 'Customer deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Get Customer Addresses ---
+exports.getAddresses = async (req, res) => {
+  try {
+    const rows = await query(
+      'SELECT * FROM customer_addresses WHERE customer_id = ? ORDER BY is_default DESC, created_at DESC',
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Add Customer Address ---
+exports.addAddress = async (req, res) => {
+  try {
+    const { address_text, label } = req.body;
+    if (!address_text || !address_text.trim()) return res.status(400).json({ message: 'Address is required' });
+
+    const result = await query(
+      'INSERT INTO customer_addresses (customer_id, address_text, label) VALUES (?, ?, ?)',
+      [req.params.id, address_text.trim(), label || 'Default']
+    );
+    res.status(201).json({ address_id: Number(result.insertId), message: 'Address added' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

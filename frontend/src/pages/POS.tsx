@@ -1,49 +1,95 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, ShoppingCart, Trash2, Minus, Plus, Save, Clock, RefreshCw, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Search, ShoppingCart, Trash2, Minus, Plus, Save, Clock, RefreshCw, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag } from 'lucide-react';
 import { useCart, Product } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import ProductCard from '../components/ProductCard';
 import CheckoutModal from '../components/CheckoutModal';
 import AddCustomerModal from '../components/AddCustomerModal';
-import DoneOrdersModal from '../components/DoneOrdersModal';
+import OrdersModal from '../components/OrdersModal';
 import DailyReportModal from '../components/DailyReportModal';
-import Pagination from '../components/Pagination';
+import RegisterCloseModal from '../components/RegisterCloseModal';
 import api from '../utils/api';
 
 const POS = () => {
-  const { 
+  const {
     cart, addToCart, removeFromCart, updateQuantity, clearCart,
-    subtotal, total, 
-    taxRate, setTaxRate, 
+    subtotal, total,
+    taxRate, setTaxRate,
     additionalRate, setAdditionalRate,
-    taxAmount, additionalAmount 
+    taxAmount, additionalAmount
   } = useCart();
   const { user } = useAuth();
-  
+
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchName, setSearchName] = useState('');
   const [searchBarcode, setSearchBarcode] = useState('');
   const [searchCode, setSearchCode] = useState('');
-  
+
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  
-  const [isPendingModalOpen, setIsPendingModalOpen] = useState(false);
-  const [pendingSales, setPendingSales] = useState<any[]>([]);
-  const [selectedPendingSale, setSelectedPendingSale] = useState<any>(null);
-  
-  const [isDoneModalOpen, setIsDoneModalOpen] = useState(false);
-  const [isDailyReportOpen, setIsDailyReportOpen] = useState(false);
 
+  const [selectedPendingSale, setSelectedPendingSale] = useState<any>(null);
+
+  const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
+  const [isDailyReportOpen, setIsDailyReportOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Register gate state
+  const [register, setRegister] = useState<any>(null);
+  const [registerLoading, setRegisterLoading] = useState(true);
+  const [openingBalance, setOpeningBalance] = useState('');
+  const [openingRegister, setOpeningRegister] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+
+  // Customer state
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
-  const [searchCustomer, setSearchCustomer] = useState('');
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const customerSearchRef = useRef<HTMLDivElement>(null);
 
-  // Fetch products and customers
+  // Check register on mount
   useEffect(() => {
+    checkRegister();
+  }, []);
+
+  const checkRegister = async () => {
+    setRegisterLoading(true);
+    try {
+      const res = await api.get('/register/current');
+      setRegister(res.data);
+    } catch (error) {
+      setRegister(null);
+    } finally {
+      setRegisterLoading(false);
+    }
+  };
+
+  const handleOpenRegister = async () => {
+    const balance = parseFloat(openingBalance);
+    if (isNaN(balance) || balance < 0) {
+      alert('Please enter a valid opening balance');
+      return;
+    }
+    setOpeningRegister(true);
+    try {
+      const res = await api.post('/register/open', { opening_balance: balance });
+      setRegister(res.data);
+      setOpeningBalance('');
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to open register');
+    } finally {
+      setOpeningRegister(false);
+    }
+  };
+
+  // Fetch products and customers once register is open
+  useEffect(() => {
+    if (!register) return;
+
     const fetchProducts = async () => {
       try {
         const res = await api.get('/products');
@@ -72,18 +118,16 @@ const POS = () => {
     fetchCustomers();
     fetchCategories();
     fetchProducts();
-  }, []);
+  }, [register]);
 
-  // Barcode Auto-Add & Hotkeys
+  // Barcode Auto-Add
   useEffect(() => {
-    // Auto-add if exact barcode match
     if (searchBarcode) {
       const match = products.find(p => p.barcode === searchBarcode);
       if (match) {
         if (match.stock_quantity > 0) {
           addToCart(match);
-          setSearchBarcode(''); // Clear after adding
-          // Optional: Play beep sound here
+          setSearchBarcode('');
         } else {
           alert('Product Out of Stock!');
           setSearchBarcode('');
@@ -92,73 +136,104 @@ const POS = () => {
     }
   }, [searchBarcode, products, addToCart]);
 
+  // Hotkeys
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // F2: Focus Search Barcode
+      if (e.key === 'F1') {
+        e.preventDefault();
+        setShowShortcuts(true);
+      }
       if (e.key === 'F2') {
         e.preventDefault();
         const input = document.getElementById('barcode-input');
         if (input) input.focus();
       }
-      // F9: Open Checkout (if cart has items)
+      if (e.key === 'F3') {
+        e.preventDefault();
+        const input = document.getElementById('search-name-input');
+        if (input) input.focus();
+      }
+      if (e.key === 'F5') {
+        e.preventDefault();
+        setIsOrdersModalOpen(true);
+      }
+      if (e.key === 'F8') {
+        e.preventDefault();
+        if (cart.length > 0) handleHoldOrder();
+      }
       if (e.key === 'F9') {
         e.preventDefault();
         if (cart.length > 0) setIsCheckoutOpen(true);
       }
-      // Esc: Close Modals
       if (e.key === 'Escape') {
         setIsCheckoutOpen(false);
-        setIsPendingModalOpen(false);
-        setIsDoneModalOpen(false);
+        setIsOrdersModalOpen(false);
         setIsDailyReportOpen(false);
         setIsCustomerModalOpen(false);
+        setShowCloseModal(false);
+        setShowCustomerDropdown(false);
+        setShowShortcuts(false);
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, setIsCheckoutOpen]);
+  }, [cart]);
 
   const fetchCustomers = async () => {
     try {
       const res = await api.get('/customers');
-      setCustomers(res.data);
+      setCustomers(res.data.customers || res.data);
+      // Auto-select Walk-in Customer (ID 1) if none selected
+      if (!selectedCustomer) {
+        const walkin = (res.data.customers || res.data).find((c: any) => c.customer_id === 1);
+        if (walkin) setSelectedCustomer(walkin);
+      }
     } catch (error) {
       console.error("Failed to fetch customers", error);
     }
   };
 
-  const fetchPendingSales = async () => {
-    try {
-      const res = await api.get('/sales/pending');
-      setPendingSales(res.data);
-    } catch (error) {
-      console.error("Failed to fetch pending sales", error);
-    }
-  };
+  // Close customer dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (customerSearchRef.current && !customerSearchRef.current.contains(e.target as Node)) {
+        setShowCustomerDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearch.trim()) return [];
+    const q = customerSearch.toLowerCase();
+    return customers.filter(c =>
+      c.customer_name.toLowerCase().includes(q) ||
+      (c.phone_number && c.phone_number.includes(customerSearch))
+    ).slice(0, 8);
+  }, [customers, customerSearch]);
 
   const handleDeletePending = async (saleId: number) => {
     if (!confirm('Are you sure you want to delete this pending order?')) return;
     try {
       await api.delete(`/sales/${saleId}`);
-      fetchPendingSales();
     } catch (error) {
       console.error('Failed to delete pending order', error);
       alert('Failed to delete pending order');
     }
   };
 
-  useEffect(() => {
-    if (isPendingModalOpen) {
-      fetchPendingSales();
-    }
-  }, [isPendingModalOpen]);
+  const handlePayPending = (sale: any) => {
+    setSelectedPendingSale(sale);
+    setIsOrdersModalOpen(false);
+    setIsCheckoutOpen(true);
+  };
 
   const handleHoldOrder = async () => {
     if (cart.length === 0) return;
-    
+
     const note = prompt("Enter Reference / Table No / Customer Name (Optional):");
-    if (note === null) return; // Cancelled by user
+    if (note === null) return;
 
     try {
       const payload = {
@@ -168,6 +243,7 @@ const POS = () => {
           quantity: item.quantity,
           unit_price: item.price
         })),
+        customer_id: selectedCustomer?.customer_id || 1,
         discount: 0,
         total_amount: total,
         payment_method: 'cash',
@@ -188,18 +264,100 @@ const POS = () => {
     }
   };
 
+  const handleCartQtyChange = (productId: number, value: string) => {
+    const qty = parseInt(value, 10);
+    if (!isNaN(qty) && qty > 0) {
+      updateQuantity(productId, qty);
+    }
+  };
+
+  const handleCartQtyBlur = (productId: number, value: string) => {
+    const qty = parseInt(value, 10);
+    if (isNaN(qty) || qty < 1) {
+      updateQuantity(productId, 1);
+    }
+  };
+
   const filteredProducts = useMemo(() => products.filter(p => {
     const matchName = searchName ? p.product_name.toLowerCase().includes(searchName.toLowerCase()) : true;
     const matchBarcode = searchBarcode ? (p.barcode && p.barcode.includes(searchBarcode)) : true;
     const matchCode = searchCode ? p.product_id.toString().includes(searchCode) : true;
-    
-    // Category Filter
-    const matchCategory = selectedCategory === 'All' 
-      ? true 
+    const matchCategory = selectedCategory === 'All'
+      ? true
       : (p.category_id && p.category_id.toString() === selectedCategory);
-
     return matchName && matchBarcode && matchCode && matchCategory;
   }), [products, searchName, searchBarcode, searchCode, selectedCategory]);
+
+  const expectedCash = register ? (
+    parseFloat(register.opening_balance || 0) +
+    parseFloat(register.cash_sales_total || 0) +
+    parseFloat(register.total_cash_in || 0) -
+    parseFloat(register.total_cash_out || 0)
+  ) : 0;
+
+  // Register loading screen
+  if (registerLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-emerald-50 to-teal-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-600 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading Register...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Register gate: if no open register, show open register screen
+  if (!register) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-md text-center border border-emerald-100">
+          <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/30">
+            <DollarSign size={40} className="text-white" strokeWidth={2.5} />
+          </div>
+          <h2 className="text-3xl font-bold text-gray-800 mb-3">Open Register</h2>
+          <p className="text-gray-600 mb-8">Enter the opening cash balance to start your shift</p>
+
+          <div className="relative mb-6">
+            <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-2xl">$</div>
+            <input
+              type="number"
+              value={openingBalance}
+              onChange={(e) => setOpeningBalance(e.target.value)}
+              className="w-full pl-12 pr-6 py-5 border-2 border-gray-200 rounded-xl text-3xl font-bold text-center focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+              placeholder="0.00"
+              min="0"
+              step="0.01"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') handleOpenRegister(); }}
+            />
+          </div>
+
+          <button
+            onClick={handleOpenRegister}
+            disabled={openingRegister}
+            className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-300 disabled:to-gray-400 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 text-lg"
+          >
+            {openingRegister ? (
+              <>
+                <Loader2 className="animate-spin" size={24} />
+                Opening Register...
+              </>
+            ) : (
+              <>
+                <DollarSign size={24} />
+                Open Register & Start
+              </>
+            )}
+          </button>
+
+          <p className="mt-6 text-sm text-gray-500">
+            Logged in as <span className="font-semibold text-gray-700">{user?.name}</span>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -208,59 +366,84 @@ const POS = () => {
         {/* Header / Search */}
         <div className="p-4 bg-white border-b border-gray-100 shadow-sm z-10 space-y-3">
           <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-gray-800">POS</h1>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center shadow-md">
+                <ShoppingBag size={24} className="text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-800">Point of Sale</h1>
+                <p className="text-xs text-gray-500">Cashier: {user?.name}</p>
+              </div>
+            </div>
             <div className="flex-1"></div>
-            <button 
-              onClick={() => setIsPendingModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors font-medium border border-orange-200"
+            <button
+              onClick={() => setShowShortcuts(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium border border-gray-200"
+              title="Keyboard Shortcuts (F1)"
             >
-              <Clock size={20} />
-              Pending Orders
+              <Keyboard size={18} />
             </button>
-            <button 
-              onClick={() => setIsDoneModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-200"
+            <button
+              onClick={() => setIsOrdersModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors font-medium border border-indigo-200"
             >
               <FileText size={20} />
-              Done Orders
+              Orders
+              <span className="text-xs bg-indigo-200 px-1.5 py-0.5 rounded">F5</span>
             </button>
-            <button 
+            <button
               onClick={() => setIsDailyReportOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium border border-blue-200"
             >
               <BarChart size={20} />
-              Daily Report
+              Report
             </button>
+            {(user?.role === 'admin' || user?.role === 'manager') && (
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await api.get('/register/current');
+                    setRegister(res.data);
+                  } catch (_) {}
+                  setShowCloseModal(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium border border-red-200"
+              >
+                <Lock size={20} />
+                Close
+              </button>
+            )}
           </div>
-          
+
           <div className="grid grid-cols-3 gap-4">
-            <div className="relative">
-              <Scan className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <div className="relative group">
+              <Scan className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" size={18} />
               <input
                 id="barcode-input"
                 type="text"
                 placeholder="Scan Barcode (F2)"
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                 value={searchBarcode}
                 onChange={(e) => setSearchBarcode(e.target.value)}
               />
             </div>
-            <div className="relative">
-              <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <div className="relative group">
+              <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" size={18} />
               <input
                 type="text"
                 placeholder="Item Code"
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                 value={searchCode}
                 onChange={(e) => setSearchCode(e.target.value)}
               />
             </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <div className="relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" size={18} />
               <input
+                id="search-name-input"
                 type="text"
-                placeholder="Search Name"
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                placeholder="Search Name (F3)"
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
                 autoFocus
@@ -270,12 +453,12 @@ const POS = () => {
         </div>
 
         {/* Categories Bar */}
-        <div className="px-4 py-3 bg-white border-b border-gray-100 flex gap-2 overflow-x-auto shadow-sm z-0">
+        <div className="px-4 py-3 bg-white border-b border-gray-100 flex gap-2 overflow-x-auto shadow-sm">
           <button
             onClick={() => setSelectedCategory('All')}
-            className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
-              selectedCategory === 'All' 
-              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200' 
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+              selectedCategory === 'All'
+              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-200'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
             }`}
           >
@@ -285,9 +468,9 @@ const POS = () => {
             <button
               key={cat.category_id}
               onClick={() => setSelectedCategory(cat.category_id.toString())}
-              className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
                 selectedCategory === cat.category_id.toString()
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200' 
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-200'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
               }`}
             >
@@ -300,7 +483,10 @@ const POS = () => {
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-600 border-t-transparent mx-auto mb-4"></div>
+                <p className="text-gray-600 font-medium">Loading products...</p>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -308,8 +494,10 @@ const POS = () => {
                 <ProductCard key={product.product_id} product={product} onAddToCart={addToCart} />
               ))}
               {filteredProducts.length === 0 && (
-                <div className="col-span-full text-center py-10 text-gray-500">
-                  No products found.
+                <div className="col-span-full text-center py-16">
+                  <ShoppingBag size={64} className="mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500 text-lg font-medium">No products found</p>
+                  <p className="text-gray-400 text-sm mt-2">Try adjusting your search filters</p>
                 </div>
               )}
             </div>
@@ -318,22 +506,22 @@ const POS = () => {
       </div>
 
       {/* Right Side: Cart Sidebar */}
-      <div className="w-96 bg-white border-l border-gray-200 flex flex-col h-full shadow-xl z-20">
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+      <div className="w-96 bg-white border-l border-gray-200 flex flex-col h-full shadow-2xl">
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-50 to-teal-50">
           <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <ShoppingCart size={24} className="text-emerald-600" />
             Current Sale
           </h2>
           <div className="flex items-center gap-2">
-            <button 
+            <button
               onClick={clearCart}
               className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
               title="Clear Cart"
             >
               <Trash2 size={20} />
             </button>
-            <span className="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
-              {cart.length} items
+            <span className="bg-emerald-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+              {cart.length} {cart.length === 1 ? 'item' : 'items'}
             </span>
           </div>
         </div>
@@ -341,93 +529,128 @@ const POS = () => {
         {/* Customer Selection */}
         <div className="px-4 py-3 bg-white border-b border-gray-100">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-600 flex items-center gap-1">
+            <span className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
               <User size={16} />
               Customer
             </span>
-            <button 
+            <button
               onClick={() => setIsCustomerModalOpen(true)}
-              className="text-xs flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-medium bg-emerald-50 px-2 py-1 rounded-md transition-colors"
+              className="text-xs flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-1.5 rounded-lg transition-colors hover:bg-emerald-100"
             >
               <UserPlus size={14} />
               Add New
             </button>
           </div>
-          
+
           {selectedCustomer ? (
-            <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 p-2 rounded-lg">
+            <div className="flex items-center justify-between bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200 p-3 rounded-xl">
               <div className="flex items-center gap-2 overflow-hidden">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs shrink-0">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-md">
                   {selectedCustomer.customer_name.charAt(0).toUpperCase()}
                 </div>
                 <div className="truncate">
                   <p className="text-sm font-bold text-gray-800 truncate">{selectedCustomer.customer_name}</p>
-                  <p className="text-xs text-gray-500 truncate">{selectedCustomer.phone_number}</p>
+                  <p className="text-xs text-gray-600 truncate">{selectedCustomer.phone_number || 'No phone'}</p>
                 </div>
               </div>
-              <button 
-                onClick={() => setSelectedCustomer(null)}
-                className="text-gray-400 hover:text-red-500 p-1 transition-colors"
+              <button
+                onClick={() => {
+                  const walkin = customers.find(c => c.customer_id === 1);
+                  setSelectedCustomer(walkin || null);
+                }}
+                className="text-gray-400 hover:text-red-500 p-1.5 transition-colors hover:bg-red-50 rounded-lg"
+                title="Reset to Walk-in"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
           ) : (
-            <div className="relative">
+            <div className="relative" ref={customerSearchRef}>
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <select
-                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none appearance-none cursor-pointer"
+              <input
+                type="text"
+                placeholder="Search by phone or name..."
+                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                value={customerSearch}
                 onChange={(e) => {
-                  const customer = customers.find(c => c.customer_id.toString() === e.target.value);
-                  setSelectedCustomer(customer || null);
+                  setCustomerSearch(e.target.value);
+                  setShowCustomerDropdown(true);
                 }}
-                value={selectedCustomer?.customer_id || ""}
-              >
-                <option value="">Select Walk-in Customer</option>
-                {customers.map(c => (
-                  <option key={c.customer_id} value={c.customer_id}>
-                    {c.customer_name} {c.phone_number ? `(${c.phone_number})` : ''}
-                  </option>
-                ))}
-              </select>
+                onFocus={() => { if (customerSearch.trim()) setShowCustomerDropdown(true); }}
+              />
+              {showCustomerDropdown && filteredCustomers.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-xl max-h-48 overflow-auto z-30">
+                  {filteredCustomers.map(c => (
+                    <button
+                      key={c.customer_id}
+                      onClick={() => {
+                        setSelectedCustomer(c);
+                        setCustomerSearch('');
+                        setShowCustomerDropdown(false);
+                      }}
+                      className="w-full text-left px-3 py-2.5 hover:bg-emerald-50 flex items-center gap-2 text-sm border-b border-gray-100 last:border-0 transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-xs shrink-0">
+                        {c.customer_name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="truncate">
+                        <p className="font-semibold text-gray-800">{c.customer_name}</p>
+                        {c.phone_number && <p className="text-xs text-gray-500">{c.phone_number}</p>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Cart Items */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
           {cart.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-400">
-              <ShoppingCart size={48} className="mb-4 opacity-20" />
-              <p>Cart is empty</p>
-              <p className="text-sm">Scan barcode or select products</p>
+              <ShoppingCart size={56} className="mb-4 opacity-20" />
+              <p className="font-medium text-lg">Cart is empty</p>
+              <p className="text-sm mt-1">Scan barcode or select products</p>
             </div>
           ) : (
             cart.map(item => (
-              <div key={item.product_id} className="bg-gray-50 p-3 rounded-xl flex items-center justify-between group">
-                <div className="flex-1">
-                  <h4 className="font-medium text-gray-800">{item.product_name}</h4>
-                  <p className="text-sm text-gray-500">${item.price.toFixed(2)} x {item.quantity}</p>
+              <div key={item.product_id} className="bg-white p-3 rounded-xl flex items-center justify-between group shadow-sm border border-gray-100 hover:border-emerald-200 transition-all">
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-gray-800 truncate">{item.product_name}</h4>
+                  <p className="text-sm text-gray-500">
+                    ${item.price.toFixed(2)} × {item.quantity} = 
+                    <span className="font-semibold text-emerald-600 ml-1">
+                      ${(item.price * item.quantity).toFixed(2)}
+                    </span>
+                  </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-1">
-                    <button 
+                <div className="flex items-center gap-2 ml-2">
+                  <div className="flex items-center gap-1 bg-gray-50 rounded-lg border-2 border-gray-200 p-1">
+                    <button
                       onClick={() => updateQuantity(item.product_id, item.quantity - 1)}
-                      className="p-1 hover:bg-gray-100 rounded text-gray-600"
+                      className="p-1.5 hover:bg-gray-100 rounded text-gray-600 transition-colors"
                     >
                       <Minus size={14} />
                     </button>
-                    <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
-                    <button 
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => handleCartQtyChange(item.product_id, e.target.value)}
+                      onBlur={(e) => handleCartQtyBlur(item.product_id, e.target.value)}
+                      className="w-12 text-center text-sm font-bold bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      min="1"
+                    />
+                    <button
                       onClick={() => updateQuantity(item.product_id, item.quantity + 1)}
-                      className="p-1 hover:bg-gray-100 rounded text-gray-600"
+                      className="p-1.5 hover:bg-gray-100 rounded text-gray-600 transition-colors"
                     >
                       <Plus size={14} />
                     </button>
                   </div>
-                  <button 
+                  <button
                     onClick={() => removeFromCart(item.product_id)}
-                    className="p-2 text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -438,52 +661,60 @@ const POS = () => {
         </div>
 
         {/* Totals Section */}
-        <div className="p-6 bg-gray-50 border-t border-gray-200 space-y-3">
-          <div className="flex justify-between text-gray-600">
+        <div className="p-5 bg-white border-t-2 border-gray-200 space-y-3">
+          <div className="flex justify-between text-gray-600 text-sm">
             <span>Subtotal</span>
-            <span>${subtotal.toFixed(2)}</span>
-          </div>
-          
-          {/* Tax & Charges Inputs */}
-          <div className="flex items-center justify-between text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <span>Tax (%)</span>
-              <input 
-                type="number" 
-                value={taxRate}
-                onChange={(e) => setTaxRate(Number(e.target.value))}
-                className="w-12 px-1 py-0.5 border rounded text-center bg-white"
-              />
-            </div>
-            <span>${taxAmount.toFixed(2)}</span>
-          </div>
-          
-          <div className="flex items-center justify-between text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <span>Add. Charges (%)</span>
-              <input 
-                type="number" 
-                value={additionalRate}
-                onChange={(e) => setAdditionalRate(Number(e.target.value))}
-                className="w-12 px-1 py-0.5 border rounded text-center bg-white"
-              />
-            </div>
-            <span>${additionalAmount.toFixed(2)}</span>
+            <span className="font-semibold">${subtotal.toFixed(2)}</span>
           </div>
 
-          <div className="pt-3 border-t border-gray-200 flex justify-between items-center">
-            <span className="text-lg font-bold text-gray-800">Total</span>
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2 text-gray-600">
+              <Percent size={14} />
+              <span>Tax</span>
+              <input
+                type="number"
+                value={taxRate}
+                onChange={(e) => setTaxRate(Number(e.target.value))}
+                className="w-14 px-2 py-1 border-2 border-gray-200 rounded text-center bg-gray-50 font-semibold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                step="0.1"
+              />
+              <span className="text-gray-400">%</span>
+            </div>
+            <span className="font-semibold text-gray-600">${taxAmount.toFixed(2)}</span>
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2 text-gray-600">
+              <Tag size={14} />
+              <span>Charges</span>
+              <input
+                type="number"
+                value={additionalRate}
+                onChange={(e) => setAdditionalRate(Number(e.target.value))}
+                className="w-14 px-2 py-1 border-2 border-gray-200 rounded text-center bg-gray-50 font-semibold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                step="0.1"
+              />
+              <span className="text-gray-400">%</span>
+            </div>
+            <span className="font-semibold text-gray-600">${additionalAmount.toFixed(2)}</span>
+          </div>
+
+          <div className="pt-3 border-t-2 border-gray-200 flex justify-between items-center">
+            <span className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <Calculator size={20} />
+              Total
+            </span>
             <span className="text-2xl font-bold text-emerald-600">${total.toFixed(2)}</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-2 gap-3 pt-3">
             <button
               onClick={handleHoldOrder}
               disabled={cart.length === 0}
-              className="flex items-center justify-center gap-2 bg-orange-100 hover:bg-orange-200 text-orange-700 py-3 rounded-xl font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
             >
               <Archive size={20} />
-              Hold Order
+              Hold (F8)
             </button>
             <button
               onClick={() => {
@@ -491,16 +722,51 @@ const POS = () => {
                 setIsCheckoutOpen(true);
               }}
               disabled={cart.length === 0}
-              className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-emerald-600/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-3.5 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
             >
               <ShoppingCart size={20} />
-              Pay Now
+              Pay (F9)
             </button>
           </div>
         </div>
       </div>
 
-      {/* Checkout Modal */}
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowShortcuts(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <Keyboard size={24} className="text-emerald-600" />
+                Keyboard Shortcuts
+              </h3>
+              <button onClick={() => setShowShortcuts(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {[
+                { key: 'F1', desc: 'Show shortcuts' },
+                { key: 'F2', desc: 'Focus barcode scanner' },
+                { key: 'F3', desc: 'Focus name search' },
+                { key: 'F5', desc: 'View orders' },
+                { key: 'F8', desc: 'Hold order' },
+                { key: 'F9', desc: 'Pay now / Checkout' },
+                { key: 'ESC', desc: 'Close modals' },
+              ].map(({ key, desc }) => (
+                <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-700">{desc}</span>
+                  <kbd className="px-3 py-1 bg-white border-2 border-gray-300 rounded-lg font-mono font-bold text-sm shadow-sm">
+                    {key}
+                  </kbd>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modals */}
       <CheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => {
@@ -510,123 +776,44 @@ const POS = () => {
         onSuccess={() => {
           setIsCheckoutOpen(false);
           setSelectedPendingSale(null);
-          setSelectedCustomer(null);
-          fetchPendingSales(); // Refresh pending list if needed
+          const walkin = customers.find(c => c.customer_id === 1);
+          setSelectedCustomer(walkin || null);
         }}
         pendingSale={selectedPendingSale}
         selectedCustomer={selectedCustomer}
       />
 
-      {/* Add Customer Modal */}
       <AddCustomerModal
         isOpen={isCustomerModalOpen}
         onClose={() => setIsCustomerModalOpen(false)}
-        onSuccess={() => {
+        onSuccess={(newCustomer?: any) => {
           fetchCustomers();
-          // Optionally select the newly added customer here if we returned it from the API/Modal
+          if (newCustomer) setSelectedCustomer(newCustomer);
         }}
       />
 
-      {/* Done Orders Modal */}
-      <DoneOrdersModal 
-        isOpen={isDoneModalOpen}
-        onClose={() => setIsDoneModalOpen(false)}
+      <OrdersModal
+        isOpen={isOrdersModalOpen}
+        onClose={() => setIsOrdersModalOpen(false)}
+        onPayPending={handlePayPending}
+        onDeletePending={handleDeletePending}
       />
 
-      <DailyReportModal 
+      <DailyReportModal
         isOpen={isDailyReportOpen}
         onClose={() => setIsDailyReportOpen(false)}
       />
 
-      {/* Pending Sales Modal */}
-      {isPendingModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
-              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <Clock size={24} className="text-orange-500" />
-                Pending Orders
-              </h2>
-              <button onClick={() => setIsPendingModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-auto p-6">
-              {pendingSales.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                  <Archive size={48} className="mb-4 opacity-20" />
-                  <p>No pending orders found</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {pendingSales.map(sale => (
-                    <div key={sale.sale_id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow bg-white">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-bold text-gray-800">Order #{sale.sale_id}</p>
-                          <p className="text-xs text-gray-500">{new Date(sale.sale_date).toLocaleString()}</p>
-                        </div>
-                        <span className="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-medium capitalize">
-                          {sale.status}
-                        </span>
-                      </div>
-                      
-                      <div className="py-2 border-t border-b border-gray-100 my-2 space-y-1">
-                        <p className="text-sm flex justify-between">
-                          <span className="text-gray-500">Total:</span>
-                          <span className="font-bold">${parseFloat(sale.total_amount).toFixed(2)}</span>
-                        </p>
-                        <p className="text-sm flex justify-between">
-                          <span className="text-gray-500">Customer:</span>
-                          <span>{sale.customer_name || 'Walk-in'}</span>
-                        </p>
-                        {sale.note && (
-                          <p className="text-sm flex justify-between">
-                            <span className="text-gray-500">Note:</span>
-                            <span className="font-medium text-gray-800 italic">{sale.note}</span>
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          onClick={() => handleDeletePending(sale.sale_id)}
-                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                          title="Delete Order"
-                        >
-                          <Trash2 size={20} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedPendingSale(sale);
-                            setIsPendingModalOpen(false);
-                            setIsCheckoutOpen(true);
-                          }}
-                          className="flex-1 bg-emerald-600 text-white py-2 rounded-lg font-medium hover:bg-emerald-700 transition-colors"
-                        >
-                          Pay & Complete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            {pendingSales.length > 0 && (
-              <div className="p-4 border-t border-gray-100">
-                <Pagination 
-                  currentPage={pendingPage}
-                  totalPages={pendingTotalPages}
-                  onPageChange={setPendingPage}
-                  totalItems={pendingTotalItems}
-                  itemsPerPage={pendingItemsPerPage}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <RegisterCloseModal
+        isOpen={showCloseModal}
+        onClose={() => setShowCloseModal(false)}
+        onSuccess={() => {
+          setShowCloseModal(false);
+          setRegister(null);
+        }}
+        expectedCash={expectedCash}
+        register={register}
+      />
     </div>
   );
 };

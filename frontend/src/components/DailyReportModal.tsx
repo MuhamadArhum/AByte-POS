@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { X, FileText, Printer, DollarSign, CreditCard, Smartphone, RefreshCw, BarChart } from 'lucide-react';
 import api from '../utils/api';
+import Pagination from './Pagination';
 
 interface DailyReportModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface DailyReportModalProps {
 
 const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) => {
   const [sales, setSales] = useState<any[]>([]);
+  const [allSales, setAllSales] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState({
     totalSales: 0,
@@ -19,18 +21,28 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
     count: 0
   });
 
-  const fetchSales = async () => {
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(15);
+
+  const totalItems = allSales.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  const fetchSales = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.get('/sales/today');
-      setSales(res.data);
+      setAllSales(res.data);
       calculateSummary(res.data);
+      // Paginate client-side since /sales/today returns today only
+      const start = (currentPage - 1) * itemsPerPage;
+      setSales(res.data.slice(start, start + itemsPerPage));
     } catch (error) {
       console.error("Failed to fetch daily sales", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, itemsPerPage]);
 
   const calculateSummary = (data: any[]) => {
     const stats = {
@@ -57,8 +69,18 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
   };
 
   useEffect(() => {
-    if (isOpen) fetchSales();
+    if (isOpen) {
+      setCurrentPage(1);
+      fetchSales();
+    }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (allSales.length > 0) {
+      const start = (currentPage - 1) * itemsPerPage;
+      setSales(allSales.slice(start, start + itemsPerPage));
+    }
+  }, [currentPage, allSales, itemsPerPage]);
 
   const handlePrint = () => {
       const printWindow = window.open('', '', 'width=400,height=600');
@@ -246,6 +268,15 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
                 )}
               </tbody>
             </table>
+            {totalPages > 1 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+              />
+            )}
           </div>
 
         </div>

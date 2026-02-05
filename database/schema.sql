@@ -55,10 +55,23 @@ CREATE TABLE IF NOT EXISTS customers (
     customer_id INT PRIMARY KEY AUTO_INCREMENT,
     customer_name VARCHAR(100),
     phone_number VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE INDEX idx_customer_phone (phone_number)
 );
 
-INSERT IGNORE INTO customers (customer_id, customer_name, phone_number) VALUES (1, 'Walk-in Customer', 'N/A');
+INSERT IGNORE INTO customers (customer_id, customer_name, phone_number) VALUES (1, 'Walk-in Customer', NULL);
+
+-- Customer Addresses (multiple addresses per customer)
+CREATE TABLE IF NOT EXISTS customer_addresses (
+    address_id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    address_text TEXT NOT NULL,
+    label VARCHAR(50) DEFAULT 'Default',
+    is_default TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE,
+    INDEX idx_address_customer (customer_id)
+);
 
 -- Sales
 CREATE TABLE IF NOT EXISTS sales (

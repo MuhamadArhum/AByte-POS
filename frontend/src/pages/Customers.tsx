@@ -315,7 +315,7 @@ const Customers = () => {
         onSuccess={() => {
           fetchCustomers();
           if (selectedCustomer) {
-            fetchCustomerDetails(selectedCustomer.customer_id);
+            fetchCustomerDetails(selectedCustomer.customer_id, historyPage);
           }
         }}
         customerToEdit={editingCustomer}

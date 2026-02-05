@@ -141,6 +141,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   };
 
   if (successSale) {
+    const changeDueAmount = Math.max(0, parseFloat(successSale.amount_paid || 0) - parseFloat(successSale.total_amount || 0));
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200 p-8 text-center">
@@ -149,25 +150,29 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Payment Successful!</h2>
           <p className="text-gray-500 mb-8">
-            Change Due: <span className="font-bold text-emerald-600">${(successSale.amount_paid - successSale.total_amount).toFixed(2)}</span>
+            Change Due: <span className="font-bold text-emerald-600">${changeDueAmount.toFixed(2)}</span>
           </p>
-          
+
           <div className="flex gap-4">
-            <button
-              onClick={handlePrint}
-              className="flex-1 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 rounded-xl transition-colors"
-            >
-              <Printer size={20} />
-              Print Receipt
-            </button>
             <button
               onClick={() => {
                 onClose();
                 setSuccessSale(null);
               }}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 rounded-xl transition-colors"
             >
-              Close
+              Paid
+            </button>
+            <button
+              onClick={() => {
+                handlePrint();
+                onClose();
+                setSuccessSale(null);
+              }}
+              className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-colors"
+            >
+              <Printer size={20} />
+              Paid & Print
             </button>
           </div>
         </div>

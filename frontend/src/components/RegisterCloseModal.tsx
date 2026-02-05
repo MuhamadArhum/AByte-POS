@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Lock, Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
+import { X, Lock, Loader2, AlertTriangle, CheckCircle, DollarSign, TrendingUp, TrendingDown, Clock, Calendar, User, FileText, Calculator } from 'lucide-react';
 import api from '../utils/api';
 
 interface RegisterCloseModalProps {
@@ -10,15 +10,34 @@ interface RegisterCloseModalProps {
   register: any;
 }
 
-const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({ isOpen, onClose, onSuccess, expectedCash, register }) => {
+const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSuccess, 
+  expectedCash, 
+  register 
+}) => {
   const [closingBalance, setClosingBalance] = useState('');
   const [closeNote, setCloseNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   if (!isOpen) return null;
 
   const closingValue = parseFloat(closingBalance) || 0;
   const difference = closingValue - expectedCash;
+  const isDifferenceSignificant = Math.abs(difference) >= 0.01;
+
+  // Calculate shift duration
+  const shiftDuration = register.opened_at 
+    ? Math.floor((new Date().getTime() - new Date(register.opened_at).getTime()) / (1000 * 60))
+    : 0;
+
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}m`;
+  };
 
   const handleClose = async () => {
     if (!closingBalance || parseFloat(closingBalance) < 0) {
@@ -26,14 +45,23 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({ isOpen, onClose
       return;
     }
 
+    // Show confirmation if there's a significant difference
+    if (isDifferenceSignificant && !showConfirmation) {
+      setShowConfirmation(true);
+      return;
+    }
+
     setIsProcessing(true);
     try {
       await api.post('/register/close', {
         closing_balance: parseFloat(closingBalance),
-        close_note: closeNote
+        close_note: closeNote.trim() || undefined,
+        expected_cash: expectedCash,
+        difference: difference
       });
       setClosingBalance('');
       setCloseNote('');
+      setShowConfirmation(false);
       onSuccess();
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to close register');
@@ -43,105 +71,277 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({ isOpen, onClose
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-red-50">
-          <h2 className="text-xl font-bold text-red-800 flex items-center gap-2">
-            <Lock size={22} />
-            Close Register
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-300 border-2 border-gray-200">
+        {/* Header */}
+        <div className="p-6 border-b-2 border-gray-100 bg-gradient-to-r from-red-50 via-orange-50 to-red-50">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-br from-red-500 to-red-600 p-2.5 rounded-xl shadow-lg">
+                <Lock size={28} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">Close Cash Register</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Complete your shift and reconcile cash</p>
+              </div>
+            </div>
+            <button 
+              onClick={onClose} 
+              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-xl transition-all duration-200"
+            >
+              <X size={28} />
+            </button>
+          </div>
         </div>
 
-        <div className="p-6 space-y-5">
-          {/* Shift Summary */}
-          <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
-            <h3 className="font-bold text-gray-800 mb-3">Shift Summary</h3>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Opening Balance:</span>
-              <span className="font-medium">${parseFloat(register.opening_balance).toFixed(2)}</span>
+        <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto space-y-6">
+          {/* Shift Info Banner */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-blue-600 mb-2">
+                <Clock size={18} />
+                <p className="text-xs font-semibold uppercase">Duration</p>
+              </div>
+              <p className="text-2xl font-bold text-blue-800">{formatDuration(shiftDuration)}</p>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Cash Sales:</span>
-              <span className="font-medium text-emerald-600">+${parseFloat(register.cash_sales_total).toFixed(2)}</span>
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-purple-600 mb-2">
+                <User size={18} />
+                <p className="text-xs font-semibold uppercase">Cashier</p>
+              </div>
+              <p className="text-lg font-bold text-purple-800 truncate">{register.cashier_name || 'Staff'}</p>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Card Sales:</span>
-              <span className="font-medium text-blue-600">${parseFloat(register.card_sales_total).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Cash In:</span>
-              <span className="font-medium text-emerald-600">+${parseFloat(register.total_cash_in).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Cash Out:</span>
-              <span className="font-medium text-red-600">-${parseFloat(register.total_cash_out).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-gray-200 font-bold">
-              <span>Expected Cash:</span>
-              <span>${expectedCash.toFixed(2)}</span>
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-emerald-600 mb-2">
+                <Calendar size={18} />
+                <p className="text-xs font-semibold uppercase">Date</p>
+              </div>
+              <p className="text-sm font-bold text-emerald-800">
+                {register.opened_at ? new Date(register.opened_at).toLocaleDateString() : 'Today'}
+              </p>
             </div>
           </div>
 
-          {/* Closing Balance */}
+          {/* Detailed Shift Summary */}
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-5">
+            <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
+              <FileText size={20} className="text-gray-600" />
+              Shift Summary
+            </h3>
+            <div className="space-y-3">
+              {/* Opening Balance */}
+              <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
+                <span className="text-gray-600 font-medium flex items-center gap-2">
+                  <DollarSign size={16} className="text-blue-500" />
+                  Opening Balance
+                </span>
+                <span className="font-bold text-gray-800">
+                  ${parseFloat(register.opening_balance || 0).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Cash Sales */}
+              <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                <span className="text-emerald-700 font-medium flex items-center gap-2">
+                  <TrendingUp size={16} className="text-emerald-600" />
+                  Cash Sales
+                </span>
+                <span className="font-bold text-emerald-700">
+                  +${parseFloat(register.cash_sales_total || 0).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Card Sales */}
+              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <span className="text-blue-700 font-medium flex items-center gap-2">
+                  💳 Card Sales
+                </span>
+                <span className="font-bold text-blue-700">
+                  ${parseFloat(register.card_sales_total || 0).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Cash In */}
+              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
+                <span className="text-green-700 font-medium flex items-center gap-2">
+                  <TrendingUp size={16} className="text-green-600" />
+                  Cash In (Deposits)
+                </span>
+                <span className="font-bold text-green-700">
+                  +${parseFloat(register.total_cash_in || 0).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Cash Out */}
+              <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-200">
+                <span className="text-red-700 font-medium flex items-center gap-2">
+                  <TrendingDown size={16} className="text-red-600" />
+                  Cash Out (Withdrawals)
+                </span>
+                <span className="font-bold text-red-700">
+                  -${parseFloat(register.total_cash_out || 0).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Expected Cash - Highlighted */}
+              <div className="flex justify-between items-center p-4 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-lg border-2 border-indigo-300 shadow-md">
+                <span className="font-bold text-indigo-800 flex items-center gap-2">
+                  <Calculator size={18} className="text-indigo-600" />
+                  Expected Cash in Drawer
+                </span>
+                <span className="font-bold text-2xl text-indigo-900">
+                  ${expectedCash.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Actual Cash Count */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Actual Cash Count ($)</label>
-            <input
-              type="number"
-              value={closingBalance}
-              onChange={(e) => setClosingBalance(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-lg font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
-              placeholder="Count the cash in drawer"
-              min="0"
-              step="0.01"
-            />
+            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <DollarSign size={16} className="text-orange-600" />
+              Actual Cash Count <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={24} />
+              <input
+                type="number"
+                value={closingBalance}
+                onChange={(e) => setClosingBalance(e.target.value)}
+                className="w-full pl-14 pr-4 py-4 border-2 border-gray-200 rounded-xl text-2xl font-bold focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all shadow-sm bg-white"
+                placeholder="Count all cash in drawer"
+                min="0"
+                step="0.01"
+                autoFocus
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-2 ml-1">
+              💡 Count all bills and coins in the cash drawer carefully
+            </p>
           </div>
 
-          {/* Difference */}
+          {/* Difference Display */}
           {closingBalance && (
-            <div className={`p-4 rounded-xl flex items-center gap-3 ${
-              Math.abs(difference) < 0.01 ? 'bg-emerald-50 text-emerald-700' :
-              difference > 0 ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'
+            <div className={`p-5 rounded-xl flex items-start gap-4 border-2 transition-all ${
+              Math.abs(difference) < 0.01 
+                ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-300 text-emerald-800' 
+                : difference > 0 
+                ? 'bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-300 text-blue-800' 
+                : 'bg-gradient-to-r from-red-50 to-orange-50 border-red-300 text-red-800'
             }`}>
-              {Math.abs(difference) < 0.01 ? (
-                <CheckCircle size={20} />
-              ) : (
-                <AlertTriangle size={20} />
-              )}
-              <div>
-                <p className="font-bold">
-                  {Math.abs(difference) < 0.01 ? 'Balanced' :
-                   difference > 0 ? `Over by $${difference.toFixed(2)}` : `Short by $${Math.abs(difference).toFixed(2)}`}
+              <div className="flex-shrink-0">
+                {Math.abs(difference) < 0.01 ? (
+                  <div className="bg-emerald-500 p-2 rounded-full">
+                    <CheckCircle size={24} className="text-white" />
+                  </div>
+                ) : (
+                  <div className={`p-2 rounded-full ${difference > 0 ? 'bg-blue-500' : 'bg-red-500'}`}>
+                    <AlertTriangle size={24} className="text-white" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-lg mb-1">
+                  {Math.abs(difference) < 0.01 
+                    ? '✓ Perfect Balance!' 
+                    : difference > 0 
+                    ? `⚠️ Cash Over by $${difference.toFixed(2)}` 
+                    : `⚠️ Cash Short by $${Math.abs(difference).toFixed(2)}`}
                 </p>
+                <p className="text-sm opacity-90">
+                  {Math.abs(difference) < 0.01 
+                    ? 'The cash count matches the expected amount exactly.' 
+                    : difference > 0 
+                    ? 'You have more cash than expected. Please verify the count.' 
+                    : 'You have less cash than expected. Please verify the count and check for missing transactions.'}
+                </p>
+                <div className="mt-3 p-3 bg-white/60 rounded-lg">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-xs opacity-75">Expected:</p>
+                      <p className="font-bold">${expectedCash.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs opacity-75">Actual:</p>
+                      <p className="font-bold">${closingValue.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Note */}
+          {/* Confirmation Checkbox if difference */}
+          {isDifferenceSignificant && closingBalance && showConfirmation && (
+            <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-bold text-amber-800 mb-2">Confirmation Required</p>
+                  <p className="text-sm text-amber-700 mb-3">
+                    You are about to close the register with a discrepancy of <strong>${Math.abs(difference).toFixed(2)}</strong>. 
+                    Please verify your cash count is accurate before proceeding.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowConfirmation(false)}
+                      className="px-4 py-2 bg-white border-2 border-amber-300 rounded-lg text-amber-700 font-semibold hover:bg-amber-50 transition-all"
+                    >
+                      Recount Cash
+                    </button>
+                    <button
+                      onClick={handleClose}
+                      disabled={isProcessing}
+                      className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold transition-all"
+                    >
+                      Confirm & Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Closing Note */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Closing Note (Optional)</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <FileText size={16} className="text-gray-600" />
+              Closing Notes (Optional)
+            </label>
             <textarea
               value={closeNote}
               onChange={(e) => setCloseNote(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none resize-none h-20"
-              placeholder="Any notes about this shift..."
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none resize-none h-24 transition-all shadow-sm"
+              placeholder="Add notes about this shift (e.g., reasons for discrepancy, special events, issues encountered)..."
+              maxLength={300}
             />
+            <p className="text-xs text-gray-400 mt-1 text-right">{closeNote.length}/300</p>
           </div>
 
-          <div className="flex gap-3">
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-5 border-t-2 border-gray-100">
             <button
               onClick={onClose}
-              className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 font-medium transition-colors"
+              className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-200 border-2 border-gray-200 hover:border-gray-300"
             >
               Cancel
             </button>
             <button
               onClick={handleClose}
-              disabled={isProcessing || !closingBalance}
-              className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+              disabled={isProcessing || !closingBalance || (isDifferenceSignificant && !showConfirmation)}
+              className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg disabled:shadow-none disabled:cursor-not-allowed"
             >
-              {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <Lock size={20} />}
-              Close Register
+              {isProcessing ? (
+                <>
+                  <Loader2 className="animate-spin" size={20} />
+                  Closing Register...
+                </>
+              ) : (
+                <>
+                  <Lock size={20} />
+                  Close Register
+                </>
+              )}
             </button>
           </div>
         </div>

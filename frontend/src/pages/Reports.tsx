@@ -13,28 +13,20 @@ const Reports = () => {
 
   const fetchSalesData = async () => {
     try {
-      // Fetch all sales history
-      const res = await api.get('/sales');
-      const sales = res.data;
+      // Use date-range endpoint instead of fetching ALL sales
+      const endDate = new Date().toISOString().split('T')[0];
+      const startDate = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      // Process sales to group by date (last 7 days)
-      const last7Days = [...Array(7)].map((_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        return d.toISOString().split('T')[0];
-      }).reverse();
+      const res = await api.get(`/reports/date-range?start_date=${startDate}&end_date=${endDate}`);
+      const dailyBreakdown = res.data.daily || [];
 
-      const groupedData = last7Days.map(date => {
-        const daySales = sales.filter((s: any) => s.sale_date.startsWith(date) && s.status === 'completed');
-        const totalSales = daySales.reduce((sum: number, s: any) => sum + parseFloat(s.total_amount), 0);
-        // Assuming profit is 20% of sales for demo purposes since we don't have cost price in sales record yet
-        const estimatedProfit = totalSales * 0.2; 
-        
+      const groupedData = dailyBreakdown.map((d: any) => {
+        const revenue = parseFloat(d.revenue || 0);
         return {
-          name: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
-          date: date,
-          sales: totalSales,
-          profit: estimatedProfit
+          name: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }),
+          date: d.date,
+          sales: revenue,
+          profit: revenue * 0.2 // Estimated profit (20%)
         };
       });
 

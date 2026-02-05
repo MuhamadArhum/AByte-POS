@@ -23,5 +23,7 @@ router.post('/', customerController.create);     // Add new customer
 router.get('/:id', customerController.getById);  // Customer details + purchase history
 router.put('/:id', customerController.update);   // Update customer
 router.delete('/:id', customerController.remove);// Delete customer
+router.get('/:id/addresses', customerController.getAddresses);  // Get customer addresses
+router.post('/:id/addresses', customerController.addAddress);   // Add customer address
 
 module.exports = router;
