@@ -2,9 +2,11 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 
 interface User {
   user_id: number;
+  username?: string;
   name: string;
   email: string;
-  role: string;
+  role?: string;  // Kept for backward compatibility
+  role_name: string;  // Backend now sends role_name
 }
 
 interface AuthContextType {

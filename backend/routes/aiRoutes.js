@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const aiController = require('../controllers/aiController');
-const { verifyToken } = require('../middleware/auth'); // Assuming auth middleware exists
+const { authenticate } = require('../middleware/auth');
 
-// Protect AI route if needed, or leave public for dev
-// router.post('/chat', verifyToken, aiController.chat);
-router.post('/chat', aiController.chat);
+// Protected AI route - requires authenticated user
+router.post('/chat', authenticate, aiController.chat);
 
 module.exports = router;

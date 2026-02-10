@@ -67,7 +67,7 @@ exports.getAll = async (req, res) => {
       // params for count query (same as main query up to this point)
       const countParams = [...params]; 
       const countResult = await query(countSql, countParams);
-      const total = countResult[0].total;
+      const total = Number(countResult[0].total);
 
       sql += ' ORDER BY p.created_at DESC LIMIT ? OFFSET ?';
       params.push(limitNum, offset);
@@ -87,7 +87,7 @@ exports.getAll = async (req, res) => {
 
     sql += ' ORDER BY p.created_at DESC';  // Newest products first
     const rows = await query(sql, params);
-    res.json(rows);
+    res.json({ data: rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -108,7 +108,37 @@ exports.getById = async (req, res) => {
       [req.params.id]
     );
     if (rows.length === 0) return res.status(404).json({ message: 'Product not found' });
-    res.json(rows[0]);
+
+    const product = rows[0];
+
+    // If product has variants, fetch them
+    if (product.has_variants) {
+      const variants = await query(
+        `SELECT pv.*, vi.available_stock
+         FROM product_variants pv
+         LEFT JOIN variant_inventory vi ON pv.variant_id = vi.variant_id
+         WHERE pv.product_id = ? AND pv.is_active = 1
+         ORDER BY pv.variant_name`,
+        [product.product_id]
+      );
+
+      // Get combinations for each variant
+      for (let variant of variants) {
+        const combinations = await query(
+          `SELECT vc.*, vv.value_name, vt.variant_name as type_name
+           FROM variant_combinations vc
+           JOIN variant_values vv ON vc.variant_value_id = vv.variant_value_id
+           JOIN variant_types vt ON vv.variant_type_id = vt.variant_type_id
+           WHERE vc.variant_id = ?`,
+          [variant.variant_id]
+        );
+        variant.combinations = combinations;
+      }
+
+      product.variants = variants;
+    }
+
+    res.json(product);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -223,7 +253,7 @@ exports.remove = async (req, res) => {
 exports.getCategories = async (req, res) => {
   try {
     const rows = await query('SELECT * FROM categories ORDER BY category_name');
-    res.json(rows);
+    res.json({ data: rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

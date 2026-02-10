@@ -29,7 +29,7 @@ exports.getAll = async (req, res) => {
       const offset = (pageNum - 1) * limitNum;
 
       const countResult = await query('SELECT COUNT(*) as total FROM inventory i JOIN products p ON i.product_id = p.product_id');
-      const total = countResult[0].total;
+      const total = Number(countResult[0].total);
 
       sql += ' ORDER BY p.product_name LIMIT ? OFFSET ?';
       params.push(limitNum, offset);
@@ -43,7 +43,7 @@ exports.getAll = async (req, res) => {
 
     sql += ' ORDER BY p.product_name';
     const rows = await query(sql, params);
-    res.json(rows);
+    res.json({ data: rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -95,7 +95,7 @@ exports.getLowStock = async (req, res) => {
        WHERE i.available_stock > 0 AND i.available_stock < 10
        ORDER BY i.available_stock ASC`
     );
-    res.json(rows);
+    res.json({ data: rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

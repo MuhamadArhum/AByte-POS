@@ -28,11 +28,11 @@ const authenticate = async (req, res, next) => {
     // jwt.verify() throws an error if the token is invalid or expired
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Step 4: Fetch the full user data from the database using the userId stored in the token
-    // JOIN with roles table to get the role_name (Admin, Manager, or Cashier)
+    // Step 4: Fetch the full user data from the database using the user_id stored in the token
+    // Get username and role_name directly from users table (added via migration)
     const rows = await query(
-      'SELECT u.user_id, u.name, u.email, r.role_name FROM users u JOIN roles r ON u.role_id = r.role_id WHERE u.user_id = ?',
-      [decoded.userId]
+      'SELECT u.user_id, u.username, u.name, u.email, u.role_name FROM users u WHERE u.user_id = ?',
+      [decoded.user_id]
     );
 
     // Step 5: Check if the user still exists in the database

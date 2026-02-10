@@ -11,6 +11,15 @@ import CashRegister from './pages/CashRegister';
 import Returns from './pages/Returns';
 import AuditLog from './pages/AuditLog';
 import Backup from './pages/Backup';
+import Orders from './pages/Orders';
+import Suppliers from './pages/Suppliers';
+import Expenses from './pages/Expenses';
+import Staff from './pages/Staff';
+import Attendance from './pages/Attendance';
+import PurchaseOrders from './pages/PurchaseOrders';
+import StockAlerts from './pages/StockAlerts';
+import Stores from './pages/Stores';
+import Analytics from './pages/Analytics';
 import Layout from './components/Layout';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -40,7 +49,10 @@ const RoleRoute = ({ children, allowedRoles }: { children: React.ReactNode, allo
 
   if (isLoading) return null;
 
-  if (!user || !allowedRoles.includes(user.role)) {
+  // Support both role_name (backend sends this) and role (backward compatibility)
+  const userRole = user?.role_name || user?.role;
+
+  if (!user || !userRole || !allowedRoles.includes(userRole)) {
     return <Navigate to="/" replace />;
   }
 
@@ -62,6 +74,7 @@ function App() {
                     <Routes>
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/pos" element={<POS />} />
+                      <Route path="/orders" element={<Orders />} />
                       <Route path="/cash-register" element={<CashRegister />} />
                       <Route
                         path="/inventory"
@@ -104,6 +117,63 @@ function App() {
                           </RoleRoute>
                         }
                       />
+                      <Route
+                        path="/suppliers"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <Suppliers />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/expenses"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <Expenses />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/staff"
+                        element={
+                          <RoleRoute allowedRoles={['Admin']}>
+                            <Staff />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/attendance"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <Attendance />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/purchase-orders"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <PurchaseOrders />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/stock-alerts"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <StockAlerts />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/stores"
+                        element={
+                          <RoleRoute allowedRoles={['Admin']}>
+                            <Stores />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route path="/analytics" element={<Analytics />} />
                       <Route
                         path="/settings"
                         element={

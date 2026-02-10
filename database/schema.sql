@@ -14,10 +14,12 @@ INSERT IGNORE INTO roles (role_name) VALUES ('Admin'), ('Manager'), ('Cashier');
 -- Users
 CREATE TABLE IF NOT EXISTS users (
     user_id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(100) NOT NULL,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role_id INT NOT NULL,
+    role_name VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (role_id) REFERENCES roles(role_id)
 );
@@ -55,6 +57,9 @@ CREATE TABLE IF NOT EXISTS customers (
     customer_id INT PRIMARY KEY AUTO_INCREMENT,
     customer_name VARCHAR(100),
     phone_number VARCHAR(20),
+    email VARCHAR(150),
+    company VARCHAR(150),
+    tax_id VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE INDEX idx_customer_phone (phone_number)
 );
@@ -133,6 +138,7 @@ CREATE TABLE IF NOT EXISTS cash_registers (
     closed_at TIMESTAMP NULL,
     close_note TEXT,
     FOREIGN KEY (opened_by) REFERENCES users(user_id),
+    FOREIGN KEY (closed_by) REFERENCES users(user_id),
     INDEX idx_register_status (status)
 );
 
@@ -178,6 +184,22 @@ CREATE TABLE IF NOT EXISTS return_details (
     FOREIGN KEY (return_id) REFERENCES returns(return_id),
     FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
+
+-- Store Settings (single row with setting_id=1)
+CREATE TABLE IF NOT EXISTS store_settings (
+    setting_id INT PRIMARY KEY AUTO_INCREMENT,
+    store_name VARCHAR(200) NOT NULL DEFAULT 'AByte POS',
+    address TEXT,
+    phone VARCHAR(30),
+    email VARCHAR(150),
+    website VARCHAR(200),
+    receipt_footer TEXT DEFAULT 'Thank you for your purchase!',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT IGNORE INTO store_settings (setting_id, store_name, receipt_footer)
+VALUES (1, 'AByte POS', 'Thank you for your purchase!');
 
 -- Backups
 CREATE TABLE IF NOT EXISTS backups (

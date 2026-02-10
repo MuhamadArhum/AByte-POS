@@ -11,9 +11,10 @@ interface CheckoutModalProps {
   onSuccess: () => void;
   pendingSale?: any;
   selectedCustomer?: any;
+  appliedBundles?: any[];
 }
 
-const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSuccess, pendingSale, selectedCustomer }) => {
+const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSuccess, pendingSale, selectedCustomer, appliedBundles = [] }) => {
   const { cart, total, clearCart, subtotal, taxAmount, additionalAmount, taxRate, additionalRate } = useCart();
   const { user } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'online' | 'split'>('cash');
@@ -98,7 +99,9 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
             product_id: item.product_id,
             product_name: item.product_name,
             quantity: item.quantity,
-            unit_price: item.price
+            unit_price: item.price,
+            variant_id: item.variant_id || null,
+            variant_name: item.variant_name || null
           })),
           customer_id: selectedCustomer?.customer_id || 1,
           discount: discountValue,
@@ -109,7 +112,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
           status: 'completed',
           tax_percent: taxRate,
           additional_charges_percent: additionalRate,
-          note: noteStr
+          note: noteStr,
+          applied_bundles: appliedBundles || []
         };
 
         const res = await api.post('/sales', payload);

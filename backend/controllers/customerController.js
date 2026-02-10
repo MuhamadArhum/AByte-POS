@@ -8,6 +8,17 @@
 
 const { query } = require('../config/database');  // Database query helper
 
+// Helper: Validate and parse pagination params
+const parsePagination = (page, limit) => {
+  const pageNum = parseInt(page) || 1;
+  const limitNum = Math.min(parseInt(limit) || 20, 100); // Max 100 per page
+  return {
+    page: Math.max(1, pageNum),
+    limit: Math.max(1, limitNum),
+    offset: (Math.max(1, pageNum) - 1) * Math.max(1, limitNum)
+  };
+};
+
 // --- Get All Customers ---
 // Returns all customers, optionally filtered by search keyword.
 // Search matches against customer name or phone number.
@@ -27,28 +38,26 @@ exports.getAll = async (req, res) => {
     // Pagination
     const { page, limit } = req.query;
     if (page && limit) {
-      const pageNum = parseInt(page);
-      const limitNum = parseInt(limit);
-      const offset = (pageNum - 1) * limitNum;
+      const pg = parsePagination(page, limit);
 
       const countSql = 'SELECT COUNT(*) as total FROM customers' + (search ? ' WHERE customer_name LIKE ? OR phone_number LIKE ?' : '');
       const countParams = [...params];
       const countResult = await query(countSql, countParams);
-      const total = countResult[0].total;
+      const total = Number(countResult[0].total);
 
       sql += ' ORDER BY customer_name LIMIT ? OFFSET ?';
-      params.push(limitNum, offset);
-      
+      params.push(pg.limit, pg.offset);
+
       const rows = await query(sql, params);
       return res.json({
           data: rows,
-          pagination: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) }
+          pagination: { total, page: pg.page, limit: pg.limit, totalPages: Math.ceil(total / pg.limit) }
       });
     }
 
     sql += ' ORDER BY customer_name';  // Alphabetical order
     const rows = await query(sql, params);
-    res.json(rows);
+    res.json({ data: rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -56,20 +65,23 @@ exports.getAll = async (req, res) => {
 };
 
 // --- Create New Customer ---
-// Adds a new customer record. Name is required, phone is optional.
+// Adds a new customer record. Name is required, other fields optional.
 // The new customer can then be selected when making a sale.
 exports.create = async (req, res) => {
   try {
-    const { customer_name, phone_number, address } = req.body;
+    const { customer_name, phone_number, email, company, tax_id, address } = req.body;
 
     if (!customer_name) return res.status(400).json({ message: 'Customer name is required' });
 
-    // Normalize empty phone to null for UNIQUE constraint
+    // Normalize empty values to null
     const phone = phone_number && phone_number.trim() ? phone_number.trim() : null;
+    const emailVal = email && email.trim() ? email.trim() : null;
+    const companyVal = company && company.trim() ? company.trim() : null;
+    const taxIdVal = tax_id && tax_id.trim() ? tax_id.trim() : null;
 
     const result = await query(
-      'INSERT INTO customers (customer_name, phone_number) VALUES (?, ?)',
-      [customer_name, phone]
+      'INSERT INTO customers (customer_name, phone_number, email, company, tax_id) VALUES (?, ?, ?, ?, ?)',
+      [customer_name, phone, emailVal, companyVal, taxIdVal]
     );
 
     const customerId = Number(result.insertId);
@@ -106,15 +118,13 @@ exports.getById = async (req, res) => {
 
     // Pagination for purchases
     const { page, limit } = req.query;
-    
+
     if (page && limit) {
-      const pageNum = parseInt(page);
-      const limitNum = parseInt(limit);
-      const offset = (pageNum - 1) * limitNum;
+      const pg = parsePagination(page, limit);
 
       // Count total purchases
       const countResult = await query(
-        'SELECT COUNT(*) as total FROM sales WHERE customer_id = ?', 
+        'SELECT COUNT(*) as total FROM sales WHERE customer_id = ?',
         [req.params.id]
       );
       const total = Number(countResult[0].total);
@@ -124,18 +134,18 @@ exports.getById = async (req, res) => {
         `SELECT s.sale_id, s.sale_date, s.net_amount, u.name as cashier_name
          FROM sales s LEFT JOIN users u ON s.user_id = u.user_id
          WHERE s.customer_id = ? ORDER BY s.sale_date DESC LIMIT ? OFFSET ?`,
-        [req.params.id, limitNum, offset]
+        [req.params.id, pg.limit, pg.offset]
       );
 
-      return res.json({ 
-        ...rows[0], 
+      return res.json({
+        ...rows[0],
         purchases,
-        pagination: { 
-          total, 
-          page: pageNum, 
-          limit: limitNum, 
-          totalPages: Math.ceil(total / limitNum) 
-        } 
+        pagination: {
+          total,
+          page: pg.page,
+          limit: pg.limit,
+          totalPages: Math.ceil(total / pg.limit)
+        }
       });
     }
 
@@ -160,15 +170,18 @@ exports.getById = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { customer_name, phone_number, address } = req.body;
+    const { customer_name, phone_number, email, company, tax_id, address } = req.body;
 
     if (!customer_name) return res.status(400).json({ message: 'Customer name is required' });
 
     const phone = phone_number && phone_number.trim() ? phone_number.trim() : null;
+    const emailVal = email && email.trim() ? email.trim() : null;
+    const companyVal = company && company.trim() ? company.trim() : null;
+    const taxIdVal = tax_id && tax_id.trim() ? tax_id.trim() : null;
 
     await query(
-      'UPDATE customers SET customer_name = ?, phone_number = ? WHERE customer_id = ?',
-      [customer_name, phone, id]
+      'UPDATE customers SET customer_name = ?, phone_number = ?, email = ?, company = ?, tax_id = ? WHERE customer_id = ?',
+      [customer_name, phone, emailVal, companyVal, taxIdVal, id]
     );
 
     // Upsert default address if provided
@@ -184,7 +197,9 @@ exports.update = async (req, res) => {
       }
     }
 
-    res.json({ message: 'Customer updated' });
+    // Return updated customer
+    const updatedCustomer = await query('SELECT * FROM customers WHERE customer_id = ?', [id]);
+    res.json({ message: 'Customer updated', customer: updatedCustomer[0] });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Phone number already exists for another customer' });
@@ -226,7 +241,7 @@ exports.getAddresses = async (req, res) => {
       'SELECT * FROM customer_addresses WHERE customer_id = ? ORDER BY is_default DESC, created_at DESC',
       [req.params.id]
     );
-    res.json(rows);
+    res.json({ data: rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

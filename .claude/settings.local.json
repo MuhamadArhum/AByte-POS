@@ -27,7 +27,16 @@
       "Bash(find:*)",
       "Bash(cmd /c \"rmdir /s /q F:\\\\AByte-POS\\\\client\")",
       "Bash(test:*)",
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm view:*)",
+      "Bash(netstat:*)",
+      "Bash(if [ -f backend/.env ])",
+      "Bash(then echo \"Backend .env exists\")",
+      "Bash(else echo \"Backend .env MISSING\")",
+      "Bash(fi)",
+      "Bash(ls:*)",
+      "Bash(npm start)"
     ]
   }
 }

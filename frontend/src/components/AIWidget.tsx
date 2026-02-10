@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Bot, User, Sparkles, Minimize2, Maximize2, Trash2, Copy, Check } from 'lucide-react';
-import axios from 'axios';
+import api from '../utils/api';
 
 interface Message {
   id: string;
@@ -55,7 +55,7 @@ const AIWidget = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('/api/ai/chat', {
+      const response = await api.post('/ai/chat', {
         message: userMsg.text,
         history: messages.map(m => ({
           role: m.role === 'user' ? 'user' : 'model',

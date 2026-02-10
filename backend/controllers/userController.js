@@ -17,9 +17,9 @@ exports.getAll = async (req, res) => {
     // JOIN with roles table to get role name instead of just role_id
     // We don't select password_hash for security (never send passwords to frontend)
     const rows = await query(
-      'SELECT u.user_id, u.name, u.email, r.role_name, u.created_at FROM users u JOIN roles r ON u.role_id = r.role_id ORDER BY u.created_at DESC'
+      'SELECT u.user_id, u.name, u.email, r.role_name as role, u.created_at FROM users u JOIN roles r ON u.role_id = r.role_id ORDER BY u.created_at DESC'
     );
-    res.json(rows);
+    res.json({ data: rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -149,7 +149,7 @@ exports.remove = async (req, res) => {
 exports.getRoles = async (req, res) => {
   try {
     const rows = await query('SELECT * FROM roles');
-    res.json(rows);
+    res.json({ data: rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

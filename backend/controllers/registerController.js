@@ -1,6 +1,20 @@
 const { getConnection, query } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
+// Helper: Round to 2 decimal places for currency
+const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+
+// Helper: Validate and parse pagination params
+const parsePagination = (page, limit) => {
+  const pageNum = parseInt(page) || 1;
+  const limitNum = Math.min(parseInt(limit) || 20, 100); // Max 100 per page
+  return {
+    page: Math.max(1, pageNum),
+    limit: Math.max(1, limitNum),
+    offset: (Math.max(1, pageNum) - 1) * Math.max(1, limitNum)
+  };
+};
+
 exports.getCurrentRegister = async (req, res) => {
   try {
     const register = await query(
@@ -74,15 +88,17 @@ exports.closeRegister = async (req, res) => {
     conn = await getConnection();
     await conn.beginTransaction();
 
-    const register = await conn.query("SELECT * FROM cash_registers WHERE status = 'open' LIMIT 1");
+    // Lock register row to prevent concurrent modifications
+    const register = await conn.query("SELECT * FROM cash_registers WHERE status = 'open' FOR UPDATE");
     if (register.length === 0) {
       await conn.rollback();
       return res.status(404).json({ message: 'No open register found' });
     }
 
     const reg = register[0];
-    const expected = parseFloat(reg.opening_balance) + parseFloat(reg.cash_sales_total) + parseFloat(reg.total_cash_in) - parseFloat(reg.total_cash_out);
-    const difference = parseFloat(closing_balance) - expected;
+    // Use currency rounding for expected/difference calculations
+    const expected = round2(parseFloat(reg.opening_balance) + parseFloat(reg.cash_sales_total) + parseFloat(reg.total_cash_in) - parseFloat(reg.total_cash_out));
+    const difference = round2(parseFloat(closing_balance) - expected);
 
     await conn.query(
       `UPDATE cash_registers
@@ -162,7 +178,7 @@ exports.addCashMovement = async (req, res) => {
 exports.getHistory = async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const pg = parsePagination(page, limit);
 
     const countResult = await query('SELECT COUNT(*) as total FROM cash_registers');
     const total = Number(countResult[0].total);
@@ -176,12 +192,12 @@ exports.getHistory = async (req, res) => {
        LEFT JOIN users u2 ON cr.closed_by = u2.user_id
        ORDER BY cr.opened_at DESC
        LIMIT ? OFFSET ?`,
-      [parseInt(limit), offset]
+      [pg.limit, pg.offset]
     );
 
     res.json({
       registers,
-      pagination: { page: parseInt(page), limit: parseInt(limit), total, totalPages: Math.ceil(total / parseInt(limit)) }
+      pagination: { page: pg.page, limit: pg.limit, total, totalPages: Math.ceil(total / pg.limit) }
     });
   } catch (error) {
     console.error('Register history error:', error);

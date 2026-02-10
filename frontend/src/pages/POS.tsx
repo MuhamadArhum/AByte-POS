@@ -1,22 +1,26 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Search, ShoppingCart, Trash2, Minus, Plus, Save, Clock, RefreshCw, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Search, ShoppingCart, Trash2, Minus, Plus, Save, Clock, RefreshCw, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Mail, Building2, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCart, Product } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import ProductCard from '../components/ProductCard';
 import CheckoutModal from '../components/CheckoutModal';
 import AddCustomerModal from '../components/AddCustomerModal';
-import OrdersModal from '../components/OrdersModal';
 import DailyReportModal from '../components/DailyReportModal';
 import RegisterCloseModal from '../components/RegisterCloseModal';
+import ProductVariantModal from '../components/ProductVariantModal';
 import api from '../utils/api';
 
 const POS = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const {
     cart, addToCart, removeFromCart, updateQuantity, clearCart,
     subtotal, total,
     taxRate, setTaxRate,
     additionalRate, setAdditionalRate,
-    taxAmount, additionalAmount
+    taxAmount, additionalAmount,
+    appliedBundles, setAppliedBundles, bundleDiscount
   } = useCart();
   const { user } = useAuth();
 
@@ -32,7 +36,6 @@ const POS = () => {
 
   const [selectedPendingSale, setSelectedPendingSale] = useState<any>(null);
 
-  const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
   const [isDailyReportOpen, setIsDailyReportOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -51,10 +54,24 @@ const POS = () => {
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const customerSearchRef = useRef<HTMLDivElement>(null);
 
+  // Variant modal state
+  const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
   // Check register on mount
   useEffect(() => {
     checkRegister();
   }, []);
+
+  // Handle pending sale from Orders page navigation
+  useEffect(() => {
+    if (location.state?.pendingSale) {
+      setSelectedPendingSale(location.state.pendingSale);
+      setIsCheckoutOpen(true);
+      // Clear location state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const checkRegister = async () => {
     setRegisterLoading(true);
@@ -96,7 +113,7 @@ const POS = () => {
         const mappedProducts = res.data.map((p: any) => ({
           ...p,
           price: typeof p.price === 'string' ? parseFloat(p.price) : p.price,
-          stock_quantity: p.available_stock || 0
+          stock_quantity: p.available_stock || p.stock_quantity || 0
         }));
         setProducts(mappedProducts);
       } catch (error) {
@@ -126,7 +143,7 @@ const POS = () => {
       const match = products.find(p => p.barcode === searchBarcode);
       if (match) {
         if (match.stock_quantity > 0) {
-          addToCart(match);
+          handleAddProduct(match); // Use handleAddProduct to support variants
           setSearchBarcode('');
         } else {
           alert('Product Out of Stock!');
@@ -134,7 +151,7 @@ const POS = () => {
         }
       }
     }
-  }, [searchBarcode, products, addToCart]);
+  }, [searchBarcode, products]);
 
   // Hotkeys
   useEffect(() => {
@@ -155,7 +172,7 @@ const POS = () => {
       }
       if (e.key === 'F5') {
         e.preventDefault();
-        setIsOrdersModalOpen(true);
+        navigate('/orders');
       }
       if (e.key === 'F8') {
         e.preventDefault();
@@ -167,7 +184,6 @@ const POS = () => {
       }
       if (e.key === 'Escape') {
         setIsCheckoutOpen(false);
-        setIsOrdersModalOpen(false);
         setIsDailyReportOpen(false);
         setIsCustomerModalOpen(false);
         setShowCloseModal(false);
@@ -204,6 +220,33 @@ const POS = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Bundle detection - detect applicable bundles whenever cart changes
+  useEffect(() => {
+    const detectBundles = async () => {
+      if (cart.length === 0) {
+        setAppliedBundles([]);
+        return;
+      }
+
+      try {
+        const cartItems = cart.map(item => ({
+          product_id: item.product_id,
+          variant_id: item.variant_id || null,
+          quantity: item.quantity,
+          unit_price: item.price
+        }));
+
+        const response = await api.post('/bundles/detect', { cart_items: cartItems });
+        setAppliedBundles(response.data.applicable_bundles || []);
+      } catch (error) {
+        console.error('Bundle detection error:', error);
+        setAppliedBundles([]);
+      }
+    };
+
+    detectBundles();
+  }, [cart, setAppliedBundles]);
+
   const filteredCustomers = useMemo(() => {
     if (!customerSearch.trim()) return [];
     const q = customerSearch.toLowerCase();
@@ -212,22 +255,6 @@ const POS = () => {
       (c.phone_number && c.phone_number.includes(customerSearch))
     ).slice(0, 8);
   }, [customers, customerSearch]);
-
-  const handleDeletePending = async (saleId: number) => {
-    if (!confirm('Are you sure you want to delete this pending order?')) return;
-    try {
-      await api.delete(`/sales/${saleId}`);
-    } catch (error) {
-      console.error('Failed to delete pending order', error);
-      alert('Failed to delete pending order');
-    }
-  };
-
-  const handlePayPending = (sale: any) => {
-    setSelectedPendingSale(sale);
-    setIsOrdersModalOpen(false);
-    setIsCheckoutOpen(true);
-  };
 
   const handleHoldOrder = async () => {
     if (cart.length === 0) return;
@@ -275,6 +302,30 @@ const POS = () => {
     const qty = parseInt(value, 10);
     if (isNaN(qty) || qty < 1) {
       updateQuantity(productId, 1);
+    }
+  };
+
+  // Handle product click - check for variants
+  const handleAddProduct = (product: Product) => {
+    // @ts-ignore - has_variants exists on product after backend query
+    if (product.has_variants) {
+      setSelectedProduct(product);
+      setIsVariantModalOpen(true);
+    } else {
+      addToCart(product);
+    }
+  };
+
+  // Handle variant selection from modal
+  const handleVariantSelect = (variant: any) => {
+    if (selectedProduct) {
+      const finalPrice = selectedProduct.price + variant.price_adjustment;
+      addToCart(selectedProduct, {
+        variant_id: variant.variant_id,
+        variant_name: variant.variant_name,
+        price: finalPrice,
+        available_stock: variant.available_stock,
+      });
     }
   };
 
@@ -384,7 +435,7 @@ const POS = () => {
               <Keyboard size={18} />
             </button>
             <button
-              onClick={() => setIsOrdersModalOpen(true)}
+              onClick={() => navigate('/orders')}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors font-medium border border-indigo-200"
             >
               <FileText size={20} />
@@ -491,7 +542,7 @@ const POS = () => {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {filteredProducts.map(product => (
-                <ProductCard key={product.product_id} product={product} onAddToCart={addToCart} />
+                <ProductCard key={product.product_id} product={product} onAddToCart={handleAddProduct} />
               ))}
               {filteredProducts.length === 0 && (
                 <div className="col-span-full text-center py-16">
@@ -526,7 +577,7 @@ const POS = () => {
           </div>
         </div>
 
-        {/* Customer Selection */}
+        {/* Customer Selection & Details Panel */}
         <div className="px-4 py-3 bg-white border-b border-gray-100">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
@@ -542,63 +593,97 @@ const POS = () => {
             </button>
           </div>
 
-          {selectedCustomer ? (
-            <div className="flex items-center justify-between bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200 p-3 rounded-xl">
-              <div className="flex items-center gap-2 overflow-hidden">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-md">
-                  {selectedCustomer.customer_name.charAt(0).toUpperCase()}
-                </div>
-                <div className="truncate">
-                  <p className="text-sm font-bold text-gray-800 truncate">{selectedCustomer.customer_name}</p>
-                  <p className="text-xs text-gray-600 truncate">{selectedCustomer.phone_number || 'No phone'}</p>
-                </div>
+          {/* Customer Search */}
+          <div className="relative mb-2" ref={customerSearchRef}>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Search by phone or name..."
+              className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+              value={customerSearch}
+              onChange={(e) => {
+                setCustomerSearch(e.target.value);
+                setShowCustomerDropdown(true);
+              }}
+              onFocus={() => { if (customerSearch.trim()) setShowCustomerDropdown(true); }}
+            />
+            {showCustomerDropdown && filteredCustomers.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-xl max-h-48 overflow-auto z-30">
+                {filteredCustomers.map(c => (
+                  <button
+                    key={c.customer_id}
+                    onClick={() => {
+                      setSelectedCustomer(c);
+                      setCustomerSearch('');
+                      setShowCustomerDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2.5 hover:bg-emerald-50 flex items-center gap-2 text-sm border-b border-gray-100 last:border-0 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-xs shrink-0">
+                      {c.customer_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="truncate">
+                      <p className="font-semibold text-gray-800">{c.customer_name}</p>
+                      {c.phone_number && <p className="text-xs text-gray-500">{c.phone_number}</p>}
+                    </div>
+                  </button>
+                ))}
               </div>
-              <button
-                onClick={() => {
-                  const walkin = customers.find(c => c.customer_id === 1);
-                  setSelectedCustomer(walkin || null);
-                }}
-                className="text-gray-400 hover:text-red-500 p-1.5 transition-colors hover:bg-red-50 rounded-lg"
-                title="Reset to Walk-in"
-              >
-                <X size={18} />
-              </button>
-            </div>
-          ) : (
-            <div className="relative" ref={customerSearchRef}>
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input
-                type="text"
-                placeholder="Search by phone or name..."
-                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                value={customerSearch}
-                onChange={(e) => {
-                  setCustomerSearch(e.target.value);
-                  setShowCustomerDropdown(true);
-                }}
-                onFocus={() => { if (customerSearch.trim()) setShowCustomerDropdown(true); }}
-              />
-              {showCustomerDropdown && filteredCustomers.length > 0 && (
-                <div className="absolute left-0 right-0 top-full mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-xl max-h-48 overflow-auto z-30">
-                  {filteredCustomers.map(c => (
-                    <button
-                      key={c.customer_id}
-                      onClick={() => {
-                        setSelectedCustomer(c);
-                        setCustomerSearch('');
-                        setShowCustomerDropdown(false);
-                      }}
-                      className="w-full text-left px-3 py-2.5 hover:bg-emerald-50 flex items-center gap-2 text-sm border-b border-gray-100 last:border-0 transition-colors"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold text-xs shrink-0">
-                        {c.customer_name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="truncate">
-                        <p className="font-semibold text-gray-800">{c.customer_name}</p>
-                        {c.phone_number && <p className="text-xs text-gray-500">{c.phone_number}</p>}
-                      </div>
-                    </button>
-                  ))}
+            )}
+          </div>
+
+          {/* Selected Customer Card with Details */}
+          {selectedCustomer && (
+            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-xl overflow-hidden">
+              {/* Customer Header */}
+              <div className="p-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-md">
+                    {selectedCustomer.customer_name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-800">{selectedCustomer.customer_name}</p>
+                    {selectedCustomer.company && (
+                      <p className="text-xs text-gray-600 flex items-center gap-1">
+                        <Building2 size={10} />
+                        {selectedCustomer.company}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const walkin = customers.find(c => c.customer_id === 1);
+                    setSelectedCustomer(walkin || null);
+                  }}
+                  className="text-gray-400 hover:text-red-500 p-1.5 transition-colors hover:bg-red-50 rounded-lg"
+                  title="Reset to Walk-in"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Customer Details Grid */}
+              {selectedCustomer.customer_id !== 1 && (
+                <div className="px-3 pb-3 grid grid-cols-2 gap-2 text-xs">
+                  {selectedCustomer.phone_number && (
+                    <div className="flex items-center gap-1.5 bg-white/60 px-2 py-1.5 rounded-lg">
+                      <Phone size={12} className="text-blue-500" />
+                      <span className="text-gray-700 truncate">{selectedCustomer.phone_number}</span>
+                    </div>
+                  )}
+                  {selectedCustomer.email && (
+                    <div className="flex items-center gap-1.5 bg-white/60 px-2 py-1.5 rounded-lg">
+                      <Mail size={12} className="text-purple-500" />
+                      <span className="text-gray-700 truncate">{selectedCustomer.email}</span>
+                    </div>
+                  )}
+                  {selectedCustomer.tax_id && (
+                    <div className="flex items-center gap-1.5 bg-white/60 px-2 py-1.5 rounded-lg col-span-2">
+                      <Tag size={12} className="text-orange-500" />
+                      <span className="text-gray-700">Tax ID: {selectedCustomer.tax_id}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -699,6 +784,22 @@ const POS = () => {
             <span className="font-semibold text-gray-600">${additionalAmount.toFixed(2)}</span>
           </div>
 
+          {/* Bundle Discount Display */}
+          {appliedBundles.length > 0 && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between text-sm font-semibold text-green-700">
+                <span>🎁 Bundle Savings</span>
+                <span>-${bundleDiscount.toFixed(2)}</span>
+              </div>
+              {appliedBundles.map((bundle, idx) => (
+                <div key={idx} className="text-xs text-green-600 flex justify-between items-start">
+                  <span className="flex-1">{bundle.bundle_name}</span>
+                  <span className="font-medium">-${bundle.discount_amount.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="pt-3 border-t-2 border-gray-200 flex justify-between items-center">
             <span className="text-lg font-bold text-gray-800 flex items-center gap-2">
               <Calculator size={20} />
@@ -781,6 +882,7 @@ const POS = () => {
         }}
         pendingSale={selectedPendingSale}
         selectedCustomer={selectedCustomer}
+        appliedBundles={appliedBundles}
       />
 
       <AddCustomerModal
@@ -790,13 +892,6 @@ const POS = () => {
           fetchCustomers();
           if (newCustomer) setSelectedCustomer(newCustomer);
         }}
-      />
-
-      <OrdersModal
-        isOpen={isOrdersModalOpen}
-        onClose={() => setIsOrdersModalOpen(false)}
-        onPayPending={handlePayPending}
-        onDeletePending={handleDeletePending}
       />
 
       <DailyReportModal
@@ -814,6 +909,18 @@ const POS = () => {
         expectedCash={expectedCash}
         register={register}
       />
+
+      {selectedProduct && (
+        <ProductVariantModal
+          isOpen={isVariantModalOpen}
+          onClose={() => {
+            setIsVariantModalOpen(false);
+            setSelectedProduct(null);
+          }}
+          product={selectedProduct}
+          onSelectVariant={handleVariantSelect}
+        />
+      )}
     </div>
   );
 };

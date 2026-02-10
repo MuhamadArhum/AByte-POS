@@ -24,9 +24,9 @@ exports.login = async (req, res) => {
     }
 
     // Look up the user in the database by email
-    // JOIN with roles table to also get the role name (Admin, Manager, Cashier)
+    // Get role_name directly from users table (added via migration)
     const rows = await query(
-      'SELECT u.*, r.role_name FROM users u JOIN roles r ON u.role_id = r.role_id WHERE u.email = ?',
+      'SELECT u.* FROM users u WHERE u.email = ?',
       [email]
     );
 
@@ -48,16 +48,16 @@ exports.login = async (req, res) => {
     }
 
     // Password is correct - generate a JWT token
-    // The token contains: userId and role (payload)
+    // The token contains: user_id, username, and role_name (payload)
     // It's signed with the secret key and expires in 24 hours
     const token = jwt.sign(
-      { userId: user.user_id, role: user.role_name },  // Payload (data stored in token)
+      { user_id: user.user_id, username: user.username, role_name: user.role_name },  // Payload (data stored in token)
       process.env.JWT_SECRET,                            // Secret key for signing
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' } // Token expiry time
     );
 
     // Log login action
-    await logAction(user.user_id, user.name, 'USER_LOGIN', 'user', user.user_id, { email }, req.ip);
+    await logAction(user.user_id, user.username, 'USER_LOGIN', 'user', user.user_id, { email }, req.ip);
 
     // Send the token and user info back to the frontend
     // Frontend stores the token in localStorage and sends it with every request
@@ -65,9 +65,10 @@ exports.login = async (req, res) => {
       token,
       user: {
         user_id: user.user_id,
+        username: user.username,
         name: user.name,
         email: user.email,
-        role: user.role_name,
+        role_name: user.role_name,
       },
     });
   } catch (err) {

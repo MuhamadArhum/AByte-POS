@@ -16,6 +16,12 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCa
       <div>
         <div className="relative h-32 bg-gray-50 rounded-lg mb-3 flex items-center justify-center text-emerald-600 text-2xl font-bold border border-gray-100">
           {product.product_name.charAt(0)}
+          {/* @ts-ignore - has_variants exists on product after backend query */}
+          {product.has_variants && (
+            <span className="absolute top-2 left-2 bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-bold border border-blue-200">
+              Variants
+            </span>
+          )}
           {product.stock_quantity <= 10 && product.stock_quantity > 0 && (
             <span className="absolute top-2 right-2 bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold border border-orange-200">
               Low Stock

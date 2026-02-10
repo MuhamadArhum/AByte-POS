@@ -9,22 +9,37 @@
 const { getConnection, query } = require('../config/database');  // DB helpers (getConnection for transactions)
 const { logAction } = require('../services/auditService');
 
+// Helper: Round to 2 decimal places for currency
+const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+
+// Helper: Validate and parse pagination params
+const parsePagination = (page, limit) => {
+  const pageNum = parseInt(page) || 1;
+  const limitNum = Math.min(parseInt(limit) || 20, 100); // Max 100 per page
+  return {
+    page: Math.max(1, pageNum),
+    limit: Math.max(1, limitNum),
+    offset: (Math.max(1, pageNum) - 1) * Math.max(1, limitNum)
+  };
+};
+
 // --- Create Sale (Checkout) ---
 exports.createSale = async (req, res) => {
   let conn;  // Database connection for the transaction
   try {
-    const { 
-      items, 
-      discount, 
-      customer_id, 
-      payment_method, 
+    const {
+      items,
+      discount,
+      customer_id,
+      payment_method,
       amount_paid,
       status = 'completed', // 'completed' or 'pending'
       tax_percent = 0,
       additional_charges_percent = 0,
-      note
+      note,
+      applied_bundles = [] // Array of { bundle_id, bundle_name, discount_amount }
     } = req.body;
-    // items = array of { product_id, quantity, unit_price }
+    // items = array of { product_id, quantity, unit_price, variant_id, variant_name }
 
     // Validate that the cart has items
     if (!items || items.length === 0) {
@@ -39,38 +54,68 @@ exports.createSale = async (req, res) => {
     // FOR UPDATE locks the inventory rows to prevent other transactions from
     // changing the stock while we're processing this sale (prevents overselling)
     for (const item of items) {
-      const rows = await conn.query(
-        'SELECT available_stock FROM inventory WHERE product_id = ? FOR UPDATE',
-        [item.product_id]
-      );
-      // Check if product exists and has enough stock
-      if (rows.length === 0 || rows[0].available_stock < item.quantity) {
-        await conn.rollback();  // Cancel the transaction
-        return res.status(400).json({
-          message: `Insufficient stock for product ID ${item.product_id}`,
-        });
+      let rows;
+
+      // Check if item has a variant - if so, validate variant stock
+      if (item.variant_id) {
+        rows = await conn.query(
+          'SELECT available_stock FROM variant_inventory WHERE variant_id = ? FOR UPDATE',
+          [item.variant_id]
+        );
+        // Check if variant exists and has enough stock
+        if (rows.length === 0 || rows[0].available_stock < item.quantity) {
+          await conn.rollback();  // Cancel the transaction
+          return res.status(400).json({
+            message: `Insufficient stock for variant ID ${item.variant_id}`,
+          });
+        }
+      } else {
+        // Regular product stock validation
+        rows = await conn.query(
+          'SELECT available_stock FROM inventory WHERE product_id = ? FOR UPDATE',
+          [item.product_id]
+        );
+        // Check if product exists and has enough stock
+        if (rows.length === 0 || rows[0].available_stock < item.quantity) {
+          await conn.rollback();  // Cancel the transaction
+          return res.status(400).json({
+            message: `Insufficient stock for product ID ${item.product_id}`,
+          });
+        }
       }
     }
 
-    // Step 2: Calculate sale totals
+    // Step 2: Calculate sale totals (all rounded to 2 decimal places for currency precision)
     // subtotal = sum of (unit_price * quantity) for all items
-    const subtotal = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
-    const discountAmt = discount || 0;
-    
+    const subtotal = round2(items.reduce((sum, item) => sum + round2(item.unit_price * item.quantity), 0));
+    const discountAmt = round2(discount || 0);
+
+    // Calculate bundle discount
+    const bundleDiscountAmt = round2(applied_bundles.reduce((sum, bundle) => sum + (bundle.discount_amount || 0), 0));
+
     // Calculate Tax and Additional Charges
-    const taxAmt = subtotal * (parseFloat(tax_percent) / 100);
-    const additionalAmt = subtotal * (parseFloat(additional_charges_percent) / 100);
-    
-    // Total Amount = Subtotal + Tax + Additional - Discount
-    const total_amount = subtotal + taxAmt + additionalAmt - discountAmt;
+    const taxAmt = round2(subtotal * (parseFloat(tax_percent) / 100));
+    const additionalAmt = round2(subtotal * (parseFloat(additional_charges_percent) / 100));
+
+    // Total Amount = Subtotal + Tax + Additional - Discount - Bundle Discount
+    const total_amount = round2(subtotal + taxAmt + additionalAmt - discountAmt - bundleDiscountAmt);
     
     // Net amount is usually the same as total_amount in this logic, but if we want to store pre-discount
     // Let's stick to total_amount being the final payable.
     
-    // Validate discount doesn't exceed subtotal (or total?)
-    if (discountAmt > subtotal + taxAmt + additionalAmt) {
+    // Validate discount: cannot exceed total, and max 50% for non-admin users
+    const maxAllowedTotal = subtotal + taxAmt + additionalAmt;
+    if (discountAmt > maxAllowedTotal) {
       await conn.rollback();
       return res.status(400).json({ message: 'Discount cannot exceed total amount' });
+    }
+
+    // Max 50% discount for Cashier role (Admin/Manager can give higher)
+    const maxDiscountPercent = req.user.role_name === 'Cashier' ? 50 : 100;
+    const discountPercent = subtotal > 0 ? (discountAmt / subtotal) * 100 : 0;
+    if (discountPercent > maxDiscountPercent) {
+      await conn.rollback();
+      return res.status(400).json({ message: `Discount cannot exceed ${maxDiscountPercent}% of subtotal for your role` });
     }
 
     // Step 3: Insert the sale header record
@@ -81,17 +126,19 @@ exports.createSale = async (req, res) => {
     
     const saleResult = await conn.query(
       `INSERT INTO sales (
-        total_amount, discount, net_amount, user_id, customer_id, 
-        payment_method, amount_paid, status, 
+        total_amount, discount, bundle_discount, bundle_count, net_amount, user_id, customer_id,
+        payment_method, amount_paid, status,
         tax_percent, tax_amount, additional_charges_percent, additional_charges_amount, note
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        total_amount, 
-        discountAmt, 
+        total_amount,
+        discountAmt,
+        bundleDiscountAmt,
+        applied_bundles.length,
         total_amount, // keeping net_amount same as total for now, or could be subtotal. Let's use total.
-        req.user.user_id, 
-        customer_id || 1, 
-        payment_method || 'cash', 
+        req.user.user_id,
+        customer_id || 1,
+        payment_method || 'cash',
         finalAmountPaid,
         status,
         tax_percent,
@@ -106,22 +153,46 @@ exports.createSale = async (req, res) => {
 
     // Step 4: Insert each cart item as a sale detail record and deduct stock
     for (const item of items) {
-      // Insert line item into sale_details table
+      // Insert line item into sale_details table (with variant info if applicable)
       await conn.query(
-        'INSERT INTO sale_details (sale_id, product_id, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?)',
-        [sale_id, item.product_id, item.quantity, item.unit_price, item.unit_price * item.quantity]
+        'INSERT INTO sale_details (sale_id, product_id, variant_id, variant_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [sale_id, item.product_id, item.variant_id || null, item.variant_name || null, item.quantity, item.unit_price, round2(item.unit_price * item.quantity)]
       );
 
-      // Deduct stock from the inventory table
-      await conn.query(
-        'UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?',
-        [item.quantity, item.product_id]
-      );
-      // Also deduct stock from the products table (kept in sync)
-      await conn.query(
-        'UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?',
-        [item.quantity, item.product_id]
-      );
+      // Deduct stock - check if variant or regular product
+      if (item.variant_id) {
+        // Deduct from variant inventory
+        await conn.query(
+          'UPDATE variant_inventory SET available_stock = available_stock - ? WHERE variant_id = ?',
+          [item.quantity, item.variant_id]
+        );
+        // Also deduct from product_variants table (kept in sync)
+        await conn.query(
+          'UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE variant_id = ?',
+          [item.quantity, item.variant_id]
+        );
+      } else {
+        // Deduct from regular inventory
+        await conn.query(
+          'UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?',
+          [item.quantity, item.product_id]
+        );
+        // Also deduct stock from the products table (kept in sync)
+        await conn.query(
+          'UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?',
+          [item.quantity, item.product_id]
+        );
+      }
+    }
+
+    // Step 5: Insert bundle records if any bundles were applied
+    if (applied_bundles && applied_bundles.length > 0) {
+      for (const bundle of applied_bundles) {
+        await conn.query(
+          'INSERT INTO sale_bundles (sale_id, bundle_id, bundle_name, discount_amount) VALUES (?, ?, ?, ?)',
+          [sale_id, bundle.bundle_id, bundle.bundle_name, round2(bundle.discount_amount)]
+        );
+      }
     }
 
     await conn.commit();  // COMMIT TRANSACTION
@@ -166,9 +237,9 @@ exports.createSale = async (req, res) => {
 exports.getPending = async (req, res) => {
   try {
     const { page, limit } = req.query;
-    
+
     let sql = `
-      SELECT s.*, c.customer_name, u.name as cashier_name 
+      SELECT s.*, c.customer_name, u.name as cashier_name
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
@@ -177,20 +248,18 @@ exports.getPending = async (req, res) => {
     const params = [];
 
     if (page && limit) {
-      const pageNum = parseInt(page);
-      const limitNum = parseInt(limit);
-      const offset = (pageNum - 1) * limitNum;
+      const pg = parsePagination(page, limit);
 
       const countResult = await query("SELECT COUNT(*) as total FROM sales WHERE status = 'pending'");
       const total = Number(countResult[0].total);
 
       sql += ' ORDER BY s.sale_date DESC LIMIT ? OFFSET ?';
-      params.push(limitNum, offset);
-      
+      params.push(pg.limit, pg.offset);
+
       const rows = await query(sql, params);
       return res.json({
         data: rows,
-        pagination: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) }
+        pagination: { total, page: pg.page, limit: pg.limit, totalPages: Math.ceil(total / pg.limit) }
       });
     }
 
@@ -247,10 +316,17 @@ exports.deleteSale = async (req, res) => {
     }
 
     // Restore stock
-    const items = await conn.query('SELECT product_id, quantity FROM sale_details WHERE sale_id = ?', [id]);
+    const items = await conn.query('SELECT product_id, variant_id, quantity FROM sale_details WHERE sale_id = ?', [id]);
     for (const item of items) {
-      await conn.query('UPDATE inventory SET available_stock = available_stock + ? WHERE product_id = ?', [item.quantity, item.product_id]);
-      await conn.query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?', [item.quantity, item.product_id]);
+      if (item.variant_id) {
+        // Restore variant stock
+        await conn.query('UPDATE variant_inventory SET available_stock = available_stock + ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
+        await conn.query('UPDATE product_variants SET stock_quantity = stock_quantity + ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
+      } else {
+        // Restore regular product stock
+        await conn.query('UPDATE inventory SET available_stock = available_stock + ? WHERE product_id = ?', [item.quantity, item.product_id]);
+        await conn.query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?', [item.quantity, item.product_id]);
+      }
     }
 
     // Delete records
@@ -320,13 +396,11 @@ exports.getAll = async (req, res) => {
     }
 
     if (page && limit) {
-      const pageNum = parseInt(page);
-      const limitNum = parseInt(limit);
-      const offset = (pageNum - 1) * limitNum;
+      const pg = parsePagination(page, limit);
 
       // Count query for pagination
       let countSql = `
-        SELECT COUNT(*) as total 
+        SELECT COUNT(*) as total
         FROM sales s
         LEFT JOIN customers c ON s.customer_id = c.customer_id
         WHERE 1=1
@@ -353,12 +427,12 @@ exports.getAll = async (req, res) => {
       const total = Number(countResult[0].total);
 
       sql += ' ORDER BY s.sale_date DESC LIMIT ? OFFSET ?';
-      params.push(limitNum, offset);
+      params.push(pg.limit, pg.offset);
 
       const rows = await query(sql, params);
       return res.json({
         data: rows,
-        pagination: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) }
+        pagination: { total, page: pg.page, limit: pg.limit, totalPages: Math.ceil(total / pg.limit) }
       });
     }
 
@@ -422,10 +496,17 @@ exports.refundSale = async (req, res) => {
     }
 
     // Restore stock
-    const items = await conn.query('SELECT product_id, quantity FROM sale_details WHERE sale_id = ?', [id]);
+    const items = await conn.query('SELECT product_id, variant_id, quantity FROM sale_details WHERE sale_id = ?', [id]);
     for (const item of items) {
-      await conn.query('UPDATE inventory SET available_stock = available_stock + ? WHERE product_id = ?', [item.quantity, item.product_id]);
-      await conn.query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?', [item.quantity, item.product_id]);
+      if (item.variant_id) {
+        // Restore variant stock
+        await conn.query('UPDATE variant_inventory SET available_stock = available_stock + ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
+        await conn.query('UPDATE product_variants SET stock_quantity = stock_quantity + ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
+      } else {
+        // Restore regular product stock
+        await conn.query('UPDATE inventory SET available_stock = available_stock + ? WHERE product_id = ?', [item.quantity, item.product_id]);
+        await conn.query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?', [item.quantity, item.product_id]);
+      }
     }
 
     // Update status

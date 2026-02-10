@@ -165,7 +165,7 @@ exports.getReturns = async (req, res) => {
     if (date_end) countParams.push(date_end + ' 23:59:59');
 
     const countResult = await query(countSql, countParams);
-    const total = countResult[0].total;
+    const total = Number(countResult[0].total);
 
     const returns = await query(sql, params);
     
