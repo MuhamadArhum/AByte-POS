@@ -166,7 +166,7 @@ const ReceiveStockModal = ({ isOpen, onClose, onSuccess, poId, poNumber }: Recei
                           />
                         </td>
                         <td className="p-4 text-right text-gray-700">
-                          Rs. {item.unit_cost.toFixed(2)}
+                          ${Number(item.unit_cost).toFixed(2)}
                         </td>
                       </tr>
                     ))}

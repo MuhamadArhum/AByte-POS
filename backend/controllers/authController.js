@@ -87,7 +87,7 @@ exports.verify = async (req, res) => {
       user_id: req.user.user_id,
       name: req.user.name,
       email: req.user.email,
-      role: req.user.role_name,
+      role_name: req.user.role_name,
     },
   });
 };

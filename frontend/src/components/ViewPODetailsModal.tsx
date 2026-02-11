@@ -155,7 +155,7 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
                     <DollarSign className="text-purple-600" size={20} />
                     <h3 className="font-semibold text-gray-800">Total Amount</h3>
                   </div>
-                  <p className="text-2xl font-bold text-purple-600">Rs. {po.total_amount.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-purple-600">${Number(po.total_amount || 0).toFixed(2)}</p>
                 </div>
               </div>
 
@@ -206,10 +206,10 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
                           </span>
                         </td>
                         <td className="p-4 text-right text-gray-700">
-                          Rs. {item.unit_cost.toFixed(2)}
+                          ${Number(item.unit_cost).toFixed(2)}
                         </td>
                         <td className="p-4 text-right font-semibold text-gray-900">
-                          Rs. {item.total_cost.toFixed(2)}
+                          ${Number(item.total_cost).toFixed(2)}
                         </td>
                       </tr>
                     ))}
@@ -220,7 +220,7 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
                         Grand Total:
                       </td>
                       <td className="p-4 text-right font-bold text-purple-600 text-xl">
-                        Rs. {po.total_amount.toFixed(2)}
+                        ${Number(po.total_amount || 0).toFixed(2)}
                       </td>
                     </tr>
                   </tfoot>

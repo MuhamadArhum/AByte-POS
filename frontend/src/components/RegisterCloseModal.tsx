@@ -109,7 +109,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                 <User size={18} />
                 <p className="text-xs font-semibold uppercase">Cashier</p>
               </div>
-              <p className="text-lg font-bold text-purple-800 truncate">{register.cashier_name || 'Staff'}</p>
+              <p className="text-lg font-bold text-purple-800 truncate">{register.opened_by_name || 'Staff'}</p>
             </div>
             <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-xl p-4">
               <div className="flex items-center gap-2 text-emerald-600 mb-2">

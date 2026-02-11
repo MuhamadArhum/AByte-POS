@@ -383,7 +383,6 @@ const Returns = () => {
                   <th className="p-4">Return ID</th>
                   <th className="p-4">Sale #</th>
                   <th className="p-4">Date</th>
-                  <th className="p-4">Type</th>
                   <th className="p-4">Reason</th>
                   <th className="p-4">Refund</th>
                   <th className="p-4">Processed By</th>
@@ -395,13 +394,8 @@ const Returns = () => {
                     <td className="p-4 font-medium">#{r.return_id}</td>
                     <td className="p-4">#{r.sale_id}</td>
                     <td className="p-4 text-gray-500">{new Date(r.return_date).toLocaleDateString()}</td>
-                    <td className="p-4">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${r.return_type === 'exchange' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
-                        {r.return_type}
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-600">{r.reason.replace(/_/g, ' ')}</td>
-                    <td className="p-4 font-medium text-red-600">${parseFloat(r.total_refund_amount).toFixed(2)}</td>
+                    <td className="p-4 text-gray-600 capitalize">{(r.reason || '').replace(/_/g, ' ')}</td>
+                    <td className="p-4 font-medium text-red-600">${parseFloat(r.refund_amount || 0).toFixed(2)}</td>
                     <td className="p-4 text-gray-600">{r.processed_by}</td>
                   </tr>
                 ))}

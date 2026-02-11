@@ -248,7 +248,7 @@ const Customers = () => {
                 <div className="mt-4 flex justify-center gap-2 text-sm text-gray-600">
                   <span className="flex items-center gap-1 bg-white px-3 py-1 rounded-full border border-gray-200">
                     <ShoppingBag size={14} className="text-emerald-500" />
-                    {purchaseHistory.length} Orders
+                    {historyTotalItems || purchaseHistory.length} Orders
                   </span>
                   <span className="flex items-center gap-1 bg-white px-3 py-1 rounded-full border border-gray-200">
                     <Clock size={14} className="text-blue-500" />

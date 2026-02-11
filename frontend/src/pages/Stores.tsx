@@ -13,7 +13,7 @@ const Stores = () => {
   const fetchStores = async () => {
     try {
       const res = await api.get('/stores');
-      setStores(res.data.data);
+      setStores(res.data.data || []);
     } catch (error) {
       console.error(error);
     } finally {

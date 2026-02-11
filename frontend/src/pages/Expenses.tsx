@@ -46,9 +46,9 @@ const Expenses = () => {
             {expenses.map((expense: any) => (
               <tr key={expense.expense_id} className="border-b hover:bg-gray-50">
                 <td className="p-4">{new Date(expense.expense_date).toLocaleDateString()}</td>
-                <td className="p-4">{expense.description}</td>
-                <td className="p-4">{expense.category_name}</td>
-                <td className="p-4 text-right font-semibold">Rs. {expense.amount.toFixed(2)}</td>
+                <td className="p-4">{expense.title || expense.description}</td>
+                <td className="p-4">{expense.category || 'Uncategorized'}</td>
+                <td className="p-4 text-right font-semibold">${Number(expense.amount).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>

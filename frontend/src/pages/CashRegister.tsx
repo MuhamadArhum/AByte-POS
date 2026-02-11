@@ -158,7 +158,7 @@ const CashRegister = () => {
             </button>
           </div>
 
-          {(user?.role === 'Admin' || user?.role === 'Manager') && (
+          {(user?.role_name === 'Admin' || user?.role_name === 'Manager') && (
             <button
               onClick={fetchHistory}
               className="mt-4 w-full text-gray-500 hover:text-gray-700 text-sm flex items-center justify-center gap-2 py-2"
@@ -251,7 +251,7 @@ const CashRegister = () => {
             <Plus size={18} />
             Cash In/Out
           </button>
-          {(user?.role === 'Admin' || user?.role === 'Manager') && (
+          {(user?.role_name === 'Admin' || user?.role_name === 'Manager') && (
             <button
               onClick={() => setShowCloseModal(true)}
               className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
@@ -342,6 +342,7 @@ const CashRegister = () => {
         isOpen={showMovementModal}
         onClose={() => setShowMovementModal(false)}
         onSuccess={fetchRegister}
+        currentBalance={expectedCash}
       />
 
       <RegisterCloseModal

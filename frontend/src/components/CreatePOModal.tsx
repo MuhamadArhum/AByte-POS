@@ -297,7 +297,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Unit Cost (Rs.)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Unit Cost ($)</label>
                     <input
                       type="number"
                       min="0"
@@ -336,8 +336,8 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                         <tr key={index} className="border-t hover:bg-gray-50">
                           <td className="p-3">{item.product_name}</td>
                           <td className="p-3 text-center">{item.quantity}</td>
-                          <td className="p-3 text-right">Rs. {item.unit_cost.toFixed(2)}</td>
-                          <td className="p-3 text-right font-semibold">Rs. {item.total_cost.toFixed(2)}</td>
+                          <td className="p-3 text-right">${Number(item.unit_cost).toFixed(2)}</td>
+                          <td className="p-3 text-right font-semibold">${Number(item.total_cost).toFixed(2)}</td>
                           <td className="p-3 text-center">
                             <button
                               onClick={() => removeItem(index)}
@@ -355,7 +355,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                           Total Amount:
                         </td>
                         <td className="p-3 text-right font-bold text-blue-600 text-lg">
-                          Rs. {calculateTotal().toFixed(2)}
+                          ${calculateTotal().toFixed(2)}
                         </td>
                         <td></td>
                       </tr>
@@ -424,8 +424,8 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                       <tr key={index} className="border-t">
                         <td className="p-3">{item.product_name}</td>
                         <td className="p-3 text-center">{item.quantity}</td>
-                        <td className="p-3 text-right">Rs. {item.unit_cost.toFixed(2)}</td>
-                        <td className="p-3 text-right font-semibold">Rs. {item.total_cost.toFixed(2)}</td>
+                        <td className="p-3 text-right">${Number(item.unit_cost).toFixed(2)}</td>
+                        <td className="p-3 text-right font-semibold">${Number(item.total_cost).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -435,7 +435,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                         Grand Total:
                       </td>
                       <td className="p-3 text-right font-bold text-green-600 text-xl">
-                        Rs. {calculateTotal().toFixed(2)}
+                        ${calculateTotal().toFixed(2)}
                       </td>
                     </tr>
                   </tfoot>

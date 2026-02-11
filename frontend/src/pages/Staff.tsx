@@ -195,7 +195,7 @@ const Staff = () => {
                   <td className="p-4 text-gray-600">{member.department || '-'}</td>
                   <td className="p-4 text-gray-600">{member.phone || '-'}</td>
                   <td className="p-4 text-right font-medium">
-                    {member.salary ? `Rs. ${member.salary.toFixed(0)}` : '-'}
+                    {member.salary ? `$${Number(member.salary).toFixed(0)}` : '-'}
                   </td>
                   <td className="p-4 text-center">
                     <span className={`px-3 py-1 rounded-full text-sm font-semibold ${

@@ -117,15 +117,14 @@ const Dashboard = () => {
       const monthStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
       const [
-        todayRes, 
+        todayRes,
         yesterdayRes,
-        dateRangeRes, 
+        dateRangeRes,
         weekRes,
         monthRes,
         inventoryRes,
         customersRes,
-        recentOrdersRes,
-        topProductsRes
+        recentOrdersRes
       ] = await Promise.all([
         api.get('/reports/daily'),
         api.get(`/reports/date-range?start_date=${yesterday}&end_date=${yesterday}`),
@@ -133,9 +132,8 @@ const Dashboard = () => {
         api.get(`/reports/date-range?start_date=${weekStart}&end_date=${today}`),
         api.get(`/reports/date-range?start_date=${monthStart}&end_date=${today}`),
         api.get('/reports/inventory'),
-        api.get('/customers'),
-        api.get('/sales?limit=5'),
-        api.get(`/reports/date-range?start_date=${monthStart}&end_date=${today}`)
+        api.get('/customers?page=1&limit=1'),
+        api.get('/sales?page=1&limit=5')
       ]);
 
       // Calculate stats
@@ -157,10 +155,10 @@ const Dashboard = () => {
         totalSales: todayRevenue,
         orderCount: todayOrders,
         lowStockCount: (inventoryRes.data.low_stock?.length || 0) + (inventoryRes.data.out_of_stock?.length || 0),
-        customerCount: customersRes.data.customers?.length || 0,
+        customerCount: customersRes.data.pagination?.total || customersRes.data.data?.length || 0,
         todayRevenue: todayRevenue,
-        weekRevenue: parseFloat(weekRes.data.total_revenue || 0),
-        monthRevenue: parseFloat(monthRes.data.total_revenue || 0),
+        weekRevenue: parseFloat(weekRes.data.summary?.total_revenue || 0),
+        monthRevenue: parseFloat(monthRes.data.summary?.total_revenue || 0),
         revenueGrowth,
         ordersGrowth
       });
@@ -179,13 +177,26 @@ const Dashboard = () => {
       setChartData(salesData);
 
       // Recent Orders
-      if (recentOrdersRes.data.sales) {
-        setRecentOrders(recentOrdersRes.data.sales.slice(0, 5));
-      }
+      const recentSales = recentOrdersRes.data.data || recentOrdersRes.data.sales || [];
+      setRecentOrders(recentSales.slice(0, 5).map((s: any) => ({
+        sale_id: s.sale_id,
+        total: s.total_amount || s.net_amount || 0,
+        customer_name: s.customer_name,
+        created_at: s.sale_date || s.created_at,
+        status: s.status
+      })));
 
-      // Top Products
-      const productSales = topProductsRes.data.product_sales || [];
-      setTopProducts(productSales.slice(0, 5));
+      // Top Products from product report
+      try {
+        const productReportRes = await api.get('/reports/product');
+        const productSales = productReportRes.data.data || productReportRes.data || [];
+        setTopProducts(productSales.slice(0, 5).map((p: any) => ({
+          product_id: p.product_id || 0,
+          product_name: p.product_name,
+          quantity_sold: p.total_quantity || 0,
+          revenue: p.total_revenue || 0
+        })));
+      } catch { setTopProducts([]); }
 
     } catch (error) {
       console.error("Failed to fetch dashboard data", error);

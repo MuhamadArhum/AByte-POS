@@ -4,7 +4,7 @@ const { logAction } = require('../services/auditService');
 exports.createReturn = async (req, res) => {
   let conn;
   try {
-    const { sale_id, items, reason, reason_note, refund_method, return_type = 'return' } = req.body;
+    const { sale_id, items, reason } = req.body;
 
     if (!sale_id || !items || items.length === 0) {
       return res.status(400).json({ message: 'Sale ID and items are required' });
@@ -32,7 +32,7 @@ exports.createReturn = async (req, res) => {
 
     // Get existing returns for this sale
     const existingReturns = await conn.query(
-      `SELECT rd.product_id, SUM(rd.quantity_returned) as total_returned
+      `SELECT rd.product_id, SUM(rd.quantity) as total_returned
        FROM returns r
        JOIN return_details rd ON r.return_id = rd.return_id
        WHERE r.sale_id = ?
@@ -56,24 +56,25 @@ exports.createReturn = async (req, res) => {
 
       const alreadyReturned = returnedMap[item.product_id] || 0;
       const maxReturnable = original.quantity - alreadyReturned;
+      const returnQty = item.quantity || item.quantity_returned || 0;
 
-      if (item.quantity_returned > maxReturnable) {
+      if (returnQty > maxReturnable) {
         await conn.rollback();
         return res.status(400).json({
-          message: `Cannot return ${item.quantity_returned} of product ${item.product_id}. Max returnable: ${maxReturnable}`
+          message: `Cannot return ${returnQty} of product ${item.product_id}. Max returnable: ${maxReturnable}`
         });
       }
 
+      item.returnQty = returnQty;
       item.unit_price = parseFloat(original.unit_price);
-      item.refund_amount = item.unit_price * item.quantity_returned;
-      totalRefund += item.refund_amount;
+      item.refund_price = item.unit_price * returnQty;
+      totalRefund += item.refund_price;
     }
 
     // Create return record
     const returnResult = await conn.query(
-      `INSERT INTO returns (sale_id, user_id, return_type, reason, reason_note, refund_method, total_refund_amount)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [sale_id, req.user.user_id, return_type, reason, reason_note || null, refund_method || 'original', totalRefund]
+      'INSERT INTO returns (sale_id, user_id, reason, refund_amount) VALUES (?, ?, ?, ?)',
+      [sale_id, req.user.user_id, reason, totalRefund]
     );
 
     const returnId = Number(returnResult.insertId);
@@ -81,35 +82,33 @@ exports.createReturn = async (req, res) => {
     // Insert return details and restore stock
     for (const item of items) {
       await conn.query(
-        'INSERT INTO return_details (return_id, product_id, quantity_returned, unit_price, refund_amount) VALUES (?, ?, ?, ?, ?)',
-        [returnId, item.product_id, item.quantity_returned, item.unit_price, item.refund_amount]
+        'INSERT INTO return_details (return_id, product_id, quantity, refund_price) VALUES (?, ?, ?, ?)',
+        [returnId, item.product_id, item.returnQty, item.refund_price]
       );
 
       await conn.query(
         'UPDATE inventory SET available_stock = available_stock + ? WHERE product_id = ?',
-        [item.quantity_returned, item.product_id]
+        [item.returnQty, item.product_id]
       );
       await conn.query(
         'UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?',
-        [item.quantity_returned, item.product_id]
+        [item.returnQty, item.product_id]
       );
     }
 
-    // Update cash register if refund is cash
-    if (refund_method === 'cash') {
-      const openRegister = await conn.query("SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1");
-      if (openRegister.length > 0) {
-        await conn.query(
-          'UPDATE cash_registers SET total_cash_out = total_cash_out + ? WHERE register_id = ?',
-          [totalRefund, openRegister[0].register_id]
-        );
-      }
+    // Update cash register for refund
+    const openRegister = await conn.query("SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1");
+    if (openRegister.length > 0) {
+      await conn.query(
+        'UPDATE cash_registers SET total_cash_out = total_cash_out + ? WHERE register_id = ?',
+        [totalRefund, openRegister[0].register_id]
+      );
     }
 
     await conn.commit();
 
     await logAction(req.user.user_id, req.user.name, 'RETURN_CREATED', 'return', returnId,
-      { sale_id, return_type, reason, totalRefund, items_count: items.length }, req.ip);
+      { sale_id, reason, totalRefund, items_count: items.length }, req.ip);
 
     const newReturn = await query(
       `SELECT r.*, u.name as processed_by
@@ -119,7 +118,10 @@ exports.createReturn = async (req, res) => {
       [returnId]
     );
 
-    const returnDetails = await query('SELECT rd.*, p.product_name FROM return_details rd JOIN products p ON rd.product_id = p.product_id WHERE rd.return_id = ?', [returnId]);
+    const returnDetails = await query(
+      'SELECT rd.*, p.product_name FROM return_details rd JOIN products p ON rd.product_id = p.product_id WHERE rd.return_id = ?',
+      [returnId]
+    );
 
     res.status(201).json({ ...newReturn[0], items: returnDetails });
   } catch (error) {
@@ -154,12 +156,10 @@ exports.getReturns = async (req, res) => {
     sql += ' ORDER BY r.return_date DESC LIMIT ? OFFSET ?';
     params.push(parseInt(limit), (parseInt(page) - 1) * parseInt(limit));
 
-    // Get total count for pagination
-    const countSql = `SELECT COUNT(*) as total FROM returns r WHERE 1=1` + 
-      (date_start ? ' AND r.return_date >= ?' : '') + 
+    const countSql = `SELECT COUNT(*) as total FROM returns r WHERE 1=1` +
+      (date_start ? ' AND r.return_date >= ?' : '') +
       (date_end ? ' AND r.return_date <= ?' : '');
-    
-    // Use a separate params array for count query to avoid issues with limit/offset params
+
     const countParams = [];
     if (date_start) countParams.push(date_start);
     if (date_end) countParams.push(date_end + ' 23:59:59');
@@ -168,7 +168,7 @@ exports.getReturns = async (req, res) => {
     const total = Number(countResult[0].total);
 
     const returns = await query(sql, params);
-    
+
     res.json({
       data: returns,
       pagination: {
@@ -211,7 +211,7 @@ exports.getSaleForReturn = async (req, res) => {
 
     // Get already returned quantities
     const returned = await query(
-      `SELECT rd.product_id, SUM(rd.quantity_returned) as total_returned
+      `SELECT rd.product_id, SUM(rd.quantity) as total_returned
        FROM returns r
        JOIN return_details rd ON r.return_id = rd.return_id
        WHERE r.sale_id = ?

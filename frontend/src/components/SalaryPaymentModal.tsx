@@ -201,7 +201,7 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
                     Base Salary Amount *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rs.</span>
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
                     <input
                       type="number"
                       name="amount"
@@ -223,7 +223,7 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
                       Deductions
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rs.</span>
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
                       <input
                         type="number"
                         name="deductions"
@@ -244,7 +244,7 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
                       Bonuses
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rs.</span>
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
                       <input
                         type="number"
                         name="bonuses"
@@ -265,7 +265,7 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-semibold text-gray-700">Net Amount:</span>
                     <span className={`text-2xl font-bold ${netAmount >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
-                      Rs. {netAmount.toFixed(2)}
+                      ${netAmount.toFixed(2)}
                     </span>
                   </div>
                   <div className="text-xs text-gray-600 mt-2">

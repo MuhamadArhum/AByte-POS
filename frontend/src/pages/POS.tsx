@@ -110,7 +110,8 @@ const POS = () => {
     const fetchProducts = async () => {
       try {
         const res = await api.get('/products');
-        const mappedProducts = res.data.map((p: any) => ({
+        const rows = res.data.data || res.data;
+        const mappedProducts = (Array.isArray(rows) ? rows : []).map((p: any) => ({
           ...p,
           price: typeof p.price === 'string' ? parseFloat(p.price) : p.price,
           stock_quantity: p.available_stock || p.stock_quantity || 0
@@ -126,7 +127,7 @@ const POS = () => {
     const fetchCategories = async () => {
       try {
         const res = await api.get('/products/categories');
-        setCategories(res.data);
+        setCategories(res.data.data || res.data);
       } catch (error) {
         console.error("Failed to fetch categories", error);
       }
@@ -198,10 +199,12 @@ const POS = () => {
   const fetchCustomers = async () => {
     try {
       const res = await api.get('/customers');
-      setCustomers(res.data.customers || res.data);
+      const customerList = res.data.data || res.data;
+      setCustomers(Array.isArray(customerList) ? customerList : []);
       // Auto-select Walk-in Customer (ID 1) if none selected
       if (!selectedCustomer) {
-        const walkin = (res.data.customers || res.data).find((c: any) => c.customer_id === 1);
+        const list = Array.isArray(customerList) ? customerList : [];
+        const walkin = list.find((c: any) => c.customer_id === 1);
         if (walkin) setSelectedCustomer(walkin);
       }
     } catch (error) {
@@ -449,7 +452,7 @@ const POS = () => {
               <BarChart size={20} />
               Report
             </button>
-            {(user?.role === 'admin' || user?.role === 'manager') && (
+            {(user?.role_name === 'Admin' || user?.role_name === 'Manager') && (
               <button
                 onClick={async () => {
                   try {

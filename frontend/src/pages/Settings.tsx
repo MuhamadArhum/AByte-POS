@@ -42,7 +42,7 @@ interface User {
   name: string;
   email: string;
   role: string;
-  is_active: boolean;
+  role_id: number;
   created_at: string;
 }
 
@@ -70,7 +70,7 @@ const Settings = () => {
     name: '',
     email: '',
     password: '',
-    role: 'cashier'
+    role_id: 3  // Default: Cashier
   });
 
   const [loading, setLoading] = useState(true);
@@ -79,7 +79,7 @@ const Settings = () => {
 
   useEffect(() => {
     fetchSettings();
-    if (currentUser?.role === 'admin') {
+    if (currentUser?.role_name === 'Admin') {
       fetchUsers();
     }
   }, [currentUser]);
@@ -98,7 +98,7 @@ const Settings = () => {
   const fetchUsers = async () => {
     try {
       const res = await api.get('/users');
-      setUsers(res.data.users || res.data);
+      setUsers(res.data.data || []);
     } catch (err) {
       console.error('Failed to load users', err);
     }
@@ -126,11 +126,10 @@ const Settings = () => {
     
     try {
       if (editingUser) {
-        // Update user
         const payload: any = {
           name: userForm.name,
           email: userForm.email,
-          role: userForm.role
+          role_id: userForm.role_id
         };
         if (userForm.password) {
           payload.password = userForm.password;
@@ -138,14 +137,18 @@ const Settings = () => {
         await api.put(`/users/${editingUser.user_id}`, payload);
         setMessage({ type: 'success', text: 'User updated successfully' });
       } else {
-        // Create user
-        await api.post('/users', userForm);
+        await api.post('/users', {
+          name: userForm.name,
+          email: userForm.email,
+          password: userForm.password,
+          role_id: userForm.role_id
+        });
         setMessage({ type: 'success', text: 'User created successfully' });
       }
-      
+
       setShowUserModal(false);
       setEditingUser(null);
-      setUserForm({ name: '', email: '', password: '', role: 'cashier' });
+      setUserForm({ name: '', email: '', password: '', role_id: 3 });
       fetchUsers();
       setTimeout(() => setMessage({ type: '', text: '' }), 3000);
     } catch (err: any) {
@@ -171,17 +174,6 @@ const Settings = () => {
     }
   };
 
-  const handleToggleUserStatus = async (userId: number, isActive: boolean) => {
-    try {
-      await api.put(`/users/${userId}`, { is_active: !isActive });
-      setMessage({ type: 'success', text: 'User status updated' });
-      fetchUsers();
-      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Failed to update user status' });
-    }
-  };
-
   const handleBackup = async () => {
     try {
       const res = await api.post('/backup/create');
@@ -199,11 +191,11 @@ const Settings = () => {
         name: user.name,
         email: user.email,
         password: '',
-        role: user.role
+        role_id: user.role_id
       });
     } else {
       setEditingUser(null);
-      setUserForm({ name: '', email: '', password: '', role: 'cashier' });
+      setUserForm({ name: '', email: '', password: '', role_id: 3 });
     }
     setShowUserModal(true);
   };
@@ -254,7 +246,7 @@ const Settings = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
         <div className="flex border-b border-gray-200 overflow-x-auto">
           {tabs.map(tab => {
-            if (tab.adminOnly && currentUser?.role !== 'admin') return null;
+            if (tab.adminOnly && currentUser?.role_name !== 'Admin') return null;
             const Icon = tab.icon;
             return (
               <button
@@ -392,7 +384,7 @@ const Settings = () => {
           )}
 
           {/* Users Tab */}
-          {activeTab === 'users' && currentUser?.role === 'admin' && (
+          {activeTab === 'users' && currentUser?.role_name === 'Admin' && (
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-gray-800">User Management</h2>
@@ -412,7 +404,6 @@ const Settings = () => {
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Name</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Role</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
                     </tr>
                   </thead>
@@ -423,26 +414,14 @@ const Settings = () => {
                         <td className="px-6 py-4 text-gray-600">{user.email}</td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            user.role === 'admin' 
+                            user.role === 'Admin'
                               ? 'bg-purple-100 text-purple-700'
-                              : user.role === 'manager'
+                              : user.role === 'Manager'
                               ? 'bg-blue-100 text-blue-700'
                               : 'bg-gray-100 text-gray-700'
                           }`}>
                             {user.role}
                           </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <button
-                            onClick={() => handleToggleUserStatus(user.user_id, user.is_active)}
-                            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
-                              user.is_active
-                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                : 'bg-red-100 text-red-700 hover:bg-red-200'
-                            }`}
-                          >
-                            {user.is_active ? 'Active' : 'Inactive'}
-                          </button>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex gap-2">
@@ -509,7 +488,7 @@ const Settings = () => {
           )}
 
           {/* Backup Tab */}
-          {activeTab === 'backup' && currentUser?.role === 'admin' && (
+          {activeTab === 'backup' && currentUser?.role_name === 'Admin' && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-xl font-bold text-gray-800 mb-4">Backup & Restore</h2>
@@ -621,13 +600,13 @@ const Settings = () => {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Role</label>
                 <select
-                  value={userForm.role}
-                  onChange={e => setUserForm({...userForm, role: e.target.value})}
+                  value={userForm.role_id}
+                  onChange={e => setUserForm({...userForm, role_id: parseInt(e.target.value)})}
                   className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                 >
-                  <option value="cashier">Cashier</option>
-                  <option value="manager">Manager</option>
-                  <option value="admin">Admin</option>
+                  <option value={3}>Cashier</option>
+                  <option value={2}>Manager</option>
+                  <option value={1}>Admin</option>
                 </select>
               </div>
 

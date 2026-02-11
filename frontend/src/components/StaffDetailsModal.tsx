@@ -204,7 +204,7 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                       <p className="text-sm text-gray-600 mb-1">Salary</p>
                       <p className="text-lg font-semibold text-gray-800">
-                        Rs. {staff.salary?.toFixed(2) || '0.00'} / {staff.salary_type}
+                        ${Number(staff.salary || 0).toFixed(2)} / {staff.salary_type}
                       </p>
                     </div>
 
@@ -319,15 +319,15 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
                               <td className="p-4 text-sm text-gray-600">
                                 {new Date(payment.from_date).toLocaleDateString()} - {new Date(payment.to_date).toLocaleDateString()}
                               </td>
-                              <td className="p-4 text-right">Rs. {payment.amount.toFixed(2)}</td>
+                              <td className="p-4 text-right">${Number(payment.amount).toFixed(2)}</td>
                               <td className="p-4 text-right text-red-600">
-                                {payment.deductions > 0 ? `-Rs. ${payment.deductions.toFixed(2)}` : '-'}
+                                {payment.deductions > 0 ? `-$${Number(payment.deductions).toFixed(2)}` : '-'}
                               </td>
                               <td className="p-4 text-right text-green-600">
-                                {payment.bonuses > 0 ? `+Rs. ${payment.bonuses.toFixed(2)}` : '-'}
+                                {payment.bonuses > 0 ? `+$${Number(payment.bonuses).toFixed(2)}` : '-'}
                               </td>
                               <td className="p-4 text-right font-bold text-cyan-600">
-                                Rs. {payment.net_amount.toFixed(2)}
+                                ${Number(payment.net_amount).toFixed(2)}
                               </td>
                             </tr>
                           ))}

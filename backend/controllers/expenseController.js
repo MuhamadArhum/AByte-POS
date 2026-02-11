@@ -14,14 +14,13 @@ const parsePagination = (page, limit) => {
 // Get all expenses with filters
 exports.getAll = async (req, res) => {
   try {
-    const { start_date, end_date, category_id, search = '' } = req.query;
+    const { start_date, end_date, category, search = '' } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 
     let sql = `
-      SELECT e.*, ec.category_name, u.name as created_by_name
+      SELECT e.*, u.name as created_by_name
       FROM expenses e
-      LEFT JOIN expense_categories ec ON e.category_id = ec.category_id
-      LEFT JOIN users u ON e.created_by = u.user_id
+      LEFT JOIN users u ON e.user_id = u.user_id
       WHERE 1=1
     `;
     let countSql = 'SELECT COUNT(*) as total FROM expenses WHERE 1=1';
@@ -35,22 +34,22 @@ exports.getAll = async (req, res) => {
       countParams.push(start_date, end_date);
     }
 
-    if (category_id) {
-      sql += ' AND e.category_id = ?';
-      countSql += ' AND category_id = ?';
-      params.push(category_id);
-      countParams.push(category_id);
+    if (category) {
+      sql += ' AND e.category = ?';
+      countSql += ' AND category = ?';
+      params.push(category);
+      countParams.push(category);
     }
 
     if (search) {
-      sql += ' AND (e.description LIKE ? OR e.vendor_name LIKE ?)';
-      countSql += ' AND (description LIKE ? OR vendor_name LIKE ?)';
+      sql += ' AND (e.title LIKE ? OR e.description LIKE ?)';
+      countSql += ' AND (title LIKE ? OR description LIKE ?)';
       const searchPattern = `%${search}%`;
       params.push(searchPattern, searchPattern);
       countParams.push(searchPattern, searchPattern);
     }
 
-    sql += ' ORDER BY e.expense_date DESC, e.created_at DESC LIMIT ? OFFSET ?';
+    sql += ' ORDER BY e.expense_date DESC LIMIT ? OFFSET ?';
     params.push(limit, offset);
 
     const [expenses, [{ total }]] = await Promise.all([
@@ -87,28 +86,16 @@ exports.getCategories = async (req, res) => {
 // Create expense
 exports.create = async (req, res) => {
   try {
-    const {
-      category_id,
-      amount,
-      expense_date,
-      description,
-      payment_method,
-      receipt_number,
-      vendor_name,
-      is_recurring,
-      store_id
-    } = req.body;
+    const { title, amount, category, expense_date, description } = req.body;
 
-    if (!category_id || !amount || amount <= 0 || !expense_date || !description) {
-      return res.status(400).json({ message: 'All required fields must be provided' });
+    if (!title || !amount || amount <= 0) {
+      return res.status(400).json({ message: 'Title and amount are required' });
     }
 
-    const result = await query(`
-      INSERT INTO expenses (
-        category_id, amount, expense_date, description, payment_method,
-        receipt_number, vendor_name, is_recurring, created_by, store_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [category_id, amount, expense_date, description, payment_method || 'cash', receipt_number || null, vendor_name || null, is_recurring || 0, req.user.user_id, store_id || 1]);
+    const result = await query(
+      'INSERT INTO expenses (title, amount, category, expense_date, description, user_id) VALUES (?, ?, ?, ?, ?, ?)',
+      [title, amount, category || null, expense_date || new Date(), description || null, req.user.user_id]
+    );
 
     await logAction(
       req.user.user_id,
@@ -116,7 +103,7 @@ exports.create = async (req, res) => {
       'EXPENSE_CREATED',
       'expense',
       result.insertId,
-      { category_id, amount, expense_date, description },
+      { title, amount, category },
       req.ip
     );
 
@@ -134,19 +121,10 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      category_id,
-      amount,
-      expense_date,
-      description,
-      payment_method,
-      receipt_number,
-      vendor_name,
-      is_recurring
-    } = req.body;
+    const { title, amount, category, expense_date, description } = req.body;
 
-    if (!category_id || !amount || amount <= 0 || !expense_date || !description) {
-      return res.status(400).json({ message: 'All required fields must be provided' });
+    if (!title || !amount || amount <= 0) {
+      return res.status(400).json({ message: 'Title and amount are required' });
     }
 
     const [existing] = await query('SELECT expense_id FROM expenses WHERE expense_id = ?', [id]);
@@ -154,13 +132,10 @@ exports.update = async (req, res) => {
       return res.status(404).json({ message: 'Expense not found' });
     }
 
-    await query(`
-      UPDATE expenses SET
-        category_id = ?, amount = ?, expense_date = ?, description = ?,
-        payment_method = ?, receipt_number = ?, vendor_name = ?, is_recurring = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE expense_id = ?
-    `, [category_id, amount, expense_date, description, payment_method || 'cash', receipt_number || null, vendor_name || null, is_recurring || 0, id]);
+    await query(
+      'UPDATE expenses SET title = ?, amount = ?, category = ?, expense_date = ?, description = ? WHERE expense_id = ?',
+      [title, amount, category || null, expense_date || new Date(), description || null, id]
+    );
 
     await logAction(
       req.user.user_id,
@@ -168,7 +143,7 @@ exports.update = async (req, res) => {
       'EXPENSE_UPDATED',
       'expense',
       id,
-      { amount, expense_date },
+      { title, amount },
       req.ip
     );
 
@@ -184,7 +159,7 @@ exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [existing] = await query('SELECT expense_id, description FROM expenses WHERE expense_id = ?', [id]);
+    const [existing] = await query('SELECT expense_id, title FROM expenses WHERE expense_id = ?', [id]);
     if (!existing) {
       return res.status(404).json({ message: 'Expense not found' });
     }
@@ -197,7 +172,7 @@ exports.delete = async (req, res) => {
       'EXPENSE_DELETED',
       'expense',
       id,
-      { description: existing.description },
+      { title: existing.title },
       req.ip
     );
 
@@ -211,41 +186,33 @@ exports.delete = async (req, res) => {
 // Get expense summary
 exports.getSummary = async (req, res) => {
   try {
-    const { start_date, end_date, category_id } = req.query;
+    const { start_date, end_date } = req.query;
 
-    let sql = `
-      SELECT
-        ec.category_name,
-        ec.category_id,
-        COUNT(e.expense_id) as count,
-        SUM(e.amount) as total
-      FROM expense_categories ec
-      LEFT JOIN expenses e ON ec.category_id = e.category_id
-    `;
+    let dateSql = '';
     const params = [];
 
     if (start_date && end_date) {
-      sql += ' AND e.expense_date BETWEEN ? AND ?';
+      dateSql = ' AND expense_date BETWEEN ? AND ?';
       params.push(start_date, end_date);
     }
 
-    if (category_id) {
-      sql += ' AND e.category_id = ?';
-      params.push(category_id);
-    }
-
-    sql += ' GROUP BY ec.category_id, ec.category_name ORDER BY total DESC';
-
-    const summary = await query(sql, params);
+    const summary = await query(`
+      SELECT
+        COALESCE(category, 'Uncategorized') as category_name,
+        COUNT(*) as count,
+        SUM(amount) as total
+      FROM expenses
+      WHERE 1=1 ${dateSql}
+      GROUP BY category
+      ORDER BY total DESC
+    `, params);
 
     const [totalStats] = await query(`
       SELECT
         COUNT(*) as total_expenses,
-        SUM(amount) as grand_total
+        COALESCE(SUM(amount), 0) as grand_total
       FROM expenses
-      WHERE 1=1
-      ${start_date && end_date ? 'AND expense_date BETWEEN ? AND ?' : ''}
-      ${category_id ? 'AND category_id = ?' : ''}
+      WHERE 1=1 ${dateSql}
     `, params);
 
     res.json({

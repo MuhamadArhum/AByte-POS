@@ -13,7 +13,7 @@ const StockAlerts = () => {
   const fetchAlerts = async () => {
     try {
       const res = await api.get('/purchase-orders/stock-alerts');
-      setAlerts(res.data.data);
+      setAlerts(res.data.data || []);
     } catch (error) {
       console.error(error);
     } finally {

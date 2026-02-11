@@ -164,7 +164,7 @@ const PurchaseOrders = () => {
                   <td className="p-4 font-semibold text-blue-600">{po.po_number}</td>
                   <td className="p-4">{po.supplier_name}</td>
                   <td className="p-4">{new Date(po.order_date).toLocaleDateString()}</td>
-                  <td className="p-4 text-right font-semibold">Rs. {po.total_amount.toFixed(2)}</td>
+                  <td className="p-4 text-right font-semibold">${Number(po.total_amount || 0).toFixed(2)}</td>
                   <td className="p-4 text-center">
                     <span className={`px-3 py-1 rounded-full text-sm capitalize font-semibold ${getStatusColor(po.status)}`}>
                       {po.status}

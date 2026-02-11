@@ -112,7 +112,7 @@ exports.productReport = async (req, res) => {
       percentage: totalRevenue > 0 ? ((parseFloat(r.total_revenue) / totalRevenue) * 100).toFixed(2) : 0,
     }));
 
-    res.json(withPercentage);
+    res.json({ data: withPercentage });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

@@ -14,10 +14,8 @@ const { logAction } = require('../services/auditService');
 // Used on the User Management page to display the users table.
 exports.getAll = async (req, res) => {
   try {
-    // JOIN with roles table to get role name instead of just role_id
-    // We don't select password_hash for security (never send passwords to frontend)
     const rows = await query(
-      'SELECT u.user_id, u.name, u.email, r.role_name as role, u.created_at FROM users u JOIN roles r ON u.role_id = r.role_id ORDER BY u.created_at DESC'
+      'SELECT u.user_id, u.name, u.email, u.role_id, r.role_name as role, u.created_at FROM users u JOIN roles r ON u.role_id = r.role_id ORDER BY u.created_at DESC'
     );
     res.json({ data: rows });
   } catch (err) {
@@ -50,15 +48,16 @@ exports.create = async (req, res) => {
       return res.status(400).json({ message: 'Email already exists' });
     }
 
-    // Hash the password using bcrypt with salt rounds = 10
-    // Salt is a random string added to the password before hashing for extra security
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
 
-    // Insert the new user into the database
+    // Look up role_name for the denormalized column
+    const roleRow = await query('SELECT role_name FROM roles WHERE role_id = ?', [role_id]);
+    const role_name = roleRow.length > 0 ? roleRow[0].role_name : 'Cashier';
+
     const result = await query(
-      'INSERT INTO users (name, email, password_hash, role_id) VALUES (?, ?, ?, ?)',
-      [name, email, password_hash, role_id]
+      'INSERT INTO users (name, email, password_hash, role_id, role_name) VALUES (?, ?, ?, ?, ?)',
+      [name, email, password_hash, role_id, role_name]
     );
 
     const newUserId = Number(result.insertId);
@@ -77,36 +76,47 @@ exports.create = async (req, res) => {
 // If password is provided, it gets hashed before saving.
 exports.update = async (req, res) => {
   try {
-    const { id } = req.params;  // User ID from URL parameter
+    const { id } = req.params;
     const { name, email, password, role_id } = req.body;
 
-    // Check if the user exists before trying to update
     const existing = await query('SELECT user_id FROM users WHERE user_id = ?', [id]);
     if (existing.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Build the UPDATE query dynamically
-    // Base query updates name, email, and role
-    let updateQuery = 'UPDATE users SET name = ?, email = ?, role_id = ?';
-    let params = [name, email, role_id];
+    // Build update dynamically - only update provided fields
+    const updates = [];
+    const params = [];
 
-    // If a new password was provided, hash it and add to the query
+    if (name !== undefined) { updates.push('name = ?'); params.push(name); }
+    if (email !== undefined) { updates.push('email = ?'); params.push(email); }
+    if (role_id !== undefined) {
+      updates.push('role_id = ?');
+      params.push(role_id);
+      // Also update the denormalized role_name
+      const roleRow = await query('SELECT role_name FROM roles WHERE role_id = ?', [role_id]);
+      if (roleRow.length > 0) {
+        updates.push('role_name = ?');
+        params.push(roleRow[0].role_name);
+      }
+    }
+
     if (password) {
       if (password.length < 8) {
         return res.status(400).json({ message: 'Password must be at least 8 characters' });
       }
       const salt = await bcrypt.genSalt(10);
       const password_hash = await bcrypt.hash(password, salt);
-      updateQuery += ', password_hash = ?';  // Add password update to the query
+      updates.push('password_hash = ?');
       params.push(password_hash);
     }
 
-    // Add the WHERE clause to target the specific user
-    updateQuery += ' WHERE user_id = ?';
-    params.push(id);
+    if (updates.length === 0) {
+      return res.status(400).json({ message: 'No fields to update' });
+    }
 
-    await query(updateQuery, params);
+    params.push(id);
+    await query(`UPDATE users SET ${updates.join(', ')} WHERE user_id = ?`, params);
 
     await logAction(req.user.user_id, req.user.name, 'USER_UPDATED', 'user', parseInt(id), { name, email }, req.ip);
 

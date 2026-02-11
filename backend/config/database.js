@@ -21,6 +21,8 @@ const pool = mariadb.createPool({
   database: process.env.DB_NAME || 'abyte_pos',   // Database name to connect to
   connectionLimit: 10,                             // Max 10 simultaneous connections in the pool
   acquireTimeout: 30000,                           // Wait max 30 seconds to get a connection from pool
+  bigIntAsNumber: true,                            // Convert BIGINT (COUNT/SUM results) to JS Number
+  decimalAsNumber: true,                           // Convert DECIMAL to JS Number instead of string
 });
 
 // --- getConnection() ---

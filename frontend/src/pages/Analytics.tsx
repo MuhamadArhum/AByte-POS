@@ -60,7 +60,7 @@ const Analytics = () => {
             <DollarSign className="text-emerald-600" size={24} />
             <h3 className="text-sm font-medium text-gray-600">Total Sales</h3>
           </div>
-          <p className="text-3xl font-bold text-gray-800">Rs. {stats?.sales?.net_sales?.toFixed(2) || 0}</p>
+          <p className="text-3xl font-bold text-gray-800">${Number(stats?.sales?.net_sales || 0).toFixed(2)}</p>
           <p className="text-sm text-gray-500 mt-1">{stats?.sales?.total_transactions || 0} transactions</p>
         </div>
 
@@ -69,7 +69,7 @@ const Analytics = () => {
             <TrendingUp className="text-blue-600" size={24} />
             <h3 className="text-sm font-medium text-gray-600">Expenses</h3>
           </div>
-          <p className="text-3xl font-bold text-gray-800">Rs. {stats?.expenses?.total_expenses?.toFixed(2) || 0}</p>
+          <p className="text-3xl font-bold text-gray-800">${Number(stats?.expenses?.total_expenses || 0).toFixed(2)}</p>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -77,7 +77,7 @@ const Analytics = () => {
             <Package className="text-purple-600" size={24} />
             <h3 className="text-sm font-medium text-gray-600">Profit</h3>
           </div>
-          <p className="text-3xl font-bold text-gray-800">Rs. {stats?.profit?.toFixed(2) || 0}</p>
+          <p className="text-3xl font-bold text-gray-800">${Number(stats?.profit || 0).toFixed(2)}</p>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -85,7 +85,7 @@ const Analytics = () => {
             <Users className="text-orange-600" size={24} />
             <h3 className="text-sm font-medium text-gray-600">Avg Transaction</h3>
           </div>
-          <p className="text-3xl font-bold text-gray-800">Rs. {stats?.sales?.avg_transaction?.toFixed(2) || 0}</p>
+          <p className="text-3xl font-bold text-gray-800">${Number(stats?.sales?.avg_transaction || 0).toFixed(2)}</p>
         </div>
       </div>
 
@@ -105,7 +105,7 @@ const Analytics = () => {
               <tr key={index} className="border-b hover:bg-gray-50">
                 <td className="p-4 font-medium">{product.product_name}</td>
                 <td className="p-4 text-right">{product.units_sold}</td>
-                <td className="p-4 text-right font-semibold">Rs. {product.revenue.toFixed(2)}</td>
+                <td className="p-4 text-right font-semibold">${Number(product.revenue || 0).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
