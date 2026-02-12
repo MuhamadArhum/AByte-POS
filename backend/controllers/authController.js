@@ -85,6 +85,7 @@ exports.verify = async (req, res) => {
   res.json({
     user: {
       user_id: req.user.user_id,
+      username: req.user.username,
       name: req.user.name,
       email: req.user.email,
       role_name: req.user.role_name,

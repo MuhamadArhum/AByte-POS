@@ -56,22 +56,16 @@ const Attendance = () => {
       if (filters.status !== 'all') params.status = filters.status;
 
       const res = await api.get('/staff/attendance', { params });
-      const records = res.data.data || [];
-      setAttendance(records);
+      setAttendance(res.data.data || []);
 
       if (res.data.pagination) {
         setPagination(res.data.pagination);
       }
 
-      // Calculate summary
-      const summaryData = {
-        present: records.filter((a: any) => a.status === 'present').length,
-        absent: records.filter((a: any) => a.status === 'absent').length,
-        halfDay: records.filter((a: any) => a.status === 'half_day').length,
-        leave: records.filter((a: any) => a.status === 'leave').length,
-        total: records.length
-      };
-      setSummary(summaryData);
+      // Use server-side summary (counts across ALL records, not just current page)
+      if (res.data.summary) {
+        setSummary(res.data.summary);
+      }
     } catch (error) {
       console.error(error);
     } finally {

@@ -119,20 +119,31 @@ exports.getAttendance = async (req, res) => {
 
     let sql = 'SELECT a.*, s.full_name, s.position FROM attendance a JOIN staff s ON a.staff_id = s.staff_id WHERE 1=1';
     let countSql = 'SELECT COUNT(*) as total FROM attendance a WHERE 1=1';
-    const params = [], countParams = [];
+    let summarySql = `SELECT
+      SUM(status = 'present') as present,
+      SUM(status = 'absent') as absent,
+      SUM(status = 'half_day') as half_day,
+      SUM(status = 'leave') as on_leave,
+      COUNT(*) as total
+      FROM attendance WHERE 1=1`;
+    const params = [], countParams = [], summaryParams = [];
 
     if (staff_id) {
       sql += ' AND a.staff_id = ?';
       countSql += ' AND a.staff_id = ?';
+      summarySql += ' AND staff_id = ?';
       params.push(staff_id);
       countParams.push(staff_id);
+      summaryParams.push(staff_id);
     }
 
     if (start_date && end_date) {
       sql += ' AND a.attendance_date BETWEEN ? AND ?';
       countSql += ' AND attendance_date BETWEEN ? AND ?';
+      summarySql += ' AND attendance_date BETWEEN ? AND ?';
       params.push(start_date, end_date);
       countParams.push(start_date, end_date);
+      summaryParams.push(start_date, end_date);
     }
 
     if (status) {
@@ -145,12 +156,23 @@ exports.getAttendance = async (req, res) => {
     sql += ' ORDER BY a.attendance_date DESC, s.full_name ASC LIMIT ? OFFSET ?';
     params.push(limit, offset);
 
-    const [attendance, [{total}]] = await Promise.all([
+    const [attendance, [{total}], [summary]] = await Promise.all([
       query(sql, params),
-      query(countSql, countParams)
+      query(countSql, countParams),
+      query(summarySql, summaryParams)
     ]);
 
-    res.json({ data: attendance, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
+    res.json({
+      data: attendance,
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      summary: {
+        present: Number(summary.present || 0),
+        absent: Number(summary.absent || 0),
+        halfDay: Number(summary.half_day || 0),
+        leave: Number(summary.on_leave || 0),
+        total: Number(summary.total || 0)
+      }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
