@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, User, Calendar, DollarSign, Clock, TrendingUp, Edit, Trash2, BarChart3 } from 'lucide-react';
+import { X, User, Calendar, DollarSign, Clock, TrendingUp, Edit, Trash2, BarChart3, CreditCard } from 'lucide-react';
 import api from '../utils/api';
 import { useToast } from './Toast';
 import { useAuth } from '../context/AuthContext';
@@ -20,15 +20,19 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
   const [attendanceHistory, setAttendanceHistory] = useState<any[]>([]);
   const [salaryHistory, setSalaryHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'info' | 'attendance' | 'salary' | 'performance'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'attendance' | 'salary' | 'performance' | 'loans' | 'increments'>('info');
   const [showEditPayment, setShowEditPayment] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const [loanHistory, setLoanHistory] = useState<any[]>([]);
+  const [incrementHistory, setIncrementHistory] = useState<any[]>([]);
 
   useEffect(() => {
     if (isOpen && staffId) {
       fetchStaffDetails();
       fetchAttendanceHistory();
       fetchSalaryHistory();
+      fetchLoanHistory();
+      fetchIncrementHistory();
     }
   }, [isOpen, staffId]);
 
@@ -60,6 +64,20 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
     } catch (error) {
       console.error('Error fetching salary history:', error);
     }
+  };
+
+  const fetchLoanHistory = async () => {
+    try {
+      const res = await api.get('/staff/loans', { params: { staff_id: staffId, limit: 50 } });
+      setLoanHistory(res.data.data || []);
+    } catch (error) { console.error('Error fetching loans:', error); }
+  };
+
+  const fetchIncrementHistory = async () => {
+    try {
+      const res = await api.get('/staff/increments', { params: { staff_id: staffId, limit: 50 } });
+      setIncrementHistory(res.data.data || []);
+    } catch (error) { console.error('Error fetching increments:', error); }
   };
 
   const handleDeletePayment = async (payment: any) => {
@@ -126,6 +144,8 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
     setStaff(null);
     setAttendanceHistory([]);
     setSalaryHistory([]);
+    setLoanHistory([]);
+    setIncrementHistory([]);
     setActiveTab('info');
     onClose();
   };
@@ -136,9 +156,11 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
   const metrics = getPerformanceMetrics();
 
   const tabs = [
-    { id: 'info' as const, label: 'Personal Info', icon: User },
+    { id: 'info' as const, label: 'Info', icon: User },
     { id: 'attendance' as const, label: 'Attendance', icon: Calendar },
     { id: 'salary' as const, label: 'Salary', icon: DollarSign },
+    { id: 'loans' as const, label: 'Loans', icon: CreditCard },
+    { id: 'increments' as const, label: 'Increments', icon: TrendingUp },
     { id: 'performance' as const, label: 'Performance', icon: BarChart3 },
   ];
 
@@ -368,6 +390,98 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
                     <div className="text-center py-12 text-gray-500">
                       <DollarSign className="mx-auto mb-4 text-gray-400" size={48} />
                       <p>No salary payments found</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Loans Tab */}
+              {activeTab === 'loans' && (
+                <div className="space-y-6">
+                  {loanHistory.length > 0 ? (
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left p-4 font-semibold text-gray-700">Date</th>
+                            <th className="text-right p-4 font-semibold text-gray-700">Amount</th>
+                            <th className="text-right p-4 font-semibold text-gray-700">Repaid</th>
+                            <th className="text-right p-4 font-semibold text-gray-700">Remaining</th>
+                            <th className="text-right p-4 font-semibold text-gray-700">Monthly Ded.</th>
+                            <th className="text-center p-4 font-semibold text-gray-700">Status</th>
+                            <th className="text-left p-4 font-semibold text-gray-700">Reason</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {loanHistory.map((loan: any) => (
+                            <tr key={loan.loan_id} className="border-t hover:bg-gray-50">
+                              <td className="p-4 font-medium">{new Date(loan.loan_date).toLocaleDateString()}</td>
+                              <td className="p-4 text-right">${Number(loan.loan_amount).toLocaleString()}</td>
+                              <td className="p-4 text-right text-green-600">${Number(loan.total_repaid || 0).toLocaleString()}</td>
+                              <td className="p-4 text-right font-bold text-red-600">${Number(loan.remaining_balance).toLocaleString()}</td>
+                              <td className="p-4 text-right text-gray-600">{Number(loan.monthly_deduction) > 0 ? `$${Number(loan.monthly_deduction).toLocaleString()}` : '-'}</td>
+                              <td className="p-4 text-center">
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${
+                                  loan.status === 'active' ? 'bg-green-100 text-green-700' :
+                                  loan.status === 'completed' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
+                                }`}>{loan.status}</span>
+                              </td>
+                              <td className="p-4 text-sm text-gray-600">{loan.reason || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-gray-500">
+                      <CreditCard className="mx-auto mb-4 text-gray-400" size={48} />
+                      <p>No loans found for this employee</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Increments Tab */}
+              {activeTab === 'increments' && (
+                <div className="space-y-6">
+                  {incrementHistory.length > 0 ? (
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left p-4 font-semibold text-gray-700">Effective Date</th>
+                            <th className="text-right p-4 font-semibold text-gray-700">Old Salary</th>
+                            <th className="text-right p-4 font-semibold text-gray-700">New Salary</th>
+                            <th className="text-right p-4 font-semibold text-gray-700">Change</th>
+                            <th className="text-left p-4 font-semibold text-gray-700">Reason</th>
+                            <th className="text-left p-4 font-semibold text-gray-700">Approved By</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {incrementHistory.map((inc: any) => {
+                            const isIncrease = Number(inc.increment_amount) >= 0;
+                            return (
+                              <tr key={inc.increment_id} className="border-t hover:bg-gray-50">
+                                <td className="p-4 font-medium">{new Date(inc.effective_date).toLocaleDateString()}</td>
+                                <td className="p-4 text-right text-gray-600">${Number(inc.old_salary).toLocaleString()}</td>
+                                <td className="p-4 text-right font-bold">${Number(inc.new_salary).toLocaleString()}</td>
+                                <td className="p-4 text-right">
+                                  <span className={`font-semibold ${isIncrease ? 'text-green-600' : 'text-red-600'}`}>
+                                    {isIncrease ? '+' : ''}{Number(inc.increment_amount).toLocaleString()} ({Number(inc.increment_percentage).toFixed(1)}%)
+                                  </span>
+                                </td>
+                                <td className="p-4 text-sm text-gray-600">{inc.reason || '-'}</td>
+                                <td className="p-4 text-sm text-gray-600">{inc.approved_by_name || '-'}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-gray-500">
+                      <TrendingUp className="mx-auto mb-4 text-gray-400" size={48} />
+                      <p>No salary increments found for this employee</p>
                     </div>
                   )}
                 </div>

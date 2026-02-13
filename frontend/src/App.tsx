@@ -22,6 +22,11 @@ import Stores from './pages/Stores';
 import Analytics from './pages/Analytics';
 import Layout from './components/Layout';
 import StaffReports from './pages/StaffReports';
+import SalarySheet from './pages/SalarySheet';
+import DailyAttendance from './pages/DailyAttendance';
+import LoanManagement from './pages/LoanManagement';
+import EmployeeLedger from './pages/EmployeeLedger';
+import IncrementHistory from './pages/IncrementHistory';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
@@ -182,6 +187,46 @@ function App() {
                         element={
                           <RoleRoute allowedRoles={['Admin', 'Manager']}>
                             <StaffReports />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/salary-sheet"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <SalarySheet />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/daily-attendance"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <DailyAttendance />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/loans"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <LoanManagement />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/employee-ledger"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <EmployeeLedger />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/increments"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <IncrementHistory />
                           </RoleRoute>
                         }
                       />

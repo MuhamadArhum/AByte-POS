@@ -87,8 +87,13 @@ const StaffReports = () => {
     setSalaryLoading(true);
     try {
       const res = await api.get('/staff/reports/salary-summary', { params: { from_date: salaryFromDate, to_date: salaryToDate } });
-      setSalaryData(res.data.data || []);
-      if ((res.data.data || []).length === 0) toast.info('No salary data for selected period');
+      const depts = res.data.by_department || res.data.data || [];
+      setSalaryData(depts.map((d: any) => ({
+        ...d,
+        staff_count: Number(d.total_staff || d.staff_count || 0),
+        paid_count: Number(d.staff_paid || d.paid_count || 0),
+      })));
+      if (depts.length === 0) toast.info('No salary data for selected period');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to load salary report');
     } finally {

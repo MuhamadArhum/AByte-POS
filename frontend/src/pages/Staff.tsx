@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Eye, Edit, Trash2, DollarSign, User, Search, Filter, RotateCcw } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, DollarSign, User, Search, Filter, RotateCcw, TrendingUp } from 'lucide-react';
 import api from '../utils/api';
 import { useToast } from '../components/Toast';
 import AddStaffModal from '../components/AddStaffModal';
 import StaffDetailsModal from '../components/StaffDetailsModal';
 import SalaryPaymentModal from '../components/SalaryPaymentModal';
+import SalaryIncrementModal from '../components/SalaryIncrementModal';
 
 const Staff = () => {
   const toast = useToast();
@@ -16,6 +17,7 @@ const Staff = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showSalaryModal, setShowSalaryModal] = useState(false);
+  const [showIncrementModal, setShowIncrementModal] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<any>(null);
   const [staffToEdit, setStaffToEdit] = useState<any>(null);
 
@@ -274,6 +276,13 @@ const Staff = () => {
                             <DollarSign size={18} />
                           </button>
                           <button
+                            onClick={() => { setSelectedStaff(member); setShowIncrementModal(true); }}
+                            className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg transition"
+                            title="Salary Increment"
+                          >
+                            <TrendingUp size={18} />
+                          </button>
+                          <button
                             onClick={() => handleDelete(member.staff_id, member.full_name)}
                             className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition"
                             title="Deactivate"
@@ -356,6 +365,16 @@ const Staff = () => {
             isOpen={showSalaryModal}
             onClose={() => {
               setShowSalaryModal(false);
+              setSelectedStaff(null);
+            }}
+            onSuccess={fetchStaff}
+            staffMember={selectedStaff}
+          />
+
+          <SalaryIncrementModal
+            isOpen={showIncrementModal}
+            onClose={() => {
+              setShowIncrementModal(false);
               setSelectedStaff(null);
             }}
             onSuccess={fetchStaff}

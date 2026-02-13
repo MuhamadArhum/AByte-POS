@@ -101,6 +101,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: Users, label: 'Customers', path: '/customers', roles: ['Admin', 'Manager', 'Cashier'] },
         { icon: User, label: 'Staff', path: '/staff', roles: ['Admin'] },
         { icon: ScrollText, label: 'Attendance', path: '/attendance', roles: ['Admin', 'Manager'] },
+        { icon: ScrollText, label: 'Daily Attendance', path: '/daily-attendance', roles: ['Admin', 'Manager'] },
+        { icon: DollarSign, label: 'Salary Sheet', path: '/salary-sheet', roles: ['Admin', 'Manager'] },
+        { icon: DollarSign, label: 'Loans', path: '/loans', roles: ['Admin', 'Manager'] },
+        { icon: TrendingUp, label: 'Increments', path: '/increments', roles: ['Admin', 'Manager'] },
+        { icon: ScrollText, label: 'Employee Ledger', path: '/employee-ledger', roles: ['Admin', 'Manager'] },
         { icon: BarChart3, label: 'Staff Reports', path: '/staff-reports', roles: ['Admin', 'Manager'] },
       ]
     },

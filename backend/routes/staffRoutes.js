@@ -8,6 +8,20 @@ router.use(authenticate);
 // Report endpoints (most specific paths first)
 router.get('/reports/attendance-monthly', staffController.getMonthlyAttendanceReport);
 router.get('/reports/salary-summary', staffController.getSalarySummaryReport);
+router.get('/reports/salary-sheet', staffController.getSalarySheet);
+router.get('/reports/daily-attendance', staffController.getDailyAttendance);
+router.get('/reports/employee-ledger/:staffId', staffController.getEmployeeLedger);
+
+// Loan routes (before parameterized staff routes)
+router.get('/loans', staffController.getLoans);
+router.post('/loans', authorize('Admin', 'Manager'), staffController.createLoan);
+router.get('/loans/:loanId/repayments', staffController.getLoanRepayments);
+router.post('/loans/:loanId/repay', authorize('Admin', 'Manager'), staffController.repayLoan);
+router.put('/loans/:loanId/cancel', authorize('Admin', 'Manager'), staffController.cancelLoan);
+
+// Increment routes
+router.get('/increments', staffController.getIncrements);
+router.post('/increments', authorize('Admin', 'Manager'), staffController.createIncrement);
 
 // Attendance routes
 router.get('/attendance', staffController.getAttendance);

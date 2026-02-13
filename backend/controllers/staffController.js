@@ -563,3 +563,327 @@ exports.getSalarySummaryReport = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// ============== SALARY SHEET ==============
+
+exports.getSalarySheet = async (req, res) => {
+  try {
+    const { department } = req.query;
+    let sql = `
+      SELECT s.staff_id, s.employee_id, s.full_name, s.department, s.position,
+             s.salary, s.salary_type,
+             COALESCE(SUM(CASE WHEN l.status = 'active' THEN l.monthly_deduction ELSE 0 END), 0) as loan_deduction
+      FROM staff s
+      LEFT JOIN staff_loans l ON s.staff_id = l.staff_id AND l.status = 'active'
+      WHERE s.is_active = 1
+    `;
+    const params = [];
+    if (department) { sql += ' AND s.department = ?'; params.push(department); }
+    sql += ' GROUP BY s.staff_id ORDER BY s.full_name';
+
+    const data = await query(sql, params);
+    const sheet = data.map(r => ({
+      ...r,
+      salary: Number(r.salary || 0),
+      loan_deduction: Number(r.loan_deduction || 0),
+      net_salary: Number(r.salary || 0) - Number(r.loan_deduction || 0)
+    }));
+
+    res.json({ data: sheet });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== DAILY ATTENDANCE ==============
+
+exports.getDailyAttendance = async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ message: 'Date required (YYYY-MM-DD)' });
+
+    const data = await query(`
+      SELECT s.staff_id, s.employee_id, s.full_name, s.department, s.position,
+             a.attendance_id, a.check_in, a.check_out, a.status, a.notes
+      FROM staff s
+      LEFT JOIN attendance a ON s.staff_id = a.staff_id AND a.attendance_date = ?
+      WHERE s.is_active = 1
+      ORDER BY s.full_name
+    `, [date]);
+
+    const summary = {
+      total: data.length,
+      present: data.filter(r => r.status === 'present').length,
+      absent: data.filter(r => r.status === 'absent').length,
+      half_day: data.filter(r => r.status === 'half_day').length,
+      leave: data.filter(r => r.status === 'leave').length,
+      holiday: data.filter(r => r.status === 'holiday').length,
+      unmarked: data.filter(r => !r.status).length
+    };
+
+    res.json({ date, data, summary });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== EMPLOYEE LEDGER ==============
+
+exports.getEmployeeLedger = async (req, res) => {
+  try {
+    const { staffId } = req.params;
+    const { from_date, to_date } = req.query;
+
+    const [staff] = await query('SELECT staff_id, employee_id, full_name, department, position, salary FROM staff WHERE staff_id = ?', [staffId]);
+    if (!staff) return res.status(404).json({ message: 'Staff not found' });
+
+    let dateFilter = '';
+    const params = [staffId];
+    if (from_date && to_date) {
+      dateFilter = ' AND date_col BETWEEN ? AND ?';
+      params.push(from_date, to_date);
+    }
+
+    // Salary payments
+    const salaryParams = [staffId];
+    let salarySql = 'SELECT payment_id, payment_date as date, amount, deductions, bonuses, net_amount, payment_method, notes FROM salary_payments WHERE staff_id = ?';
+    if (from_date && to_date) { salarySql += ' AND payment_date BETWEEN ? AND ?'; salaryParams.push(from_date, to_date); }
+    salarySql += ' ORDER BY payment_date DESC';
+    const salaryPayments = await query(salarySql, salaryParams);
+
+    // Loans
+    const loanParams = [staffId];
+    let loanSql = 'SELECT l.*, (SELECT COALESCE(SUM(amount),0) FROM loan_repayments WHERE loan_id = l.loan_id) as total_repaid FROM staff_loans l WHERE l.staff_id = ?';
+    if (from_date && to_date) { loanSql += ' AND l.loan_date BETWEEN ? AND ?'; loanParams.push(from_date, to_date); }
+    loanSql += ' ORDER BY l.loan_date DESC';
+    const loans = await query(loanSql, loanParams);
+
+    // Loan repayments
+    const repayParams = [staffId];
+    let repaySql = 'SELECT r.*, l.loan_amount FROM loan_repayments r JOIN staff_loans l ON r.loan_id = l.loan_id WHERE r.staff_id = ?';
+    if (from_date && to_date) { repaySql += ' AND r.repayment_date BETWEEN ? AND ?'; repayParams.push(from_date, to_date); }
+    repaySql += ' ORDER BY r.repayment_date DESC';
+    const repayments = await query(repaySql, repayParams);
+
+    // Attendance summary
+    const attParams = [staffId];
+    let attSql = `SELECT
+      SUM(status = 'present') as present,
+      SUM(status = 'absent') as absent,
+      SUM(status = 'half_day') as half_day,
+      SUM(status = 'leave') as on_leave,
+      SUM(status = 'holiday') as holiday,
+      COUNT(*) as total
+      FROM attendance WHERE staff_id = ?`;
+    if (from_date && to_date) { attSql += ' AND attendance_date BETWEEN ? AND ?'; attParams.push(from_date, to_date); }
+    const [attSummary] = await query(attSql, attParams);
+
+    // Totals
+    const totalEarned = salaryPayments.reduce((sum, p) => sum + Number(p.net_amount || 0), 0);
+    const totalLoans = loans.reduce((sum, l) => sum + Number(l.loan_amount || 0), 0);
+    const totalRepaid = repayments.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+    const outstandingLoanBalance = loans.filter(l => l.status === 'active').reduce((sum, l) => sum + Number(l.remaining_balance || 0), 0);
+
+    res.json({
+      staff,
+      salary_payments: salaryPayments,
+      loans,
+      repayments,
+      attendance_summary: {
+        present: Number(attSummary.present || 0),
+        absent: Number(attSummary.absent || 0),
+        half_day: Number(attSummary.half_day || 0),
+        leave: Number(attSummary.on_leave || 0),
+        holiday: Number(attSummary.holiday || 0),
+        total: Number(attSummary.total || 0)
+      },
+      totals: { totalEarned, totalLoans, totalRepaid, outstandingLoanBalance }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== LOAN MANAGEMENT ==============
+
+exports.getLoans = async (req, res) => {
+  try {
+    const { status, staff_id } = req.query;
+    const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
+
+    let sql = `SELECT l.*, s.full_name, s.employee_id, s.department,
+               (SELECT COALESCE(SUM(amount),0) FROM loan_repayments WHERE loan_id = l.loan_id) as total_repaid
+               FROM staff_loans l JOIN staff s ON l.staff_id = s.staff_id WHERE 1=1`;
+    let countSql = 'SELECT COUNT(*) as total FROM staff_loans l WHERE 1=1';
+    const params = [], countParams = [];
+
+    if (status) { sql += ' AND l.status = ?'; countSql += ' AND l.status = ?'; params.push(status); countParams.push(status); }
+    if (staff_id) { sql += ' AND l.staff_id = ?'; countSql += ' AND l.staff_id = ?'; params.push(staff_id); countParams.push(staff_id); }
+
+    sql += ' ORDER BY l.created_at DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const [loans, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
+    res.json({ data: loans, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.createLoan = async (req, res) => {
+  try {
+    const { staff_id, loan_amount, monthly_deduction, loan_date, reason } = req.body;
+    if (!staff_id || !loan_amount || !loan_date) return res.status(400).json({ message: 'Staff, amount and date required' });
+    if (Number(loan_amount) <= 0) return res.status(400).json({ message: 'Amount must be positive', field: 'loan_amount' });
+
+    const [staff] = await query('SELECT full_name FROM staff WHERE staff_id = ?', [staff_id]);
+    if (!staff) return res.status(404).json({ message: 'Staff not found' });
+
+    const result = await query(
+      'INSERT INTO staff_loans (staff_id, loan_amount, remaining_balance, monthly_deduction, loan_date, reason, approved_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [staff_id, loan_amount, loan_amount, monthly_deduction || 0, loan_date, reason || null, req.user.user_id]
+    );
+
+    await logAction(req.user.user_id, req.user.name, 'LOAN_ISSUED', 'staff_loans', result.insertId, { staff_id, loan_amount, staff_name: staff.full_name }, req.ip);
+    res.status(201).json({ message: 'Loan issued', loan_id: result.insertId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.repayLoan = async (req, res) => {
+  const conn = await getConnection();
+  try {
+    const { loanId } = req.params;
+    const { amount, repayment_date, payment_method, notes } = req.body;
+    if (!amount || !repayment_date) return res.status(400).json({ message: 'Amount and date required' });
+    if (Number(amount) <= 0) return res.status(400).json({ message: 'Amount must be positive', field: 'amount' });
+
+    await conn.beginTransaction();
+
+    const [loan] = await conn.query('SELECT * FROM staff_loans WHERE loan_id = ? FOR UPDATE', [loanId]);
+    if (!loan) { await conn.rollback(); return res.status(404).json({ message: 'Loan not found' }); }
+    if (loan.status !== 'active') { await conn.rollback(); return res.status(400).json({ message: 'Loan is not active' }); }
+    if (Number(amount) > Number(loan.remaining_balance)) { await conn.rollback(); return res.status(400).json({ message: 'Amount exceeds remaining balance', field: 'amount' }); }
+
+    const newBalance = Number(loan.remaining_balance) - Number(amount);
+
+    await conn.query(
+      'INSERT INTO loan_repayments (loan_id, staff_id, amount, repayment_date, payment_method, notes) VALUES (?, ?, ?, ?, ?, ?)',
+      [loanId, loan.staff_id, amount, repayment_date, payment_method || 'cash', notes || null]
+    );
+
+    await conn.query(
+      'UPDATE staff_loans SET remaining_balance = ?, status = ? WHERE loan_id = ?',
+      [newBalance, newBalance <= 0 ? 'completed' : 'active', loanId]
+    );
+
+    await conn.commit();
+    await logAction(req.user.user_id, req.user.name, 'LOAN_REPAYMENT', 'staff_loans', loanId, { staff_id: loan.staff_id, amount, remaining: newBalance }, req.ip);
+    res.json({ message: newBalance <= 0 ? 'Loan fully repaid' : 'Repayment recorded', remaining_balance: newBalance });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
+  }
+};
+
+exports.cancelLoan = async (req, res) => {
+  try {
+    const { loanId } = req.params;
+    const [loan] = await query('SELECT * FROM staff_loans WHERE loan_id = ?', [loanId]);
+    if (!loan) return res.status(404).json({ message: 'Loan not found' });
+    if (loan.status !== 'active') return res.status(400).json({ message: 'Only active loans can be cancelled' });
+
+    await query('UPDATE staff_loans SET status = ? WHERE loan_id = ?', ['cancelled', loanId]);
+    await logAction(req.user.user_id, req.user.name, 'LOAN_CANCELLED', 'staff_loans', loanId, { staff_id: loan.staff_id }, req.ip);
+    res.json({ message: 'Loan cancelled' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getLoanRepayments = async (req, res) => {
+  try {
+    const { loanId } = req.params;
+    const repayments = await query(
+      'SELECT * FROM loan_repayments WHERE loan_id = ? ORDER BY repayment_date DESC', [loanId]
+    );
+    res.json({ data: repayments });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== SALARY INCREMENTS ==============
+
+exports.getIncrements = async (req, res) => {
+  try {
+    const { staff_id } = req.query;
+    const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
+
+    let sql = `SELECT i.*, s.full_name, s.employee_id, s.department, u.name as approved_by_name
+               FROM salary_increments i
+               JOIN staff s ON i.staff_id = s.staff_id
+               LEFT JOIN users u ON i.approved_by = u.user_id WHERE 1=1`;
+    let countSql = 'SELECT COUNT(*) as total FROM salary_increments WHERE 1=1';
+    const params = [], countParams = [];
+
+    if (staff_id) { sql += ' AND i.staff_id = ?'; countSql += ' AND staff_id = ?'; params.push(staff_id); countParams.push(staff_id); }
+
+    sql += ' ORDER BY i.effective_date DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const [increments, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
+    res.json({ data: increments, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.createIncrement = async (req, res) => {
+  const conn = await getConnection();
+  try {
+    const { staff_id, new_salary, effective_date, reason } = req.body;
+    if (!staff_id || !new_salary || !effective_date) return res.status(400).json({ message: 'Staff, new salary and effective date required' });
+    if (Number(new_salary) < 0) return res.status(400).json({ message: 'Salary cannot be negative', field: 'new_salary' });
+
+    await conn.beginTransaction();
+
+    const [staff] = await conn.query('SELECT staff_id, full_name, salary FROM staff WHERE staff_id = ?', [staff_id]);
+    if (!staff) { await conn.rollback(); return res.status(404).json({ message: 'Staff not found' }); }
+
+    const oldSalary = Number(staff.salary || 0);
+    const newSal = Number(new_salary);
+    const incrementAmount = newSal - oldSalary;
+    const incrementPercentage = oldSalary > 0 ? ((incrementAmount / oldSalary) * 100) : 0;
+
+    await conn.query(
+      'INSERT INTO salary_increments (staff_id, old_salary, new_salary, increment_amount, increment_percentage, effective_date, reason, approved_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [staff_id, oldSalary, newSal, incrementAmount, incrementPercentage.toFixed(2), effective_date, reason || null, req.user.user_id]
+    );
+
+    // Update staff salary
+    await conn.query('UPDATE staff SET salary = ? WHERE staff_id = ?', [newSal, staff_id]);
+
+    await conn.commit();
+    await logAction(req.user.user_id, req.user.name, 'SALARY_INCREMENT', 'salary_increments', staff_id, { old_salary: oldSalary, new_salary: newSal, staff_name: staff.full_name }, req.ip);
+    res.status(201).json({ message: 'Salary increment applied', old_salary: oldSalary, new_salary: newSal, increment_amount: incrementAmount });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
+  }
+};

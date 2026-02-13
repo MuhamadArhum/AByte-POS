@@ -164,6 +164,56 @@ CREATE TABLE IF NOT EXISTS staff (
     INDEX idx_staff_employee_id (employee_id)
 );
 
+-- Staff Loans
+CREATE TABLE IF NOT EXISTS staff_loans (
+    loan_id INT PRIMARY KEY AUTO_INCREMENT,
+    staff_id INT NOT NULL,
+    loan_amount DECIMAL(12,2) NOT NULL,
+    remaining_balance DECIMAL(12,2) NOT NULL,
+    monthly_deduction DECIMAL(12,2) DEFAULT 0,
+    loan_date DATE NOT NULL,
+    status ENUM('active','completed','cancelled') DEFAULT 'active',
+    reason TEXT,
+    approved_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
+    FOREIGN KEY (approved_by) REFERENCES users(user_id),
+    INDEX idx_loan_staff (staff_id),
+    INDEX idx_loan_status (status)
+);
+
+-- Loan Repayments
+CREATE TABLE IF NOT EXISTS loan_repayments (
+    repayment_id INT PRIMARY KEY AUTO_INCREMENT,
+    loan_id INT NOT NULL,
+    staff_id INT NOT NULL,
+    amount DECIMAL(12,2) NOT NULL,
+    repayment_date DATE NOT NULL,
+    payment_method ENUM('cash','bank_transfer','salary_deduction') DEFAULT 'cash',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (loan_id) REFERENCES staff_loans(loan_id),
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
+    INDEX idx_repayment_loan (loan_id)
+);
+
+-- Salary Increments
+CREATE TABLE IF NOT EXISTS salary_increments (
+    increment_id INT PRIMARY KEY AUTO_INCREMENT,
+    staff_id INT NOT NULL,
+    old_salary DECIMAL(10,2) NOT NULL,
+    new_salary DECIMAL(10,2) NOT NULL,
+    increment_amount DECIMAL(10,2) NOT NULL,
+    increment_percentage DECIMAL(5,2),
+    effective_date DATE NOT NULL,
+    reason VARCHAR(255),
+    approved_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
+    FOREIGN KEY (approved_by) REFERENCES users(user_id),
+    INDEX idx_increment_staff (staff_id)
+);
+
 -- Store Settings (single row with setting_id=1)
 CREATE TABLE IF NOT EXISTS store_settings (
     setting_id INT PRIMARY KEY AUTO_INCREMENT,
