@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Calendar, Clock, User, CheckCircle } from 'lucide-react';
 import api from '../utils/api';
+import { useToast } from './Toast';
 
 interface MarkAttendanceModalProps {
   isOpen: boolean;
@@ -9,9 +10,11 @@ interface MarkAttendanceModalProps {
 }
 
 const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModalProps) => {
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [staff, setStaff] = useState<any[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<number | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     attendance_date: new Date().toISOString().split('T')[0],
     check_in: '',
@@ -27,6 +30,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
   useEffect(() => {
     if (isOpen) {
       fetchStaff();
+      setFormErrors({});
     }
   }, [isOpen]);
 
@@ -42,20 +46,23 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    if (formErrors[name]) setFormErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const validate = (): boolean => {
+    const errors: Record<string, string> = {};
+    if (!selectedStaff) errors.staff = 'Please select a staff member';
+    if (!formData.attendance_date) errors.attendance_date = 'Date is required';
+    if (formData.check_in && formData.check_out && formData.check_in >= formData.check_out) {
+      errors.check_out = 'Check out must be after check in';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!selectedStaff) {
-      alert('Please select a staff member');
-      return;
-    }
-
-    if (!formData.attendance_date) {
-      alert('Please select a date');
-      return;
-    }
+    if (!validate()) return;
 
     setLoading(true);
     try {
@@ -69,13 +76,15 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
       };
 
       await api.post('/staff/attendance', attendanceData);
-      alert('Attendance marked successfully!');
+      toast.success('Attendance marked successfully');
       resetForm();
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error('Error marking attendance:', error);
-      alert(error.response?.data?.message || 'Failed to mark attendance');
+      const msg = error.response?.data?.message || 'Failed to mark attendance';
+      const field = error.response?.data?.field;
+      if (field) setFormErrors(prev => ({ ...prev, [field]: msg }));
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -83,7 +92,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
 
   const handleBulkMark = async () => {
     if (staff.length === 0) {
-      alert('No staff members found');
+      toast.error('No staff members found');
       return;
     }
 
@@ -101,12 +110,11 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
       }));
 
       await api.post('/staff/attendance/bulk', { records: bulkData });
-      alert(`Attendance marked for ${staff.length} staff members!`);
+      toast.success(`Attendance marked for ${staff.length} staff members`);
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error('Error bulk marking attendance:', error);
-      alert(error.response?.data?.message || 'Failed to mark bulk attendance');
+      toast.error(error.response?.data?.message || 'Failed to mark bulk attendance');
     } finally {
       setLoading(false);
     }
@@ -123,6 +131,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
     });
     setBulkMode(false);
     setBulkStatus('present');
+    setFormErrors({});
   };
 
   const handleClose = () => {
@@ -131,6 +140,9 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
   };
 
   if (!isOpen) return null;
+
+  const inputClass = (field: string) =>
+    `w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${formErrors[field] ? 'border-red-500' : 'border-gray-200'}`;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -197,9 +209,9 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
                   name="attendance_date"
                   value={formData.attendance_date}
                   onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className={inputClass('attendance_date')}
                 />
+                {formErrors.attendance_date && <p className="text-red-500 text-xs mt-1">{formErrors.attendance_date}</p>}
               </div>
 
               {/* Staff Selection */}
@@ -210,9 +222,11 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
                 </label>
                 <select
                   value={selectedStaff || ''}
-                  onChange={(e) => setSelectedStaff(Number(e.target.value))}
-                  required
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  onChange={(e) => {
+                    setSelectedStaff(Number(e.target.value));
+                    if (formErrors.staff) setFormErrors(prev => ({ ...prev, staff: '' }));
+                  }}
+                  className={inputClass('staff')}
                 >
                   <option value="">-- Select Staff --</option>
                   {staff.map(member => (
@@ -221,6 +235,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
                     </option>
                   ))}
                 </select>
+                {formErrors.staff && <p className="text-red-500 text-xs mt-1">{formErrors.staff}</p>}
               </div>
 
               {/* Status */}
@@ -232,7 +247,6 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
                   name="status"
                   value={formData.status}
                   onChange={handleChange}
-                  required
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 >
                   <option value="present">Present</option>
@@ -256,7 +270,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
                       name="check_in"
                       value={formData.check_in}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      className={inputClass('check_in')}
                     />
                   </div>
 
@@ -270,8 +284,9 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
                       name="check_out"
                       value={formData.check_out}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      className={inputClass('check_out')}
                     />
+                    {formErrors.check_out && <p className="text-red-500 text-xs mt-1">{formErrors.check_out}</p>}
                   </div>
                 </div>
               )}

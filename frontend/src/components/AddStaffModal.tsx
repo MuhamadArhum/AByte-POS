@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { X, User, Briefcase, DollarSign, Calendar, Mail, Phone, MapPin } from 'lucide-react';
 import api from '../utils/api';
+import { useToast } from './Toast';
 
 interface StaffMember {
   staff_id: number;
   user_id: number | null;
+  employee_id: string | null;
   full_name: string;
   phone: string;
   email: string;
@@ -15,6 +17,7 @@ interface StaffMember {
   salary_type: string;
   hire_date: string;
   is_active: number;
+  leave_balance?: number;
 }
 
 interface AddStaffModalProps {
@@ -25,12 +28,14 @@ interface AddStaffModalProps {
 }
 
 const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModalProps) => {
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // Form data
   const [formData, setFormData] = useState({
     user_id: '',
+    employee_id: '',
     full_name: '',
     phone: '',
     email: '',
@@ -40,15 +45,18 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
     salary: '',
     salary_type: 'monthly',
     hire_date: new Date().toISOString().split('T')[0],
-    is_active: 1
+    is_active: 1,
+    leave_balance: '20'
   });
 
   useEffect(() => {
     if (isOpen) {
       fetchUsers();
+      setFormErrors({});
       if (staffToEdit) {
         setFormData({
           user_id: staffToEdit.user_id?.toString() || '',
+          employee_id: staffToEdit.employee_id || '',
           full_name: staffToEdit.full_name,
           phone: staffToEdit.phone || '',
           email: staffToEdit.email || '',
@@ -58,7 +66,8 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
           salary: staffToEdit.salary?.toString() || '',
           salary_type: staffToEdit.salary_type || 'monthly',
           hire_date: staffToEdit.hire_date?.split('T')[0] || '',
-          is_active: staffToEdit.is_active
+          is_active: staffToEdit.is_active,
+          leave_balance: (staffToEdit.leave_balance ?? 20).toString()
         });
       } else {
         resetForm();
@@ -87,26 +96,46 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
       salary: '',
       salary_type: 'monthly',
       hire_date: new Date().toISOString().split('T')[0],
-      is_active: 1
+      is_active: 1,
+      leave_balance: '20'
     });
+    setFormErrors({});
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    if (formErrors[name]) setFormErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const validate = (): boolean => {
+    const errors: Record<string, string> = {};
+    if (!formData.full_name.trim()) errors.full_name = 'Full name is required';
+    if (!formData.position.trim()) errors.position = 'Position is required';
+    if (!formData.hire_date) errors.hire_date = 'Hire date is required';
+    if (formData.phone && !/^[\d+\-() ]{7,20}$/.test(formData.phone)) {
+      errors.phone = 'Invalid phone format';
+    }
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'Invalid email format';
+    }
+    if (formData.salary && Number(formData.salary) < 0) {
+      errors.salary = 'Salary cannot be negative';
+    }
+    if (staffToEdit && (Number(formData.leave_balance) < 0 || isNaN(Number(formData.leave_balance)))) {
+      errors.leave_balance = 'Must be 0 or more';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!formData.full_name || !formData.position || !formData.hire_date) {
-      alert('Please fill in all required fields');
-      return;
-    }
+    if (!validate()) return;
 
     setLoading(true);
     try {
-      const submitData = {
+      const submitData: any = {
         ...formData,
         user_id: formData.user_id ? parseInt(formData.user_id) : null,
         salary: formData.salary ? parseFloat(formData.salary) : null,
@@ -114,19 +143,23 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
       };
 
       if (staffToEdit) {
+        submitData.leave_balance = parseInt(formData.leave_balance);
         await api.put(`/staff/${staffToEdit.staff_id}`, submitData);
-        alert('Staff member updated successfully!');
+        toast.success('Staff member updated successfully');
       } else {
+        delete submitData.leave_balance;
         await api.post('/staff', submitData);
-        alert('Staff member added successfully!');
+        toast.success('Staff member added successfully');
       }
 
       resetForm();
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error('Error saving staff:', error);
-      alert(error.response?.data?.message || 'Failed to save staff member');
+      const msg = error.response?.data?.message || 'Failed to save staff member';
+      const field = error.response?.data?.field;
+      if (field) setFormErrors(prev => ({ ...prev, [field]: msg }));
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -138,6 +171,9 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
   };
 
   if (!isOpen) return null;
+
+  const inputClass = (field: string) =>
+    `w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${formErrors[field] ? 'border-red-500' : 'border-gray-200'}`;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -187,18 +223,30 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Employee ID</label>
+                  <input
+                    type="text"
+                    name="employee_id"
+                    value={formData.employee_id}
+                    onChange={handleChange}
+                    className={inputClass('employee_id')}
+                    placeholder="e.g., EMP-001"
+                  />
+                  {formErrors.employee_id && <p className="text-red-500 text-xs mt-1">{formErrors.employee_id}</p>}
+                  <p className="text-xs text-gray-500 mt-1">Used for attendance machine integration</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
                   <input
                     type="text"
                     name="full_name"
                     value={formData.full_name}
                     onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    className={inputClass('full_name')}
                     placeholder="Enter full name"
                   />
+                  {formErrors.full_name && <p className="text-red-500 text-xs mt-1">{formErrors.full_name}</p>}
                 </div>
 
                 <div>
@@ -211,9 +259,10 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    className={inputClass('phone')}
                     placeholder="03XX-XXXXXXX"
                   />
+                  {formErrors.phone && <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>}
                 </div>
 
                 <div>
@@ -226,9 +275,10 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    className={inputClass('email')}
                     placeholder="email@example.com"
                   />
+                  {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
                 </div>
 
                 <div>
@@ -241,7 +291,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
                     name="address"
                     value={formData.address}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    className={inputClass('address')}
                     placeholder="Enter address"
                   />
                 </div>
@@ -263,22 +313,20 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
                     name="position"
                     value={formData.position}
                     onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    className={inputClass('position')}
                     placeholder="e.g., Sales Manager"
                   />
+                  {formErrors.position && <p className="text-red-500 text-xs mt-1">{formErrors.position}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Department
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
                   <input
                     type="text"
                     name="department"
                     value={formData.department}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    className={inputClass('department')}
                     placeholder="e.g., Sales"
                   />
                 </div>
@@ -293,15 +341,13 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
                     name="hire_date"
                     value={formData.hire_date}
                     onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    className={inputClass('hire_date')}
                   />
+                  {formErrors.hire_date && <p className="text-red-500 text-xs mt-1">{formErrors.hire_date}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                   <select
                     name="is_active"
                     value={formData.is_active}
@@ -332,15 +378,14 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
                     onChange={handleChange}
                     min="0"
                     step="0.01"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    className={inputClass('salary')}
                     placeholder="Enter salary amount"
                   />
+                  {formErrors.salary && <p className="text-red-500 text-xs mt-1">{formErrors.salary}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Salary Type
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Salary Type</label>
                   <select
                     name="salary_type"
                     value={formData.salary_type}
@@ -352,6 +397,21 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
                     <option value="monthly">Monthly</option>
                   </select>
                 </div>
+
+                {staffToEdit && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Leave Balance (days)</label>
+                    <input
+                      type="number"
+                      name="leave_balance"
+                      value={formData.leave_balance}
+                      onChange={handleChange}
+                      min="0"
+                      className={inputClass('leave_balance')}
+                    />
+                    {formErrors.leave_balance && <p className="text-red-500 text-xs mt-1">{formErrors.leave_balance}</p>}
+                  </div>
+                )}
               </div>
             </div>
           </div>

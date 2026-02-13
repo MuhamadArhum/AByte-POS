@@ -21,8 +21,10 @@ import StockAlerts from './pages/StockAlerts';
 import Stores from './pages/Stores';
 import Analytics from './pages/Analytics';
 import Layout from './components/Layout';
+import StaffReports from './pages/StaffReports';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './components/Toast';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -62,6 +64,7 @@ const RoleRoute = ({ children, allowedRoles }: { children: React.ReactNode, allo
 function App() {
   return (
     <AuthProvider>
+      <ToastProvider>
       <CartProvider>
         <Router>
           <Routes>
@@ -175,6 +178,14 @@ function App() {
                       />
                       <Route path="/analytics" element={<Analytics />} />
                       <Route
+                        path="/staff-reports"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <StaffReports />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
                         path="/settings"
                         element={
                           <RoleRoute allowedRoles={['Admin']}>
@@ -190,6 +201,7 @@ function App() {
           </Routes>
         </Router>
       </CartProvider>
+      </ToastProvider>
     </AuthProvider>
   );
 }

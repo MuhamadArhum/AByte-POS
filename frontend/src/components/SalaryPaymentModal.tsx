@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, DollarSign, Calendar, Minus, Plus, FileText } from 'lucide-react';
 import api from '../utils/api';
+import { useToast } from './Toast';
 
 interface SalaryPaymentModalProps {
   isOpen: boolean;
@@ -10,7 +11,9 @@ interface SalaryPaymentModalProps {
 }
 
 const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryPaymentModalProps) => {
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState({
     payment_date: new Date().toISOString().split('T')[0],
@@ -25,7 +28,6 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
 
   useEffect(() => {
     if (isOpen && staffMember) {
-      // Auto-calculate period (last month)
       const today = new Date();
       const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
       const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
@@ -36,12 +38,14 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
         to_date: lastDay.toISOString().split('T')[0],
         amount: staffMember.salary?.toString() || '0'
       }));
+      setFormErrors({});
     }
   }, [isOpen, staffMember]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    if (formErrors[name]) setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const calculateNetAmount = () => {
@@ -51,22 +55,30 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
     return amount - deductions + bonuses;
   };
 
+  const validate = (): boolean => {
+    const errors: Record<string, string> = {};
+    if (!formData.payment_date) errors.payment_date = 'Payment date required';
+    if (!formData.from_date) errors.from_date = 'From date required';
+    if (!formData.to_date) errors.to_date = 'To date required';
+    if (formData.from_date && formData.to_date && formData.from_date > formData.to_date) {
+      errors.to_date = 'To date must be after from date';
+    }
+    if (!formData.amount || Number(formData.amount) <= 0) errors.amount = 'Valid amount required';
+    if (Number(formData.deductions) < 0) errors.deductions = 'Cannot be negative';
+    if (Number(formData.bonuses) < 0) errors.bonuses = 'Cannot be negative';
+    const net = calculateNetAmount();
+    if (net < 0) errors.amount = 'Net amount cannot be negative';
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!formData.payment_date || !formData.from_date || !formData.to_date || !formData.amount) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
-    const netAmount = calculateNetAmount();
-    if (netAmount < 0) {
-      alert('Net amount cannot be negative');
-      return;
-    }
+    if (!validate()) return;
 
     setLoading(true);
     try {
+      const netAmount = calculateNetAmount();
       const paymentData = {
         payment_date: formData.payment_date,
         from_date: formData.from_date,
@@ -80,13 +92,15 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
       };
 
       await api.post(`/staff/${staffMember.staff_id}/salary-payment`, paymentData);
-      alert('Salary payment recorded successfully!');
+      toast.success('Salary payment recorded successfully');
       resetForm();
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error('Error recording payment:', error);
-      alert(error.response?.data?.message || 'Failed to record salary payment');
+      const msg = error.response?.data?.message || 'Failed to record salary payment';
+      const field = error.response?.data?.field;
+      if (field) setFormErrors(prev => ({ ...prev, [field]: msg }));
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -103,6 +117,7 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
       payment_method: 'bank_transfer',
       notes: ''
     });
+    setFormErrors({});
   };
 
   const handleClose = () => {
@@ -113,6 +128,9 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
   if (!isOpen || !staffMember) return null;
 
   const netAmount = calculateNetAmount();
+
+  const inputClass = (field: string) =>
+    `w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${formErrors[field] ? 'border-red-500' : 'border-gray-200'}`;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -145,45 +163,39 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    From Date *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">From Date *</label>
                   <input
                     type="date"
                     name="from_date"
                     value={formData.from_date}
                     onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className={inputClass('from_date')}
                   />
+                  {formErrors.from_date && <p className="text-red-500 text-xs mt-1">{formErrors.from_date}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    To Date *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">To Date *</label>
                   <input
                     type="date"
                     name="to_date"
                     value={formData.to_date}
                     onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className={inputClass('to_date')}
                   />
+                  {formErrors.to_date && <p className="text-red-500 text-xs mt-1">{formErrors.to_date}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Payment Date *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Date *</label>
                   <input
                     type="date"
                     name="payment_date"
                     value={formData.payment_date}
                     onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className={inputClass('payment_date')}
                   />
+                  {formErrors.payment_date && <p className="text-red-500 text-xs mt-1">{formErrors.payment_date}</p>}
                 </div>
               </div>
             </div>
@@ -197,9 +209,7 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Base Salary Amount *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Base Salary Amount *</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
                     <input
@@ -209,11 +219,11 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
                       onChange={handleChange}
                       min="0"
                       step="0.01"
-                      required
-                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className={`${inputClass('amount')} pl-12`}
                       placeholder="0.00"
                     />
                   </div>
+                  {formErrors.amount && <p className="text-red-500 text-xs mt-1">{formErrors.amount}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -231,10 +241,11 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
                         onChange={handleChange}
                         min="0"
                         step="0.01"
-                        className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className={`${inputClass('deductions')} pl-12`}
                         placeholder="0.00"
                       />
                     </div>
+                    {formErrors.deductions && <p className="text-red-500 text-xs mt-1">{formErrors.deductions}</p>}
                     <p className="text-xs text-gray-500 mt-1">Taxes, fines, advances, etc.</p>
                   </div>
 
@@ -252,10 +263,11 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
                         onChange={handleChange}
                         min="0"
                         step="0.01"
-                        className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className={`${inputClass('bonuses')} pl-12`}
                         placeholder="0.00"
                       />
                     </div>
+                    {formErrors.bonuses && <p className="text-red-500 text-xs mt-1">{formErrors.bonuses}</p>}
                     <p className="text-xs text-gray-500 mt-1">Performance bonus, overtime, etc.</p>
                   </div>
                 </div>
@@ -284,9 +296,7 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Payment Method
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
                   <select
                     name="payment_method"
                     value={formData.payment_method}
@@ -300,9 +310,7 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Notes (Optional)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
                   <textarea
                     name="notes"
                     value={formData.notes}

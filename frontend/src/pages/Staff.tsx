@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Plus, Eye, Edit, Trash2, DollarSign, User, Search, Filter } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Eye, Edit, Trash2, DollarSign, User, Search, Filter, RotateCcw } from 'lucide-react';
 import api from '../utils/api';
+import { useToast } from '../components/Toast';
 import AddStaffModal from '../components/AddStaffModal';
 import StaffDetailsModal from '../components/StaffDetailsModal';
 import SalaryPaymentModal from '../components/SalaryPaymentModal';
 
 const Staff = () => {
+  const toast = useToast();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
@@ -20,10 +22,20 @@ const Staff = () => {
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
+
+  // Extract unique departments from staff list
+  const departments = useMemo(() => {
+    const depts = new Set<string>();
+    staff.forEach((s: any) => {
+      if (s.department) depts.add(s.department);
+    });
+    return Array.from(depts).sort();
+  }, [staff]);
 
   useEffect(() => {
     fetchStaff();
-  }, [pagination.page, statusFilter]);
+  }, [pagination.page, statusFilter, departmentFilter]);
 
   const fetchStaff = async () => {
     setLoading(true);
@@ -35,6 +47,10 @@ const Staff = () => {
 
       if (statusFilter !== 'all') {
         params.is_active = statusFilter;
+      }
+
+      if (departmentFilter !== 'all') {
+        params.department = departmentFilter;
       }
 
       if (searchTerm) {
@@ -78,11 +94,23 @@ const Staff = () => {
 
     try {
       await api.delete(`/staff/${staffId}`);
-      alert('Staff member deactivated successfully');
+      toast.success('Staff member deactivated successfully');
       fetchStaff();
     } catch (error: any) {
       console.error('Error deactivating staff:', error);
-      alert(error.response?.data?.message || 'Failed to deactivate staff member');
+      toast.error(error.response?.data?.message || 'Failed to deactivate staff member');
+    }
+  };
+
+  const handleReactivate = async (staffId: number, name: string) => {
+    if (!window.confirm(`Reactivate ${name}?`)) return;
+
+    try {
+      await api.put(`/staff/${staffId}`, { is_active: 1 });
+      toast.success(`${name} has been reactivated`);
+      fetchStaff();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to reactivate staff member');
     }
   };
 
@@ -154,7 +182,7 @@ const Staff = () => {
             <Filter size={20} className="text-gray-600" />
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
               className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
             >
               <option value="all">All Status</option>
@@ -162,6 +190,20 @@ const Staff = () => {
               <option value="0">Inactive</option>
             </select>
           </div>
+
+          {/* Department Filter */}
+          {departments.length > 0 && (
+            <select
+              value={departmentFilter}
+              onChange={(e) => { setDepartmentFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
+              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            >
+              <option value="all">All Departments</option>
+              {departments.map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
+          )}
 
           <button
             onClick={handleSearch}
@@ -177,6 +219,7 @@ const Staff = () => {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr className="border-b">
+              <th className="text-left p-4 font-semibold text-gray-700">Emp. ID</th>
               <th className="text-left p-4 font-semibold text-gray-700">Name</th>
               <th className="text-left p-4 font-semibold text-gray-700">Position</th>
               <th className="text-left p-4 font-semibold text-gray-700">Department</th>
@@ -190,6 +233,7 @@ const Staff = () => {
             {staff.length > 0 ? (
               staff.map((member: any) => (
                 <tr key={member.staff_id} className="border-b hover:bg-gray-50 transition">
+                  <td className="p-4 text-gray-600 font-mono text-sm">{member.employee_id || '-'}</td>
                   <td className="p-4 font-semibold text-gray-800">{member.full_name}</td>
                   <td className="p-4">{member.position}</td>
                   <td className="p-4 text-gray-600">{member.department || '-'}</td>
@@ -220,7 +264,7 @@ const Staff = () => {
                       >
                         <Edit size={18} />
                       </button>
-                      {member.is_active === 1 && (
+                      {member.is_active === 1 ? (
                         <>
                           <button
                             onClick={() => handlePaySalary(member)}
@@ -237,6 +281,14 @@ const Staff = () => {
                             <Trash2 size={18} />
                           </button>
                         </>
+                      ) : (
+                        <button
+                          onClick={() => handleReactivate(member.staff_id, member.full_name)}
+                          className="text-green-600 hover:bg-green-50 p-2 rounded-lg transition"
+                          title="Reactivate"
+                        >
+                          <RotateCcw size={18} />
+                        </button>
                       )}
                     </div>
                   </td>
@@ -244,7 +296,7 @@ const Staff = () => {
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-gray-500">
+                <td colSpan={8} className="p-8 text-center text-gray-500">
                   No staff members found. Add your first team member to get started.
                 </td>
               </tr>

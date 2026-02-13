@@ -144,6 +144,7 @@ VALUES (1, 'Main Store', 'MAIN', 1);
 CREATE TABLE IF NOT EXISTS staff (
     staff_id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT UNIQUE,
+    employee_id VARCHAR(50) UNIQUE,
     full_name VARCHAR(150) NOT NULL,
     phone VARCHAR(20),
     email VARCHAR(100),
@@ -154,11 +155,13 @@ CREATE TABLE IF NOT EXISTS staff (
     salary_type ENUM('hourly', 'daily', 'monthly') DEFAULT 'monthly',
     hire_date DATE NOT NULL,
     is_active TINYINT(1) DEFAULT 1,
+    leave_balance INT DEFAULT 20,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL,
     INDEX idx_staff_active (is_active),
-    INDEX idx_staff_name (full_name)
+    INDEX idx_staff_name (full_name),
+    INDEX idx_staff_employee_id (employee_id)
 );
 
 -- Store Settings (single row with setting_id=1)
@@ -365,6 +368,7 @@ CREATE TABLE IF NOT EXISTS attendance (
     status ENUM('present', 'absent', 'half_day', 'leave', 'holiday') DEFAULT 'present',
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE,
     UNIQUE KEY unique_attendance (staff_id, attendance_date),
     INDEX idx_attendance_date (attendance_date),
