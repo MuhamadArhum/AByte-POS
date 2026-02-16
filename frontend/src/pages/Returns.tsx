@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RotateCcw, Search, Loader2, Check, AlertTriangle, Package } from 'lucide-react';
+import { RotateCcw, Search, Loader2, Check } from 'lucide-react';
 import api from '../utils/api';
 import Pagination from '../components/Pagination';
 
@@ -49,7 +49,7 @@ const Returns = () => {
   const [recentReturns, setRecentReturns] = useState<any[]>([]);
   const [showRecent, setShowRecent] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -401,12 +401,13 @@ const Returns = () => {
                 ))}
               </tbody>
             </table>
-            <Pagination 
+            <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={setCurrentPage}
               totalItems={totalItems}
               itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
             />
           </div>
         </div>

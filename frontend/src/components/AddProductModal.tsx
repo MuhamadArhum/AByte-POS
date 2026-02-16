@@ -7,13 +7,29 @@ interface Category {
   category_name: string;
 }
 
+interface ProductToEdit {
+  product_id: number;
+  product_name: string;
+  category_id: number | null;
+  price: number | string;
+  cost_price?: number | string;
+  stock_quantity?: number;
+  available_stock?: number;
+  min_stock_level?: number;
+  barcode?: string;
+  sku?: string;
+  description?: string;
+  image_url?: string;
+}
+
 interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  productToEdit?: ProductToEdit | null;
 }
 
-const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSuccess }) => {
+const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSuccess, productToEdit }) => {
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [price, setPrice] = useState('');
@@ -36,9 +52,24 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
   useEffect(() => {
     if (isOpen) {
       fetchCategories();
-      resetForm();
+      if (productToEdit) {
+        setName(productToEdit.product_name || '');
+        setCategoryId(productToEdit.category_id ? String(productToEdit.category_id) : '');
+        setPrice(productToEdit.price ? String(productToEdit.price) : '');
+        setCostPrice(productToEdit.cost_price ? String(productToEdit.cost_price) : '');
+        setStock(String(productToEdit.stock_quantity ?? productToEdit.available_stock ?? 0));
+        setMinStock(productToEdit.min_stock_level ? String(productToEdit.min_stock_level) : '');
+        setBarcode(productToEdit.barcode || '');
+        setSku(productToEdit.sku || '');
+        setDescription(productToEdit.description || '');
+        setImageUrl(productToEdit.image_url || '');
+        setError('');
+        setTouched({ name: false, price: false, stock: false });
+      } else {
+        resetForm();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, productToEdit]);
 
   const resetForm = () => {
     setName('');
@@ -108,7 +139,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
     setError('');
 
     try {
-      await api.post('/products', {
+      const payload = {
         product_name: name,
         category_id: categoryId ? parseInt(categoryId) : null,
         price: parseFloat(price),
@@ -119,12 +150,17 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
         sku: sku || null,
         description: description || null,
         image_url: imageUrl || null
-      });
+      };
+      if (productToEdit) {
+        await api.put(`/products/${productToEdit.product_id}`, payload);
+      } else {
+        await api.post('/products', payload);
+      }
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error('Failed to add product', error);
-      setError(error.response?.data?.message || 'Failed to add product');
+      console.error('Failed to save product', error);
+      setError(error.response?.data?.message || 'Failed to save product');
     } finally {
       setLoading(false);
     }
@@ -145,8 +181,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
                 <PackagePlus size={28} className="text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">Add New Product</h2>
-                <p className="text-sm text-gray-500 mt-0.5">Fill in product details and inventory information</p>
+                <h2 className="text-2xl font-bold text-gray-800">{productToEdit ? 'Edit Product' : 'Add New Product'}</h2>
+                <p className="text-sm text-gray-500 mt-0.5">{productToEdit ? 'Update product details' : 'Fill in product details and inventory information'}</p>
               </div>
             </div>
             <button 
@@ -449,7 +485,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
               ) : (
                 <>
                   <Save size={20} />
-                  <span>Save Product</span>
+                  <span>{productToEdit ? 'Update Product' : 'Save Product'}</span>
                 </>
               )}
             </button>

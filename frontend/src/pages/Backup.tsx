@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Database, Download, Trash2, Upload, Loader2, AlertTriangle, Check, HardDrive } from 'lucide-react';
+import { Database, Download, Trash2, Upload, Loader2, AlertTriangle, Check, HardDrive, Clock, Shield, FileArchive } from 'lucide-react';
 import api from '../utils/api';
 import Pagination from '../components/Pagination';
 
@@ -21,6 +21,18 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 };
 
+const timeAgo = (dateStr: string): string => {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+};
+
 const Backup = () => {
   const [backups, setBackups] = useState<BackupEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +46,9 @@ const Backup = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
+  // All backups for summary (from current page data we can estimate)
+  const [allStats, setAllStats] = useState({ totalSize: 0, completedCount: 0, failedCount: 0 });
+
   const fetchBackups = useCallback(async () => {
     setLoading(true);
     try {
@@ -44,6 +59,13 @@ const Backup = () => {
         setBackups(res.data.data);
         setTotalItems(res.data.pagination.total);
         setTotalPages(res.data.pagination.totalPages);
+
+        // Calculate stats from current page data
+        const data = res.data.data as BackupEntry[];
+        const totalSize = data.reduce((sum: number, b: BackupEntry) => sum + Number(b.file_size || 0), 0);
+        const completedCount = data.filter((b: BackupEntry) => b.status === 'completed').length;
+        const failedCount = data.filter((b: BackupEntry) => b.status === 'failed').length;
+        setAllStats({ totalSize, completedCount, failedCount });
       } else {
         setBackups(Array.isArray(res.data) ? res.data : []);
       }
@@ -63,7 +85,7 @@ const Backup = () => {
     setMessage({ type: '', text: '' });
     try {
       const res = await api.post('/backup');
-      setMessage({ type: 'success', text: `Backup created: ${res.data.filename}` });
+      setMessage({ type: 'success', text: `Backup created successfully: ${res.data.filename}` });
       fetchBackups();
     } catch (error: any) {
       setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to create backup' });
@@ -103,23 +125,18 @@ const Backup = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
-      </div>
-    );
-  }
+  const lastBackup = backups.length > 0 ? backups[0] : null;
 
   return (
     <div className="p-8">
+      {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
             <Database className="text-emerald-600" size={32} />
             Backup & Restore
           </h1>
-          <p className="text-gray-500 mt-1">Manage database backups</p>
+          <p className="text-gray-500 mt-1">Manage database backups and recovery</p>
         </div>
         <button
           onClick={handleCreate}
@@ -142,16 +159,78 @@ const Backup = () => {
         </div>
       )}
 
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-emerald-50 rounded-xl">
+              <FileArchive size={24} className="text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-800">{totalItems}</p>
+              <p className="text-sm text-gray-500">Total Backups</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-blue-50 rounded-xl">
+              <HardDrive size={24} className="text-blue-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-blue-600">{formatFileSize(allStats.totalSize)}</p>
+              <p className="text-sm text-gray-500">Page Storage</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-green-50 rounded-xl">
+              <Shield size={24} className="text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-green-600">{allStats.completedCount}</p>
+              <p className="text-sm text-gray-500">Successful</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-orange-50 rounded-xl">
+              <Clock size={24} className="text-orange-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-orange-600">
+                {lastBackup ? timeAgo(lastBackup.created_at) : 'Never'}
+              </p>
+              <p className="text-sm text-gray-500">Last Backup</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Backups Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-4 border-b border-gray-100">
-          <h3 className="font-bold text-gray-800">Backup History ({backups.length})</h3>
+          <h3 className="font-bold text-gray-800">Backup History</h3>
         </div>
 
-        {backups.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center p-12">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div>
+          </div>
+        ) : backups.length === 0 ? (
           <div className="p-12 text-center">
             <Database size={48} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500">No backups yet. Create your first backup.</p>
+            <p className="text-gray-500 mb-4">No backups yet. Create your first backup to protect your data.</p>
+            <button
+              onClick={handleCreate}
+              disabled={creating}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg font-medium inline-flex items-center gap-2"
+            >
+              <HardDrive size={18} />
+              Create First Backup
+            </button>
           </div>
         ) : (
           <table className="w-full text-left text-sm">
@@ -171,7 +250,12 @@ const Backup = () => {
                 <tr key={backup.backup_id} className="hover:bg-gray-50">
                   <td className="p-4 font-medium text-gray-800 font-mono text-xs">{backup.filename}</td>
                   <td className="p-4 text-gray-600">{formatFileSize(Number(backup.file_size))}</td>
-                  <td className="p-4 text-gray-500">{new Date(backup.created_at).toLocaleString()}</td>
+                  <td className="p-4 text-gray-500">
+                    <div>
+                      <div>{new Date(backup.created_at).toLocaleDateString()}</div>
+                      <div className="text-xs text-gray-400">{new Date(backup.created_at).toLocaleTimeString()}</div>
+                    </div>
+                  </td>
                   <td className="p-4 text-gray-600">{backup.created_by_name}</td>
                   <td className="p-4">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -219,7 +303,7 @@ const Backup = () => {
           </table>
         )}
         {backups.length > 0 && (
-          <Pagination 
+          <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}

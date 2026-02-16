@@ -128,16 +128,101 @@ exports.receive = async (req, res) => {
   }
 };
 
+exports.cancel = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [po] = await query('SELECT * FROM purchase_orders WHERE po_id = ?', [id]);
+    if (!po) return res.status(404).json({ message: 'PO not found' });
+    if (po.status === 'received') return res.status(400).json({ message: 'Cannot cancel a received PO' });
+    if (po.status === 'cancelled') return res.status(400).json({ message: 'PO is already cancelled' });
+
+    await query('UPDATE purchase_orders SET status = ? WHERE po_id = ?', ['cancelled', id]);
+    await logAction(req.user.user_id, req.user.name, 'PO_CANCELLED', 'purchase_order', id, { po_number: po.po_number }, req.ip);
+    res.json({ message: 'Purchase order cancelled' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 exports.getStockAlerts = async (req, res) => {
   try {
-    const alerts = await query(`
-      SELECT sa.*, p.product_name FROM stock_alerts sa
-      JOIN products p ON sa.product_id = p.product_id
-      WHERE sa.is_active = 1
-      ORDER BY sa.created_at DESC
-      LIMIT 100
+    const { alert_type, status, search } = req.query;
+    const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
+
+    let sql = 'SELECT sa.*, p.product_name FROM stock_alerts sa JOIN products p ON sa.product_id = p.product_id WHERE 1=1';
+    let countSql = 'SELECT COUNT(*) as total FROM stock_alerts sa JOIN products p ON sa.product_id = p.product_id WHERE 1=1';
+    const params = [], countParams = [];
+
+    if (alert_type) {
+      sql += ' AND sa.alert_type = ?';
+      countSql += ' AND sa.alert_type = ?';
+      params.push(alert_type);
+      countParams.push(alert_type);
+    }
+
+    if (status === 'active') {
+      sql += ' AND sa.is_active = 1';
+      countSql += ' AND sa.is_active = 1';
+    } else if (status === 'resolved') {
+      sql += ' AND sa.is_active = 0';
+      countSql += ' AND sa.is_active = 0';
+    }
+
+    if (search) {
+      sql += ' AND p.product_name LIKE ?';
+      countSql += ' AND p.product_name LIKE ?';
+      params.push(`%${search}%`);
+      countParams.push(`%${search}%`);
+    }
+
+    sql += ' ORDER BY sa.is_active DESC, sa.created_at DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const [alerts, [{ total }]] = await Promise.all([
+      query(sql, params),
+      query(countSql, countParams)
+    ]);
+
+    res.json({ data: alerts, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getAlertStats = async (req, res) => {
+  try {
+    const [stats] = await query(`
+      SELECT
+        SUM(is_active = 1) as total_active,
+        SUM(is_active = 1 AND alert_type = 'low_stock') as low_stock,
+        SUM(is_active = 1 AND alert_type = 'out_of_stock') as out_of_stock,
+        SUM(is_active = 1 AND alert_type = 'overstock') as overstock
+      FROM stock_alerts
     `);
-    res.json({ data: alerts });
+    res.json({
+      total_active: Number(stats.total_active) || 0,
+      low_stock: Number(stats.low_stock) || 0,
+      out_of_stock: Number(stats.out_of_stock) || 0,
+      overstock: Number(stats.overstock) || 0
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.resolveAlert = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [alert] = await query('SELECT * FROM stock_alerts WHERE alert_id = ?', [id]);
+    if (!alert) return res.status(404).json({ message: 'Alert not found' });
+    if (!alert.is_active) return res.status(400).json({ message: 'Alert is already resolved' });
+
+    await query('UPDATE stock_alerts SET is_active = 0, resolved_at = NOW() WHERE alert_id = ?', [id]);
+    await logAction(req.user.user_id, req.user.name, 'ALERT_RESOLVED', 'stock_alert', id, { product_id: alert.product_id, alert_type: alert.alert_type }, req.ip);
+    res.json({ message: 'Alert resolved' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

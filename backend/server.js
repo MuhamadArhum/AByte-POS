@@ -33,6 +33,10 @@ const staffRoutes = require('./routes/staffRoutes');         // Staff management
 const purchaseOrderRoutes = require('./routes/purchaseOrderRoutes'); // Purchase orders routes
 const storeRoutes = require('./routes/storeRoutes');         // Multi-store management routes
 const analyticsRoutes = require('./routes/analyticsRoutes'); // Analytics dashboard routes
+const accountingRoutes = require('./routes/accountingRoutes'); // Accounting module routes
+const stockAdjustmentRoutes = require('./routes/stockAdjustmentRoutes'); // Stock adjustment routes
+const stockTransferRoutes = require('./routes/stockTransferRoutes');     // Stock transfer routes
+const inventoryReportRoutes = require('./routes/inventoryReportRoutes'); // Inventory report routes
 
 // Create the Express application instance
 const app = express();
@@ -68,6 +72,10 @@ app.use('/api/staff', staffRoutes);         // Staff management routes
 app.use('/api/purchase-orders', purchaseOrderRoutes); // Purchase orders routes
 app.use('/api/stores', storeRoutes);        // Multi-store management routes
 app.use('/api/analytics', analyticsRoutes); // Analytics dashboard routes
+app.use('/api/accounting', accountingRoutes); // Accounting module routes
+app.use('/api/stock-adjustments', stockAdjustmentRoutes); // Stock adjustment routes
+app.use('/api/stock-transfers', stockTransferRoutes);     // Stock transfer routes
+app.use('/api/inventory-reports', inventoryReportRoutes); // Inventory report routes
 
 // Health check endpoint - used to verify server is running
 // Example: GET /api/health returns { status: 'ok' }

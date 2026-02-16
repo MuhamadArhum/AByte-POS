@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { X, User, Calendar, DollarSign, Clock, TrendingUp, Edit, Trash2, BarChart3, CreditCard } from 'lucide-react';
+import { X, User, Calendar, DollarSign, Clock, TrendingUp, Edit, Trash2, BarChart3, CreditCard, Printer } from 'lucide-react';
 import api from '../utils/api';
 import { useToast } from './Toast';
 import { useAuth } from '../context/AuthContext';
 import EditSalaryPaymentModal from './EditSalaryPaymentModal';
+import SalarySlipModal from './SalarySlipModal';
 
 interface StaffDetailsModalProps {
   isOpen: boolean;
@@ -25,6 +26,8 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [loanHistory, setLoanHistory] = useState<any[]>([]);
   const [incrementHistory, setIncrementHistory] = useState<any[]>([]);
+  const [showSalarySlip, setShowSalarySlip] = useState(false);
+  const [slipPayment, setSlipPayment] = useState<any>(null);
 
   useEffect(() => {
     if (isOpen && staffId) {
@@ -372,6 +375,9 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
                               {isAdmin && (
                                 <td className="p-4 text-center">
                                   <div className="flex items-center justify-center gap-1">
+                                    <button onClick={() => { setSlipPayment({...payment, staff_id: staffId, full_name: staff?.full_name}); setShowSalarySlip(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Print Slip">
+                                      <Printer size={16} />
+                                    </button>
                                     <button onClick={() => { setSelectedPayment(payment); setShowEditPayment(true); }} className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition" title="Edit">
                                       <Edit size={16} />
                                     </button>
@@ -551,6 +557,13 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
         onSuccess={fetchSalaryHistory}
         payment={selectedPayment}
         staffName={staff?.full_name || ''}
+      />
+
+      {/* Salary Slip Modal */}
+      <SalarySlipModal
+        isOpen={showSalarySlip}
+        onClose={() => { setShowSalarySlip(false); setSlipPayment(null); }}
+        payment={slipPayment}
       />
     </div>
   );

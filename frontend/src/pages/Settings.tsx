@@ -1,41 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
-import { 
-  Save, 
-  Building2, 
-  Phone, 
-  Mail, 
-  Globe, 
-  FileText, 
-  Loader2, 
+import {
+  Save,
+  Building2,
+  Phone,
+  Mail,
+  Globe,
+  FileText,
+  Loader2,
   Settings as SettingsIcon,
   Users,
   Shield,
-  Database,
-  Bell,
-  Palette,
-  Download,
-  Upload,
   Plus,
   Trash2,
   Edit,
   X,
-  Check,
-  AlertTriangle
+  AlertTriangle,
+  Receipt,
+  ShoppingCart,
+  Clock,
+  Lock,
+  Eye,
+  EyeOff,
+  Server,
+  Key,
+  Printer,
+  Hash,
+  DollarSign,
+  Package
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-
-interface StoreSettings {
-  store_name: string;
-  address: string;
-  phone: string;
-  email: string;
-  website: string;
-  receipt_footer: string;
-  tax_rate?: number;
-  currency_symbol?: string;
-  receipt_logo?: string;
-}
+import { useToast } from '../components/Toast';
 
 interface User {
   user_id: number;
@@ -48,34 +43,38 @@ interface User {
 
 const Settings = () => {
   const { user: currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'store' | 'users' | 'system' | 'backup'>('store');
-  
-  // Store Settings
-  const [settings, setSettings] = useState<StoreSettings>({
-    store_name: '',
-    address: '',
-    phone: '',
-    email: '',
-    website: '',
-    receipt_footer: '',
-    tax_rate: 0,
-    currency_symbol: '$'
+  const toast = useToast();
+  const [activeTab, setActiveTab] = useState('store');
+
+  // All settings from DB
+  const [settings, setSettings] = useState<any>({
+    store_name: '', address: '', phone: '', email: '', website: '',
+    receipt_header: '', receipt_footer: '', receipt_logo: '',
+    tax_rate: 0, currency_symbol: 'Rs.',
+    low_stock_threshold: 10, default_payment_method: 'cash', auto_print_receipt: false,
+    barcode_prefix: '', invoice_prefix: 'INV-', date_format: 'DD/MM/YYYY', timezone: 'Asia/Karachi',
+    business_hours_open: '09:00', business_hours_close: '21:00',
+    allow_negative_stock: false, discount_requires_approval: false, max_cashier_discount: 50,
+    session_timeout_minutes: 480,
+    receipt_show_store_name: true, receipt_show_address: true, receipt_show_phone: true, receipt_show_tax: true,
+    receipt_paper_width: '80mm'
   });
-  
+
   // Users
   const [users, setUsers] = useState<User[]>([]);
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [userForm, setUserForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role_id: 3  // Default: Cashier
-  });
+  const [userForm, setUserForm] = useState({ name: '', email: '', password: '', role_id: 3 });
+
+  // Password
+  const [passwordForm, setPasswordForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
+  const [showPasswords, setShowPasswords] = useState({ current: false, new_password: false, confirm: false });
+
+  // System info
+  const [systemInfo, setSystemInfo] = useState<any>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
     fetchSettings();
@@ -84,10 +83,16 @@ const Settings = () => {
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    if (activeTab === 'system' && currentUser?.role_name === 'Admin' && !systemInfo) {
+      fetchSystemInfo();
+    }
+  }, [activeTab]);
+
   const fetchSettings = async () => {
     try {
       const res = await api.get('/settings');
-      setSettings(res.data);
+      setSettings({ ...settings, ...res.data });
     } catch (err) {
       console.error('Failed to load settings', err);
     } finally {
@@ -104,16 +109,23 @@ const Settings = () => {
     }
   };
 
-  const handleStoreSettingsSubmit = async (e: React.FormEvent) => {
+  const fetchSystemInfo = async () => {
+    try {
+      const res = await api.get('/settings/system-info');
+      setSystemInfo(res.data);
+    } catch (err) {
+      console.error('Failed to load system info', err);
+    }
+  };
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setMessage({ type: '', text: '' });
     try {
       await api.put('/settings', settings);
-      setMessage({ type: 'success', text: 'Store settings saved successfully' });
-      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      toast.success('Settings saved successfully');
     } catch (err) {
-      setMessage({ type: 'error', text: 'Failed to save settings' });
+      toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -122,40 +134,22 @@ const Settings = () => {
   const handleUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setMessage({ type: '', text: '' });
-    
     try {
       if (editingUser) {
-        const payload: any = {
-          name: userForm.name,
-          email: userForm.email,
-          role_id: userForm.role_id
-        };
-        if (userForm.password) {
-          payload.password = userForm.password;
-        }
+        const payload: any = { name: userForm.name, email: userForm.email, role_id: userForm.role_id };
+        if (userForm.password) payload.password = userForm.password;
         await api.put(`/users/${editingUser.user_id}`, payload);
-        setMessage({ type: 'success', text: 'User updated successfully' });
+        toast.success('User updated');
       } else {
-        await api.post('/users', {
-          name: userForm.name,
-          email: userForm.email,
-          password: userForm.password,
-          role_id: userForm.role_id
-        });
-        setMessage({ type: 'success', text: 'User created successfully' });
+        await api.post('/users', userForm);
+        toast.success('User created');
       }
-
       setShowUserModal(false);
       setEditingUser(null);
       setUserForm({ name: '', email: '', password: '', role_id: 3 });
       fetchUsers();
-      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
     } catch (err: any) {
-      setMessage({ 
-        type: 'error', 
-        text: err.response?.data?.message || 'Failed to save user' 
-      });
+      toast.error(err.response?.data?.message || 'Failed to save user');
     } finally {
       setSaving(false);
     }
@@ -163,41 +157,55 @@ const Settings = () => {
 
   const handleDeleteUser = async (userId: number) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
-    
     try {
       await api.delete(`/users/${userId}`);
-      setMessage({ type: 'success', text: 'User deleted successfully' });
+      toast.success('User deleted');
       fetchUsers();
-      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
     } catch (err) {
-      setMessage({ type: 'error', text: 'Failed to delete user' });
+      toast.error('Failed to delete user');
     }
   };
 
-  const handleBackup = async () => {
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    if (passwordForm.new_password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    setSaving(true);
     try {
-      const res = await api.post('/backup/create');
-      setMessage({ type: 'success', text: 'Backup created successfully' });
-      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Failed to create backup' });
+      await api.post('/settings/change-password', {
+        current_password: passwordForm.current_password,
+        new_password: passwordForm.new_password
+      });
+      toast.success('Password changed successfully');
+      setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to change password');
+    } finally {
+      setSaving(false);
     }
   };
 
   const openUserModal = (user?: User) => {
     if (user) {
       setEditingUser(user);
-      setUserForm({
-        name: user.name,
-        email: user.email,
-        password: '',
-        role_id: user.role_id
-      });
+      setUserForm({ name: user.name, email: user.email, password: '', role_id: user.role_id });
     } else {
       setEditingUser(null);
       setUserForm({ name: '', email: '', password: '', role_id: 3 });
     }
     setShowUserModal(true);
+  };
+
+  const formatUptime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return `${h}h ${m}m`;
   };
 
   if (loading) {
@@ -213,9 +221,11 @@ const Settings = () => {
 
   const tabs = [
     { id: 'store', name: 'Store Info', icon: Building2 },
+    { id: 'receipt', name: 'Receipt & Invoice', icon: Receipt },
+    { id: 'pos', name: 'POS Settings', icon: ShoppingCart },
     { id: 'users', name: 'Users', icon: Users, adminOnly: true },
-    { id: 'system', name: 'System', icon: SettingsIcon },
-    { id: 'backup', name: 'Backup', icon: Database, adminOnly: true },
+    { id: 'security', name: 'Security', icon: Shield },
+    { id: 'system', name: 'System', icon: Server, adminOnly: true },
   ];
 
   return (
@@ -230,18 +240,6 @@ const Settings = () => {
         <p className="text-gray-600">Manage your store settings, users, and system configuration</p>
       </div>
 
-      {/* Message Banner */}
-      {message.text && (
-        <div className={`mb-6 p-4 rounded-xl border-2 flex items-center gap-3 ${
-          message.type === 'success' 
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
-            : 'bg-red-50 border-red-200 text-red-700'
-        }`}>
-          {message.type === 'success' ? <Check size={20} /> : <AlertTriangle size={20} />}
-          <span className="font-medium">{message.text}</span>
-        </div>
-      )}
-
       {/* Tabs */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
         <div className="flex border-b border-gray-200 overflow-x-auto">
@@ -251,7 +249,7 @@ const Settings = () => {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-6 py-4 font-semibold transition-all whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50'
@@ -266,116 +264,92 @@ const Settings = () => {
         </div>
 
         <div className="p-8">
-          {/* Store Settings Tab */}
+
+          {/* ========== STORE INFO TAB ========== */}
           {activeTab === 'store' && (
-            <form onSubmit={handleStoreSettingsSubmit} className="space-y-6">
+            <form onSubmit={handleSaveSettings} className="space-y-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Store Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Store Name *</label>
                   <div className="relative">
                     <Building2 className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input
-                      type="text"
-                      value={settings.store_name}
-                      onChange={e => setSettings({...settings, store_name: e.target.value})}
-                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                      required
-                    />
+                    <input type="text" value={settings.store_name}
+                      onChange={e => setSettings({ ...settings, store_name: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" required />
                   </div>
                 </div>
-                
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input
-                      type="text"
-                      value={settings.phone}
-                      onChange={e => setSettings({...settings, phone: e.target.value})}
-                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                    />
+                    <input type="text" value={settings.phone}
+                      onChange={e => setSettings({ ...settings, phone: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input
-                      type="email"
-                      value={settings.email}
-                      onChange={e => setSettings({...settings, email: e.target.value})}
-                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                    />
+                    <input type="email" value={settings.email}
+                      onChange={e => setSettings({ ...settings, email: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Website</label>
                   <div className="relative">
                     <Globe className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input
-                      type="text"
-                      value={settings.website}
-                      onChange={e => setSettings({...settings, website: e.target.value})}
-                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                    />
+                    <input type="text" value={settings.website}
+                      onChange={e => setSettings({ ...settings, website: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Default Tax Rate (%)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={settings.tax_rate}
-                    onChange={e => setSettings({...settings, tax_rate: parseFloat(e.target.value)})}
-                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                  />
+                  <input type="number" step="0.01" value={settings.tax_rate}
+                    onChange={e => setSettings({ ...settings, tax_rate: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
                 </div>
-
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Currency Symbol</label>
-                  <input
-                    type="text"
-                    value={settings.currency_symbol}
-                    onChange={e => setSettings({...settings, currency_symbol: e.target.value})}
-                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                    placeholder="$"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Address</label>
-                  <textarea
-                    value={settings.address}
-                    onChange={e => setSettings({...settings, address: e.target.value})}
-                    rows={3}
-                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Receipt Footer Message</label>
                   <div className="relative">
-                    <FileText className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input
-                      type="text"
-                      value={settings.receipt_footer}
-                      onChange={e => setSettings({...settings, receipt_footer: e.target.value})}
-                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                      placeholder="e.g. Thank you for shopping with us!"
-                    />
+                    <DollarSign className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input type="text" value={settings.currency_symbol}
+                      onChange={e => setSettings({ ...settings, currency_symbol: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                      placeholder="Rs." />
                   </div>
                 </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Business Hours - Open</label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input type="time" value={settings.business_hours_open}
+                      onChange={e => setSettings({ ...settings, business_hours_open: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Business Hours - Close</label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input type="time" value={settings.business_hours_close}
+                      onChange={e => setSettings({ ...settings, business_hours_close: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Address</label>
+                  <textarea value={settings.address} rows={3}
+                    onChange={e => setSettings({ ...settings, address: e.target.value })}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                </div>
               </div>
-
               <div className="flex justify-end pt-4 border-t border-gray-200">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 font-semibold shadow-lg transition-all"
-                >
+                <button type="submit" disabled={saving}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 font-semibold shadow-lg transition-all">
                   {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                   Save Changes
                 </button>
@@ -383,18 +357,242 @@ const Settings = () => {
             </form>
           )}
 
-          {/* Users Tab */}
+          {/* ========== RECEIPT & INVOICE TAB ========== */}
+          {activeTab === 'receipt' && (
+            <form onSubmit={handleSaveSettings} className="space-y-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Receipt & Invoice Settings</h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Receipt Paper Width</label>
+                  <select value={settings.receipt_paper_width}
+                    onChange={e => setSettings({ ...settings, receipt_paper_width: e.target.value })}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                    <option value="58mm">58mm (Small)</option>
+                    <option value="80mm">80mm (Standard)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Invoice Number Prefix</label>
+                  <div className="relative">
+                    <Hash className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input type="text" value={settings.invoice_prefix}
+                      onChange={e => setSettings({ ...settings, invoice_prefix: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                      placeholder="INV-" />
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Receipt Header Message</label>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input type="text" value={settings.receipt_header || ''}
+                      onChange={e => setSettings({ ...settings, receipt_header: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                      placeholder="e.g. Welcome to our store!" />
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Receipt Footer Message</label>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input type="text" value={settings.receipt_footer}
+                      onChange={e => setSettings({ ...settings, receipt_footer: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                      placeholder="e.g. Thank you for shopping with us!" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Receipt Show/Hide Toggles */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-4">Receipt Display Options</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { key: 'receipt_show_store_name', label: 'Show Store Name', icon: Building2 },
+                    { key: 'receipt_show_address', label: 'Show Address', icon: Globe },
+                    { key: 'receipt_show_phone', label: 'Show Phone Number', icon: Phone },
+                    { key: 'receipt_show_tax', label: 'Show Tax Details', icon: DollarSign },
+                  ].map(item => {
+                    const Icon = item.icon;
+                    return (
+                      <label key={item.key} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-100 transition">
+                        <div className="flex items-center gap-3">
+                          <Icon size={20} className="text-gray-500" />
+                          <span className="font-medium text-gray-700">{item.label}</span>
+                        </div>
+                        <div className="relative">
+                          <input type="checkbox" className="sr-only peer"
+                            checked={!!settings[item.key]}
+                            onChange={e => setSettings({ ...settings, [item.key]: e.target.checked })} />
+                          <div className="w-11 h-6 bg-gray-300 peer-checked:bg-emerald-500 rounded-full transition-colors"></div>
+                          <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow peer-checked:translate-x-5 transition-transform"></div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Receipt Preview */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-4">Receipt Preview</h3>
+                <div className="max-w-xs mx-auto bg-white border-2 border-dashed border-gray-300 rounded-lg p-6 font-mono text-sm text-center">
+                  {settings.receipt_header && <p className="text-xs text-gray-500 mb-2">{settings.receipt_header}</p>}
+                  {settings.receipt_show_store_name && <p className="font-bold text-lg">{settings.store_name || 'Store Name'}</p>}
+                  {settings.receipt_show_address && settings.address && <p className="text-xs text-gray-500">{settings.address}</p>}
+                  {settings.receipt_show_phone && settings.phone && <p className="text-xs text-gray-500">Tel: {settings.phone}</p>}
+                  <div className="border-t border-dashed border-gray-300 my-3"></div>
+                  <p className="text-xs text-gray-400">Date: {new Date().toLocaleDateString()}</p>
+                  <p className="text-xs text-gray-400">Invoice: {settings.invoice_prefix}000001</p>
+                  <div className="border-t border-dashed border-gray-300 my-3"></div>
+                  <div className="text-left text-xs space-y-1">
+                    <div className="flex justify-between"><span>Sample Item x2</span><span>{settings.currency_symbol} 500.00</span></div>
+                    <div className="flex justify-between"><span>Another Item x1</span><span>{settings.currency_symbol} 250.00</span></div>
+                  </div>
+                  <div className="border-t border-dashed border-gray-300 my-3"></div>
+                  {settings.receipt_show_tax && (
+                    <div className="text-left text-xs">
+                      <div className="flex justify-between"><span>Subtotal</span><span>{settings.currency_symbol} 750.00</span></div>
+                      <div className="flex justify-between text-gray-500"><span>Tax ({settings.tax_rate}%)</span><span>{settings.currency_symbol} {(750 * (settings.tax_rate || 0) / 100).toFixed(2)}</span></div>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-sm mt-1">
+                    <span>Total</span>
+                    <span>{settings.currency_symbol} {(750 + 750 * (settings.tax_rate || 0) / 100).toFixed(2)}</span>
+                  </div>
+                  <div className="border-t border-dashed border-gray-300 my-3"></div>
+                  {settings.receipt_footer && <p className="text-xs text-gray-500">{settings.receipt_footer}</p>}
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4 border-t border-gray-200">
+                <button type="submit" disabled={saving}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 font-semibold shadow-lg transition-all">
+                  {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* ========== POS SETTINGS TAB ========== */}
+          {activeTab === 'pos' && (
+            <form onSubmit={handleSaveSettings} className="space-y-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">POS Configuration</h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Default Payment Method</label>
+                  <select value={settings.default_payment_method}
+                    onChange={e => setSettings({ ...settings, default_payment_method: e.target.value })}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="online">Online</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Low Stock Alert Threshold</label>
+                  <div className="relative">
+                    <Package className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input type="number" value={settings.low_stock_threshold}
+                      onChange={e => setSettings({ ...settings, low_stock_threshold: parseInt(e.target.value) || 0 })}
+                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                      placeholder="10" />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Products below this quantity will show in alerts</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Barcode Prefix</label>
+                  <div className="relative">
+                    <Hash className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input type="text" value={settings.barcode_prefix}
+                      onChange={e => setSettings({ ...settings, barcode_prefix: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                      placeholder="e.g. AB" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Max Cashier Discount (%)</label>
+                  <input type="number" step="0.01" min="0" max="100" value={settings.max_cashier_discount}
+                    onChange={e => setSettings({ ...settings, max_cashier_discount: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                  <p className="text-xs text-gray-500 mt-1">Maximum discount cashiers can apply (Admin/Manager have no limit)</p>
+                </div>
+              </div>
+
+              {/* Toggle Options */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-4">POS Behavior</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { key: 'auto_print_receipt', label: 'Auto-Print Receipt After Sale', desc: 'Automatically print receipt when sale is completed', icon: Printer },
+                    { key: 'allow_negative_stock', label: 'Allow Negative Stock', desc: 'Allow selling products even when stock is 0', icon: Package },
+                    { key: 'discount_requires_approval', label: 'Discount Requires Approval', desc: 'Require manager approval for discounts above cashier limit', icon: Shield },
+                  ].map(item => {
+                    const Icon = item.icon;
+                    return (
+                      <label key={item.key} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-100 transition">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                            <Icon size={20} className="text-emerald-600" />
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-700 block">{item.label}</span>
+                            <span className="text-xs text-gray-500">{item.desc}</span>
+                          </div>
+                        </div>
+                        <div className="relative ml-4">
+                          <input type="checkbox" className="sr-only peer"
+                            checked={!!settings[item.key]}
+                            onChange={e => setSettings({ ...settings, [item.key]: e.target.checked })} />
+                          <div className="w-11 h-6 bg-gray-300 peer-checked:bg-emerald-500 rounded-full transition-colors"></div>
+                          <div className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow peer-checked:translate-x-5 transition-transform"></div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4 border-t border-gray-200">
+                <button type="submit" disabled={saving}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 font-semibold shadow-lg transition-all">
+                  {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* ========== USERS TAB ========== */}
           {activeTab === 'users' && currentUser?.role_name === 'Admin' && (
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-gray-800">User Management</h2>
-                <button
-                  onClick={() => openUserModal()}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold shadow-sm"
-                >
-                  <Plus size={18} />
-                  Add User
+                <button onClick={() => openUserModal()}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition font-semibold shadow-sm">
+                  <Plus size={18} /> Add User
                 </button>
+              </div>
+
+              {/* Stats Cards */}
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                {['Admin', 'Manager', 'Cashier'].map(role => {
+                  const count = users.filter(u => u.role === role).length;
+                  const colors: Record<string, string> = {
+                    Admin: 'bg-purple-100 text-purple-700',
+                    Manager: 'bg-blue-100 text-blue-700',
+                    Cashier: 'bg-gray-100 text-gray-700'
+                  };
+                  return (
+                    <div key={role} className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${colors[role]}`}>{role}</span>
+                      <p className="text-2xl font-bold text-gray-800 mt-2">{count}</p>
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="overflow-x-auto rounded-lg border border-gray-200">
@@ -404,40 +602,43 @@ const Settings = () => {
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Name</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Role</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Joined</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {users.map(user => (
-                      <tr key={user.user_id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 font-medium text-gray-800">{user.name}</td>
+                      <tr key={user.user_id} className="hover:bg-gray-50 transition">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 font-bold text-sm">
+                              {user.name.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="font-medium text-gray-800">{user.name}</span>
+                          </div>
+                        </td>
                         <td className="px-6 py-4 text-gray-600">{user.email}</td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            user.role === 'Admin'
-                              ? 'bg-purple-100 text-purple-700'
-                              : user.role === 'Manager'
-                              ? 'bg-blue-100 text-blue-700'
+                            user.role === 'Admin' ? 'bg-purple-100 text-purple-700'
+                              : user.role === 'Manager' ? 'bg-blue-100 text-blue-700'
                               : 'bg-gray-100 text-gray-700'
                           }`}>
                             {user.role}
                           </span>
                         </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </td>
                         <td className="px-6 py-4">
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => openUserModal(user)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="Edit"
-                            >
+                            <button onClick={() => openUserModal(user)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit">
                               <Edit size={16} />
                             </button>
                             {user.user_id !== currentUser?.user_id && (
-                              <button
-                                onClick={() => handleDeleteUser(user.user_id)}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Delete"
-                              >
+                              <button onClick={() => handleDeleteUser(user.user_id)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete">
                                 <Trash2 size={16} />
                               </button>
                             )}
@@ -451,94 +652,231 @@ const Settings = () => {
             </div>
           )}
 
-          {/* System Tab */}
-          {activeTab === 'system' && (
-            <div className="space-y-6">
+          {/* ========== SECURITY TAB ========== */}
+          {activeTab === 'security' && (
+            <div className="space-y-8">
+              {/* Change Password */}
               <div>
-                <h2 className="text-xl font-bold text-gray-800 mb-4">System Configuration</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-6 bg-gray-50 rounded-xl border border-gray-200">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <Bell size={20} className="text-blue-600" />
-                      </div>
-                      <h3 className="font-semibold text-gray-800">Notifications</h3>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">Change Password</h2>
+                <p className="text-sm text-gray-600 mb-6">Update your account password. Must be at least 6 characters.</p>
+
+                <form onSubmit={handleChangePassword} className="max-w-lg space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Current Password *</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
+                      <input type={showPasswords.current ? 'text' : 'password'}
+                        value={passwordForm.current_password}
+                        onChange={e => setPasswordForm({ ...passwordForm, current_password: e.target.value })}
+                        className="w-full pl-10 pr-12 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                        required />
+                      <button type="button" onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                        className="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+                        {showPasswords.current ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
                     </div>
-                    <p className="text-sm text-gray-600 mb-4">Configure notification preferences</p>
-                    <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                      Configure →
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">New Password *</label>
+                    <div className="relative">
+                      <Key className="absolute left-3 top-3 text-gray-400" size={18} />
+                      <input type={showPasswords.new_password ? 'text' : 'password'}
+                        value={passwordForm.new_password}
+                        onChange={e => setPasswordForm({ ...passwordForm, new_password: e.target.value })}
+                        className="w-full pl-10 pr-12 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                        required minLength={6} />
+                      <button type="button" onClick={() => setShowPasswords({ ...showPasswords, new_password: !showPasswords.new_password })}
+                        className="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+                        {showPasswords.new_password ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    {passwordForm.new_password && passwordForm.new_password.length < 6 && (
+                      <p className="text-xs text-red-500 mt-1">Password must be at least 6 characters</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm New Password *</label>
+                    <div className="relative">
+                      <Key className="absolute left-3 top-3 text-gray-400" size={18} />
+                      <input type={showPasswords.confirm ? 'text' : 'password'}
+                        value={passwordForm.confirm_password}
+                        onChange={e => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })}
+                        className="w-full pl-10 pr-12 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                        required minLength={6} />
+                      <button type="button" onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                        className="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+                        {showPasswords.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    {passwordForm.confirm_password && passwordForm.new_password !== passwordForm.confirm_password && (
+                      <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+                    )}
+                  </div>
+                  <button type="submit" disabled={saving}
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 font-semibold shadow-lg transition-all">
+                    {saving ? <Loader2 className="animate-spin" size={18} /> : <Lock size={18} />}
+                    Change Password
+                  </button>
+                </form>
+              </div>
+
+              {/* Session Settings (Admin only) */}
+              {currentUser?.role_name === 'Admin' && (
+                <div className="border-t border-gray-200 pt-8">
+                  <h2 className="text-xl font-bold text-gray-800 mb-2">Session & Security Settings</h2>
+                  <p className="text-sm text-gray-600 mb-6">Configure session timeout and security policies.</p>
+
+                  <form onSubmit={handleSaveSettings} className="max-w-lg space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Session Timeout (minutes)</label>
+                      <input type="number" min="5" max="1440" value={settings.session_timeout_minutes}
+                        onChange={e => setSettings({ ...settings, session_timeout_minutes: parseInt(e.target.value) || 480 })}
+                        className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                      <p className="text-xs text-gray-500 mt-1">Auto-logout after inactivity. Default: 480 mins (8 hours)</p>
+                    </div>
+
+                    <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 flex items-start gap-3">
+                      <AlertTriangle size={20} className="text-yellow-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-yellow-800 mb-1">Security Tip</p>
+                        <p className="text-sm text-yellow-700">
+                          Keep session timeout low for shared terminals. Recommended: 30-60 minutes for POS stations.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button type="submit" disabled={saving}
+                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 font-semibold shadow-lg transition-all">
+                      {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                      Save Security Settings
                     </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ========== SYSTEM TAB ========== */}
+          {activeTab === 'system' && currentUser?.role_name === 'Admin' && (
+            <div className="space-y-8">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">System Configuration</h2>
+                <p className="text-sm text-gray-600 mb-6">Regional settings and system information.</p>
+
+                <form onSubmit={handleSaveSettings} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Date Format</label>
+                      <select value={settings.date_format}
+                        onChange={e => setSettings({ ...settings, date_format: e.target.value })}
+                        className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                        <option value="DD/MM/YYYY">DD/MM/YYYY (31/12/2026)</option>
+                        <option value="MM/DD/YYYY">MM/DD/YYYY (12/31/2026)</option>
+                        <option value="YYYY-MM-DD">YYYY-MM-DD (2026-12-31)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Timezone</label>
+                      <select value={settings.timezone}
+                        onChange={e => setSettings({ ...settings, timezone: e.target.value })}
+                        className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                        <option value="Asia/Karachi">Asia/Karachi (PKT +05:00)</option>
+                        <option value="Asia/Dubai">Asia/Dubai (GST +04:00)</option>
+                        <option value="Asia/Kolkata">Asia/Kolkata (IST +05:30)</option>
+                        <option value="Asia/Riyadh">Asia/Riyadh (AST +03:00)</option>
+                        <option value="Europe/London">Europe/London (GMT +00:00)</option>
+                        <option value="America/New_York">America/New_York (EST -05:00)</option>
+                      </select>
+                    </div>
                   </div>
 
-                  <div className="p-6 bg-gray-50 rounded-xl border border-gray-200">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <Shield size={20} className="text-purple-600" />
-                      </div>
-                      <h3 className="font-semibold text-gray-800">Security</h3>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-4">Manage security settings</p>
-                    <button className="text-sm text-purple-600 hover:text-purple-700 font-medium">
-                      Configure →
+                  <div className="flex justify-end pt-4 border-t border-gray-200">
+                    <button type="submit" disabled={saving}
+                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 font-semibold shadow-lg transition-all">
+                      {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                      Save Changes
                     </button>
                   </div>
+                </form>
+              </div>
+
+              {/* System Information */}
+              <div className="border-t border-gray-200 pt-8">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">System Information</h2>
+                {systemInfo ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Users size={18} className="text-blue-600" />
+                        <span className="text-sm font-medium text-gray-600">Users</span>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-800">{systemInfo.users}</p>
+                    </div>
+                    <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Package size={18} className="text-green-600" />
+                        <span className="text-sm font-medium text-gray-600">Products</span>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-800">{systemInfo.products}</p>
+                    </div>
+                    <div className="p-4 bg-purple-50 rounded-xl border border-purple-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <ShoppingCart size={18} className="text-purple-600" />
+                        <span className="text-sm font-medium text-gray-600">Orders</span>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-800">{systemInfo.orders}</p>
+                    </div>
+                    <div className="p-4 bg-orange-50 rounded-xl border border-orange-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Users size={18} className="text-orange-600" />
+                        <span className="text-sm font-medium text-gray-600">Customers</span>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-800">{systemInfo.customers}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Loader2 className="animate-spin mx-auto mb-2" size={24} />
+                    Loading system info...
+                  </div>
+                )}
+
+                {systemInfo && (
+                  <div className="mt-6 bg-gray-50 rounded-xl border border-gray-200 p-6">
+                    <h3 className="font-semibold text-gray-700 mb-4">Server Details</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-500">Node.js</p>
+                        <p className="font-medium text-gray-800">{systemInfo.node_version}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Platform</p>
+                        <p className="font-medium text-gray-800">{systemInfo.platform}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Uptime</p>
+                        <p className="font-medium text-gray-800">{formatUptime(systemInfo.uptime)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Memory Usage</p>
+                        <p className="font-medium text-gray-800">{systemInfo.memory} MB</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* About */}
+              <div className="border-t border-gray-200 pt-8">
+                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border-2 border-emerald-200 p-6 text-center">
+                  <h3 className="text-2xl font-bold text-gray-800 mb-2">AByte POS</h3>
+                  <p className="text-gray-600 mb-1">Enterprise Point of Sale System</p>
+                  <p className="text-sm text-gray-500">Version 1.0.0</p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Backup Tab */}
-          {activeTab === 'backup' && currentUser?.role_name === 'Admin' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-gray-800 mb-4">Backup & Restore</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border-2 border-emerald-200">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
-                        <Download size={24} className="text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-gray-800">Create Backup</h3>
-                        <p className="text-sm text-gray-600">Export database backup</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleBackup}
-                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors shadow-md"
-                    >
-                      Create Backup Now
-                    </button>
-                  </div>
-
-                  <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                        <Upload size={24} className="text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-gray-800">Restore Backup</h3>
-                        <p className="text-sm text-gray-600">Import previous backup</p>
-                      </div>
-                    </div>
-                    <button className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-md">
-                      Restore from File
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 flex items-start gap-3">
-                <AlertTriangle size={20} className="text-yellow-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-yellow-800 mb-1">Important</p>
-                  <p className="text-sm text-yellow-700">
-                    Always create backups before making major changes. Store backups securely in multiple locations.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -550,13 +888,8 @@ const Settings = () => {
               <h3 className="text-xl font-bold text-gray-800">
                 {editingUser ? 'Edit User' : 'Add New User'}
               </h3>
-              <button
-                onClick={() => {
-                  setShowUserModal(false);
-                  setEditingUser(null);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
+              <button onClick={() => { setShowUserModal(false); setEditingUser(null); }}
+                className="text-gray-400 hover:text-gray-600">
                 <X size={24} />
               </button>
             </div>
@@ -564,68 +897,42 @@ const Settings = () => {
             <form onSubmit={handleUserSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Name</label>
-                <input
-                  type="text"
-                  value={userForm.name}
-                  onChange={e => setUserForm({...userForm, name: e.target.value})}
-                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                  required
-                />
+                <input type="text" value={userForm.name}
+                  onChange={e => setUserForm({ ...userForm, name: e.target.value })}
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" required />
               </div>
-
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-                <input
-                  type="email"
-                  value={userForm.email}
-                  onChange={e => setUserForm({...userForm, email: e.target.value})}
-                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                  required
-                />
+                <input type="email" value={userForm.email}
+                  onChange={e => setUserForm({ ...userForm, email: e.target.value })}
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" required />
               </div>
-
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Password {editingUser && '(leave blank to keep current)'}
                 </label>
-                <input
-                  type="password"
-                  value={userForm.password}
-                  onChange={e => setUserForm({...userForm, password: e.target.value})}
+                <input type="password" value={userForm.password}
+                  onChange={e => setUserForm({ ...userForm, password: e.target.value })}
                   className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                  required={!editingUser}
-                />
+                  required={!editingUser} />
               </div>
-
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Role</label>
-                <select
-                  value={userForm.role_id}
-                  onChange={e => setUserForm({...userForm, role_id: parseInt(e.target.value)})}
-                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                >
+                <select value={userForm.role_id}
+                  onChange={e => setUserForm({ ...userForm, role_id: parseInt(e.target.value) })}
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                   <option value={3}>Cashier</option>
                   <option value={2}>Manager</option>
                   <option value={1}>Admin</option>
                 </select>
               </div>
-
               <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowUserModal(false);
-                    setEditingUser(null);
-                  }}
-                  className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold transition-colors"
-                >
+                <button type="button" onClick={() => { setShowUserModal(false); setEditingUser(null); }}
+                  className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold transition">
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-semibold transition-colors disabled:opacity-50 shadow-lg"
-                >
+                <button type="submit" disabled={saving}
+                  className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-semibold transition disabled:opacity-50 shadow-lg">
                   {saving ? <Loader2 className="animate-spin mx-auto" size={20} /> : (editingUser ? 'Update' : 'Create')}
                 </button>
               </div>

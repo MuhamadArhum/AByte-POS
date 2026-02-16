@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, ShoppingCart, Trash2, Minus, Plus, Save, Clock, RefreshCw, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Mail, Building2, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, ShoppingCart, Trash2, Minus, Plus, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Mail, Building2 } from 'lucide-react';
 import { useCart, Product } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import ProductCard from '../components/ProductCard';
@@ -338,7 +338,7 @@ const POS = () => {
     const matchCode = searchCode ? p.product_id.toString().includes(searchCode) : true;
     const matchCategory = selectedCategory === 'All'
       ? true
-      : (p.category_id && p.category_id.toString() === selectedCategory);
+      : ((p as any).category_id && (p as any).category_id.toString() === selectedCategory);
     return matchName && matchBarcode && matchCode && matchCategory;
   }), [products, searchName, searchBarcode, searchCode, selectedCategory]);
 

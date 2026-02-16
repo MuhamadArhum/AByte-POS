@@ -12,4 +12,10 @@ router.get('/', settingsController.getSettings);
 // Update Settings: Accessible only by Admin
 router.put('/', authorize('Admin'), settingsController.updateSettings);
 
+// Change own password: Any authenticated user
+router.post('/change-password', settingsController.changePassword);
+
+// System info: Admin only
+router.get('/system-info', authorize('Admin'), settingsController.getSystemInfo);
+
 module.exports = router;

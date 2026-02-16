@@ -887,3 +887,306 @@ exports.createIncrement = async (req, res) => {
     conn.release();
   }
 };
+
+// ============== PAYROLL PROCESSING ==============
+
+exports.getPayrollPreview = async (req, res) => {
+  try {
+    const { from_date, to_date, payment_date, department } = req.query;
+    if (!from_date || !to_date || !payment_date) {
+      return res.status(400).json({ message: 'from_date, to_date, and payment_date required' });
+    }
+
+    let sql = `
+      SELECT s.staff_id, s.employee_id, s.full_name, s.department, s.position,
+             s.salary, s.salary_type,
+             COALESCE(SUM(CASE WHEN l.status = 'active' THEN l.monthly_deduction ELSE 0 END), 0) as loan_deduction
+      FROM staff s
+      LEFT JOIN staff_loans l ON s.staff_id = l.staff_id AND l.status = 'active'
+      WHERE s.is_active = 1 AND s.salary IS NOT NULL AND s.salary > 0
+    `;
+    const params = [];
+    if (department) { sql += ' AND s.department = ?'; params.push(department); }
+    sql += ' GROUP BY s.staff_id ORDER BY s.full_name';
+
+    const staff = await query(sql, params);
+
+    const preview = staff.map(s => {
+      const baseSalary = Number(s.salary || 0);
+      const loanDeduction = Number(s.loan_deduction || 0);
+      const netSalary = baseSalary - loanDeduction;
+
+      return {
+        staff_id: s.staff_id,
+        employee_id: s.employee_id,
+        full_name: s.full_name,
+        department: s.department,
+        position: s.position,
+        salary_type: s.salary_type,
+        base_salary: baseSalary,
+        deductions: loanDeduction,
+        bonuses: 0,
+        net_amount: netSalary,
+        payment_date,
+        from_date,
+        to_date
+      };
+    });
+
+    const totals = preview.reduce((acc, p) => ({
+      count: acc.count + 1,
+      total_base: acc.total_base + p.base_salary,
+      total_deductions: acc.total_deductions + p.deductions,
+      total_net: acc.total_net + p.net_amount
+    }), { count: 0, total_base: 0, total_deductions: 0, total_net: 0 });
+
+    res.json({ preview, totals });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.processPayroll = async (req, res) => {
+  const conn = await getConnection();
+  try {
+    const { payments } = req.body;
+    if (!payments || !Array.isArray(payments) || payments.length === 0) {
+      return res.status(400).json({ message: 'Payments array required' });
+    }
+
+    await conn.beginTransaction();
+
+    let successCount = 0;
+    const errors = [];
+
+    for (const payment of payments) {
+      try {
+        const { staff_id, payment_date, from_date, to_date, amount, deductions, bonuses, net_amount, notes } = payment;
+
+        if (!staff_id || !payment_date || !from_date || !to_date || amount === undefined || net_amount === undefined) {
+          errors.push({ staff_id, error: 'Missing required fields' });
+          continue;
+        }
+
+        const expectedNet = Number(amount) - Number(deductions || 0) + Number(bonuses || 0);
+        if (Math.abs(expectedNet - Number(net_amount)) > 0.01) {
+          errors.push({ staff_id, error: 'Net amount calculation mismatch' });
+          continue;
+        }
+
+        await conn.query(
+          'INSERT INTO salary_payments (staff_id, payment_date, from_date, to_date, amount, deductions, bonuses, net_amount, payment_method, notes, paid_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [staff_id, payment_date, from_date, to_date, amount, deductions || 0, bonuses || 0, net_amount, 'bank_transfer', notes || 'Bulk payroll processing', req.user.user_id]
+        );
+
+        successCount++;
+      } catch (err) {
+        errors.push({ staff_id: payment.staff_id, error: err.message });
+      }
+    }
+
+    await conn.commit();
+    await logAction(req.user.user_id, req.user.name, 'PAYROLL_PROCESSED', 'salary_payments', null, { count: successCount }, req.ip);
+
+    res.json({ message: `Payroll processed: ${successCount} payments recorded`, successCount, errors });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
+  }
+};
+
+// ============== ADVANCE SALARY ==============
+
+exports.getAdvancePayments = async (req, res) => {
+  try {
+    const { staff_id } = req.query;
+    const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
+
+    let sql = `SELECT a.*, s.full_name, s.employee_id, s.department
+               FROM advance_payments a
+               JOIN staff s ON a.staff_id = s.staff_id WHERE 1=1`;
+    let countSql = 'SELECT COUNT(*) as total FROM advance_payments WHERE 1=1';
+    const params = [], countParams = [];
+
+    if (staff_id) { sql += ' AND a.staff_id = ?'; countSql += ' AND staff_id = ?'; params.push(staff_id); countParams.push(staff_id); }
+
+    sql += ' ORDER BY a.payment_date DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const [advances, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
+    res.json({ data: advances, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.createAdvancePayment = async (req, res) => {
+  try {
+    const { staff_id, amount, payment_date, reason, payment_method } = req.body;
+    if (!staff_id || !amount || !payment_date) return res.status(400).json({ message: 'Staff, amount and date required' });
+    if (Number(amount) <= 0) return res.status(400).json({ message: 'Amount must be positive', field: 'amount' });
+
+    const [staff] = await query('SELECT full_name FROM staff WHERE staff_id = ?', [staff_id]);
+    if (!staff) return res.status(404).json({ message: 'Staff not found' });
+
+    const result = await query(
+      'INSERT INTO advance_payments (staff_id, amount, payment_date, payment_method, reason, paid_by) VALUES (?, ?, ?, ?, ?, ?)',
+      [staff_id, amount, payment_date, payment_method || 'cash', reason || null, req.user.user_id]
+    );
+
+    await logAction(req.user.user_id, req.user.name, 'ADVANCE_PAYMENT', 'advance_payments', result.insertId, { staff_id, amount, staff_name: staff.full_name }, req.ip);
+    res.status(201).json({ message: 'Advance payment recorded', advance_id: result.insertId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== HOLIDAY CALENDAR ==============
+
+exports.getHolidays = async (req, res) => {
+  try {
+    const { year } = req.query;
+    let sql = 'SELECT * FROM holidays';
+    const params = [];
+    if (year) { sql += ' WHERE YEAR(holiday_date) = ?'; params.push(year); }
+    sql += ' ORDER BY holiday_date ASC';
+
+    const holidays = await query(sql, params);
+    res.json({ data: holidays });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.createHoliday = async (req, res) => {
+  try {
+    const { holiday_date, holiday_name, description } = req.body;
+    if (!holiday_date || !holiday_name) return res.status(400).json({ message: 'Date and name required' });
+
+    const result = await query(
+      'INSERT INTO holidays (holiday_date, holiday_name, description, created_by) VALUES (?, ?, ?, ?)',
+      [holiday_date, holiday_name, description || null, req.user.user_id]
+    );
+
+    await logAction(req.user.user_id, req.user.name, 'HOLIDAY_CREATED', 'holidays', result.insertId, { holiday_name, holiday_date }, req.ip);
+    res.status(201).json({ message: 'Holiday created', holiday_id: result.insertId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.updateHoliday = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { holiday_date, holiday_name, description } = req.body;
+    if (!holiday_date || !holiday_name) return res.status(400).json({ message: 'Date and name required' });
+
+    await query(
+      'UPDATE holidays SET holiday_date=?, holiday_name=?, description=? WHERE holiday_id=?',
+      [holiday_date, holiday_name, description || null, id]
+    );
+
+    await logAction(req.user.user_id, req.user.name, 'HOLIDAY_UPDATED', 'holidays', id, { holiday_name }, req.ip);
+    res.json({ message: 'Holiday updated' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.deleteHoliday = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM holidays WHERE holiday_id = ?', [id]);
+    await logAction(req.user.user_id, req.user.name, 'HOLIDAY_DELETED', 'holidays', id, {}, req.ip);
+    res.json({ message: 'Holiday deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== LEAVE REQUESTS ==============
+
+exports.getLeaveRequests = async (req, res) => {
+  try {
+    const { status, staff_id } = req.query;
+    const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
+
+    let sql = `SELECT lr.*, s.full_name, s.employee_id, s.department,
+               u1.name as requested_by_name, u2.name as reviewed_by_name
+               FROM leave_requests lr
+               JOIN staff s ON lr.staff_id = s.staff_id
+               LEFT JOIN users u1 ON lr.requested_by = u1.user_id
+               LEFT JOIN users u2 ON lr.reviewed_by = u2.user_id WHERE 1=1`;
+    let countSql = 'SELECT COUNT(*) as total FROM leave_requests WHERE 1=1';
+    const params = [], countParams = [];
+
+    if (status) { sql += ' AND lr.status = ?'; countSql += ' AND status = ?'; params.push(status); countParams.push(status); }
+    if (staff_id) { sql += ' AND lr.staff_id = ?'; countSql += ' AND staff_id = ?'; params.push(staff_id); countParams.push(staff_id); }
+
+    sql += ' ORDER BY lr.created_at DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const [requests, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
+    res.json({ data: requests, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.createLeaveRequest = async (req, res) => {
+  try {
+    const { staff_id, leave_type, from_date, to_date, reason } = req.body;
+    if (!staff_id || !leave_type || !from_date || !to_date) return res.status(400).json({ message: 'All fields required' });
+    if (new Date(from_date) > new Date(to_date)) return res.status(400).json({ message: 'From date must be before to date', field: 'from_date' });
+
+    const [staff] = await query('SELECT full_name, leave_balance FROM staff WHERE staff_id = ?', [staff_id]);
+    if (!staff) return res.status(404).json({ message: 'Staff not found' });
+
+    const days = Math.ceil((new Date(to_date) - new Date(from_date)) / (1000 * 60 * 60 * 24)) + 1;
+
+    const result = await query(
+      'INSERT INTO leave_requests (staff_id, leave_type, from_date, to_date, days, reason, requested_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [staff_id, leave_type, from_date, to_date, days, reason || null, req.user.user_id]
+    );
+
+    await logAction(req.user.user_id, req.user.name, 'LEAVE_REQUESTED', 'leave_requests', result.insertId, { staff_id, days, staff_name: staff.full_name }, req.ip);
+    res.status(201).json({ message: 'Leave request submitted', request_id: result.insertId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.reviewLeaveRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, review_notes } = req.body;
+    if (!status || !['approved', 'rejected'].includes(status)) return res.status(400).json({ message: 'Invalid status' });
+
+    const [request] = await query('SELECT * FROM leave_requests WHERE request_id = ?', [id]);
+    if (!request) return res.status(404).json({ message: 'Leave request not found' });
+    if (request.status !== 'pending') return res.status(400).json({ message: 'Only pending requests can be reviewed' });
+
+    await query(
+      'UPDATE leave_requests SET status=?, review_notes=?, reviewed_by=?, reviewed_at=CURRENT_TIMESTAMP WHERE request_id=?',
+      [status, review_notes || null, req.user.user_id, id]
+    );
+
+    await logAction(req.user.user_id, req.user.name, `LEAVE_${status.toUpperCase()}`, 'leave_requests', id, { staff_id: request.staff_id, days: request.days }, req.ip);
+    res.json({ message: `Leave request ${status}` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};

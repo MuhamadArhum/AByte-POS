@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import React from 'react';
-import { DollarSign, Plus, CreditCard, Ban, Eye, Filter, Search } from 'lucide-react';
+import { DollarSign, Plus, CreditCard, Ban, Eye, Filter } from 'lucide-react';
 import api from '../utils/api';
 import { useToast } from '../components/Toast';
 import IssueLoanModal from '../components/IssueLoanModal';

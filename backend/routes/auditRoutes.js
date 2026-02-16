@@ -7,6 +7,7 @@ router.use(authenticate);
 router.use(authorize('Admin', 'Manager'));
 
 router.get('/actions', auditController.getActions);
+router.get('/export', auditController.exportLogs);
 router.get('/', auditController.getLogs);
 router.get('/:id', auditController.getLogById);
 

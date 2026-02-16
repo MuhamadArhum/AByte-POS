@@ -252,7 +252,13 @@ exports.remove = async (req, res) => {
 // Used in product forms and filter dropdowns.
 exports.getCategories = async (req, res) => {
   try {
-    const rows = await query('SELECT * FROM categories ORDER BY category_name');
+    const rows = await query(
+      `SELECT c.*, COUNT(p.product_id) as product_count
+       FROM categories c
+       LEFT JOIN products p ON c.category_id = p.category_id
+       GROUP BY c.category_id
+       ORDER BY c.category_name`
+    );
     res.json({ data: rows });
   } catch (err) {
     console.error(err);
@@ -269,12 +275,53 @@ exports.createCategory = async (req, res) => {
     if (!category_name) return res.status(400).json({ message: 'Category name is required' });
 
     const result = await query('INSERT INTO categories (category_name) VALUES (?)', [category_name]);
+    await logAction(req.user.user_id, req.user.name, 'CATEGORY_CREATED', 'category', result.insertId, { category_name }, req.ip);
     res.status(201).json({ message: 'Category created', category_id: Number(result.insertId) });
   } catch (err) {
     // Handle duplicate category name
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Category already exists' });
     }
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Update Category ---
+exports.updateCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { category_name, description, is_active } = req.body;
+    if (!category_name) return res.status(400).json({ message: 'Category name is required' });
+
+    const [existing] = await query('SELECT category_id FROM categories WHERE category_id = ?', [id]);
+    if (!existing) return res.status(404).json({ message: 'Category not found' });
+
+    await query(
+      'UPDATE categories SET category_name = ?, description = ?, is_active = ? WHERE category_id = ?',
+      [category_name, description || null, is_active !== undefined ? is_active : 1, id]
+    );
+    await logAction(req.user.user_id, req.user.name, 'CATEGORY_UPDATED', 'category', id, { category_name }, req.ip);
+    res.json({ message: 'Category updated' });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Category name already exists' });
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Delete Category ---
+exports.deleteCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [productCount] = await query('SELECT COUNT(*) as cnt FROM products WHERE category_id = ?', [id]);
+    if (productCount.cnt > 0) {
+      return res.status(400).json({ message: `Cannot delete category with ${productCount.cnt} products. Reassign products first.` });
+    }
+    await query('DELETE FROM categories WHERE category_id = ?', [id]);
+    await logAction(req.user.user_id, req.user.name, 'CATEGORY_DELETED', 'category', id, {}, req.ip);
+    res.json({ message: 'Category deleted' });
+  } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
   }

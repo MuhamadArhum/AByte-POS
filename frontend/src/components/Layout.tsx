@@ -24,7 +24,16 @@ import {
   Store,
   TrendingUp,
   HelpCircle,
-  X
+  X,
+  Calendar,
+  FileText,
+  BookOpen,
+  Scale,
+  FileBarChart,
+  Book,
+  Building2,
+  CreditCard,
+  Receipt
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -87,9 +96,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       color: 'purple',
       children: [
         { icon: Package, label: 'Products', path: '/inventory', roles: ['Admin', 'Manager'] },
+        { icon: ScrollText, label: 'Categories', path: '/categories', roles: ['Admin', 'Manager'] },
         { icon: Package, label: 'Purchase Orders', path: '/purchase-orders', roles: ['Admin', 'Manager'] },
+        { icon: RotateCcw, label: 'Stock Transfers', path: '/stock-transfers', roles: ['Admin', 'Manager'] },
+        { icon: FileText, label: 'Stock Adjustments', path: '/stock-adjustments', roles: ['Admin', 'Manager'] },
         { icon: Bell, label: 'Stock Alerts', path: '/stock-alerts', roles: ['Admin', 'Manager'] },
         { icon: Users, label: 'Suppliers', path: '/suppliers', roles: ['Admin', 'Manager'] },
+        { icon: BarChart3, label: 'Inventory Reports', path: '/inventory-reports', roles: ['Admin', 'Manager'] },
       ]
     },
     {
@@ -103,9 +116,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: ScrollText, label: 'Attendance', path: '/attendance', roles: ['Admin', 'Manager'] },
         { icon: ScrollText, label: 'Daily Attendance', path: '/daily-attendance', roles: ['Admin', 'Manager'] },
         { icon: DollarSign, label: 'Salary Sheet', path: '/salary-sheet', roles: ['Admin', 'Manager'] },
+        { icon: DollarSign, label: 'Payroll Processing', path: '/payroll', roles: ['Admin'] },
+        { icon: DollarSign, label: 'Advance Payments', path: '/advance-payments', roles: ['Admin', 'Manager'] },
         { icon: DollarSign, label: 'Loans', path: '/loans', roles: ['Admin', 'Manager'] },
         { icon: TrendingUp, label: 'Increments', path: '/increments', roles: ['Admin', 'Manager'] },
         { icon: ScrollText, label: 'Employee Ledger', path: '/employee-ledger', roles: ['Admin', 'Manager'] },
+        { icon: Calendar, label: 'Holidays', path: '/holidays', roles: ['Admin', 'Manager'] },
+        { icon: FileText, label: 'Leave Requests', path: '/leave-requests', roles: ['Admin', 'Manager'] },
         { icon: BarChart3, label: 'Staff Reports', path: '/staff-reports', roles: ['Admin', 'Manager'] },
       ]
     },
@@ -115,6 +132,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       roles: ['Admin', 'Manager'],
       color: 'rose',
       children: [
+        { icon: BookOpen, label: 'Chart of Accounts', path: '/chart-of-accounts', roles: ['Admin', 'Manager'] },
+        { icon: FileText, label: 'Journal Entries', path: '/journal-entries', roles: ['Admin', 'Manager'] },
+        { icon: Book, label: 'General Ledger', path: '/general-ledger', roles: ['Admin', 'Manager'] },
+        { icon: Scale, label: 'Trial Balance', path: '/trial-balance', roles: ['Admin', 'Manager'] },
+        { icon: TrendingUp, label: 'Profit & Loss', path: '/profit-loss', roles: ['Admin', 'Manager'] },
+        { icon: FileBarChart, label: 'Balance Sheet', path: '/balance-sheet', roles: ['Admin', 'Manager'] },
+        { icon: Building2, label: 'Bank Accounts', path: '/bank-accounts', roles: ['Admin', 'Manager'] },
+        { icon: CreditCard, label: 'Payment Vouchers', path: '/payment-vouchers', roles: ['Admin', 'Manager'] },
+        { icon: Receipt, label: 'Receipt Vouchers', path: '/receipt-vouchers', roles: ['Admin', 'Manager'] },
         { icon: Wallet, label: 'Expenses', path: '/expenses', roles: ['Admin', 'Manager'] },
         { icon: TrendingUp, label: 'Analytics', path: '/analytics', roles: ['Admin', 'Manager', 'Cashier'] },
         { icon: BarChart3, label: 'Reports', path: '/reports', roles: ['Admin', 'Manager'] },

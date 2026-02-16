@@ -27,6 +27,23 @@ import DailyAttendance from './pages/DailyAttendance';
 import LoanManagement from './pages/LoanManagement';
 import EmployeeLedger from './pages/EmployeeLedger';
 import IncrementHistory from './pages/IncrementHistory';
+import PayrollProcessing from './pages/PayrollProcessing';
+import AdvancePayments from './pages/AdvancePayments';
+import HolidayCalendar from './pages/HolidayCalendar';
+import LeaveRequests from './pages/LeaveRequests';
+import ChartOfAccounts from './pages/ChartOfAccounts';
+import JournalEntries from './pages/JournalEntries';
+import GeneralLedger from './pages/GeneralLedger';
+import TrialBalance from './pages/TrialBalance';
+import ProfitLoss from './pages/ProfitLoss';
+import BalanceSheet from './pages/BalanceSheet';
+import BankAccounts from './pages/BankAccounts';
+import PaymentVouchers from './pages/PaymentVouchers';
+import ReceiptVouchers from './pages/ReceiptVouchers';
+import Categories from './pages/Categories';
+import StockAdjustments from './pages/StockAdjustments';
+import StockTransfers from './pages/StockTransfers';
+import InventoryReports from './pages/InventoryReports';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
@@ -174,6 +191,38 @@ function App() {
                         }
                       />
                       <Route
+                        path="/categories"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <Categories />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/stock-adjustments"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <StockAdjustments />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/stock-transfers"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <StockTransfers />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/inventory-reports"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <InventoryReports />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
                         path="/stores"
                         element={
                           <RoleRoute allowedRoles={['Admin']}>
@@ -227,6 +276,110 @@ function App() {
                         element={
                           <RoleRoute allowedRoles={['Admin', 'Manager']}>
                             <IncrementHistory />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/payroll"
+                        element={
+                          <RoleRoute allowedRoles={['Admin']}>
+                            <PayrollProcessing />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/advance-payments"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <AdvancePayments />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/holidays"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <HolidayCalendar />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/leave-requests"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <LeaveRequests />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/chart-of-accounts"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <ChartOfAccounts />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/journal-entries"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <JournalEntries />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/general-ledger"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <GeneralLedger />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/trial-balance"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <TrialBalance />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/profit-loss"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <ProfitLoss />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/balance-sheet"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <BalanceSheet />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/bank-accounts"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <BankAccounts />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/payment-vouchers"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <PaymentVouchers />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/receipt-vouchers"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <ReceiptVouchers />
                           </RoleRoute>
                         }
                       />

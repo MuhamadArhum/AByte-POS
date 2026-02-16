@@ -30,6 +30,64 @@ exports.create = async (req, res) => {
   }
 };
 
+exports.getById = async (req, res) => {
+  try {
+    const [store] = await query(
+      'SELECT s.*, u.name as manager_name FROM stores s LEFT JOIN users u ON s.manager_id = u.user_id WHERE s.store_id = ?',
+      [req.params.id]
+    );
+    if (!store) return res.status(404).json({ message: 'Store not found' });
+    res.json(store);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.update = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { store_name, store_code, address, phone, email, manager_id, is_active } = req.body;
+    if (!store_name || !store_code) return res.status(400).json({ message: 'Name and code are required' });
+
+    const [existing] = await query('SELECT store_id FROM stores WHERE store_id = ?', [id]);
+    if (!existing) return res.status(404).json({ message: 'Store not found' });
+
+    await query(
+      'UPDATE stores SET store_name=?, store_code=?, address=?, phone=?, email=?, manager_id=?, is_active=? WHERE store_id=?',
+      [store_name, store_code, address || null, phone || null, email || null, manager_id || null, is_active !== undefined ? is_active : 1, id]
+    );
+
+    await logAction(req.user.user_id, req.user.name, 'STORE_UPDATED', 'store', id, { store_name }, req.ip);
+    res.json({ message: 'Store updated successfully' });
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Store code already exists' });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.deleteStore = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [store] = await query('SELECT store_name FROM stores WHERE store_id = ?', [id]);
+    if (!store) return res.status(404).json({ message: 'Store not found' });
+
+    // Check if store has inventory
+    const [inv] = await query('SELECT COUNT(*) as cnt FROM store_inventory WHERE store_id = ?', [id]);
+    if (inv.cnt > 0) {
+      return res.status(400).json({ message: 'Cannot delete store with inventory. Transfer stock first.' });
+    }
+
+    await query('DELETE FROM stores WHERE store_id = ?', [id]);
+    await logAction(req.user.user_id, req.user.name, 'STORE_DELETED', 'store', id, { store_name: store.store_name }, req.ip);
+    res.json({ message: 'Store deleted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 exports.transferStock = async (req, res) => {
   const conn = await getConnection();
   try {

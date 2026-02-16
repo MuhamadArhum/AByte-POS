@@ -12,6 +12,25 @@ router.get('/reports/salary-sheet', staffController.getSalarySheet);
 router.get('/reports/daily-attendance', staffController.getDailyAttendance);
 router.get('/reports/employee-ledger/:staffId', staffController.getEmployeeLedger);
 
+// Payroll routes
+router.get('/payroll/preview', authorize('Admin', 'Manager'), staffController.getPayrollPreview);
+router.post('/payroll/process', authorize('Admin'), staffController.processPayroll);
+
+// Advance payments
+router.get('/advance-payments', staffController.getAdvancePayments);
+router.post('/advance-payments', authorize('Admin', 'Manager'), staffController.createAdvancePayment);
+
+// Holidays
+router.get('/holidays', staffController.getHolidays);
+router.post('/holidays', authorize('Admin', 'Manager'), staffController.createHoliday);
+router.put('/holidays/:id', authorize('Admin', 'Manager'), staffController.updateHoliday);
+router.delete('/holidays/:id', authorize('Admin'), staffController.deleteHoliday);
+
+// Leave requests
+router.get('/leave-requests', staffController.getLeaveRequests);
+router.post('/leave-requests', authorize('Admin', 'Manager'), staffController.createLeaveRequest);
+router.put('/leave-requests/:id/review', authorize('Admin', 'Manager'), staffController.reviewLeaveRequest);
+
 // Loan routes (before parameterized staff routes)
 router.get('/loans', staffController.getLoans);
 router.post('/loans', authorize('Admin', 'Manager'), staffController.createLoan);

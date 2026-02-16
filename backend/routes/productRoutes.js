@@ -26,6 +26,8 @@ router.use(authenticate);
 // Category endpoints (placed before /:id to avoid route conflicts)
 router.get('/categories', productController.getCategories);                             // All roles can view
 router.post('/categories', authorize('Admin', 'Manager'), productController.createCategory);  // Admin/Manager only
+router.put('/categories/:id', authorize('Admin', 'Manager'), productController.updateCategory);
+router.delete('/categories/:id', authorize('Admin', 'Manager'), productController.deleteCategory);
 
 // Product CRUD endpoints
 router.get('/', productController.getAll);                                              // All roles can view
