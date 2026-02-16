@@ -33,7 +33,11 @@ import {
   Book,
   Building2,
   CreditCard,
-  Receipt
+  Receipt,
+  Tag,
+  Star,
+  Layers,
+  PieChart
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -87,6 +91,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: ScrollText, label: 'Orders', path: '/orders', roles: ['Admin', 'Manager', 'Cashier'] },
         { icon: Wallet, label: 'Cash Register', path: '/cash-register', roles: ['Admin', 'Manager', 'Cashier'] },
         { icon: RotateCcw, label: 'Returns', path: '/returns', roles: ['Admin', 'Manager'] },
+        { icon: FileText, label: 'Quotations', path: '/quotations', roles: ['Admin', 'Manager'] },
+        { icon: BookOpen, label: 'Credit Sales', path: '/credit-sales', roles: ['Admin', 'Manager'] },
+        { icon: Layers, label: 'Layaway', path: '/layaway', roles: ['Admin', 'Manager'] },
+        { icon: Tag, label: 'Coupons', path: '/coupons', roles: ['Admin', 'Manager'] },
+        { icon: Star, label: 'Loyalty Program', path: '/loyalty', roles: ['Admin', 'Manager'] },
+        { icon: PieChart, label: 'Sales Reports', path: '/sales-reports', roles: ['Admin', 'Manager'] },
       ]
     },
     {

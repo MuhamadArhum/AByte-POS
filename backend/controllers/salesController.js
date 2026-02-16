@@ -37,7 +37,13 @@ exports.createSale = async (req, res) => {
       tax_percent = 0,
       additional_charges_percent = 0,
       note,
-      applied_bundles = [] // Array of { bundle_id, bundle_name, discount_amount }
+      applied_bundles = [], // Array of { bundle_id, bundle_name, discount_amount }
+      // New: Coupon, Loyalty, Credit
+      coupon_code,
+      coupon_discount: frontendCouponDiscount,
+      loyalty_redeem_points,
+      is_credit,
+      credit_due_date
     } = req.body;
     // items = array of { product_id, quantity, unit_price, variant_id, variant_name }
 
@@ -46,38 +52,40 @@ exports.createSale = async (req, res) => {
       return res.status(400).json({ message: 'Cart is empty' });
     }
 
+    // Validate credit sale requires named customer
+    if (is_credit && (!customer_id || customer_id === 1)) {
+      return res.status(400).json({ message: 'Credit sales require a named customer' });
+    }
+    if (is_credit && !credit_due_date) {
+      return res.status(400).json({ message: 'Credit sales require a due date' });
+    }
+
     // Get a dedicated connection for the transaction (not from the shared query helper)
     conn = await getConnection();
     await conn.beginTransaction();  // START TRANSACTION
 
     // Step 1: Validate stock for each item in the cart
-    // FOR UPDATE locks the inventory rows to prevent other transactions from
-    // changing the stock while we're processing this sale (prevents overselling)
     for (const item of items) {
       let rows;
 
-      // Check if item has a variant - if so, validate variant stock
       if (item.variant_id) {
         rows = await conn.query(
           'SELECT available_stock FROM variant_inventory WHERE variant_id = ? FOR UPDATE',
           [item.variant_id]
         );
-        // Check if variant exists and has enough stock
         if (rows.length === 0 || rows[0].available_stock < item.quantity) {
-          await conn.rollback();  // Cancel the transaction
+          await conn.rollback();
           return res.status(400).json({
             message: `Insufficient stock for variant ID ${item.variant_id}`,
           });
         }
       } else {
-        // Regular product stock validation
         rows = await conn.query(
           'SELECT available_stock FROM inventory WHERE product_id = ? FOR UPDATE',
           [item.product_id]
         );
-        // Check if product exists and has enough stock
         if (rows.length === 0 || rows[0].available_stock < item.quantity) {
-          await conn.rollback();  // Cancel the transaction
+          await conn.rollback();
           return res.status(400).json({
             message: `Insufficient stock for product ID ${item.product_id}`,
           });
@@ -85,32 +93,79 @@ exports.createSale = async (req, res) => {
       }
     }
 
-    // Step 2: Calculate sale totals (all rounded to 2 decimal places for currency precision)
-    // subtotal = sum of (unit_price * quantity) for all items
+    // Step 2: Calculate sale totals
     const subtotal = round2(items.reduce((sum, item) => sum + round2(item.unit_price * item.quantity), 0));
     const discountAmt = round2(discount || 0);
-
-    // Calculate bundle discount
     const bundleDiscountAmt = round2(applied_bundles.reduce((sum, bundle) => sum + (bundle.discount_amount || 0), 0));
-
-    // Calculate Tax and Additional Charges
     const taxAmt = round2(subtotal * (parseFloat(tax_percent) / 100));
     const additionalAmt = round2(subtotal * (parseFloat(additional_charges_percent) / 100));
 
-    // Total Amount = Subtotal + Tax + Additional - Discount - Bundle Discount
-    const total_amount = round2(subtotal + taxAmt + additionalAmt - discountAmt - bundleDiscountAmt);
-    
-    // Net amount is usually the same as total_amount in this logic, but if we want to store pre-discount
-    // Let's stick to total_amount being the final payable.
-    
-    // Validate discount: cannot exceed total, and max 50% for non-admin users
+    // Step 2b: Validate and apply coupon
+    let couponId = null;
+    let couponDiscountAmt = 0;
+    if (coupon_code) {
+      const coupons = await conn.query(
+        `SELECT * FROM coupons WHERE code = ? AND is_active = 1 AND valid_from <= CURDATE() AND valid_until >= CURDATE()`,
+        [coupon_code]
+      );
+      if (coupons.length === 0) {
+        await conn.rollback();
+        return res.status(400).json({ message: 'Invalid or expired coupon code' });
+      }
+      const coupon = coupons[0];
+      // Check usage limit
+      if (coupon.max_uses) {
+        const usageCount = await conn.query('SELECT COUNT(*) as cnt FROM coupon_redemptions WHERE coupon_id = ?', [coupon.coupon_id]);
+        if (Number(usageCount[0].cnt) >= coupon.max_uses) {
+          await conn.rollback();
+          return res.status(400).json({ message: 'Coupon usage limit reached' });
+        }
+      }
+      // Check min purchase
+      if (coupon.min_purchase && subtotal < parseFloat(coupon.min_purchase)) {
+        await conn.rollback();
+        return res.status(400).json({ message: `Minimum purchase of $${coupon.min_purchase} required for this coupon` });
+      }
+      // Calculate discount
+      if (coupon.discount_type === 'percentage') {
+        couponDiscountAmt = round2(subtotal * (parseFloat(coupon.discount_value) / 100));
+      } else {
+        couponDiscountAmt = round2(Math.min(parseFloat(coupon.discount_value), subtotal));
+      }
+      couponId = coupon.coupon_id;
+    }
+
+    // Step 2c: Validate loyalty points redemption
+    let loyaltyRedeemAmt = 0;
+    let actualPointsRedeemed = 0;
+    if (loyalty_redeem_points && loyalty_redeem_points > 0 && customer_id && customer_id !== 1) {
+      const custRows = await conn.query('SELECT loyalty_points FROM customers WHERE customer_id = ? FOR UPDATE', [customer_id]);
+      if (custRows.length > 0) {
+        const availablePoints = parseInt(custRows[0].loyalty_points) || 0;
+        // Load loyalty config
+        const configRows = await conn.query('SELECT * FROM loyalty_config WHERE config_id = 1');
+        if (configRows.length > 0 && configRows[0].is_active) {
+          const config = configRows[0];
+          actualPointsRedeemed = Math.min(parseInt(loyalty_redeem_points), availablePoints);
+          if (actualPointsRedeemed >= (parseInt(config.min_redeem_points) || 0)) {
+            loyaltyRedeemAmt = round2(actualPointsRedeemed * parseFloat(config.amount_per_point));
+          } else {
+            actualPointsRedeemed = 0;
+          }
+        }
+      }
+    }
+
+    // Total Amount = Subtotal + Tax + Additional - Discount - Bundle - Coupon - Loyalty
+    const total_amount = round2(Math.max(0, subtotal + taxAmt + additionalAmt - discountAmt - bundleDiscountAmt - couponDiscountAmt - loyaltyRedeemAmt));
+
+    // Validate discount
     const maxAllowedTotal = subtotal + taxAmt + additionalAmt;
     if (discountAmt > maxAllowedTotal) {
       await conn.rollback();
       return res.status(400).json({ message: 'Discount cannot exceed total amount' });
     }
 
-    // Max 50% discount for Cashier role (Admin/Manager can give higher)
     const maxDiscountPercent = req.user.role_name === 'Cashier' ? 50 : 100;
     const discountPercent = subtotal > 0 ? (discountAmt / subtotal) * 100 : 0;
     if (discountPercent > maxDiscountPercent) {
@@ -119,23 +174,21 @@ exports.createSale = async (req, res) => {
     }
 
     // Step 3: Insert the sale header record
-    // customer_id defaults to 1 (Walk-in Customer) if not specified
-    // req.user.user_id is the logged-in cashier's ID (set by auth middleware)
-    
-    const finalAmountPaid = status === 'completed' ? (amount_paid || total_amount) : 0;
-    
+    const finalAmountPaid = is_credit ? 0 : (status === 'completed' ? (amount_paid || total_amount) : 0);
+
     const saleResult = await conn.query(
       `INSERT INTO sales (
         total_amount, discount, bundle_discount, bundle_count, net_amount, user_id, customer_id,
         payment_method, amount_paid, status,
-        tax_percent, tax_amount, additional_charges_percent, additional_charges_amount, note
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        tax_percent, tax_amount, additional_charges_percent, additional_charges_amount, note,
+        coupon_id, coupon_discount, loyalty_points_redeemed
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         total_amount,
         discountAmt,
         bundleDiscountAmt,
         applied_bundles.length,
-        total_amount, // keeping net_amount same as total for now, or could be subtotal. Let's use total.
+        total_amount,
         req.user.user_id,
         customer_id || 1,
         payment_method || 'cash',
@@ -145,39 +198,36 @@ exports.createSale = async (req, res) => {
         taxAmt,
         additional_charges_percent,
         additionalAmt,
-        note || null
+        note || null,
+        couponId,
+        couponDiscountAmt > 0 ? couponDiscountAmt : null,
+        actualPointsRedeemed > 0 ? actualPointsRedeemed : null
       ]
     );
 
-    const sale_id = Number(saleResult.insertId);  // Get the auto-generated sale ID
+    const sale_id = Number(saleResult.insertId);
 
     // Step 4: Insert each cart item as a sale detail record and deduct stock
     for (const item of items) {
-      // Insert line item into sale_details table (with variant info if applicable)
       await conn.query(
         'INSERT INTO sale_details (sale_id, product_id, variant_id, variant_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [sale_id, item.product_id, item.variant_id || null, item.variant_name || null, item.quantity, item.unit_price, round2(item.unit_price * item.quantity)]
       );
 
-      // Deduct stock - check if variant or regular product
       if (item.variant_id) {
-        // Deduct from variant inventory
         await conn.query(
           'UPDATE variant_inventory SET available_stock = available_stock - ? WHERE variant_id = ?',
           [item.quantity, item.variant_id]
         );
-        // Also deduct from product_variants table (kept in sync)
         await conn.query(
           'UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE variant_id = ?',
           [item.quantity, item.variant_id]
         );
       } else {
-        // Deduct from regular inventory
         await conn.query(
           'UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?',
           [item.quantity, item.product_id]
         );
-        // Also deduct stock from the products table (kept in sync)
         await conn.query(
           'UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?',
           [item.quantity, item.product_id]
@@ -195,12 +245,70 @@ exports.createSale = async (req, res) => {
       }
     }
 
+    // Step 6: Record coupon redemption
+    if (couponId) {
+      await conn.query(
+        'INSERT INTO coupon_redemptions (coupon_id, sale_id, customer_id, discount_amount) VALUES (?, ?, ?, ?)',
+        [couponId, sale_id, customer_id || 1, couponDiscountAmt]
+      );
+    }
+
+    // Step 7: Handle loyalty points - deduct redeemed points
+    if (actualPointsRedeemed > 0) {
+      await conn.query(
+        'UPDATE customers SET loyalty_points = loyalty_points - ? WHERE customer_id = ?',
+        [actualPointsRedeemed, customer_id]
+      );
+      await conn.query(
+        `INSERT INTO loyalty_transactions (customer_id, points, transaction_type, reference_type, reference_id, description)
+         VALUES (?, ?, 'redeemed', 'sale', ?, ?)`,
+        [customer_id, actualPointsRedeemed, sale_id, `Redeemed ${actualPointsRedeemed} points on sale #${sale_id}`]
+      );
+    }
+
+    // Step 7b: Earn loyalty points (for non-walk-in customers, on completed sales)
+    let loyaltyPointsEarned = 0;
+    if (status === 'completed' && customer_id && customer_id !== 1) {
+      const configRows = await conn.query('SELECT * FROM loyalty_config WHERE config_id = 1');
+      if (configRows.length > 0 && configRows[0].is_active) {
+        const config = configRows[0];
+        const pointsPerAmount = parseFloat(config.points_per_amount) || 0;
+        if (pointsPerAmount > 0) {
+          loyaltyPointsEarned = Math.floor(total_amount / pointsPerAmount);
+          if (loyaltyPointsEarned > 0) {
+            await conn.query(
+              'UPDATE customers SET loyalty_points = loyalty_points + ? WHERE customer_id = ?',
+              [loyaltyPointsEarned, customer_id]
+            );
+            await conn.query(
+              `INSERT INTO loyalty_transactions (customer_id, points, transaction_type, reference_type, reference_id, description)
+               VALUES (?, ?, 'earned', 'sale', ?, ?)`,
+              [customer_id, loyaltyPointsEarned, sale_id, `Earned ${loyaltyPointsEarned} points on sale #${sale_id}`]
+            );
+            await conn.query(
+              'UPDATE sales SET loyalty_points_earned = ? WHERE sale_id = ?',
+              [loyaltyPointsEarned, sale_id]
+            );
+          }
+        }
+      }
+    }
+
+    // Step 8: Create credit sale record if credit payment
+    if (is_credit) {
+      await conn.query(
+        `INSERT INTO credit_sales (sale_id, customer_id, total_amount, paid_amount, remaining_amount, due_date, status)
+         VALUES (?, ?, ?, 0, ?, ?, 'active')`,
+        [sale_id, customer_id, total_amount, total_amount, credit_due_date]
+      );
+    }
+
     await conn.commit();  // COMMIT TRANSACTION
 
     // Fetch the complete sale to return
     const newSale = await query('SELECT * FROM sales WHERE sale_id = ?', [sale_id]);
     const saleDetails = await query(
-      `SELECT sd.*, p.product_name 
+      `SELECT sd.*, p.product_name
        FROM sale_details sd
        JOIN products p ON sd.product_id = p.product_id
        WHERE sd.sale_id = ?`,
@@ -208,21 +316,27 @@ exports.createSale = async (req, res) => {
     );
 
     // Update cash register if cash sale
-    if (status === 'completed' && (payment_method || 'cash') === 'cash') {
+    if (status === 'completed' && !is_credit && (payment_method || 'cash') === 'cash') {
       const openRegister = await query("SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1");
       if (openRegister.length > 0) {
         await query('UPDATE cash_registers SET cash_sales_total = cash_sales_total + ? WHERE register_id = ?', [total_amount, openRegister[0].register_id]);
       }
-    } else if (status === 'completed' && payment_method === 'card') {
+    } else if (status === 'completed' && !is_credit && payment_method === 'card') {
       const openRegister = await query("SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1");
       if (openRegister.length > 0) {
         await query('UPDATE cash_registers SET card_sales_total = card_sales_total + ? WHERE register_id = ?', [total_amount, openRegister[0].register_id]);
       }
     }
 
-    await logAction(req.user.user_id, req.user.name, 'SALE_CREATED', 'sale', sale_id, { total_amount, status, items_count: items.length }, req.ip);
+    await logAction(req.user.user_id, req.user.name, 'SALE_CREATED', 'sale', sale_id, {
+      total_amount, status, items_count: items.length,
+      coupon_code: coupon_code || null,
+      is_credit: is_credit || false,
+      loyalty_points_earned: loyaltyPointsEarned,
+      loyalty_points_redeemed: actualPointsRedeemed
+    }, req.ip);
 
-    res.status(201).json({ ...newSale[0], items: saleDetails });
+    res.status(201).json({ ...newSale[0], items: saleDetails, loyalty_points_earned: loyaltyPointsEarned });
 
   } catch (error) {
     if (conn) await conn.rollback();  // Rollback on error
