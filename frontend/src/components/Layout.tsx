@@ -37,7 +37,11 @@ import {
   Tag,
   Star,
   Layers,
-  PieChart
+  PieChart,
+  Gift,
+  Percent,
+  Target,
+  FileCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -96,6 +100,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: Layers, label: 'Layaway', path: '/layaway', roles: ['Admin', 'Manager'] },
         { icon: Tag, label: 'Coupons', path: '/coupons', roles: ['Admin', 'Manager'] },
         { icon: Star, label: 'Loyalty Program', path: '/loyalty', roles: ['Admin', 'Manager'] },
+        { icon: Gift, label: 'Gift Cards', path: '/gift-cards', roles: ['Admin', 'Manager'] },
+        { icon: Percent, label: 'Price Rules', path: '/price-rules', roles: ['Admin', 'Manager'] },
+        { icon: Target, label: 'Sales Targets', path: '/sales-targets', roles: ['Admin', 'Manager'] },
+        { icon: FileCheck, label: 'Invoices', path: '/invoices', roles: ['Admin', 'Manager'] },
         { icon: PieChart, label: 'Sales Reports', path: '/sales-reports', roles: ['Admin', 'Manager'] },
       ]
     },

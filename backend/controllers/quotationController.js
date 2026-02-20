@@ -27,7 +27,7 @@ const getAll = async (req, res) => {
       params.push(customer_id);
     }
     if (search) {
-      where += ' AND (q.quotation_number LIKE ? OR c.name LIKE ?)';
+      where += ' AND (q.quotation_number LIKE ? OR c.customer_name LIKE ?)';
       params.push(`%${search}%`, `%${search}%`);
     }
 
@@ -40,7 +40,7 @@ const getAll = async (req, res) => {
     const total = countResult[0].total;
 
     const rows = await query(
-      `SELECT q.*, c.name AS customer_name, c.phone_number AS customer_phone,
+      `SELECT q.*, c.customer_name AS customer_name, c.phone_number AS customer_phone,
               u.name AS created_by_name
        FROM quotations q
        LEFT JOIN customers c ON q.customer_id = c.customer_id
@@ -72,7 +72,7 @@ const getById = async (req, res) => {
     const { id } = req.params;
 
     const quotations = await query(
-      `SELECT q.*, c.name AS customer_name, c.phone_number AS customer_phone,
+      `SELECT q.*, c.customer_name AS customer_name, c.phone_number AS customer_phone,
               u.name AS created_by_name
        FROM quotations q
        LEFT JOIN customers c ON q.customer_id = c.customer_id
@@ -86,7 +86,7 @@ const getById = async (req, res) => {
     }
 
     const items = await query(
-      `SELECT qi.*, p.name AS product_name, p.sku
+      `SELECT qi.*, p.product_name, p.barcode AS sku
        FROM quotation_items qi
        LEFT JOIN products p ON qi.product_id = p.product_id
        WHERE qi.quotation_id = ?`,
@@ -121,7 +121,7 @@ const create = async (req, res) => {
     const total = round2(subtotal + taxAmt - discountAmt);
 
     const result = await conn.query(
-      `INSERT INTO quotations (quotation_number, customer_id, created_by, subtotal, discount, tax_amount, total, notes, valid_until, status)
+      `INSERT INTO quotations (quotation_number, customer_id, created_by, subtotal, discount, tax_amount, total_amount, notes, valid_until, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
       [quotation_number, customer_id || 1, req.user.user_id, subtotal, discountAmt, taxAmt, total, notes || null, valid_until || null]
     );
@@ -184,7 +184,7 @@ const update = async (req, res) => {
     const total = round2(subtotal + taxAmt - discountAmt);
 
     await conn.query(
-      `UPDATE quotations SET customer_id = ?, subtotal = ?, discount = ?, tax_amount = ?, total = ?, notes = ?, valid_until = ?
+      `UPDATE quotations SET customer_id = ?, subtotal = ?, discount = ?, tax_amount = ?, total_amount = ?, notes = ?, valid_until = ?
        WHERE quotation_id = ?`,
       [customer_id || 1, subtotal, discountAmt, taxAmt, total, notes || null, valid_until || null, id]
     );
@@ -309,7 +309,7 @@ const convertToSale = async (req, res) => {
     const saleResult = await conn.query(
       `INSERT INTO sales (total_amount, discount, net_amount, user_id, customer_id, payment_method, amount_paid, status, tax_amount, note)
        VALUES (?, ?, ?, ?, ?, 'Credit', 0, 'completed', ?, ?)`,
-      [quotation.total, quotation.discount, quotation.total, req.user.user_id, quotation.customer_id, quotation.tax_amount, `Converted from ${quotation.quotation_number}`]
+      [quotation.total_amount, quotation.discount, quotation.total_amount, req.user.user_id, quotation.customer_id, quotation.tax_amount, `Converted from ${quotation.quotation_number}`]
     );
 
     const sale_id = Number(saleResult.insertId);
@@ -350,7 +350,7 @@ const convertToSale = async (req, res) => {
 
     await conn.commit();
 
-    await logAction(req.user.user_id, req.user.name, 'QUOTATION_CONVERTED', 'quotation', parseInt(id), { sale_id, quotation_number: quotation.quotation_number, total: quotation.total }, req.ip);
+    await logAction(req.user.user_id, req.user.name, 'QUOTATION_CONVERTED', 'quotation', parseInt(id), { sale_id, quotation_number: quotation.quotation_number, total: quotation.total_amount }, req.ip);
 
     res.json({ message: 'Quotation converted to sale', sale_id });
   } catch (error) {

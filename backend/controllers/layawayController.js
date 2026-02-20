@@ -57,7 +57,7 @@ exports.getAll = async (req, res) => {
     // Fetch page
     const rows = await query(
       `SELECT lo.*, c.customer_name, c.phone_number AS customer_phone,
-              u.username AS created_by_name
+              u.name AS created_by_name
        FROM layaway_orders lo
        LEFT JOIN customers c ON lo.customer_id = c.customer_id
        LEFT JOIN users u ON lo.created_by = u.user_id
@@ -91,7 +91,7 @@ exports.getById = async (req, res) => {
     // Get layaway header
     const layaways = await query(
       `SELECT lo.*, c.customer_name, c.phone_number AS customer_phone,
-              u.username AS created_by_name
+              u.name AS created_by_name
        FROM layaway_orders lo
        LEFT JOIN customers c ON lo.customer_id = c.customer_id
        LEFT JOIN users u ON lo.created_by = u.user_id
@@ -116,7 +116,7 @@ exports.getById = async (req, res) => {
 
     // Get payments with user info
     const payments = await query(
-      `SELECT lp.*, u.username AS received_by_name
+      `SELECT lp.*, u.name AS received_by_name
        FROM layaway_payments lp
        LEFT JOIN users u ON lp.received_by = u.user_id
        WHERE lp.layaway_id = ?
@@ -249,10 +249,9 @@ exports.create = async (req, res) => {
 
     // Audit log
     await logAction(
-      req.user.user_id,
-      'CREATE_LAYAWAY',
-      `Layaway ${layaway_number} created for customer #${customer_id}. Total: ${total}, Deposit: ${deposit}`,
-      req
+      req.user.user_id, req.user.name, 'CREATE_LAYAWAY', 'layaway', layaway_id,
+      { layaway_number, customer_id, total, deposit },
+      req.ip
     );
 
     res.status(201).json({
@@ -336,10 +335,9 @@ exports.makePayment = async (req, res) => {
 
     // Audit log
     await logAction(
-      req.user.user_id,
-      'LAYAWAY_PAYMENT',
-      `Payment of ${paymentAmt} on layaway ${layaway.layaway_number}. New balance: ${newBalance}`,
-      req
+      req.user.user_id, req.user.name, 'LAYAWAY_PAYMENT', 'layaway', parseInt(id),
+      { layaway_number: layaway.layaway_number, amount: paymentAmt, new_balance: newBalance },
+      req.ip
     );
 
     res.json({
@@ -439,10 +437,9 @@ exports.complete = async (req, res) => {
 
     // Audit log
     await logAction(
-      req.user.user_id,
-      'COMPLETE_LAYAWAY',
-      `Layaway ${layaway.layaway_number} completed and converted to sale`,
-      req
+      req.user.user_id, req.user.name, 'COMPLETE_LAYAWAY', 'layaway', parseInt(id),
+      { layaway_number: layaway.layaway_number },
+      req.ip
     );
 
     res.json({ message: 'Layaway completed and converted to sale successfully' });
@@ -521,10 +518,9 @@ exports.cancel = async (req, res) => {
 
     // Audit log
     await logAction(
-      req.user.user_id,
-      'CANCEL_LAYAWAY',
-      `Layaway ${layaway.layaway_number} cancelled. Stock restored. Payments (${layaway.paid_amount}) to be refunded externally.`,
-      req
+      req.user.user_id, req.user.name, 'CANCEL_LAYAWAY', 'layaway', parseInt(id),
+      { layaway_number: layaway.layaway_number, refund_amount: layaway.paid_amount },
+      req.ip
     );
 
     res.json({ message: 'Layaway cancelled and stock restored. Any payments should be refunded externally.' });

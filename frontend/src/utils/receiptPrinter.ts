@@ -746,84 +746,162 @@ export function downloadReceipt(
   URL.revokeObjectURL(url);
 }
 
-// New function for thermal printer support
-export function printToThermalPrinter(
+// Stored serial port for thermal printer (persists across prints in same session)
+let savedThermalPort: any = null;
+
+// Check if thermal printer is available (Web Serial API)
+export function isThermalPrinterAvailable(): boolean {
+  return 'serial' in navigator;
+}
+
+// Disconnect saved thermal port
+export async function disconnectThermalPrinter(): Promise<void> {
+  if (savedThermalPort) {
+    try {
+      await savedThermalPort.close();
+    } catch (_) { /* already closed */ }
+    savedThermalPort = null;
+  }
+}
+
+// Thermal printer via Web Serial API with ESC/POS commands
+export async function printToThermalPrinter(
   sale: ReceiptSale,
   settings: ReceiptSettings | null,
   cashierName: string,
   customerName?: string
-): void {
-  // Thermal printer ESC/POS commands
-  const esc = '\x1B';
-  const init = esc + '@';
-  const cut = esc + 'm';
-  const boldOn = esc + 'E' + '\x01';
-  const boldOff = esc + 'E' + '\x00';
-  const alignCenter = esc + 'a' + '\x01';
-  const alignLeft = esc + 'a' + '\x00';
-  
-  let receiptText = init;
-  
-  // Store header
-  receiptText += alignCenter;
-  receiptText += boldOn;
-  receiptText += settings?.store_name || 'AByte POS' + '\n\n';
-  receiptText += boldOff;
-  receiptText += alignLeft;
-  
-  if (settings?.address) receiptText += settings.address + '\n';
-  if (settings?.phone) receiptText += 'Tel: ' + settings.phone + '\n';
-  
-  receiptText += '\n';
-  receiptText += '='.repeat(32) + '\n';
-  receiptText += `Receipt #: ${sale.sale_id}\n`;
-  receiptText += `Date: ${new Date().toLocaleString()}\n`;
-  receiptText += `Cashier: ${cashierName}\n`;
-  if (customerName) receiptText += `Customer: ${customerName}\n`;
-  receiptText += '\n';
-  
+): Promise<boolean> {
+  const currencySymbol = settings?.currency_symbol || 'Rs.';
+  const paperWidth = 32; // characters for 80mm paper
+
+  // ESC/POS commands
+  const ESC = '\x1B';
+  const GS = '\x1D';
+  const INIT = ESC + '@';
+  const CUT = GS + 'V' + '\x01';
+  const BOLD_ON = ESC + 'E' + '\x01';
+  const BOLD_OFF = ESC + 'E' + '\x00';
+  const CENTER = ESC + 'a' + '\x01';
+  const LEFT = ESC + 'a' + '\x00';
+  const DOUBLE_HEIGHT = ESC + '!' + '\x10';
+  const NORMAL_SIZE = ESC + '!' + '\x00';
+  const LF = '\n';
+
+  let receipt = INIT;
+
+  // Store header (centered, bold)
+  receipt += CENTER + DOUBLE_HEIGHT + BOLD_ON;
+  receipt += (settings?.store_name || 'AByte POS') + LF;
+  receipt += NORMAL_SIZE + BOLD_OFF;
+  if (settings?.address) receipt += settings.address + LF;
+  if (settings?.phone) receipt += 'Tel: ' + settings.phone + LF;
+  if (settings?.email) receipt += settings.email + LF;
+  receipt += LF;
+
+  // Receipt info (left aligned)
+  receipt += LEFT;
+  receipt += '='.repeat(paperWidth) + LF;
+  receipt += `Receipt #: ${sale.sale_id}` + LF;
+  receipt += `Date: ${new Date().toLocaleString()}` + LF;
+  receipt += `Cashier: ${cashierName}` + LF;
+  if (customerName) receipt += `Customer: ${customerName}` + LF;
+  receipt += '='.repeat(paperWidth) + LF;
+
   // Items
-  receiptText += '-'.repeat(32) + '\n';
+  receipt += BOLD_ON + padLine('Item', 'Amount', paperWidth) + BOLD_OFF + LF;
+  receipt += '-'.repeat(paperWidth) + LF;
+
   sale.items.forEach(item => {
-    const name = item.product_name.length > 20 ? 
-      item.product_name.substring(0, 17) + '...' : 
-      item.product_name.padEnd(20);
-    const total = (item.quantity * parseNumber(item.unit_price)).toFixed(2);
-    receiptText += `${name} ${item.quantity} x $${parseNumber(item.unit_price).toFixed(2)}\n`;
-    receiptText += `                    $${total}\n`;
+    const name = item.product_name.length > (paperWidth - 2)
+      ? item.product_name.substring(0, paperWidth - 5) + '...'
+      : item.product_name;
+    const unitPrice = parseNumber(item.unit_price);
+    const lineTotal = item.quantity * unitPrice;
+    receipt += name + LF;
+    receipt += `  ${item.quantity} x ${currencySymbol} ${unitPrice.toFixed(2)}`;
+    receipt += `  ${currencySymbol} ${lineTotal.toFixed(2)}`.padStart(paperWidth - `  ${item.quantity} x ${currencySymbol} ${unitPrice.toFixed(2)}`.length) + LF;
   });
-  
-  receiptText += '-'.repeat(32) + '\n';
-  
+
+  receipt += '-'.repeat(paperWidth) + LF;
+
   // Totals
   const totalAmount = parseNumber(sale.total_amount);
+  const discount = parseNumber(sale.discount);
+  const taxAmount = parseNumber(sale.tax_amount);
   const amountPaid = parseNumber(sale.amount_paid);
   const changeDue = Math.max(0, amountPaid - totalAmount);
-  
-  receiptText += `TOTAL: $${totalAmount.toFixed(2)}\n`;
-  receiptText += `Paid: $${amountPaid.toFixed(2)}\n`;
-  if (changeDue > 0) receiptText += `Change: $${changeDue.toFixed(2)}\n\n`;
-  
-  // Footer
-  receiptText += alignCenter;
-  receiptText += 'Thank you for shopping!\n';
-  receiptText += '\n\n\n';
-  receiptText += cut;
-  
-  // For web serial API (if available)
-  if ('serial' in navigator) {
-    navigator.serial.requestPort()
-      .then(port => port.open({ baudRate: 9600 }))
-      .then(port => {
-        const writer = port.writable.getWriter();
-        const encoder = new TextEncoder();
-        writer.write(encoder.encode(receiptText));
-        writer.releaseLock();
-        port.close();
-      })
-      .catch(console.error);
-  } else {
-    // Fallback to regular print
-    printReceipt(sale, settings, cashierName, customerName);
+
+  if (discount > 0) {
+    receipt += padLine('Discount:', `-${currencySymbol} ${discount.toFixed(2)}`, paperWidth) + LF;
   }
+  if (taxAmount > 0) {
+    receipt += padLine('Tax:', `${currencySymbol} ${taxAmount.toFixed(2)}`, paperWidth) + LF;
+  }
+
+  receipt += BOLD_ON;
+  receipt += padLine('TOTAL:', `${currencySymbol} ${totalAmount.toFixed(2)}`, paperWidth) + LF;
+  receipt += BOLD_OFF;
+  receipt += padLine('Paid:', `${currencySymbol} ${amountPaid.toFixed(2)}`, paperWidth) + LF;
+  if (changeDue > 0) {
+    receipt += padLine('Change:', `${currencySymbol} ${changeDue.toFixed(2)}`, paperWidth) + LF;
+  }
+  receipt += padLine('Method:', sale.payment_method.toUpperCase(), paperWidth) + LF;
+
+  // Footer
+  receipt += LF;
+  receipt += CENTER;
+  receipt += (settings?.receipt_footer || 'Thank you for shopping!') + LF;
+  receipt += LF + LF + LF;
+  receipt += CUT;
+
+  // Send to thermal printer via Web Serial API
+  if (!('serial' in navigator)) {
+    // Fallback to browser print
+    printReceipt(sale, settings, cashierName, customerName);
+    return false;
+  }
+
+  try {
+    let port = savedThermalPort;
+
+    // Try to use saved port, request new one if needed
+    if (!port) {
+      port = await (navigator as any).serial.requestPort();
+      savedThermalPort = port;
+    }
+
+    // Open port if not already open
+    try {
+      await port.open({ baudRate: 9600 });
+    } catch (e: any) {
+      // Port might already be open, that's fine
+      if (!e.message?.includes('already open')) {
+        // Port is stale, request a new one
+        savedThermalPort = null;
+        port = await (navigator as any).serial.requestPort();
+        savedThermalPort = port;
+        await port.open({ baudRate: 9600 });
+      }
+    }
+
+    const writer = port.writable.getWriter();
+    const encoder = new TextEncoder();
+    await writer.write(encoder.encode(receipt));
+    writer.releaseLock();
+
+    // Don't close port - keep it open for next print
+    return true;
+  } catch (err) {
+    console.error('Thermal printer error:', err);
+    savedThermalPort = null;
+    // Fallback to browser print
+    printReceipt(sale, settings, cashierName, customerName);
+    return false;
+  }
+}
+
+// Helper: pad a line with label on left and value on right
+function padLine(label: string, value: string, width: number): string {
+  const space = width - label.length - value.length;
+  return label + ' '.repeat(Math.max(1, space)) + value;
 }

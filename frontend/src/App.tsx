@@ -50,6 +50,10 @@ import Layaway from './pages/Layaway';
 import Coupons from './pages/Coupons';
 import LoyaltyProgram from './pages/LoyaltyProgram';
 import SalesReports from './pages/SalesReports';
+import GiftCards from './pages/GiftCards';
+import PriceRules from './pages/PriceRules';
+import SalesTargets from './pages/SalesTargets';
+import Invoices from './pages/Invoices';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
@@ -386,6 +390,86 @@ function App() {
                         element={
                           <RoleRoute allowedRoles={['Admin', 'Manager']}>
                             <ReceiptVouchers />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/quotations"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <Quotations />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/credit-sales"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <CreditSales />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/layaway"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <Layaway />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/coupons"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <Coupons />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/loyalty"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <LoyaltyProgram />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/sales-reports"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <SalesReports />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/gift-cards"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <GiftCards />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/price-rules"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <PriceRules />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/sales-targets"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <SalesTargets />
+                          </RoleRoute>
+                        }
+                      />
+                      <Route
+                        path="/invoices"
+                        element={
+                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
+                            <Invoices />
                           </RoleRoute>
                         }
                       />

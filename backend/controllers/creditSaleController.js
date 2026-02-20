@@ -14,8 +14,8 @@ exports.getAll = async (req, res) => {
     const { status, customer_id, overdue, search } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 
-    let sql = `SELECT cs.*, c.name as customer_name, c.phone_number as customer_phone,
-               u.username as created_by_name, s.sale_date, s.total_amount as sale_total
+    let sql = `SELECT cs.*, c.customer_name as customer_name, c.phone_number as customer_phone,
+               u.name as created_by_name, s.sale_date, s.total_amount as sale_total
                FROM credit_sales cs
                JOIN sales s ON cs.sale_id = s.sale_id
                JOIN customers c ON cs.customer_id = c.customer_id
@@ -50,8 +50,8 @@ exports.getAll = async (req, res) => {
 
     if (search) {
       const pattern = `%${search}%`;
-      sql += ' AND (CAST(cs.sale_id AS CHAR) LIKE ? OR c.name LIKE ?)';
-      countSql += ' AND (CAST(cs.sale_id AS CHAR) LIKE ? OR c.name LIKE ?)';
+      sql += ' AND (CAST(cs.sale_id AS CHAR) LIKE ? OR c.customer_name LIKE ?)';
+      countSql += ' AND (CAST(cs.sale_id AS CHAR) LIKE ? OR c.customer_name LIKE ?)';
       params.push(pattern, pattern);
       countParams.push(pattern, pattern);
     }
@@ -76,8 +76,8 @@ exports.getById = async (req, res) => {
     const { id } = req.params;
 
     const creditSales = await query(
-      `SELECT cs.*, c.name as customer_name, c.phone_number as customer_phone,
-              u.username as created_by_name, s.sale_date, s.total_amount as sale_total
+      `SELECT cs.*, c.customer_name as customer_name, c.phone_number as customer_phone,
+              u.name as created_by_name, s.sale_date, s.total_amount as sale_total
        FROM credit_sales cs
        JOIN sales s ON cs.sale_id = s.sale_id
        JOIN customers c ON cs.customer_id = c.customer_id
@@ -91,7 +91,7 @@ exports.getById = async (req, res) => {
     }
 
     const payments = await query(
-      `SELECT cp.*, u.username as received_by_name
+      `SELECT cp.*, u.name as received_by_name
        FROM credit_payments cp
        LEFT JOIN users u ON cp.received_by = u.user_id
        WHERE cp.credit_sale_id = ?
@@ -125,7 +125,7 @@ exports.create = async (req, res) => {
     }
 
     // Validate customer exists
-    const customers = await query('SELECT customer_id, name FROM customers WHERE customer_id = ?', [customer_id]);
+    const customers = await query('SELECT customer_id, customer_name FROM customers WHERE customer_id = ?', [customer_id]);
     if (customers.length === 0) {
       return res.status(404).json({ message: 'Customer not found' });
     }
@@ -158,8 +158,8 @@ exports.create = async (req, res) => {
       await conn.commit();
 
       await logAction(
-        req.user.user_id, req.user.username, 'CREATE', 'credit_sale', creditSaleId,
-        { sale_id, customer: customers[0].name, total_amount: totalAmt, paid_amount: paidAmt, due_date },
+        req.user.user_id, req.user.name, 'CREATE', 'credit_sale', creditSaleId,
+        { sale_id, customer: customers[0].customer_name, total_amount: totalAmt, paid_amount: paidAmt, due_date },
         req.ip
       );
 
@@ -225,7 +225,7 @@ exports.recordPayment = async (req, res) => {
       await conn.commit();
 
       await logAction(
-        req.user.user_id, req.user.username, 'PAYMENT', 'credit_sale', parseInt(id),
+        req.user.user_id, req.user.name, 'PAYMENT', 'credit_sale', parseInt(id),
         { amount: paymentAmount, payment_method: payment_method || 'cash', new_balance: newBalanceDue, new_status: newStatus },
         req.ip
       );
@@ -267,7 +267,7 @@ exports.getCustomerBalance = async (req, res) => {
 exports.getOverdue = async (req, res) => {
   try {
     const overdue = await query(
-      `SELECT cs.*, c.name as customer_name, c.phone_number as customer_phone
+      `SELECT cs.*, c.customer_name as customer_name, c.phone_number as customer_phone
        FROM credit_sales cs
        JOIN customers c ON cs.customer_id = c.customer_id
        WHERE cs.due_date < CURDATE() AND cs.status IN ('pending', 'partial')
@@ -298,12 +298,10 @@ exports.getStats = async (req, res) => {
     );
 
     res.json({
-      data: {
-        total_outstanding: stats.total_outstanding,
-        overdue_count: stats.overdue_count,
-        active_count: stats.active_count,
-        collected_this_month: collected.collected_this_month
-      }
+      total_outstanding: stats.total_outstanding,
+      overdue_count: stats.overdue_count,
+      active_count: stats.active_count,
+      collected_this_month: collected.collected_this_month
     });
   } catch (err) {
     console.error(err);

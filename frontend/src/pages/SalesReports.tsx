@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Calendar, Download } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Calendar, Download, Printer } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../utils/api';
+import { printReport, buildTable, buildStatsCards } from '../utils/reportPrinter';
 
 const SalesReports = () => {
   const [dateFrom, setDateFrom] = useState(new Date().toISOString().split('T')[0]);

@@ -3,7 +3,7 @@ import { X, CreditCard, Banknote, Smartphone, Check, Loader2, Printer, Tag, Star
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
-import { printReceipt } from '../utils/receiptPrinter';
+import { printReceipt, printToThermalPrinter, isThermalPrinterAvailable } from '../utils/receiptPrinter';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -246,14 +246,23 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     }
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!successSale) return;
-    printReceipt(
-      successSale,
-      settings,
-      user?.name || 'Staff',
-      selectedCustomer?.customer_name
-    );
+    if (isThermalPrinterAvailable()) {
+      await printToThermalPrinter(
+        successSale,
+        settings,
+        user?.name || 'Staff',
+        selectedCustomer?.customer_name
+      );
+    } else {
+      printReceipt(
+        successSale,
+        settings,
+        user?.name || 'Staff',
+        selectedCustomer?.customer_name
+      );
+    }
   };
 
   if (successSale) {

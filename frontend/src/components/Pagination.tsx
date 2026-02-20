@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PaginationProps {
@@ -7,7 +7,6 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
   totalItems: number;
   itemsPerPage: number;
-  onItemsPerPageChange: (itemsPerPage: number) => void;
 }
 
 const Pagination: React.FC<PaginationProps> = ({ 
@@ -15,38 +14,9 @@ const Pagination: React.FC<PaginationProps> = ({
   totalPages, 
   onPageChange, 
   totalItems,
-  itemsPerPage,
-  onItemsPerPageChange
+  itemsPerPage 
 }) => {
-  const [showCustomInput, setShowCustomInput] = useState(false);
-  const [customValue, setCustomValue] = useState('');
-
-  const predefinedOptions = [10, 25, 50, 100, 1000];
-
-  const handleItemsPerPageChange = (value: string) => {
-    if (value === 'custom') {
-      setShowCustomInput(true);
-    } else {
-      setShowCustomInput(false);
-      const newItemsPerPage = parseInt(value);
-      onItemsPerPageChange(newItemsPerPage);
-      onPageChange(1); // Reset to first page when changing items per page
-    }
-  };
-
-  const handleCustomSubmit = () => {
-    const customNum = parseInt(customValue);
-    if (customNum > 0 && customNum <= totalItems) {
-      onItemsPerPageChange(customNum);
-      onPageChange(1);
-      setShowCustomInput(false);
-      setCustomValue('');
-    } else {
-      alert(`Please enter a valid number between 1 and ${totalItems}`);
-    }
-  };
-
-  if (totalPages <= 1 && totalItems <= itemsPerPage) return null;
+  if (totalPages <= 1) return null;
 
   const renderPageButtons = () => {
     const buttons = [];
@@ -136,66 +106,11 @@ const Pagination: React.FC<PaginationProps> = ({
         </button>
       </div>
       <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
+        <div>
           <p className="text-sm text-gray-700">
             Showing <span className="font-medium">{Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalItems)}</span> of <span className="font-medium">{totalItems}</span> results
           </p>
-          
-          {/* Items Per Page Selector */}
-          <div className="flex items-center gap-2">
-            <label htmlFor="itemsPerPage" className="text-sm text-gray-700">
-              Show:
-            </label>
-            <select
-              id="itemsPerPage"
-              value={predefinedOptions.includes(itemsPerPage) ? itemsPerPage : 'custom'}
-              onChange={(e) => handleItemsPerPageChange(e.target.value)}
-              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            >
-              {predefinedOptions.map(option => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-              <option value="custom">Custom</option>
-            </select>
-            
-            {showCustomInput && (
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="1"
-                  max={totalItems}
-                  value={customValue}
-                  onChange={(e) => setCustomValue(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleCustomSubmit();
-                    }
-                  }}
-                  placeholder="Enter number"
-                  className="w-28 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-                <button
-                  onClick={handleCustomSubmit}
-                  className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                >
-                  Apply
-                </button>
-                <button
-                  onClick={() => {
-                    setShowCustomInput(false);
-                    setCustomValue('');
-                  }}
-                  className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-          </div>
         </div>
-        
         <div>
           <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
             <button

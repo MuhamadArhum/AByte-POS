@@ -37,6 +37,16 @@ const accountingRoutes = require('./routes/accountingRoutes'); // Accounting mod
 const stockAdjustmentRoutes = require('./routes/stockAdjustmentRoutes'); // Stock adjustment routes
 const stockTransferRoutes = require('./routes/stockTransferRoutes');     // Stock transfer routes
 const inventoryReportRoutes = require('./routes/inventoryReportRoutes'); // Inventory report routes
+const salesReportRoutes = require('./routes/salesReportRoutes');         // Sales report routes
+const couponRoutes = require('./routes/couponRoutes');                   // Coupon management routes
+const loyaltyRoutes = require('./routes/loyaltyRoutes');                 // Loyalty program routes
+const creditSaleRoutes = require('./routes/creditSaleRoutes');           // Credit sales routes
+const layawayRoutes = require('./routes/layawayRoutes');                 // Layaway orders routes
+const quotationRoutes = require('./routes/quotationRoutes');             // Quotation routes
+const giftCardRoutes = require('./routes/giftCardRoutes');               // Gift card routes
+const priceRuleRoutes = require('./routes/priceRuleRoutes');             // Price rules routes
+const salesTargetRoutes = require('./routes/salesTargetRoutes');         // Sales targets routes
+const invoiceRoutes = require('./routes/invoiceRoutes');                 // Invoice routes
 
 // Create the Express application instance
 const app = express();
@@ -76,6 +86,16 @@ app.use('/api/accounting', accountingRoutes); // Accounting module routes
 app.use('/api/stock-adjustments', stockAdjustmentRoutes); // Stock adjustment routes
 app.use('/api/stock-transfers', stockTransferRoutes);     // Stock transfer routes
 app.use('/api/inventory-reports', inventoryReportRoutes); // Inventory report routes
+app.use('/api/sales-reports', salesReportRoutes);         // Sales report routes
+app.use('/api/coupons', couponRoutes);                   // Coupon management routes
+app.use('/api/loyalty', loyaltyRoutes);                  // Loyalty program routes
+app.use('/api/credit-sales', creditSaleRoutes);          // Credit sales routes
+app.use('/api/layaway', layawayRoutes);                  // Layaway orders routes
+app.use('/api/quotations', quotationRoutes);             // Quotation routes
+app.use('/api/gift-cards', giftCardRoutes);              // Gift card routes
+app.use('/api/price-rules', priceRuleRoutes);            // Price rules routes
+app.use('/api/sales-targets', salesTargetRoutes);        // Sales targets routes
+app.use('/api/invoices', invoiceRoutes);                 // Invoice routes
 
 // Health check endpoint - used to verify server is running
 // Example: GET /api/health returns { status: 'ok' }

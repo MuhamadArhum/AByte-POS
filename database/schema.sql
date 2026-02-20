@@ -666,3 +666,349 @@ CREATE TABLE IF NOT EXISTS stock_transfers (
     INDEX idx_transfer_to (to_store_id),
     INDEX idx_transfer_date (transfer_date)
 );
+
+-- ==========================================
+-- Sales Module Extension Tables
+-- Created by: migrate_sales_module.js
+-- ==========================================
+
+-- Coupons
+CREATE TABLE IF NOT EXISTS coupons (
+    coupon_id INT PRIMARY KEY AUTO_INCREMENT,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    description VARCHAR(255),
+    discount_type ENUM('percentage', 'fixed') NOT NULL,
+    discount_value DECIMAL(10,2) NOT NULL,
+    min_purchase DECIMAL(10,2) DEFAULT 0,
+    max_discount DECIMAL(10,2) NULL,
+    usage_limit INT DEFAULT NULL,
+    used_count INT DEFAULT 0,
+    valid_from DATE NOT NULL,
+    valid_until DATE NOT NULL,
+    is_active TINYINT(1) DEFAULT 1,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    INDEX idx_coupon_code (code),
+    INDEX idx_coupon_active (is_active)
+);
+
+CREATE TABLE IF NOT EXISTS coupon_redemptions (
+    redemption_id INT PRIMARY KEY AUTO_INCREMENT,
+    coupon_id INT NOT NULL,
+    sale_id INT NOT NULL,
+    discount_applied DECIMAL(10,2) NOT NULL,
+    redeemed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (coupon_id) REFERENCES coupons(coupon_id),
+    FOREIGN KEY (sale_id) REFERENCES sales(sale_id),
+    INDEX idx_redemption_coupon (coupon_id)
+);
+
+-- Quotations
+CREATE TABLE IF NOT EXISTS quotations (
+    quotation_id INT PRIMARY KEY AUTO_INCREMENT,
+    quotation_number VARCHAR(50) NOT NULL UNIQUE,
+    customer_id INT NOT NULL,
+    subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
+    tax_amount DECIMAL(10,2) DEFAULT 0,
+    discount DECIMAL(10,2) DEFAULT 0,
+    total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    status ENUM('draft', 'sent', 'accepted', 'rejected', 'expired', 'converted') DEFAULT 'draft',
+    valid_until DATE,
+    notes TEXT,
+    converted_sale_id INT NULL,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    INDEX idx_quotation_status (status),
+    INDEX idx_quotation_customer (customer_id)
+);
+
+CREATE TABLE IF NOT EXISTS quotation_items (
+    item_id INT PRIMARY KEY AUTO_INCREMENT,
+    quotation_id INT NOT NULL,
+    product_id INT NOT NULL,
+    variant_id INT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    unit_price DECIMAL(10,2) NOT NULL,
+    total_price DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (quotation_id) REFERENCES quotations(quotation_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- Credit Sales
+CREATE TABLE IF NOT EXISTS credit_sales (
+    credit_sale_id INT PRIMARY KEY AUTO_INCREMENT,
+    sale_id INT NOT NULL,
+    customer_id INT NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL,
+    paid_amount DECIMAL(10,2) DEFAULT 0,
+    balance_due DECIMAL(10,2) NOT NULL,
+    due_date DATE NOT NULL,
+    status ENUM('pending', 'partial', 'paid', 'overdue') DEFAULT 'pending',
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sale_id) REFERENCES sales(sale_id),
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    INDEX idx_credit_status (status),
+    INDEX idx_credit_customer (customer_id)
+);
+
+CREATE TABLE IF NOT EXISTS credit_payments (
+    payment_id INT PRIMARY KEY AUTO_INCREMENT,
+    credit_sale_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_method VARCHAR(50) NOT NULL DEFAULT 'Cash',
+    received_by INT,
+    notes TEXT,
+    payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (credit_sale_id) REFERENCES credit_sales(credit_sale_id),
+    FOREIGN KEY (received_by) REFERENCES users(user_id)
+);
+
+-- Layaway
+CREATE TABLE IF NOT EXISTS layaway_orders (
+    layaway_id INT PRIMARY KEY AUTO_INCREMENT,
+    layaway_number VARCHAR(50) NOT NULL UNIQUE,
+    customer_id INT NOT NULL,
+    subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
+    tax_amount DECIMAL(10,2) DEFAULT 0,
+    total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    deposit_amount DECIMAL(10,2) DEFAULT 0,
+    paid_amount DECIMAL(10,2) DEFAULT 0,
+    balance_due DECIMAL(10,2) NOT NULL DEFAULT 0,
+    expiry_date DATE,
+    converted_sale_id INT NULL,
+    status ENUM('active', 'completed', 'cancelled', 'expired') DEFAULT 'active',
+    notes TEXT,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    INDEX idx_layaway_status (status),
+    INDEX idx_layaway_customer (customer_id)
+);
+
+CREATE TABLE IF NOT EXISTS layaway_items (
+    item_id INT PRIMARY KEY AUTO_INCREMENT,
+    layaway_id INT NOT NULL,
+    product_id INT NOT NULL,
+    variant_id INT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    unit_price DECIMAL(10,2) NOT NULL,
+    total_price DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (layaway_id) REFERENCES layaway_orders(layaway_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+CREATE TABLE IF NOT EXISTS layaway_payments (
+    payment_id INT PRIMARY KEY AUTO_INCREMENT,
+    layaway_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_method VARCHAR(50) NOT NULL DEFAULT 'Cash',
+    received_by INT,
+    notes TEXT,
+    payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (layaway_id) REFERENCES layaway_orders(layaway_id),
+    FOREIGN KEY (received_by) REFERENCES users(user_id)
+);
+
+-- Loyalty Program
+CREATE TABLE IF NOT EXISTS loyalty_config (
+    config_id INT PRIMARY KEY AUTO_INCREMENT,
+    points_per_amount DECIMAL(10,2) DEFAULT 1,
+    amount_per_point DECIMAL(10,2) DEFAULT 100,
+    min_redeem_points INT DEFAULT 100,
+    is_active TINYINT(1) DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS loyalty_transactions (
+    transaction_id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    sale_id INT NULL,
+    points INT NOT NULL,
+    balance_after INT NOT NULL DEFAULT 0,
+    type ENUM('earn', 'redeem', 'adjust', 'expire') NOT NULL,
+    description VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    INDEX idx_loyalty_customer (customer_id),
+    INDEX idx_loyalty_type (type)
+);
+
+-- ==========================================
+-- Gift Cards
+-- Created by: migrate_gift_cards.js
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS gift_cards (
+    card_id INT PRIMARY KEY AUTO_INCREMENT,
+    card_number VARCHAR(50) NOT NULL UNIQUE,
+    initial_balance DECIMAL(10,2) NOT NULL,
+    current_balance DECIMAL(10,2) NOT NULL,
+    status ENUM('active', 'depleted', 'expired', 'disabled') DEFAULT 'active',
+    customer_id INT NULL,
+    expiry_date DATE NULL,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    INDEX idx_gc_number (card_number),
+    INDEX idx_gc_status (status)
+);
+
+CREATE TABLE IF NOT EXISTS gift_card_transactions (
+    transaction_id INT PRIMARY KEY AUTO_INCREMENT,
+    card_id INT NOT NULL,
+    sale_id INT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    balance_after DECIMAL(10,2) NOT NULL,
+    type ENUM('load', 'redeem', 'refund', 'adjust') NOT NULL,
+    description VARCHAR(255),
+    processed_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (card_id) REFERENCES gift_cards(card_id),
+    FOREIGN KEY (sale_id) REFERENCES sales(sale_id),
+    FOREIGN KEY (processed_by) REFERENCES users(user_id),
+    INDEX idx_gct_card (card_id),
+    INDEX idx_gct_type (type)
+);
+
+-- ==========================================
+-- Price Rules
+-- Created by: migrate_price_rules.js
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS price_rules (
+    rule_id INT PRIMARY KEY AUTO_INCREMENT,
+    rule_name VARCHAR(200) NOT NULL,
+    rule_type ENUM('buy_x_get_y', 'quantity_discount', 'time_based', 'category_discount') NOT NULL,
+    description TEXT,
+    is_active TINYINT(1) DEFAULT 1,
+    priority INT DEFAULT 0,
+    start_date DATETIME NOT NULL,
+    end_date DATETIME NOT NULL,
+    min_quantity INT DEFAULT 1,
+    buy_quantity INT NULL,
+    get_quantity INT NULL,
+    discount_type ENUM('percentage', 'fixed') NOT NULL DEFAULT 'percentage',
+    discount_value DECIMAL(10,2) NOT NULL,
+    max_uses INT NULL,
+    used_count INT DEFAULT 0,
+    applies_to ENUM('all', 'product', 'category') DEFAULT 'all',
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    INDEX idx_pr_active (is_active),
+    INDEX idx_pr_dates (start_date, end_date),
+    INDEX idx_pr_type (rule_type)
+);
+
+CREATE TABLE IF NOT EXISTS price_rule_products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    rule_id INT NOT NULL,
+    product_id INT NULL,
+    category_id INT NULL,
+    FOREIGN KEY (rule_id) REFERENCES price_rules(rule_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    FOREIGN KEY (category_id) REFERENCES categories(category_id)
+);
+
+CREATE TABLE IF NOT EXISTS price_rule_usage (
+    usage_id INT PRIMARY KEY AUTO_INCREMENT,
+    rule_id INT NOT NULL,
+    sale_id INT NOT NULL,
+    discount_applied DECIMAL(10,2) NOT NULL,
+    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (rule_id) REFERENCES price_rules(rule_id),
+    FOREIGN KEY (sale_id) REFERENCES sales(sale_id)
+);
+
+-- ==========================================
+-- Sales Targets
+-- Created by: migrate_sales_targets.js
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS sales_targets (
+    target_id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NULL,
+    target_type ENUM('daily', 'weekly', 'monthly') NOT NULL DEFAULT 'monthly',
+    target_amount DECIMAL(12,2) NOT NULL,
+    target_orders INT NULL,
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    is_active TINYINT(1) DEFAULT 1,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    INDEX idx_target_user (user_id),
+    INDEX idx_target_period (period_start, period_end),
+    INDEX idx_target_active (is_active)
+);
+
+CREATE TABLE IF NOT EXISTS target_achievements (
+    achievement_id INT PRIMARY KEY AUTO_INCREMENT,
+    target_id INT NOT NULL,
+    achievement_date DATE NOT NULL,
+    actual_amount DECIMAL(12,2) DEFAULT 0,
+    actual_orders INT DEFAULT 0,
+    achievement_percentage DECIMAL(5,2) DEFAULT 0,
+    FOREIGN KEY (target_id) REFERENCES sales_targets(target_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_target_date (target_id, achievement_date)
+);
+
+-- ==========================================
+-- Invoices
+-- Created by: migrate_invoices.js
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS invoices (
+    invoice_id INT PRIMARY KEY AUTO_INCREMENT,
+    invoice_number VARCHAR(50) NOT NULL UNIQUE,
+    sale_id INT NULL,
+    quotation_id INT NULL,
+    customer_id INT NOT NULL,
+    subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
+    tax_amount DECIMAL(10,2) DEFAULT 0,
+    discount DECIMAL(10,2) DEFAULT 0,
+    total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    status ENUM('draft', 'sent', 'paid', 'partial', 'overdue', 'cancelled') DEFAULT 'draft',
+    due_date DATE NULL,
+    payment_terms VARCHAR(100) DEFAULT 'Due on Receipt',
+    notes TEXT,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sale_id) REFERENCES sales(sale_id),
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    INDEX idx_inv_number (invoice_number),
+    INDEX idx_inv_customer (customer_id),
+    INDEX idx_inv_status (status)
+);
+
+CREATE TABLE IF NOT EXISTS invoice_items (
+    item_id INT PRIMARY KEY AUTO_INCREMENT,
+    invoice_id INT NOT NULL,
+    product_id INT NOT NULL,
+    variant_id INT NULL,
+    description VARCHAR(255),
+    quantity INT NOT NULL DEFAULT 1,
+    unit_price DECIMAL(10,2) NOT NULL,
+    total_price DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (invoice_id) REFERENCES invoices(invoice_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- ==========================================
+-- ALTER TABLE additions for Sales Module
+-- ==========================================
+
+-- ALTER TABLE customers ADD COLUMN loyalty_points INT DEFAULT 0;
+-- ALTER TABLE sales ADD COLUMN coupon_id INT NULL;
+-- ALTER TABLE sales ADD COLUMN coupon_discount DECIMAL(10,2) DEFAULT 0;
+-- ALTER TABLE sales ADD COLUMN loyalty_points_earned INT DEFAULT 0;
+-- ALTER TABLE sales ADD COLUMN loyalty_points_redeemed INT DEFAULT 0;
+-- ALTER TABLE sales ADD COLUMN gift_card_amount DECIMAL(10,2) DEFAULT 0;

@@ -250,11 +250,10 @@ const Settings = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-4 font-semibold transition-all whitespace-nowrap ${
-                  activeTab === tab.id
+                className={`flex items-center gap-2 px-6 py-4 font-semibold transition-all whitespace-nowrap ${activeTab === tab.id
                     ? 'text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50'
                     : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <Icon size={20} />
                 {tab.name}
@@ -619,11 +618,10 @@ const Settings = () => {
                         </td>
                         <td className="px-6 py-4 text-gray-600">{user.email}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            user.role === 'Admin' ? 'bg-purple-100 text-purple-700'
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${user.role === 'Admin' ? 'bg-purple-100 text-purple-700'
                               : user.role === 'Manager' ? 'bg-blue-100 text-blue-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}>
+                                : 'bg-gray-100 text-gray-700'
+                            }`}>
                             {user.role}
                           </span>
                         </td>
