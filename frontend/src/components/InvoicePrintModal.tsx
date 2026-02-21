@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Printer } from 'lucide-react';
+import { X, Printer, Zap } from 'lucide-react';
 import api from '../utils/api';
 import { printReport } from '../utils/reportPrinter';
 
@@ -47,6 +47,9 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
   const [invoice, setInvoice] = useState<PrintInvoice | null>(null);
   const [store, setStore] = useState<StoreInfo | null>(null);
   const [error, setError] = useState('');
+  const [thermalAvailable, setThermalAvailable] = useState(false);
+  const [thermalPrinting, setThermalPrinting] = useState(false);
+  const [thermalMsg, setThermalMsg] = useState('');
 
   useEffect(() => {
     const fetchPrintData = async () => {
@@ -63,6 +66,12 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
     };
     fetchPrintData();
   }, [invoiceId]);
+
+  useEffect(() => {
+    api.get('/settings/printers/check?purpose=invoice')
+      .then(r => setThermalAvailable(r.data.available))
+      .catch(() => setThermalAvailable(false));
+  }, []);
 
   const handlePrint = () => {
     if (!invoice || !store) return;
@@ -175,19 +184,55 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
     });
   };
 
+  const handleThermalPrint = async () => {
+    if (!invoice || !store) return;
+    setThermalPrinting(true);
+    setThermalMsg('');
+    try {
+      await api.post('/settings/print-thermal-document', {
+        purpose: 'invoice',
+        documentData: {
+          storeName: store.store_name,
+          storeAddress: store.address,
+          storePhone: store.phone,
+          number: invoice.invoice_number,
+          date: new Date(invoice.created_at).toLocaleDateString(),
+          customerName: invoice.customer_name,
+          items: invoice.items.map(i => ({ name: i.description || i.product_name || 'Item', quantity: i.quantity, unit_price: i.unit_price })),
+          subtotal: invoice.subtotal,
+          tax_amount: invoice.tax_amount,
+          discount: invoice.discount,
+          total_amount: invoice.total_amount,
+        }
+      });
+      setThermalMsg('Sent to thermal printer!');
+    } catch (err: any) {
+      setThermalMsg(err.response?.data?.message || 'Thermal print failed');
+    } finally {
+      setThermalPrinting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-bold text-gray-800">Print Invoice</h2>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handlePrint}
-              disabled={loading || !!error}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400"
-            >
-              <Printer size={18} />
-              Print
+          <div className="flex items-center gap-2">
+            {thermalAvailable && (
+              <div className="flex items-center gap-2">
+                <button onClick={handleThermalPrint} disabled={loading || !!error || thermalPrinting}
+                  className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition disabled:bg-gray-400 text-sm font-semibold">
+                  <Zap size={16} />
+                  {thermalPrinting ? 'Printing...' : 'Direct Print (Thermal)'}
+                </button>
+                {thermalMsg && <span className={`text-xs font-medium ${thermalMsg.includes('failed') ? 'text-red-500' : 'text-emerald-600'}`}>{thermalMsg}</span>}
+              </div>
+            )}
+            <button onClick={handlePrint} disabled={loading || !!error}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 text-sm">
+              <Printer size={16} />
+              Print A4
             </button>
             <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
               <X size={20} />

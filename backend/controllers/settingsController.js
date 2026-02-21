@@ -113,40 +113,170 @@ exports.changePassword = async (req, res) => {
 // --- Print Receipt via configured printer ---
 exports.printReceipt = async (req, res) => {
   try {
-    const [settings] = await query('SELECT printer_type, printer_ip, printer_port, printer_name, printer_paper_width FROM store_settings WHERE setting_id = 1');
-    if (!settings || settings.printer_type === 'none') {
-      return res.status(400).json({ message: 'No printer configured. Go to Settings > Printer to configure.' });
+    // First try printers table (new multi-printer system)
+    const printers = await query("SELECT * FROM printers WHERE purpose = 'receipt' AND is_active = 1 ORDER BY printer_id LIMIT 1");
+    let printer = printers[0];
+
+    // Fallback to legacy store_settings
+    if (!printer) {
+      const rows = await query('SELECT printer_type, printer_ip, printer_port, printer_name, printer_paper_width FROM store_settings WHERE setting_id = 1');
+      const s = rows[0];
+      if (!s || s.printer_type === 'none') {
+        return res.status(400).json({ message: 'No receipt printer configured. Go to Settings > Printers to add one.' });
+      }
+      printer = { type: s.printer_type, ip_address: s.printer_ip, port: s.printer_port || 9100, printer_share_name: s.printer_name, paper_width: s.printer_paper_width || 80 };
     }
 
     const { receiptData } = req.body;
-    if (!receiptData) {
-      return res.status(400).json({ message: 'Receipt data is required' });
+    if (!receiptData) return res.status(400).json({ message: 'Receipt data is required' });
+
+    const escposBuffer = buildEscPosReceipt(receiptData, printer.paper_width || 80);
+
+    if (printer.type === 'network') {
+      if (!printer.ip_address) return res.status(400).json({ message: 'Printer IP address not configured' });
+      await sendToNetworkPrinter(printer.ip_address, printer.port || 9100, escposBuffer);
+    } else if (printer.type === 'usb') {
+      if (!printer.printer_share_name) return res.status(400).json({ message: 'USB printer name not configured' });
+      await sendToUsbPrinter(printer.printer_share_name, escposBuffer);
+    } else {
+      return res.status(400).json({ message: 'Unknown printer type' });
     }
 
-    // Build ESC/POS commands from receiptData
-    const escposBuffer = buildEscPosReceipt(receiptData, settings.printer_paper_width || 80);
-
-    if (settings.printer_type === 'network') {
-      if (!settings.printer_ip) {
-        return res.status(400).json({ message: 'Printer IP address not configured' });
-      }
-      await sendToNetworkPrinter(settings.printer_ip, settings.printer_port || 9100, escposBuffer);
-      return res.json({ success: true, message: 'Receipt sent to printer' });
-    }
-
-    if (settings.printer_type === 'usb') {
-      // For USB printers on Windows, write to the shared printer via net use / raw
-      if (!settings.printer_name) {
-        return res.status(400).json({ message: 'USB printer name not configured' });
-      }
-      await sendToUsbPrinter(settings.printer_name, escposBuffer);
-      return res.json({ success: true, message: 'Receipt sent to USB printer' });
-    }
-
-    return res.status(400).json({ message: 'Unknown printer type' });
+    res.json({ success: true, message: 'Receipt sent to printer' });
   } catch (err) {
     console.error('Print error:', err);
     res.status(500).json({ message: err.message || 'Failed to print receipt' });
+  }
+};
+
+// --- Print invoice/quotation to thermal printer ---
+exports.printThermalDocument = async (req, res) => {
+  try {
+    const { purpose, documentData } = req.body;
+    if (!purpose || !documentData) return res.status(400).json({ message: 'Purpose and document data are required' });
+
+    const printers = await query('SELECT * FROM printers WHERE purpose = ? AND is_active = 1 ORDER BY printer_id LIMIT 1', [purpose]);
+    if (!printers[0]) return res.status(404).json({ message: `No ${purpose} printer configured. Add one in Settings > Printers.` });
+
+    const printer = printers[0];
+    const escposBuffer = buildEscPosDocument(documentData, printer.paper_width || 80, purpose);
+
+    if (printer.type === 'network') {
+      await sendToNetworkPrinter(printer.ip_address, printer.port || 9100, escposBuffer);
+    } else {
+      await sendToUsbPrinter(printer.printer_share_name, escposBuffer);
+    }
+
+    res.json({ success: true, message: `${purpose} sent to ${printer.name}` });
+  } catch (err) {
+    console.error('Thermal doc print error:', err);
+    res.status(500).json({ message: err.message || 'Failed to print' });
+  }
+};
+
+// --- Check if printer exists for a purpose ---
+exports.checkPrinter = async (req, res) => {
+  try {
+    const { purpose } = req.query;
+    if (!purpose) return res.status(400).json({ message: 'Purpose required' });
+    const printers = await query('SELECT printer_id, name, type, paper_width FROM printers WHERE purpose = ? AND is_active = 1 LIMIT 1', [purpose]);
+    res.json({ available: printers.length > 0, printer: printers[0] || null });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ===================== PRINTER CRUD =====================
+
+// --- Get all printers ---
+exports.getPrinters = async (req, res) => {
+  try {
+    const printers = await query('SELECT * FROM printers ORDER BY purpose, created_at');
+    res.json(printers);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Create printer ---
+exports.createPrinter = async (req, res) => {
+  try {
+    const { name, type, ip_address, port, printer_share_name, paper_width, purpose } = req.body;
+    if (!name || !type || !purpose) return res.status(400).json({ message: 'Name, type, and purpose are required' });
+    if (type === 'network' && !ip_address) return res.status(400).json({ message: 'IP address required for network printer' });
+    if (type === 'usb' && !printer_share_name) return res.status(400).json({ message: 'Printer share name required for USB printer' });
+
+    const result = await query(
+      'INSERT INTO printers (name, type, ip_address, port, printer_share_name, paper_width, purpose, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
+      [name, type, ip_address || null, port || 9100, printer_share_name || null, paper_width || 80, purpose]
+    );
+    await logAction(req.user.user_id, req.user.name, 'PRINTER_ADDED', 'printers', result.insertId, { name, type, purpose }, req.ip);
+    res.status(201).json({ message: 'Printer added successfully', printer_id: result.insertId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Update printer ---
+exports.updatePrinter = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, type, ip_address, port, printer_share_name, paper_width, purpose, is_active } = req.body;
+    await query(
+      'UPDATE printers SET name=?, type=?, ip_address=?, port=?, printer_share_name=?, paper_width=?, purpose=?, is_active=? WHERE printer_id=?',
+      [name, type, ip_address || null, port || 9100, printer_share_name || null, paper_width || 80, purpose, is_active ? 1 : 0, id]
+    );
+    await logAction(req.user.user_id, req.user.name, 'PRINTER_UPDATED', 'printers', id, { name, type, purpose }, req.ip);
+    res.json({ message: 'Printer updated successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Delete printer ---
+exports.deletePrinter = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM printers WHERE printer_id = ?', [id]);
+    await logAction(req.user.user_id, req.user.name, 'PRINTER_DELETED', 'printers', id, {}, req.ip);
+    res.json({ message: 'Printer deleted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Test specific printer by ID ---
+exports.testPrinterById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [printer] = await query('SELECT * FROM printers WHERE printer_id = ?', [id]);
+    if (!printer) return res.status(404).json({ message: 'Printer not found' });
+
+    const ESC = '\x1B'; const GS = '\x1D';
+    const testData = Buffer.from(
+      ESC + '@' + ESC + 'a\x01' + ESC + '!\x10' + ESC + 'E\x01' +
+      'PRINTER TEST\n' + ESC + '!\x00' + ESC + 'E\x00' +
+      printer.name + '\n' +
+      'Purpose: ' + printer.purpose.toUpperCase() + '\n' +
+      'Type: ' + printer.type.toUpperCase() + '\n' +
+      'Connection OK!\n' + new Date().toLocaleString() + '\n\n\n' +
+      GS + 'V\x01',
+      'binary'
+    );
+
+    if (printer.type === 'network') {
+      await sendToNetworkPrinter(printer.ip_address, printer.port || 9100, testData);
+    } else {
+      await sendToUsbPrinter(printer.printer_share_name, testData);
+    }
+    res.json({ success: true, message: `Test page sent to ${printer.name}` });
+  } catch (err) {
+    console.error('Printer test error:', err);
+    res.status(500).json({ message: `Test failed: ${err.message}` });
   }
 };
 
@@ -268,6 +398,57 @@ function buildEscPosReceipt(data, paperWidth) {
   r += '\n\n\n';
   r += GS + 'V\x01';                            // Paper cut
 
+  return Buffer.from(r, 'binary');
+}
+
+// Build ESC/POS for invoice/quotation (simplified thermal format)
+function buildEscPosDocument(data, paperWidth, docType) {
+  const width = paperWidth === 58 ? 32 : 42;
+  const ESC = '\x1B'; const GS = '\x1D';
+  const cs = data.currencySymbol || 'Rs.';
+  let r = '';
+  r += ESC + '@';
+  r += ESC + 'a\x01'; // Center
+  r += ESC + '!\x10'; r += ESC + 'E\x01';
+  r += (data.storeName || 'AByte POS') + '\n';
+  r += ESC + '!\x00'; r += ESC + 'E\x00';
+  if (data.storeAddress) r += data.storeAddress + '\n';
+  if (data.storePhone) r += 'Tel: ' + data.storePhone + '\n';
+  r += '\n' + ESC + 'a\x00'; // Left
+  r += '='.repeat(width) + '\n';
+  r += ESC + 'E\x01';
+  r += (docType === 'invoice' ? 'INVOICE' : 'QUOTATION') + '\n';
+  r += ESC + 'E\x00';
+  r += '#: ' + (data.number || '') + '\n';
+  r += 'Date: ' + (data.date || new Date().toLocaleDateString()) + '\n';
+  if (data.customerName) r += 'Customer: ' + data.customerName + '\n';
+  r += '='.repeat(width) + '\n';
+  r += ESC + 'E\x01';
+  r += padLine('Item', 'Total', width) + '\n';
+  r += ESC + 'E\x00';
+  r += '-'.repeat(width) + '\n';
+  if (data.items && data.items.length > 0) {
+    for (const item of data.items) {
+      const maxLen = width - 2;
+      const rawName = item.name || item.description || 'Item';
+      const name = rawName.length > maxLen ? rawName.substring(0, maxLen - 3) + '...' : rawName;
+      r += name + '\n';
+      const lineTotal = (Number(item.quantity) * Number(item.unit_price)).toFixed(2);
+      const qtyPrice = `  ${item.quantity} x ${cs} ${Number(item.unit_price).toFixed(2)}`;
+      const totalStr = `${cs} ${lineTotal}`;
+      r += qtyPrice + ' '.repeat(Math.max(1, width - qtyPrice.length - totalStr.length)) + totalStr + '\n';
+    }
+  }
+  r += '-'.repeat(width) + '\n';
+  if (data.subtotal !== undefined) r += padLine('Subtotal:', `${cs} ${Number(data.subtotal).toFixed(2)}`, width) + '\n';
+  if (Number(data.tax_amount) > 0) r += padLine('Tax:', `${cs} ${Number(data.tax_amount).toFixed(2)}`, width) + '\n';
+  if (Number(data.discount) > 0) r += padLine('Discount:', `-${cs} ${Number(data.discount).toFixed(2)}`, width) + '\n';
+  r += ESC + 'E\x01';
+  r += padLine('TOTAL:', `${cs} ${Number(data.total_amount).toFixed(2)}`, width) + '\n';
+  r += ESC + 'E\x00';
+  r += '\n' + ESC + 'a\x01';
+  r += 'Thank you!\n\n\n';
+  r += GS + 'V\x01';
   return Buffer.from(r, 'binary');
 }
 

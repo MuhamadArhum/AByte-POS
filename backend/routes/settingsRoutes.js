@@ -18,7 +18,20 @@ router.post('/change-password', settingsController.changePassword);
 // Print receipt via configured printer
 router.post('/print-receipt', settingsController.printReceipt);
 
-// Test printer connection: Admin only
+// Print invoice/quotation to thermal printer
+router.post('/print-thermal-document', settingsController.printThermalDocument);
+
+// Check if printer exists for a purpose (receipt|invoice|quotation)
+router.get('/printers/check', settingsController.checkPrinter);
+
+// Printers CRUD: Admin only
+router.get('/printers', settingsController.getPrinters);
+router.post('/printers', authorize('Admin'), settingsController.createPrinter);
+router.put('/printers/:id', authorize('Admin'), settingsController.updatePrinter);
+router.delete('/printers/:id', authorize('Admin'), settingsController.deletePrinter);
+router.post('/printers/:id/test', authorize('Admin'), settingsController.testPrinterById);
+
+// Test printer connection (legacy): Admin only
 router.post('/test-printer', authorize('Admin'), settingsController.testPrinter);
 
 // System info: Admin only

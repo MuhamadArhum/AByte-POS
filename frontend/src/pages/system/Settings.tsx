@@ -31,7 +31,9 @@ import {
   Wifi,
   Usb,
   CheckCircle,
-  XCircle
+  XCircle,
+  Play,
+  Tag
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast';
@@ -81,14 +83,35 @@ const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Printer test
+  // Printer test (legacy)
   const [printerTesting, setPrinterTesting] = useState(false);
   const [printerTestResult, setPrinterTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Multi-printer management
+  interface PrinterEntry {
+    printer_id: number;
+    name: string;
+    type: 'network' | 'usb';
+    ip_address: string | null;
+    port: number;
+    printer_share_name: string | null;
+    paper_width: number;
+    purpose: 'receipt' | 'invoice' | 'quotation';
+    is_active: number;
+  }
+  const [printers, setPrinters] = useState<PrinterEntry[]>([]);
+  const [showPrinterModal, setShowPrinterModal] = useState(false);
+  const [editingPrinter, setEditingPrinter] = useState<PrinterEntry | null>(null);
+  const [printerForm, setPrinterForm] = useState({ name: '', type: 'network' as 'network' | 'usb', ip_address: '', port: 9100, printer_share_name: '', paper_width: 80, purpose: 'receipt' as 'receipt' | 'invoice' | 'quotation', is_active: true });
+  const [printerSaving, setPrinterSaving] = useState(false);
+  const [testingPrinterId, setTestingPrinterId] = useState<number | null>(null);
+  const [printerTestResults, setPrinterTestResults] = useState<Record<number, { success: boolean; message: string }>>({});
 
   useEffect(() => {
     fetchSettings();
     if (currentUser?.role_name === 'Admin') {
       fetchUsers();
+      fetchPrinters();
     }
   }, [currentUser]);
 
@@ -124,6 +147,71 @@ const Settings = () => {
       setSystemInfo(res.data);
     } catch (err) {
       console.error('Failed to load system info', err);
+    }
+  };
+
+  const fetchPrinters = async () => {
+    try {
+      const res = await api.get('/settings/printers');
+      setPrinters(res.data);
+    } catch (err) {
+      console.error('Failed to load printers', err);
+    }
+  };
+
+  const openPrinterModal = (printer?: PrinterEntry) => {
+    if (printer) {
+      setEditingPrinter(printer);
+      setPrinterForm({ name: printer.name, type: printer.type, ip_address: printer.ip_address || '', port: printer.port || 9100, printer_share_name: printer.printer_share_name || '', paper_width: printer.paper_width || 80, purpose: printer.purpose, is_active: printer.is_active === 1 });
+    } else {
+      setEditingPrinter(null);
+      setPrinterForm({ name: '', type: 'network', ip_address: '', port: 9100, printer_share_name: '', paper_width: 80, purpose: 'receipt', is_active: true });
+    }
+    setShowPrinterModal(true);
+  };
+
+  const handlePrinterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPrinterSaving(true);
+    try {
+      if (editingPrinter) {
+        await api.put(`/settings/printers/${editingPrinter.printer_id}`, printerForm);
+        toast.success('Printer updated');
+      } else {
+        await api.post('/settings/printers', printerForm);
+        toast.success('Printer added');
+      }
+      setShowPrinterModal(false);
+      setEditingPrinter(null);
+      fetchPrinters();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to save printer');
+    } finally {
+      setPrinterSaving(false);
+    }
+  };
+
+  const handleDeletePrinter = async (id: number) => {
+    if (!confirm('Delete this printer?')) return;
+    try {
+      await api.delete(`/settings/printers/${id}`);
+      toast.success('Printer deleted');
+      fetchPrinters();
+    } catch (err) {
+      toast.error('Failed to delete printer');
+    }
+  };
+
+  const handleTestPrinterById = async (printer: PrinterEntry) => {
+    setTestingPrinterId(printer.printer_id);
+    setPrinterTestResults(prev => { const n = { ...prev }; delete n[printer.printer_id]; return n; });
+    try {
+      const res = await api.post(`/settings/printers/${printer.printer_id}/test`);
+      setPrinterTestResults(prev => ({ ...prev, [printer.printer_id]: { success: true, message: res.data.message } }));
+    } catch (err: any) {
+      setPrinterTestResults(prev => ({ ...prev, [printer.printer_id]: { success: false, message: err.response?.data?.message || 'Test failed' } }));
+    } finally {
+      setTestingPrinterId(null);
     }
   };
 
@@ -595,156 +683,101 @@ const Settings = () => {
 
           {/* ========== PRINTER TAB ========== */}
           {activeTab === 'printer' && currentUser?.role_name === 'Admin' && (
-            <form onSubmit={handleSaveSettings} className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-2">Printer Configuration</h2>
-              <p className="text-sm text-gray-600 mb-6">Configure your thermal receipt printer for POS printing. Supports network (WiFi/Ethernet) and USB printers.</p>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">Printer Management</h2>
+                  <p className="text-sm text-gray-500 mt-1">Add multiple printers and assign each to a specific purpose (Receipt, Invoice, Quotation)</p>
+                </div>
+                <button onClick={() => openPrinterModal()} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-semibold transition">
+                  <Plus size={18} /> Add Printer
+                </button>
+              </div>
 
-              {/* Printer Type Selection */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3">Printer Connection Type</label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {[
-                    { value: 'none', label: 'No Printer', desc: 'Use browser print dialog', icon: XCircle, color: 'gray' },
-                    { value: 'network', label: 'Network Printer', desc: 'WiFi or Ethernet (IP address)', icon: Wifi, color: 'blue' },
-                    { value: 'usb', label: 'USB Printer', desc: 'Direct USB or shared printer', icon: Usb, color: 'purple' },
-                  ].map(opt => {
-                    const Icon = opt.icon;
-                    const isSelected = settings.printer_type === opt.value;
-                    const borderClass = isSelected
-                      ? opt.color === 'blue' ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                      : opt.color === 'purple' ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
-                      : 'border-gray-500 bg-gray-50 ring-2 ring-gray-200'
-                      : 'border-gray-200 bg-white hover:bg-gray-50';
-                    const iconClass = isSelected
-                      ? opt.color === 'blue' ? 'text-blue-600'
-                      : opt.color === 'purple' ? 'text-purple-600'
-                      : 'text-gray-600'
-                      : 'text-gray-400';
+              {/* Purpose legend */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  { purpose: 'receipt', label: 'Receipt Printer', desc: 'POS sales receipts — prints directly on thermal without popup', color: 'emerald', icon: Receipt },
+                  { purpose: 'invoice', label: 'Invoice Printer', desc: 'Customer invoices — prints directly on thermal without popup', color: 'blue', icon: FileText },
+                  { purpose: 'quotation', label: 'Quotation Printer', desc: 'Price quotations — prints directly on thermal without popup', color: 'purple', icon: Tag },
+                ].map(item => {
+                  const Icon = item.icon;
+                  const hasPrinter = printers.some(p => p.purpose === item.purpose && p.is_active);
+                  return (
+                    <div key={item.purpose} className={`p-4 rounded-xl border-2 ${hasPrinter ? 'border-emerald-200 bg-emerald-50' : 'border-gray-200 bg-gray-50'}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Icon size={16} className={hasPrinter ? 'text-emerald-600' : 'text-gray-400'} />
+                        <span className="font-semibold text-sm text-gray-700">{item.label}</span>
+                        {hasPrinter ? <CheckCircle size={14} className="text-emerald-500 ml-auto" /> : <XCircle size={14} className="text-gray-300 ml-auto" />}
+                      </div>
+                      <p className="text-xs text-gray-500">{item.desc}</p>
+                      <p className={`text-xs font-semibold mt-1 ${hasPrinter ? 'text-emerald-600' : 'text-gray-400'}`}>
+                        {hasPrinter ? '✓ Configured' : 'Not configured'}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
 
+              {/* Printers List */}
+              {printers.length === 0 ? (
+                <div className="text-center py-16 border-2 border-dashed border-gray-200 rounded-xl">
+                  <Printer size={40} className="text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium">No printers added yet</p>
+                  <p className="text-sm text-gray-400 mb-4">Add your first printer to enable direct printing</p>
+                  <button onClick={() => openPrinterModal()} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-semibold">
+                    Add First Printer
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {printers.map(printer => {
+                    const testResult = printerTestResults[printer.printer_id];
+                    const purposeColors: Record<string, string> = { receipt: 'bg-emerald-100 text-emerald-700', invoice: 'bg-blue-100 text-blue-700', quotation: 'bg-purple-100 text-purple-700' };
+                    const typeColors: Record<string, string> = { network: 'bg-sky-100 text-sky-700', usb: 'bg-orange-100 text-orange-700' };
                     return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => { setSettings({ ...settings, printer_type: opt.value }); setPrinterTestResult(null); }}
-                        className={`p-5 rounded-xl border-2 text-left transition-all ${borderClass}`}
-                      >
-                        <Icon size={28} className={`mb-3 ${iconClass}`} />
-                        <p className="font-semibold text-gray-800">{opt.label}</p>
-                        <p className="text-xs text-gray-500 mt-1">{opt.desc}</p>
-                      </button>
+                      <div key={printer.printer_id} className={`p-4 rounded-xl border-2 flex items-start gap-4 ${printer.is_active ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-50 opacity-60'}`}>
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${printer.type === 'network' ? 'bg-sky-100' : 'bg-orange-100'}`}>
+                          {printer.type === 'network' ? <Wifi size={20} className="text-sky-600" /> : <Usb size={20} className="text-orange-600" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-gray-800">{printer.name}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${purposeColors[printer.purpose]}`}>{printer.purpose.toUpperCase()}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${typeColors[printer.type]}`}>{printer.type === 'network' ? 'Network' : 'USB'}</span>
+                            {!printer.is_active && <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">INACTIVE</span>}
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {printer.type === 'network' ? `${printer.ip_address}:${printer.port}` : printer.printer_share_name}
+                            {' · '}Paper: {printer.paper_width}mm
+                          </p>
+                          {testResult && (
+                            <div className={`flex items-center gap-1 text-xs font-medium mt-1 ${testResult.success ? 'text-emerald-600' : 'text-red-500'}`}>
+                              {testResult.success ? <CheckCircle size={12} /> : <XCircle size={12} />}
+                              {testResult.message}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button onClick={() => handleTestPrinterById(printer)} disabled={testingPrinterId === printer.printer_id} title="Test Printer"
+                            className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition disabled:opacity-50">
+                            {testingPrinterId === printer.printer_id ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+                          </button>
+                          <button onClick={() => openPrinterModal(printer)} title="Edit Printer"
+                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
+                            <Edit size={16} />
+                          </button>
+                          <button onClick={() => handleDeletePrinter(printer.printer_id)} title="Delete Printer"
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
-              </div>
-
-              {/* Network Printer Settings */}
-              {settings.printer_type === 'network' && (
-                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 space-y-4">
-                  <h3 className="text-lg font-semibold text-blue-800 flex items-center gap-2">
-                    <Wifi size={20} /> Network Printer Settings
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Printer IP Address *</label>
-                      <input
-                        type="text"
-                        value={settings.printer_ip || ''}
-                        onChange={e => setSettings({ ...settings, printer_ip: e.target.value })}
-                        className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        placeholder="e.g. 192.168.1.100"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">IP address of your thermal printer on the local network</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Port</label>
-                      <input
-                        type="number"
-                        value={settings.printer_port || 9100}
-                        onChange={e => setSettings({ ...settings, printer_port: parseInt(e.target.value) || 9100 })}
-                        className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        placeholder="9100"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Default: 9100 (standard for most thermal printers)</p>
-                    </div>
-                  </div>
-                </div>
               )}
-
-              {/* USB Printer Settings */}
-              {settings.printer_type === 'usb' && (
-                <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-6 space-y-4">
-                  <h3 className="text-lg font-semibold text-purple-800 flex items-center gap-2">
-                    <Usb size={20} /> USB Printer Settings
-                  </h3>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Printer Share Name / Path *</label>
-                    <input
-                      type="text"
-                      value={settings.printer_name || ''}
-                      onChange={e => setSettings({ ...settings, printer_name: e.target.value })}
-                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
-                      placeholder="e.g. \\\\localhost\\ThermalPrinter or /dev/usb/lp0"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Windows: Share the printer and use <code className="bg-gray-100 px-1 rounded">\\computername\PrinterShareName</code><br />
-                      Linux: Use <code className="bg-gray-100 px-1 rounded">/dev/usb/lp0</code> or the CUPS printer name
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Paper Width */}
-              {settings.printer_type !== 'none' && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Paper Width</label>
-                  <div className="flex gap-3">
-                    <button type="button" onClick={() => setSettings({ ...settings, printer_paper_width: 58 })}
-                      className={`px-6 py-3 rounded-lg font-medium border-2 transition-all ${settings.printer_paper_width === 58 ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-                      58mm (Small)
-                    </button>
-                    <button type="button" onClick={() => setSettings({ ...settings, printer_paper_width: 80 })}
-                      className={`px-6 py-3 rounded-lg font-medium border-2 transition-all ${settings.printer_paper_width !== 58 ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-                      80mm (Standard)
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Test Printer */}
-              {settings.printer_type !== 'none' && (
-                <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <Printer size={20} /> Test Printer
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-4">Send a test page to verify your printer is working correctly. Save settings first before testing.</p>
-                  <div className="flex items-center gap-4">
-                    <button
-                      type="button"
-                      onClick={handleTestPrinter}
-                      disabled={printerTesting}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition disabled:opacity-50 font-semibold"
-                    >
-                      {printerTesting ? <Loader2 className="animate-spin" size={18} /> : <Printer size={18} />}
-                      {printerTesting ? 'Sending...' : 'Print Test Page'}
-                    </button>
-                    {printerTestResult && (
-                      <div className={`flex items-center gap-2 text-sm font-medium ${printerTestResult.success ? 'text-green-600' : 'text-red-600'}`}>
-                        {printerTestResult.success ? <CheckCircle size={18} /> : <XCircle size={18} />}
-                        {printerTestResult.message}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end pt-4 border-t border-gray-200">
-                <button type="submit" disabled={saving}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 font-semibold shadow-lg transition-all">
-                  {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                  Save Printer Settings
-                </button>
-              </div>
-            </form>
+            </div>
           )}
 
           {/* ========== USERS TAB ========== */}
@@ -1114,6 +1147,140 @@ const Settings = () => {
                 <button type="submit" disabled={saving}
                   className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-semibold transition disabled:opacity-50 shadow-lg">
                   {saving ? <Loader2 className="animate-spin mx-auto" size={20} /> : (editingUser ? 'Update' : 'Create')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Printer Modal */}
+      {showPrinterModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-800">
+                {editingPrinter ? 'Edit Printer' : 'Add New Printer'}
+              </h3>
+              <button onClick={() => { setShowPrinterModal(false); setEditingPrinter(null); }} className="text-gray-400 hover:text-gray-600">
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={handlePrinterSubmit} className="p-6 space-y-4">
+              {/* Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Printer Name *</label>
+                <input type="text" value={printerForm.name} onChange={e => setPrinterForm({ ...printerForm, name: e.target.value })}
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  placeholder="e.g. Counter Receipt Printer" required />
+              </div>
+
+              {/* Purpose */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Purpose *</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'receipt', label: 'Receipt', desc: 'POS sales', color: 'emerald' },
+                    { value: 'invoice', label: 'Invoice', desc: 'Customer bills', color: 'blue' },
+                    { value: 'quotation', label: 'Quotation', desc: 'Price quotes', color: 'purple' },
+                  ].map(p => (
+                    <button key={p.value} type="button"
+                      onClick={() => setPrinterForm({ ...printerForm, purpose: p.value as any })}
+                      className={`p-3 rounded-lg border-2 text-center transition-all ${printerForm.purpose === p.value
+                        ? p.color === 'emerald' ? 'border-emerald-500 bg-emerald-50' : p.color === 'blue' ? 'border-blue-500 bg-blue-50' : 'border-purple-500 bg-purple-50'
+                        : 'border-gray-200 hover:bg-gray-50'}`}>
+                      <p className="font-semibold text-sm text-gray-800">{p.label}</p>
+                      <p className="text-xs text-gray-500">{p.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Connection Type */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Connection Type *</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button type="button" onClick={() => setPrinterForm({ ...printerForm, type: 'network' })}
+                    className={`p-3 rounded-lg border-2 flex items-center gap-2 transition-all ${printerForm.type === 'network' ? 'border-sky-500 bg-sky-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <Wifi size={18} className={printerForm.type === 'network' ? 'text-sky-600' : 'text-gray-400'} />
+                    <div className="text-left">
+                      <p className="font-semibold text-sm text-gray-800">Network</p>
+                      <p className="text-xs text-gray-500">WiFi / Ethernet</p>
+                    </div>
+                  </button>
+                  <button type="button" onClick={() => setPrinterForm({ ...printerForm, type: 'usb' })}
+                    className={`p-3 rounded-lg border-2 flex items-center gap-2 transition-all ${printerForm.type === 'usb' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <Usb size={18} className={printerForm.type === 'usb' ? 'text-orange-600' : 'text-gray-400'} />
+                    <div className="text-left">
+                      <p className="font-semibold text-sm text-gray-800">USB</p>
+                      <p className="text-xs text-gray-500">Direct / Shared</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Network fields */}
+              {printerForm.type === 'network' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">IP Address *</label>
+                    <input type="text" value={printerForm.ip_address} onChange={e => setPrinterForm({ ...printerForm, ip_address: e.target.value })}
+                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
+                      placeholder="192.168.1.100" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Port</label>
+                    <input type="number" value={printerForm.port} onChange={e => setPrinterForm({ ...printerForm, port: parseInt(e.target.value) || 9100 })}
+                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
+                      placeholder="9100" />
+                  </div>
+                </div>
+              )}
+
+              {/* USB fields */}
+              {printerForm.type === 'usb' && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Printer Share Name / Path *</label>
+                  <input type="text" value={printerForm.printer_share_name} onChange={e => setPrinterForm({ ...printerForm, printer_share_name: e.target.value })}
+                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                    placeholder="e.g. \\localhost\ThermalPrinter" required />
+                  <p className="text-xs text-gray-400 mt-1">Windows: \\computername\ShareName &nbsp;|&nbsp; Linux: /dev/usb/lp0</p>
+                </div>
+              )}
+
+              {/* Paper Width */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Paper Width</label>
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setPrinterForm({ ...printerForm, paper_width: 58 })}
+                    className={`flex-1 py-2.5 rounded-lg border-2 font-medium text-sm transition-all ${printerForm.paper_width === 58 ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                    58mm (Small)
+                  </button>
+                  <button type="button" onClick={() => setPrinterForm({ ...printerForm, paper_width: 80 })}
+                    className={`flex-1 py-2.5 rounded-lg border-2 font-medium text-sm transition-all ${printerForm.paper_width === 80 ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                    80mm (Standard)
+                  </button>
+                </div>
+              </div>
+
+              {/* Active toggle (only for edit) */}
+              {editingPrinter && (
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" id="printerActive" checked={printerForm.is_active}
+                    onChange={e => setPrinterForm({ ...printerForm, is_active: e.target.checked })}
+                    className="w-4 h-4 rounded text-emerald-600" />
+                  <label htmlFor="printerActive" className="text-sm font-semibold text-gray-700">Active (printer is available for use)</label>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={() => { setShowPrinterModal(false); setEditingPrinter(null); }}
+                  className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold transition">
+                  Cancel
+                </button>
+                <button type="submit" disabled={printerSaving}
+                  className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-semibold transition disabled:opacity-50 shadow-lg">
+                  {printerSaving ? <Loader2 className="animate-spin mx-auto" size={20} /> : (editingPrinter ? 'Update Printer' : 'Add Printer')}
                 </button>
               </div>
             </form>

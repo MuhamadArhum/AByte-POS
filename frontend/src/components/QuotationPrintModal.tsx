@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Printer } from 'lucide-react';
+import { X, Printer, Zap } from 'lucide-react';
 import api from '../utils/api';
 import { printReport } from '../utils/reportPrinter';
 
@@ -45,6 +45,9 @@ const QuotationPrintModal = ({ quotationId, onClose }: QuotationPrintModalProps)
   const [quotation, setQuotation] = useState<PrintQuotation | null>(null);
   const [store, setStore] = useState<StoreInfo | null>(null);
   const [error, setError] = useState('');
+  const [thermalAvailable, setThermalAvailable] = useState(false);
+  const [thermalPrinting, setThermalPrinting] = useState(false);
+  const [thermalMsg, setThermalMsg] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -69,6 +72,12 @@ const QuotationPrintModal = ({ quotationId, onClose }: QuotationPrintModalProps)
     };
     fetchData();
   }, [quotationId]);
+
+  useEffect(() => {
+    api.get('/settings/printers/check?purpose=quotation')
+      .then(r => setThermalAvailable(r.data.available))
+      .catch(() => setThermalAvailable(false));
+  }, []);
 
   const handlePrint = () => {
     if (!quotation || !store) return;
@@ -172,19 +181,58 @@ const QuotationPrintModal = ({ quotationId, onClose }: QuotationPrintModalProps)
     });
   };
 
+  const handleThermalPrint = async () => {
+    if (!quotation || !store) return;
+    setThermalPrinting(true);
+    setThermalMsg('');
+    try {
+      await api.post('/settings/print-thermal-document', {
+        purpose: 'quotation',
+        documentData: {
+          storeName: store.store_name,
+          storeAddress: store.address,
+          storePhone: store.phone,
+          number: quotation.quotation_number,
+          date: new Date(quotation.created_at).toLocaleDateString(),
+          customerName: quotation.customer_name,
+          items: quotation.items.map(i => ({ name: i.product_name, quantity: i.quantity, unit_price: i.unit_price })),
+          subtotal: quotation.subtotal,
+          tax_amount: quotation.tax_amount,
+          discount: quotation.discount,
+          total_amount: quotation.total_amount,
+        }
+      });
+      setThermalMsg('Sent to thermal printer!');
+    } catch (err: any) {
+      setThermalMsg(err.response?.data?.message || 'Thermal print failed');
+    } finally {
+      setThermalPrinting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-bold text-gray-800">Print Quotation</h2>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {thermalAvailable && (
+              <div className="flex items-center gap-2">
+                <button onClick={handleThermalPrint} disabled={loading || !!error || thermalPrinting}
+                  className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition disabled:bg-gray-400 text-sm font-semibold">
+                  <Zap size={16} />
+                  {thermalPrinting ? 'Printing...' : 'Direct Print (Thermal)'}
+                </button>
+                {thermalMsg && <span className={`text-xs font-medium ${thermalMsg.includes('failed') ? 'text-red-500' : 'text-emerald-600'}`}>{thermalMsg}</span>}
+              </div>
+            )}
             <button
               onClick={handlePrint}
               disabled={loading || !!error}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400"
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 text-sm"
             >
-              <Printer size={18} />
-              Print
+              <Printer size={16} />
+              Print A4
             </button>
             <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
               <X size={20} />
