@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeftRight, Plus, Search, X, Check, Ban, Clock, CheckCircle, XCircle } from 'lucide-react';
-import api from '../utils/api';
-import Pagination from '../components/Pagination';
+import api from '../../utils/api';
+import Pagination from '../../components/Pagination';
 
 interface Transfer {
   transfer_id: number;

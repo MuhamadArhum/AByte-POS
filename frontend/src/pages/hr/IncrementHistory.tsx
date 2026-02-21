@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, Filter, Download } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
-import SalaryIncrementModal from '../components/SalaryIncrementModal';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
+import SalaryIncrementModal from '../../components/SalaryIncrementModal';
 
 const IncrementHistory = () => {
   const toast = useToast();

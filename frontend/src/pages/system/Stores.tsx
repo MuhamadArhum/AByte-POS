@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Store, Plus, Pencil, Trash2, Search, MapPin, Phone, Mail, X, Building2, User } from 'lucide-react';
-import api from '../utils/api';
+import api from '../../utils/api';
 
 interface StoreData {
   store_id: number;

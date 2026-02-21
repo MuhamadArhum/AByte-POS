@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Database, Download, Trash2, Upload, Loader2, AlertTriangle, Check, HardDrive, Clock, Shield, FileArchive } from 'lucide-react';
-import api from '../utils/api';
-import Pagination from '../components/Pagination';
+import api from '../../utils/api';
+import Pagination from '../../components/Pagination';
 
 interface BackupEntry {
   backup_id: number;

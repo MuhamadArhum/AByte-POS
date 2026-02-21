@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit, Trash2, Barcode, Package, DollarSign, AlertTriangle, XCircle, Download } from 'lucide-react';
-import api from '../utils/api';
-import AddProductModal from '../components/AddProductModal';
-import BarcodeModal from '../components/BarcodeModal';
-import Pagination from '../components/Pagination';
+import api from '../../utils/api';
+import AddProductModal from '../../components/AddProductModal';
+import BarcodeModal from '../../components/BarcodeModal';
+import Pagination from '../../components/Pagination';
 
 interface InventoryItem {
   product_id: number;

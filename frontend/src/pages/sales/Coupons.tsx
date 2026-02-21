@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Ticket, Plus, Search, Pencil, Trash2, X, Calendar, Percent, DollarSign } from 'lucide-react';
-import api from '../utils/api';
-import Pagination from '../components/Pagination';
+import { Ticket, Plus, Search, Pencil, Trash2, X, Calendar, Percent, DollarSign, Printer } from 'lucide-react';
+import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
+import api from '../../utils/api';
+import Pagination from '../../components/Pagination';
 
 interface Coupon {
   coupon_id: number;
@@ -90,6 +91,22 @@ const Coupons = () => {
   const isExpired = (c: Coupon) => new Date(c.valid_until) < new Date() || !c.is_active;
   const isUsedUp = (c: Coupon) => c.usage_limit !== null && c.used_count >= c.usage_limit;
 
+  const handlePrint = () => {
+    let content = buildStatsCards([
+      { label: 'Active Coupons', value: String(stats.active_coupons) },
+      { label: 'Total Redemptions', value: String(stats.total_redemptions) },
+      { label: 'Total Savings', value: `$${stats.total_savings.toFixed(2)}` },
+    ]);
+    const rows = coupons.map(c => [
+      c.code, c.description || '-', c.discount_type === 'percentage' ? `${c.discount_value}%` : `$${c.discount_value}`,
+      `${c.used_count}/${c.usage_limit || '\u221e'}`,
+      `${new Date(c.valid_from).toLocaleDateString()} - ${new Date(c.valid_until).toLocaleDateString()}`,
+      isUsedUp(c) ? 'Used Up' : isExpired(c) ? 'Expired' : 'Active'
+    ]);
+    content += buildTable(['Code', 'Description', 'Discount', 'Usage', 'Valid Period', 'Status'], rows);
+    printReport({ title: 'Coupons Report', content });
+  };
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
@@ -97,7 +114,10 @@ const Coupons = () => {
           <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3"><Ticket className="text-indigo-600" size={32} /> Coupons</h1>
           <p className="text-gray-500 mt-1">Manage discount codes and promotions</p>
         </div>
-        <button onClick={openCreate} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"><Plus size={20} /> Create Coupon</button>
+        <div className="flex gap-3">
+          <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition" disabled={coupons.length === 0}><Printer size={18} /> Print</button>
+          <button onClick={openCreate} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"><Plus size={20} /> Create Coupon</button>
+        </div>
       </div>
 
       {/* Stats */}

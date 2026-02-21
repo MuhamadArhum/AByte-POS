@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { BarChart3, Calendar, Download, Users, DollarSign, TrendingUp } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
+import { BarChart3, Calendar, Download, Users, DollarSign, TrendingUp, Printer } from 'lucide-react';
+import { printReport, buildTable } from '../../utils/reportPrinter';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
 
 interface AttendanceReportRow {
   staff_id: number;
@@ -122,6 +123,18 @@ const StaffReports = () => {
     { staff_count: 0, paid_count: 0, total_base: 0, total_deductions: 0, total_bonuses: 0, total_net_paid: 0, total_expected: 0, pending_amount: 0 }
   );
 
+  const handlePrint = () => {
+    if (activeTab === 'attendance' && attendanceData.length > 0) {
+      const rows = attendanceData.map(r => [r.full_name, r.department, String(r.days_present), String(r.days_absent), String(r.days_half_day), String(r.days_leave), `${r.attendance_percentage}%`]);
+      const content = buildTable(['Name', 'Department', 'Present', 'Absent', 'Half Day', 'Leave', 'Attendance %'], rows, { alignRight: [2, 3, 4, 5, 6] });
+      printReport({ title: 'Staff Attendance Report', dateRange: `Month: ${attendanceMonth}`, content });
+    } else if (activeTab === 'salary' && salaryData.length > 0) {
+      const rows = salaryData.map(r => [r.department, String(r.staff_count), String(r.paid_count), Number(r.total_base).toFixed(2), Number(r.total_deductions).toFixed(2), Number(r.total_bonuses).toFixed(2), Number(r.total_net_paid).toFixed(2), Number(r.pending_amount).toFixed(2)]);
+      const content = buildTable(['Department', 'Staff', 'Paid', 'Base Salary', 'Deductions', 'Bonuses', 'Net Paid', 'Pending'], rows, { alignRight: [1, 2, 3, 4, 5, 6, 7] });
+      printReport({ title: 'Staff Salary Summary', dateRange: `${salaryFromDate} to ${salaryToDate}`, content, orientation: 'landscape' });
+    }
+  };
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -133,6 +146,14 @@ const StaffReports = () => {
             <p className="text-gray-600 text-sm mt-1">Attendance & salary analytics</p>
           </div>
         </div>
+        <button
+          onClick={handlePrint}
+          disabled={(activeTab === 'attendance' && attendanceData.length === 0) || (activeTab === 'salary' && salaryData.length === 0)}
+          className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Printer size={18} />
+          Print
+        </button>
       </div>
 
       {/* Tab Bar */}

@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Scale, Calendar, Download, RefreshCw } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
+import { Scale, Calendar, Download, RefreshCw, Printer } from 'lucide-react';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
+import { printReport, buildTable } from '../../utils/reportPrinter';
 
 interface TrialBalanceRow {
   account_code: string;
@@ -80,6 +81,16 @@ const TrialBalance = () => {
 
   const isBalanced = Math.abs(totals.debit - totals.credit) < 0.01;
 
+  const handlePrint = () => {
+    if (data.length === 0) return;
+    const rows = data.map(r => [r.account_code, r.account_name, r.debit > 0 ? formatCurrency(r.debit) : '-', r.credit > 0 ? formatCurrency(r.credit) : '-']);
+    const content = buildTable(['Code', 'Account Name', 'Debit', 'Credit'], rows, {
+      alignRight: [2, 3],
+      summaryRow: ['', 'TOTAL', formatCurrency(totals.debit), formatCurrency(totals.credit)],
+    });
+    printReport({ title: 'Trial Balance', subtitle: isBalanced ? 'Balanced' : 'OUT OF BALANCE', dateRange: `As of ${asOfDate}`, content });
+  };
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -124,6 +135,14 @@ const TrialBalance = () => {
           </button>
 
           {data.length > 0 && (
+            <>
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition ml-auto"
+            >
+              <Printer size={16} />
+              Print
+            </button>
             <button
               onClick={() => exportToCSV(data, `trial-balance-${asOfDate}`, [
                 { key: 'account_code', label: 'Code' },
@@ -136,6 +155,7 @@ const TrialBalance = () => {
               <Download size={16} />
               Export CSV
             </button>
+            </>
           )}
         </div>
       </div>

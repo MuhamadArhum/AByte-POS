@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { FileText, Plus, Search, X, Send, Check, XCircle, ShoppingCart, Trash2, Eye } from 'lucide-react';
-import api from '../utils/api';
-import Pagination from '../components/Pagination';
+import { FileText, Plus, Search, X, Send, Check, XCircle, ShoppingCart, Trash2, Eye, Printer } from 'lucide-react';
+import api from '../../utils/api';
+import Pagination from '../../components/Pagination';
+import QuotationPrintModal from '../../components/QuotationPrintModal';
 
 interface Quotation {
   quotation_id: number;
@@ -41,6 +42,7 @@ const Quotations = () => {
   const [stats, setStats] = useState({ total: 0, draft: 0, active: 0, converted: 0 });
   const [showModal, setShowModal] = useState(false);
   const [detailQt, setDetailQt] = useState<Quotation | null>(null);
+  const [printQuotationId, setPrintQuotationId] = useState<number | null>(null);
 
   // Create form
   const [customers, setCustomers] = useState<any[]>([]);
@@ -203,6 +205,7 @@ const Quotations = () => {
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
                           <button onClick={() => viewDetail(q.quotation_id)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg" title="View"><Eye size={16} /></button>
+                          <button onClick={() => setPrintQuotationId(q.quotation_id)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Print"><Printer size={16} /></button>
                           {q.status === 'draft' && <button onClick={() => handleStatusChange(q.quotation_id, 'sent')} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Send"><Send size={16} /></button>}
                           {q.status === 'sent' && <>
                             <button onClick={() => handleStatusChange(q.quotation_id, 'accepted')} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg" title="Accept"><Check size={16} /></button>
@@ -229,7 +232,10 @@ const Quotations = () => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
               <div><h2 className="text-xl font-bold">{detailQt.quotation_number}</h2><p className="text-sm text-gray-500">{detailQt.customer_name}</p></div>
-              <button onClick={() => setDetailQt(null)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => { setDetailQt(null); setPrintQuotationId(detailQt.quotation_id); }} className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Printer size={16} /> Print</button>
+                <button onClick={() => setDetailQt(null)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
+              </div>
             </div>
             <div className="p-6">
               <table className="w-full text-sm mb-4">
@@ -314,6 +320,11 @@ const Quotations = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Quotation Print Modal */}
+      {printQuotationId && (
+        <QuotationPrintModal quotationId={printQuotationId} onClose={() => setPrintQuotationId(null)} />
       )}
     </div>
   );

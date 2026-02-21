@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { FileText, Plus, Search, Eye, Edit2, Printer, Trash2, X, Send, CheckCircle, DollarSign, AlertTriangle, FileCheck } from 'lucide-react';
-import api from '../utils/api';
-import Pagination from '../components/Pagination';
-import InvoicePrintModal from '../components/InvoicePrintModal';
+import api from '../../utils/api';
+import Pagination from '../../components/Pagination';
+import InvoicePrintModal from '../../components/InvoicePrintModal';
 
 interface InvoiceItem {
   item_id?: number;

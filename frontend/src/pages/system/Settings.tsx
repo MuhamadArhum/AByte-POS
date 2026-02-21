@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../utils/api';
+import api from '../../utils/api';
 import {
   Save,
   Building2,
@@ -27,10 +27,14 @@ import {
   Printer,
   Hash,
   DollarSign,
-  Package
+  Package,
+  Wifi,
+  Usb,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../components/Toast';
 
 interface User {
   user_id: number;
@@ -57,7 +61,8 @@ const Settings = () => {
     allow_negative_stock: false, discount_requires_approval: false, max_cashier_discount: 50,
     session_timeout_minutes: 480,
     receipt_show_store_name: true, receipt_show_address: true, receipt_show_phone: true, receipt_show_tax: true,
-    receipt_paper_width: '80mm'
+    receipt_paper_width: '80mm',
+    printer_type: 'none', printer_ip: '', printer_port: 9100, printer_name: '', printer_paper_width: 80
   });
 
   // Users
@@ -75,6 +80,10 @@ const Settings = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Printer test
+  const [printerTesting, setPrinterTesting] = useState(false);
+  const [printerTestResult, setPrinterTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -208,6 +217,24 @@ const Settings = () => {
     return `${h}h ${m}m`;
   };
 
+  const handleTestPrinter = async () => {
+    setPrinterTesting(true);
+    setPrinterTestResult(null);
+    try {
+      const res = await api.post('/settings/test-printer', {
+        printer_type: settings.printer_type,
+        printer_ip: settings.printer_ip,
+        printer_port: settings.printer_port || 9100,
+        printer_name: settings.printer_name,
+      });
+      setPrinterTestResult({ success: true, message: res.data.message });
+    } catch (err: any) {
+      setPrinterTestResult({ success: false, message: err.response?.data?.message || 'Test failed' });
+    } finally {
+      setPrinterTesting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8 flex justify-center items-center min-h-screen">
@@ -224,6 +251,7 @@ const Settings = () => {
     { id: 'receipt', name: 'Receipt & Invoice', icon: Receipt },
     { id: 'pos', name: 'POS Settings', icon: ShoppingCart },
     { id: 'users', name: 'Users', icon: Users, adminOnly: true },
+    { id: 'printer', name: 'Printer', icon: Printer, adminOnly: true },
     { id: 'security', name: 'Security', icon: Shield },
     { id: 'system', name: 'System', icon: Server, adminOnly: true },
   ];
@@ -560,6 +588,160 @@ const Settings = () => {
                   className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 font-semibold shadow-lg transition-all">
                   {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                   Save Changes
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* ========== PRINTER TAB ========== */}
+          {activeTab === 'printer' && currentUser?.role_name === 'Admin' && (
+            <form onSubmit={handleSaveSettings} className="space-y-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Printer Configuration</h2>
+              <p className="text-sm text-gray-600 mb-6">Configure your thermal receipt printer for POS printing. Supports network (WiFi/Ethernet) and USB printers.</p>
+
+              {/* Printer Type Selection */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Printer Connection Type</label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[
+                    { value: 'none', label: 'No Printer', desc: 'Use browser print dialog', icon: XCircle, color: 'gray' },
+                    { value: 'network', label: 'Network Printer', desc: 'WiFi or Ethernet (IP address)', icon: Wifi, color: 'blue' },
+                    { value: 'usb', label: 'USB Printer', desc: 'Direct USB or shared printer', icon: Usb, color: 'purple' },
+                  ].map(opt => {
+                    const Icon = opt.icon;
+                    const isSelected = settings.printer_type === opt.value;
+                    const borderClass = isSelected
+                      ? opt.color === 'blue' ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                      : opt.color === 'purple' ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
+                      : 'border-gray-500 bg-gray-50 ring-2 ring-gray-200'
+                      : 'border-gray-200 bg-white hover:bg-gray-50';
+                    const iconClass = isSelected
+                      ? opt.color === 'blue' ? 'text-blue-600'
+                      : opt.color === 'purple' ? 'text-purple-600'
+                      : 'text-gray-600'
+                      : 'text-gray-400';
+
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => { setSettings({ ...settings, printer_type: opt.value }); setPrinterTestResult(null); }}
+                        className={`p-5 rounded-xl border-2 text-left transition-all ${borderClass}`}
+                      >
+                        <Icon size={28} className={`mb-3 ${iconClass}`} />
+                        <p className="font-semibold text-gray-800">{opt.label}</p>
+                        <p className="text-xs text-gray-500 mt-1">{opt.desc}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Network Printer Settings */}
+              {settings.printer_type === 'network' && (
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 space-y-4">
+                  <h3 className="text-lg font-semibold text-blue-800 flex items-center gap-2">
+                    <Wifi size={20} /> Network Printer Settings
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Printer IP Address *</label>
+                      <input
+                        type="text"
+                        value={settings.printer_ip || ''}
+                        onChange={e => setSettings({ ...settings, printer_ip: e.target.value })}
+                        className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        placeholder="e.g. 192.168.1.100"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">IP address of your thermal printer on the local network</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Port</label>
+                      <input
+                        type="number"
+                        value={settings.printer_port || 9100}
+                        onChange={e => setSettings({ ...settings, printer_port: parseInt(e.target.value) || 9100 })}
+                        className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        placeholder="9100"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Default: 9100 (standard for most thermal printers)</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* USB Printer Settings */}
+              {settings.printer_type === 'usb' && (
+                <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-6 space-y-4">
+                  <h3 className="text-lg font-semibold text-purple-800 flex items-center gap-2">
+                    <Usb size={20} /> USB Printer Settings
+                  </h3>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Printer Share Name / Path *</label>
+                    <input
+                      type="text"
+                      value={settings.printer_name || ''}
+                      onChange={e => setSettings({ ...settings, printer_name: e.target.value })}
+                      className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                      placeholder="e.g. \\\\localhost\\ThermalPrinter or /dev/usb/lp0"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Windows: Share the printer and use <code className="bg-gray-100 px-1 rounded">\\computername\PrinterShareName</code><br />
+                      Linux: Use <code className="bg-gray-100 px-1 rounded">/dev/usb/lp0</code> or the CUPS printer name
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Paper Width */}
+              {settings.printer_type !== 'none' && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Paper Width</label>
+                  <div className="flex gap-3">
+                    <button type="button" onClick={() => setSettings({ ...settings, printer_paper_width: 58 })}
+                      className={`px-6 py-3 rounded-lg font-medium border-2 transition-all ${settings.printer_paper_width === 58 ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                      58mm (Small)
+                    </button>
+                    <button type="button" onClick={() => setSettings({ ...settings, printer_paper_width: 80 })}
+                      className={`px-6 py-3 rounded-lg font-medium border-2 transition-all ${settings.printer_paper_width !== 58 ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                      80mm (Standard)
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Test Printer */}
+              {settings.printer_type !== 'none' && (
+                <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
+                  <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <Printer size={20} /> Test Printer
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">Send a test page to verify your printer is working correctly. Save settings first before testing.</p>
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={handleTestPrinter}
+                      disabled={printerTesting}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition disabled:opacity-50 font-semibold"
+                    >
+                      {printerTesting ? <Loader2 className="animate-spin" size={18} /> : <Printer size={18} />}
+                      {printerTesting ? 'Sending...' : 'Print Test Page'}
+                    </button>
+                    {printerTestResult && (
+                      <div className={`flex items-center gap-2 text-sm font-medium ${printerTestResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                        {printerTestResult.success ? <CheckCircle size={18} /> : <XCircle size={18} />}
+                        {printerTestResult.message}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4 border-t border-gray-200">
+                <button type="submit" disabled={saving}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 font-semibold shadow-lg transition-all">
+                  {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                  Save Printer Settings
                 </button>
               </div>
             </form>

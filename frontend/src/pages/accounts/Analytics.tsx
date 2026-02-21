@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, DollarSign, Package, Users } from 'lucide-react';
-import api from '../utils/api';
+import api from '../../utils/api';
 
 const Analytics = () => {
   const [stats, setStats] = useState<any>(null);

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit, Trash2, User, Phone, ShoppingBag, Clock } from 'lucide-react';
-import api from '../utils/api';
-import AddCustomerModal from '../components/AddCustomerModal';
-import Pagination from '../components/Pagination';
+import api from '../../utils/api';
+import AddCustomerModal from '../../components/AddCustomerModal';
+import Pagination from '../../components/Pagination';
 
 interface Purchase {
   sale_id: number;

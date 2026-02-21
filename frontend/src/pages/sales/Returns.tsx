@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RotateCcw, Search, Loader2, Check } from 'lucide-react';
-import api from '../utils/api';
-import Pagination from '../components/Pagination';
+import api from '../../utils/api';
+import Pagination from '../../components/Pagination';
 
 interface SaleItem {
   product_id: number;

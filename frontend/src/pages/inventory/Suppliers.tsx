@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit, Trash2, DollarSign } from 'lucide-react';
-import api from '../utils/api';
-import Pagination from '../components/Pagination';
-import AddSupplierModal from '../components/AddSupplierModal';
-import SupplierPaymentModal from '../components/SupplierPaymentModal';
+import api from '../../utils/api';
+import Pagination from '../../components/Pagination';
+import AddSupplierModal from '../../components/AddSupplierModal';
+import SupplierPaymentModal from '../../components/SupplierPaymentModal';
 
 interface Supplier {
   supplier_id: number;

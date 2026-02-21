@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DollarSign } from 'lucide-react';
-import api from '../utils/api';
+import api from '../../utils/api';
 
 const Expenses = () => {
   const [expenses, setExpenses] = useState([]);

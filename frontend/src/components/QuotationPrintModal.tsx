@@ -3,35 +3,33 @@ import { X, Printer } from 'lucide-react';
 import api from '../utils/api';
 import { printReport } from '../utils/reportPrinter';
 
-interface InvoicePrintModalProps {
-  invoiceId: number;
+interface QuotationPrintModalProps {
+  quotationId: number;
   onClose: () => void;
 }
 
 interface PrintItem {
-  description: string;
-  product_name?: string;
+  product_name: string;
   quantity: number;
   unit_price: number;
   total_price: number;
+  sku?: string;
 }
 
-interface PrintInvoice {
-  invoice_id: number;
-  invoice_number: string;
+interface PrintQuotation {
+  quotation_id: number;
+  quotation_number: string;
   customer_name: string;
   customer_phone?: string;
-  customer_email?: string;
-  customer_address?: string;
   subtotal: number;
   tax_amount: number;
   discount: number;
   total_amount: number;
   status: string;
-  due_date: string | null;
-  payment_terms: string | null;
+  valid_until: string | null;
   notes: string | null;
   created_at: string;
+  created_by_name: string;
   items: PrintItem[];
 }
 
@@ -42,48 +40,48 @@ interface StoreInfo {
   email?: string;
 }
 
-const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
+const QuotationPrintModal = ({ quotationId, onClose }: QuotationPrintModalProps) => {
   const [loading, setLoading] = useState(true);
-  const [invoice, setInvoice] = useState<PrintInvoice | null>(null);
+  const [quotation, setQuotation] = useState<PrintQuotation | null>(null);
   const [store, setStore] = useState<StoreInfo | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchPrintData = async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
-        const res = await api.get(`/invoices/${invoiceId}/print`);
-        setInvoice(res.data.invoice);
-        setStore(res.data.store);
+        const [qtRes, storeRes] = await Promise.all([
+          api.get(`/quotations/${quotationId}`),
+          api.get('/settings'),
+        ]);
+        setQuotation(qtRes.data);
+        setStore({
+          store_name: storeRes.data.store_name || 'AByte POS',
+          address: storeRes.data.address,
+          phone: storeRes.data.phone,
+          email: storeRes.data.email,
+        });
       } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to load invoice data');
+        setError(err.response?.data?.message || 'Failed to load quotation data');
       } finally {
         setLoading(false);
       }
     };
-    fetchPrintData();
-  }, [invoiceId]);
+    fetchData();
+  }, [quotationId]);
 
   const handlePrint = () => {
-    if (!invoice || !store) return;
+    if (!quotation || !store) return;
 
-    const itemsRows = invoice.items.map((item, idx) =>
+    const itemsRows = quotation.items.map((item, idx) =>
       `<tr style="border-bottom:1px solid #e5e7eb;">
         <td style="padding:10px 8px;font-size:13px;color:#666;">${idx + 1}</td>
-        <td style="padding:10px 8px;font-size:13px;color:#1f2937;">${item.description || item.product_name || 'Item'}</td>
+        <td style="padding:10px 8px;font-size:13px;color:#1f2937;">${item.product_name}</td>
         <td style="padding:10px 8px;font-size:13px;color:#1f2937;text-align:right;">${item.quantity}</td>
         <td style="padding:10px 8px;font-size:13px;color:#1f2937;text-align:right;">Rs. ${Number(item.unit_price).toFixed(2)}</td>
         <td style="padding:10px 8px;font-size:13px;color:#1f2937;text-align:right;font-weight:500;">Rs. ${Number(item.total_price).toFixed(2)}</td>
       </tr>`
     ).join('');
-
-    const statusColors: Record<string, string> = {
-      paid: 'background:#dcfce7;color:#15803d;',
-      overdue: 'background:#fee2e2;color:#b91c1c;',
-      partial: 'background:#fef9c3;color:#a16207;',
-      sent: 'background:#dbeafe;color:#1d4ed8;',
-      draft: 'background:#f3f4f6;color:#374151;'
-    };
 
     const content = `
       <div style="max-width:700px;margin:0 auto;">
@@ -96,26 +94,24 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
           </div>
         </div>
 
-        <!-- Invoice Title -->
+        <!-- Quotation Title -->
         <div style="text-align:center;margin-bottom:30px;">
-          <h2 style="font-size:22px;font-weight:bold;color:#1f2937;letter-spacing:2px;text-transform:uppercase;margin:0;">Invoice</h2>
+          <h2 style="font-size:22px;font-weight:bold;color:#1f2937;letter-spacing:2px;text-transform:uppercase;margin:0;">Quotation</h2>
         </div>
 
-        <!-- Customer & Invoice Details -->
+        <!-- Customer & Quotation Details -->
         <table style="width:100%;margin-bottom:30px;"><tr>
           <td style="vertical-align:top;width:50%;">
-            <p style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;margin:0 0 8px;">Bill To</p>
-            <p style="font-size:16px;font-weight:600;color:#1f2937;margin:0;">${invoice.customer_name}</p>
-            ${invoice.customer_phone ? `<p style="font-size:13px;color:#666;margin:2px 0 0;">${invoice.customer_phone}</p>` : ''}
-            ${invoice.customer_email ? `<p style="font-size:13px;color:#666;margin:2px 0 0;">${invoice.customer_email}</p>` : ''}
-            ${invoice.customer_address ? `<p style="font-size:13px;color:#666;margin:2px 0 0;font-weight:bold;">${invoice.customer_address}</p>` : ''}
+            <p style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;margin:0 0 8px;">Quotation For</p>
+            <p style="font-size:16px;font-weight:600;color:#1f2937;margin:0;">${quotation.customer_name}</p>
+            ${quotation.customer_phone ? `<p style="font-size:13px;color:#666;margin:2px 0 0;">Tel: ${quotation.customer_phone}</p>` : ''}
           </td>
           <td style="vertical-align:top;width:50%;text-align:right;">
-            <p style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;margin:0 0 8px;">Invoice Details</p>
-            <p style="font-size:16px;font-weight:600;color:#1f2937;margin:0;">${invoice.invoice_number}</p>
-            <p style="font-size:13px;color:#666;margin:2px 0 0;">Date: ${new Date(invoice.created_at).toLocaleDateString()}</p>
-            ${invoice.due_date ? `<p style="font-size:13px;color:#666;margin:2px 0 0;">Due: ${new Date(invoice.due_date).toLocaleDateString()}</p>` : ''}
-            <p style="margin:6px 0 0;"><span style="display:inline-block;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:600;text-transform:uppercase;${statusColors[invoice.status] || statusColors.draft}">${invoice.status}</span></p>
+            <p style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;margin:0 0 8px;">Quotation Details</p>
+            <p style="font-size:16px;font-weight:600;color:#1f2937;margin:0;">${quotation.quotation_number}</p>
+            <p style="font-size:13px;color:#666;margin:2px 0 0;">Date: ${new Date(quotation.created_at).toLocaleDateString()}</p>
+            ${quotation.valid_until ? `<p style="font-size:13px;color:#666;margin:2px 0 0;">Valid Until: ${new Date(quotation.valid_until).toLocaleDateString()}</p>` : ''}
+            <p style="font-size:13px;color:#666;margin:2px 0 0;">Prepared by: ${quotation.created_by_name}</p>
           </td>
         </tr></table>
 
@@ -124,7 +120,7 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
           <thead>
             <tr style="border-bottom:2px solid #1f2937;">
               <th style="padding:10px 8px;text-align:left;font-size:12px;font-weight:600;color:#374151;width:40px;">#</th>
-              <th style="padding:10px 8px;text-align:left;font-size:12px;font-weight:600;color:#374151;">Description</th>
+              <th style="padding:10px 8px;text-align:left;font-size:12px;font-weight:600;color:#374151;">Item</th>
               <th style="padding:10px 8px;text-align:right;font-size:12px;font-weight:600;color:#374151;width:60px;">Qty</th>
               <th style="padding:10px 8px;text-align:right;font-size:12px;font-weight:600;color:#374151;width:120px;">Unit Price</th>
               <th style="padding:10px 8px;text-align:right;font-size:12px;font-weight:600;color:#374151;width:120px;">Total</th>
@@ -138,38 +134,39 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
           <div style="width:280px;">
             <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;">
               <span style="color:#666;">Subtotal</span>
-              <span style="color:#1f2937;font-weight:500;">Rs. ${Number(invoice.subtotal).toFixed(2)}</span>
+              <span style="color:#1f2937;font-weight:500;">Rs. ${Number(quotation.subtotal).toFixed(2)}</span>
             </div>
-            ${Number(invoice.tax_amount) > 0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;">
+            ${Number(quotation.tax_amount) > 0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;">
               <span style="color:#666;">Tax</span>
-              <span style="color:#1f2937;font-weight:500;">Rs. ${Number(invoice.tax_amount).toFixed(2)}</span>
+              <span style="color:#1f2937;font-weight:500;">Rs. ${Number(quotation.tax_amount).toFixed(2)}</span>
             </div>` : ''}
-            ${Number(invoice.discount) > 0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;">
+            ${Number(quotation.discount) > 0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;">
               <span style="color:#666;">Discount</span>
-              <span style="color:#dc2626;font-weight:500;">-Rs. ${Number(invoice.discount).toFixed(2)}</span>
+              <span style="color:#dc2626;font-weight:500;">-Rs. ${Number(quotation.discount).toFixed(2)}</span>
             </div>` : ''}
             <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid #1f2937;margin-top:8px;">
               <span style="font-size:16px;font-weight:bold;color:#1f2937;">Grand Total</span>
-              <span style="font-size:16px;font-weight:bold;color:#1f2937;">Rs. ${Number(invoice.total_amount).toFixed(2)}</span>
+              <span style="font-size:16px;font-weight:bold;color:#1f2937;">Rs. ${Number(quotation.total_amount).toFixed(2)}</span>
             </div>
           </div>
         </div>
 
-        <!-- Payment Terms & Notes -->
-        ${invoice.payment_terms || invoice.notes ? `<div style="border-top:1px solid #e5e7eb;padding-top:20px;">
-          ${invoice.payment_terms ? `<div style="margin-bottom:12px;"><h4 style="font-size:13px;font-weight:600;color:#374151;margin:0 0 4px;">Payment Terms</h4><p style="font-size:13px;color:#666;margin:0;">${invoice.payment_terms}</p></div>` : ''}
-          ${invoice.notes ? `<div><h4 style="font-size:13px;font-weight:600;color:#374151;margin:0 0 4px;">Notes</h4><p style="font-size:13px;color:#666;margin:0;">${invoice.notes}</p></div>` : ''}
+        <!-- Notes -->
+        ${quotation.notes ? `<div style="border-top:1px solid #e5e7eb;padding-top:20px;">
+          <h4 style="font-size:13px;font-weight:600;color:#374151;margin:0 0 4px;">Notes / Terms</h4>
+          <p style="font-size:13px;color:#666;margin:0;">${quotation.notes}</p>
         </div>` : ''}
 
         <!-- Footer -->
         <div style="text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid #e5e7eb;">
-          <p style="font-size:13px;color:#6b7280;margin:0;">Thank you for your business!</p>
+          <p style="font-size:13px;color:#6b7280;margin:0;">This is a quotation and not an invoice. Prices are subject to change.</p>
+          <p style="font-size:13px;color:#6b7280;margin:4px 0 0;">Thank you for your interest!</p>
         </div>
       </div>
     `;
 
     printReport({
-      title: `Invoice ${invoice.invoice_number}`,
+      title: `Quotation ${quotation.quotation_number}`,
       storeName: store.store_name,
       content
     });
@@ -179,7 +176,7 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col">
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-bold text-gray-800">Print Invoice</h2>
+          <h2 className="text-lg font-bold text-gray-800">Print Quotation</h2>
           <div className="flex items-center gap-3">
             <button
               onClick={handlePrint}
@@ -203,7 +200,7 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
             </div>
           ) : error ? (
             <div className="text-center py-20 text-red-500">{error}</div>
-          ) : invoice && store ? (
+          ) : quotation && store ? (
             <div className="max-w-3xl mx-auto">
               {/* Store Header */}
               <div className="text-center mb-8 pb-6 border-b-2 border-gray-800">
@@ -215,40 +212,31 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
                 </div>
               </div>
 
-              {/* Invoice Title */}
+              {/* Quotation Title */}
               <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-800 tracking-wider uppercase">Invoice</h2>
+                <h2 className="text-2xl font-bold text-gray-800 tracking-wider uppercase">Quotation</h2>
               </div>
 
-              {/* Invoice Details & Customer Info */}
+              {/* Quotation Details & Customer Info */}
               <div className="grid grid-cols-2 gap-8 mb-8">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Bill To</h3>
-                  <p className="text-lg font-semibold text-gray-800">{invoice.customer_name}</p>
-                  {invoice.customer_phone && <p className="text-sm text-gray-600">{invoice.customer_phone}</p>}
-                  {invoice.customer_email && <p className="text-sm text-gray-600">{invoice.customer_email}</p>}
-                  {invoice.customer_address && <b><p className="text-sm text-gray-600">{invoice.customer_address}</p></b>}
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Quotation For</h3>
+                  <p className="text-lg font-semibold text-gray-800">{quotation.customer_name}</p>
+                  {quotation.customer_phone && <p className="text-sm text-gray-600">Tel: {quotation.customer_phone}</p>}
                 </div>
                 <div className="text-right">
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Invoice Details</h3>
-                  <p className="text-lg font-semibold text-gray-800">{invoice.invoice_number}</p>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Quotation Details</h3>
+                  <p className="text-lg font-semibold text-gray-800">{quotation.quotation_number}</p>
                   <p className="text-sm text-gray-600">
-                    Date: {new Date(invoice.created_at).toLocaleDateString()}
+                    Date: {new Date(quotation.created_at).toLocaleDateString()}
                   </p>
-                  {invoice.due_date && (
+                  {quotation.valid_until && (
                     <p className="text-sm text-gray-600">
-                      Due: {new Date(invoice.due_date).toLocaleDateString()}
+                      Valid Until: {new Date(quotation.valid_until).toLocaleDateString()}
                     </p>
                   )}
-                  <p className="text-sm mt-1">
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium uppercase ${invoice.status === 'paid' ? 'bg-green-100 text-green-700' :
-                      invoice.status === 'overdue' ? 'bg-red-100 text-red-700' :
-                        invoice.status === 'partial' ? 'bg-yellow-100 text-yellow-700' :
-                          invoice.status === 'sent' ? 'bg-blue-100 text-blue-700' :
-                            'bg-gray-100 text-gray-700'
-                      }`}>
-                      {invoice.status}
-                    </span>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Prepared by: {quotation.created_by_name}
                   </p>
                 </div>
               </div>
@@ -258,19 +246,17 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
                 <thead>
                   <tr className="border-b-2 border-gray-800">
                     <th className="py-3 text-left text-sm font-semibold text-gray-700 w-12">#</th>
-                    <th className="py-3 text-left text-sm font-semibold text-gray-700">Description</th>
+                    <th className="py-3 text-left text-sm font-semibold text-gray-700">Item</th>
                     <th className="py-3 text-right text-sm font-semibold text-gray-700 w-20">Qty</th>
                     <th className="py-3 text-right text-sm font-semibold text-gray-700 w-32">Unit Price</th>
                     <th className="py-3 text-right text-sm font-semibold text-gray-700 w-32">Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {invoice.items.map((item, idx) => (
+                  {quotation.items.map((item, idx) => (
                     <tr key={idx} className="border-b border-gray-200">
                       <td className="py-3 text-sm text-gray-600">{idx + 1}</td>
-                      <td className="py-3 text-sm text-gray-800">
-                        {item.description || item.product_name || 'Item'}
-                      </td>
+                      <td className="py-3 text-sm text-gray-800">{item.product_name}</td>
                       <td className="py-3 text-sm text-gray-800 text-right">{item.quantity}</td>
                       <td className="py-3 text-sm text-gray-800 text-right">
                         Rs. {Number(item.unit_price).toFixed(2)}
@@ -288,48 +274,39 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
                 <div className="w-72">
                   <div className="flex justify-between py-2 text-sm">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="text-gray-800 font-medium">Rs. {Number(invoice.subtotal).toFixed(2)}</span>
+                    <span className="text-gray-800 font-medium">Rs. {Number(quotation.subtotal).toFixed(2)}</span>
                   </div>
-                  {Number(invoice.tax_amount) > 0 && (
+                  {Number(quotation.tax_amount) > 0 && (
                     <div className="flex justify-between py-2 text-sm">
                       <span className="text-gray-600">Tax</span>
-                      <span className="text-gray-800 font-medium">Rs. {Number(invoice.tax_amount).toFixed(2)}</span>
+                      <span className="text-gray-800 font-medium">Rs. {Number(quotation.tax_amount).toFixed(2)}</span>
                     </div>
                   )}
-                  {Number(invoice.discount) > 0 && (
+                  {Number(quotation.discount) > 0 && (
                     <div className="flex justify-between py-2 text-sm">
                       <span className="text-gray-600">Discount</span>
-                      <span className="text-red-600 font-medium">-Rs. {Number(invoice.discount).toFixed(2)}</span>
+                      <span className="text-red-600 font-medium">-Rs. {Number(quotation.discount).toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between py-3 border-t-2 border-gray-800 mt-2">
                     <span className="text-lg font-bold text-gray-800">Grand Total</span>
-                    <span className="text-lg font-bold text-gray-800">Rs. {Number(invoice.total_amount).toFixed(2)}</span>
+                    <span className="text-lg font-bold text-gray-800">Rs. {Number(quotation.total_amount).toFixed(2)}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Payment Terms & Notes */}
-              {(invoice.payment_terms || invoice.notes) && (
-                <div className="border-t border-gray-200 pt-6 space-y-3">
-                  {invoice.payment_terms && (
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-700">Payment Terms</h4>
-                      <p className="text-sm text-gray-600">{invoice.payment_terms}</p>
-                    </div>
-                  )}
-                  {invoice.notes && (
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-700">Notes</h4>
-                      <p className="text-sm text-gray-600">{invoice.notes}</p>
-                    </div>
-                  )}
+              {/* Notes */}
+              {quotation.notes && (
+                <div className="border-t border-gray-200 pt-6">
+                  <h4 className="text-sm font-semibold text-gray-700">Notes / Terms</h4>
+                  <p className="text-sm text-gray-600 mt-1">{quotation.notes}</p>
                 </div>
               )}
 
               {/* Footer */}
               <div className="text-center mt-10 pt-6 border-t border-gray-200">
-                <p className="text-sm text-gray-500">Thank you for your business!</p>
+                <p className="text-sm text-gray-500">This is a quotation and not an invoice. Prices are subject to change.</p>
+                <p className="text-sm text-gray-500 mt-1">Thank you for your interest!</p>
               </div>
             </div>
           ) : null}
@@ -340,4 +317,4 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
   );
 };
 
-export default InvoicePrintModal;
+export default QuotationPrintModal;

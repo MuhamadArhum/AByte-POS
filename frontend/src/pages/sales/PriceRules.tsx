@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Percent, Plus, Search, Edit2, Trash2, X, Tag, Clock, ShoppingBag, Layers } from 'lucide-react';
-import api from '../utils/api';
-import Pagination from '../components/Pagination';
+import api from '../../utils/api';
+import Pagination from '../../components/Pagination';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

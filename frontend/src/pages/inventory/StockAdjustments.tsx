@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ClipboardList, Plus, Search, X, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
-import api from '../utils/api';
-import Pagination from '../components/Pagination';
+import api from '../../utils/api';
+import Pagination from '../../components/Pagination';
 
 interface Adjustment {
   adjustment_id: number;

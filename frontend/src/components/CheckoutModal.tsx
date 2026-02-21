@@ -248,7 +248,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
 
   const handlePrint = async () => {
     if (!successSale) return;
-    if (isThermalPrinterAvailable()) {
+    if (isThermalPrinterAvailable(settings)) {
       await printToThermalPrinter(
         successSale,
         settings,

@@ -15,6 +15,12 @@ router.put('/', authorize('Admin'), settingsController.updateSettings);
 // Change own password: Any authenticated user
 router.post('/change-password', settingsController.changePassword);
 
+// Print receipt via configured printer
+router.post('/print-receipt', settingsController.printReceipt);
+
+// Test printer connection: Admin only
+router.post('/test-printer', authorize('Admin'), settingsController.testPrinter);
+
 // System info: Admin only
 router.get('/system-info', authorize('Admin'), settingsController.getSystemInfo);
 

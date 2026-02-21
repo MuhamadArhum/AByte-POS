@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileText, Plus, Trash2, X, Download } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
 
 const PaymentVoucherModal = ({ isOpen, onClose, onSuccess }: any) => {
   const toast = useToast();

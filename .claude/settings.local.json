@@ -38,7 +38,8 @@
       "Bash(ls:*)",
       "Bash(npm start)",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6IkFyaHVtICIsInJvbGVfbmFtZSI6IkFkbWluIiwiaWF0IjoxNzcwNzkxOTQwLCJleHAiOjE3NzA4NzgzNDB9.O7lmTKkEpoBYnL8pt5UrxVhuSJU8rqO08tvA1716Klw\")",
-      "Bash(H=\"Authorization: Bearer $TOKEN\")"
+      "Bash(H=\"Authorization: Bearer $TOKEN\")",
+      "Bash(git mv:*)"
     ]
   }
 }

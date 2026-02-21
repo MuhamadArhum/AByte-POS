@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Plus, Eye, Edit, Trash2, DollarSign, User, Search, Filter, RotateCcw, TrendingUp } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
-import AddStaffModal from '../components/AddStaffModal';
-import StaffDetailsModal from '../components/StaffDetailsModal';
-import SalaryPaymentModal from '../components/SalaryPaymentModal';
-import SalaryIncrementModal from '../components/SalaryIncrementModal';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
+import AddStaffModal from '../../components/AddStaffModal';
+import StaffDetailsModal from '../../components/StaffDetailsModal';
+import SalaryPaymentModal from '../../components/SalaryPaymentModal';
+import SalaryIncrementModal from '../../components/SalaryIncrementModal';
 
 const Staff = () => {
   const toast = useToast();

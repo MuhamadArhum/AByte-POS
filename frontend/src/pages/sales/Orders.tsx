@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Clock, CheckCircle, Trash2, Printer, Search, Archive, RotateCcw, FileText, DollarSign, User, Calendar, CreditCard, Package, ArrowLeft, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import api from '../utils/api';
-import { printReceipt } from '../utils/receiptPrinter';
-import Pagination from '../components/Pagination';
+import api from '../../utils/api';
+import { printReceipt } from '../../utils/receiptPrinter';
+import Pagination from '../../components/Pagination';
 
 const Orders = () => {
   const navigate = useNavigate();

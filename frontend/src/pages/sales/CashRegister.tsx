@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Wallet, Plus, Minus, Lock, Unlock, Clock, ArrowDownCircle, ArrowUpCircle, History, Loader2 } from 'lucide-react';
-import api from '../utils/api';
-import { useAuth } from '../context/AuthContext';
-import CashMovementModal from '../components/CashMovementModal';
-import RegisterCloseModal from '../components/RegisterCloseModal';
-import Pagination from '../components/Pagination';
+import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
+import CashMovementModal from '../../components/CashMovementModal';
+import RegisterCloseModal from '../../components/RegisterCloseModal';
+import Pagination from '../../components/Pagination';
 
 interface CashMovement {
   movement_id: number;

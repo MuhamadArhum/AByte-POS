@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BarChart3, Package, DollarSign, AlertTriangle, XCircle, TrendingUp, Tag, Clock } from 'lucide-react';
-import api from '../utils/api';
+import api from '../../utils/api';
 
 interface TopProduct {
   product_id: number;

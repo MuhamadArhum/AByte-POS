@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Tag, Plus, Pencil, Trash2, Search, X, Package, FolderOpen } from 'lucide-react';
-import api from '../utils/api';
+import api from '../../utils/api';
 
 interface Category {
   category_id: number;

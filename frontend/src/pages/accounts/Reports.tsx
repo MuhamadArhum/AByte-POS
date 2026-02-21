@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Download, Calendar } from 'lucide-react';
-import api from '../utils/api';
+import api from '../../utils/api';
 
 const Reports = () => {
   const [salesData, setSalesData] = useState<any[]>([]);

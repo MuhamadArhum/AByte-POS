@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CreditCard, Plus, Search, DollarSign, Eye, Ban, ArrowUp, X, Gift } from 'lucide-react';
-import api from '../utils/api';
-import Pagination from '../components/Pagination';
+import { CreditCard, Plus, Search, DollarSign, Eye, Ban, ArrowUp, X, Gift, Printer } from 'lucide-react';
+import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
+import api from '../../utils/api';
+import Pagination from '../../components/Pagination';
 
 interface GiftCard {
   card_id: number;
@@ -197,6 +198,21 @@ const GiftCards = () => {
     }
   };
 
+  const handlePrint = () => {
+    let content = buildStatsCards([
+      { label: 'Active Cards', value: String(stats.active_count) },
+      { label: 'Total Balance', value: `$${Number(stats.total_balance).toFixed(2)}` },
+      { label: 'Total Issued', value: String(stats.total_issued) },
+      { label: 'Redeemed This Month', value: `$${Number(stats.redeemed_this_month).toFixed(2)}` },
+    ]);
+    const rows = cards.map(c => [
+      c.card_number, `$${Number(c.current_balance).toFixed(2)}`, `$${Number(c.initial_balance).toFixed(2)}`,
+      c.status, c.customer_name || '-', c.expiry_date ? new Date(c.expiry_date).toLocaleDateString() : 'No expiry'
+    ]);
+    content += buildTable(['Card Number', 'Balance', 'Initial', 'Status', 'Customer', 'Expiry'], rows, { alignRight: [1, 2] });
+    printReport({ title: 'Gift Cards Report', content });
+  };
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -208,6 +224,9 @@ const GiftCards = () => {
           <p className="text-gray-500 mt-1">Issue, manage, and track gift cards</p>
         </div>
         <div className="flex gap-3">
+          <button onClick={handlePrint} className="flex items-center gap-2 bg-white text-gray-700 px-4 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors" disabled={cards.length === 0}>
+            <Printer size={20} /> Print
+          </button>
           <button onClick={openCheckBalanceModal} className="flex items-center gap-2 bg-white text-gray-700 px-4 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors">
             <Search size={20} /> Check Balance
           </button>

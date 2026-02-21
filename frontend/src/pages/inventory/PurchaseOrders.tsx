@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Plus, Package, Eye, FileText, Search, Filter } from 'lucide-react';
-import api from '../utils/api';
-import CreatePOModal from '../components/CreatePOModal';
-import ReceiveStockModal from '../components/ReceiveStockModal';
-import ViewPODetailsModal from '../components/ViewPODetailsModal';
+import api from '../../utils/api';
+import CreatePOModal from '../../components/CreatePOModal';
+import ReceiveStockModal from '../../components/ReceiveStockModal';
+import ViewPODetailsModal from '../../components/ViewPODetailsModal';
 
 const PurchaseOrders = () => {
   const [orders, setOrders] = useState([]);

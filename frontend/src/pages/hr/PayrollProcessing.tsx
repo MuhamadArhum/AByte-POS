@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { DollarSign, Calendar, Play, Download, CheckCircle } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
 
 const PayrollProcessing = () => {
   const toast = useToast();

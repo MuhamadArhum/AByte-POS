@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { DollarSign, Plus, Download } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
 
 interface AdvancePaymentModalProps {
   isOpen: boolean;

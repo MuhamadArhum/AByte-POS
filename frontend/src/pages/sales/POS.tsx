@@ -1,15 +1,15 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, ShoppingCart, Trash2, Minus, Plus, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Mail, Building2 } from 'lucide-react';
-import { useCart, Product } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
-import ProductCard from '../components/ProductCard';
-import CheckoutModal from '../components/CheckoutModal';
-import AddCustomerModal from '../components/AddCustomerModal';
-import DailyReportModal from '../components/DailyReportModal';
-import RegisterCloseModal from '../components/RegisterCloseModal';
-import ProductVariantModal from '../components/ProductVariantModal';
-import api from '../utils/api';
+import { useCart, Product } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
+import ProductCard from '../../components/ProductCard';
+import CheckoutModal from '../../components/CheckoutModal';
+import AddCustomerModal from '../../components/AddCustomerModal';
+import DailyReportModal from '../../components/DailyReportModal';
+import RegisterCloseModal from '../../components/RegisterCloseModal';
+import ProductVariantModal from '../../components/ProductVariantModal';
+import api from '../../utils/api';
 
 const POS = () => {
   const navigate = useNavigate();

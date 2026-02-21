@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileText, Plus, Check, X, Filter, Search } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
 
 const LeaveRequestModal = ({ isOpen, onClose, onSuccess }: any) => {
   const toast = useToast();

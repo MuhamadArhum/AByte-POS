@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { TrendingUp, Calendar, Download, RefreshCw } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
+import { TrendingUp, Calendar, Download, RefreshCw, Printer } from 'lucide-react';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
+import { printReport, buildTable } from '../../utils/reportPrinter';
 
 interface ProfitLossSection {
   account_code: string;
@@ -101,6 +102,15 @@ const ProfitLoss = () => {
     ]);
   };
 
+  const handlePrint = () => {
+    if (!data) return;
+    let content = '';
+    content += buildTable(['Account Code', 'Account Name', 'Amount'], data.revenue.map(r => [r.account_code, r.account_name, formatCurrency(r.amount)]), { alignRight: [2], summaryRow: ['', 'Total Revenue', formatCurrency(data.total_revenue)], caption: 'REVENUE' });
+    content += buildTable(['Account Code', 'Account Name', 'Amount'], data.expenses.map(e => [e.account_code, e.account_name, formatCurrency(e.amount)]), { alignRight: [2], summaryRow: ['', 'Total Expenses', formatCurrency(data.total_expenses)], caption: 'EXPENSES' });
+    content += `<div style="margin-top:20px;padding:12px;border-top:3px solid #000;font-size:16px;font-weight:bold;display:flex;justify-content:space-between"><span>${data.net_profit >= 0 ? 'NET PROFIT' : 'NET LOSS'}</span><span>${formatCurrency(Math.abs(data.net_profit))}</span></div>`;
+    printReport({ title: 'Profit & Loss Statement', dateRange: `${fromDate} to ${toDate}`, content });
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 2,
@@ -162,13 +172,22 @@ const ProfitLoss = () => {
           </button>
 
           {data && (
+            <>
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition ml-auto"
+            >
+              <Printer size={16} />
+              Print
+            </button>
             <button
               onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition ml-auto"
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
             >
               <Download size={16} />
               Export CSV
             </button>
+            </>
           )}
         </div>
       </div>

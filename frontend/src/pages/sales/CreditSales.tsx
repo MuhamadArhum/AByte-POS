@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CreditCard, Search, DollarSign, AlertTriangle, Clock, CheckCircle, X } from 'lucide-react';
-import api from '../utils/api';
-import Pagination from '../components/Pagination';
+import { CreditCard, Search, DollarSign, AlertTriangle, Clock, CheckCircle, X, Printer } from 'lucide-react';
+import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
+import api from '../../utils/api';
+import Pagination from '../../components/Pagination';
 
 interface CreditSale {
   credit_sale_id: number;
@@ -85,11 +86,31 @@ const CreditSales = () => {
 
   const isOverdue = (cs: CreditSale) => cs.status !== 'paid' && new Date(cs.due_date) < new Date();
 
+  const handlePrint = () => {
+    let content = buildStatsCards([
+      { label: 'Total Outstanding', value: `$${Number(stats.total_outstanding).toFixed(2)}` },
+      { label: 'Overdue', value: String(stats.overdue_count) },
+      { label: 'Collected This Month', value: `$${Number(stats.collected_this_month).toFixed(2)}` },
+      { label: 'Active Credit Sales', value: String(stats.active_count) },
+    ]);
+    const rows = sales.map(cs => [
+      `#${cs.sale_id}`, cs.customer_name, `$${Number(cs.total_amount).toFixed(2)}`, `$${Number(cs.paid_amount).toFixed(2)}`,
+      `$${Number(cs.balance_due).toFixed(2)}`, new Date(cs.due_date).toLocaleDateString(), cs.status
+    ]);
+    content += buildTable(['Sale #', 'Customer', 'Total', 'Paid', 'Balance', 'Due Date', 'Status'], rows, { alignRight: [2, 3, 4] });
+    printReport({ title: 'Credit Sales Report', content });
+  };
+
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3"><CreditCard className="text-rose-600" size={32} /> Credit Sales</h1>
-        <p className="text-gray-500 mt-1">Manage customer credit accounts and payments</p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3"><CreditCard className="text-rose-600" size={32} /> Credit Sales</h1>
+          <p className="text-gray-500 mt-1">Manage customer credit accounts and payments</p>
+        </div>
+        <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition" disabled={sales.length === 0}>
+          <Printer size={16} /> Print
+        </button>
       </div>
 
       {/* Stats */}

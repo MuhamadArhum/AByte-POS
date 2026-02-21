@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Book, Search, Filter, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
+import { Book, Search, Filter, ChevronLeft, ChevronRight, RefreshCw, Printer } from 'lucide-react';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
+import { printReport, buildTable } from '../../utils/reportPrinter';
 
 interface LedgerEntry {
   entry_id: number;
@@ -110,6 +111,13 @@ const GeneralLedger = () => {
     });
   };
 
+  const handlePrint = () => {
+    if (entries.length === 0) return;
+    const rows = entries.map(e => [formatDate(e.entry_date), e.entry_number, `${e.account_name} (${e.account_code})`, e.description, e.debit > 0 ? formatCurrency(e.debit) : '-', e.credit > 0 ? formatCurrency(e.credit) : '-', formatCurrency(e.balance)]);
+    const content = buildTable(['Date', 'Entry #', 'Account', 'Description', 'Debit', 'Credit', 'Balance'], rows, { alignRight: [4, 5, 6] });
+    printReport({ title: 'General Ledger', dateRange: `${fromDate} to ${toDate}`, content, orientation: 'landscape' });
+  };
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -121,6 +129,11 @@ const GeneralLedger = () => {
             <p className="text-gray-600 text-sm mt-1">View all posted transactions</p>
           </div>
         </div>
+        {entries.length > 0 && (
+          <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+            <Printer size={16} /> Print
+          </button>
+        )}
       </div>
 
       {/* Filters */}

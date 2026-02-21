@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Building2, Plus, Edit, Trash2, X } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
 
 const BankAccountModal = ({ isOpen, onClose, onSuccess, bankAccount }: any) => {
   const toast = useToast();

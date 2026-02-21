@@ -1,59 +1,70 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
-import POS from './pages/POS';
-import Inventory from './pages/Inventory';
-import Customers from './pages/Customers';
-import Reports from './pages/Reports';
-import SettingsPage from './pages/Settings';
-import Login from './pages/Login';
-import CashRegister from './pages/CashRegister';
-import Returns from './pages/Returns';
-import AuditLog from './pages/AuditLog';
-import Backup from './pages/Backup';
-import Orders from './pages/Orders';
-import Suppliers from './pages/Suppliers';
-import Expenses from './pages/Expenses';
-import Staff from './pages/Staff';
-import Attendance from './pages/Attendance';
-import PurchaseOrders from './pages/PurchaseOrders';
-import StockAlerts from './pages/StockAlerts';
-import Stores from './pages/Stores';
-import Analytics from './pages/Analytics';
 import Layout from './components/Layout';
-import StaffReports from './pages/StaffReports';
-import SalarySheet from './pages/SalarySheet';
-import DailyAttendance from './pages/DailyAttendance';
-import LoanManagement from './pages/LoanManagement';
-import EmployeeLedger from './pages/EmployeeLedger';
-import IncrementHistory from './pages/IncrementHistory';
-import PayrollProcessing from './pages/PayrollProcessing';
-import AdvancePayments from './pages/AdvancePayments';
-import HolidayCalendar from './pages/HolidayCalendar';
-import LeaveRequests from './pages/LeaveRequests';
-import ChartOfAccounts from './pages/ChartOfAccounts';
-import JournalEntries from './pages/JournalEntries';
-import GeneralLedger from './pages/GeneralLedger';
-import TrialBalance from './pages/TrialBalance';
-import ProfitLoss from './pages/ProfitLoss';
-import BalanceSheet from './pages/BalanceSheet';
-import BankAccounts from './pages/BankAccounts';
-import PaymentVouchers from './pages/PaymentVouchers';
-import ReceiptVouchers from './pages/ReceiptVouchers';
-import Categories from './pages/Categories';
-import StockAdjustments from './pages/StockAdjustments';
-import StockTransfers from './pages/StockTransfers';
-import InventoryReports from './pages/InventoryReports';
-import Quotations from './pages/Quotations';
-import CreditSales from './pages/CreditSales';
-import Layaway from './pages/Layaway';
-import Coupons from './pages/Coupons';
-import LoyaltyProgram from './pages/LoyaltyProgram';
-import SalesReports from './pages/SalesReports';
-import GiftCards from './pages/GiftCards';
-import PriceRules from './pages/PriceRules';
-import SalesTargets from './pages/SalesTargets';
-import Invoices from './pages/Invoices';
+// Root Pages
+import Dashboard from './pages/Dashboard';
+import Login from './pages/Login';
+
+// Sales Module
+import POS from './pages/sales/POS';
+import Orders from './pages/sales/Orders';
+import CashRegister from './pages/sales/CashRegister';
+import Returns from './pages/sales/Returns';
+import Quotations from './pages/sales/Quotations';
+import CreditSales from './pages/sales/CreditSales';
+import Layaway from './pages/sales/Layaway';
+import Coupons from './pages/sales/Coupons';
+import LoyaltyProgram from './pages/sales/LoyaltyProgram';
+import GiftCards from './pages/sales/GiftCards';
+import PriceRules from './pages/sales/PriceRules';
+import SalesTargets from './pages/sales/SalesTargets';
+import Invoices from './pages/sales/Invoices';
+import SalesReports from './pages/sales/SalesReports';
+
+// Inventory Module
+import Inventory from './pages/inventory/Inventory';
+import Categories from './pages/inventory/Categories';
+import PurchaseOrders from './pages/inventory/PurchaseOrders';
+import StockTransfers from './pages/inventory/StockTransfers';
+import StockAdjustments from './pages/inventory/StockAdjustments';
+import StockAlerts from './pages/inventory/StockAlerts';
+import Suppliers from './pages/inventory/Suppliers';
+import InventoryReports from './pages/inventory/InventoryReports';
+
+// HR Module
+import Customers from './pages/hr/Customers';
+import Staff from './pages/hr/Staff';
+import Attendance from './pages/hr/Attendance';
+import DailyAttendance from './pages/hr/DailyAttendance';
+import SalarySheet from './pages/hr/SalarySheet';
+import PayrollProcessing from './pages/hr/PayrollProcessing';
+import AdvancePayments from './pages/hr/AdvancePayments';
+import LoanManagement from './pages/hr/LoanManagement';
+import IncrementHistory from './pages/hr/IncrementHistory';
+import EmployeeLedger from './pages/hr/EmployeeLedger';
+import HolidayCalendar from './pages/hr/HolidayCalendar';
+import LeaveRequests from './pages/hr/LeaveRequests';
+import StaffReports from './pages/hr/StaffReports';
+
+// Accounts Module
+import ChartOfAccounts from './pages/accounts/ChartOfAccounts';
+import JournalEntries from './pages/accounts/JournalEntries';
+import GeneralLedger from './pages/accounts/GeneralLedger';
+import TrialBalance from './pages/accounts/TrialBalance';
+import ProfitLoss from './pages/accounts/ProfitLoss';
+import BalanceSheet from './pages/accounts/BalanceSheet';
+import BankAccounts from './pages/accounts/BankAccounts';
+import PaymentVouchers from './pages/accounts/PaymentVouchers';
+import ReceiptVouchers from './pages/accounts/ReceiptVouchers';
+import Expenses from './pages/accounts/Expenses';
+import Analytics from './pages/accounts/Analytics';
+import Reports from './pages/accounts/Reports';
+
+// System Module
+import Stores from './pages/system/Stores';
+import AuditLog from './pages/system/AuditLog';
+import Backup from './pages/system/Backup';
+import SettingsPage from './pages/system/Settings';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';

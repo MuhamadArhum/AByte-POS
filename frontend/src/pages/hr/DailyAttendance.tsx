@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, MinusCircle, Download, UserCheck } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
 
 const DailyAttendance = () => {
   const toast = useToast();

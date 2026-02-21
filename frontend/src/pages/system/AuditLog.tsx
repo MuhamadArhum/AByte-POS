@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Filter, ScrollText, Clock, User } from 'lucide-react';
-import api from '../utils/api';
-import Pagination from '../components/Pagination';
+import api from '../../utils/api';
+import Pagination from '../../components/Pagination';
 
 interface AuditEntry {
   log_id: number;

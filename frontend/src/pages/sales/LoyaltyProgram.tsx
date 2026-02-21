@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Star, Settings, Search, Trophy, Users, X, Plus, Minus } from 'lucide-react';
-import api from '../utils/api';
+import { Star, Settings, Search, Trophy, Users, X, Plus, Minus, Printer } from 'lucide-react';
+import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
+import api from '../../utils/api';
 
 const LoyaltyProgram = () => {
   const [config, setConfig] = useState({ points_per_amount: 1, amount_per_point: 100, min_redeem_points: 100, is_active: 0 });
@@ -68,6 +69,19 @@ const LoyaltyProgram = () => {
     } catch (err: any) { alert(err.response?.data?.message || 'Failed'); }
   };
 
+  const handlePrint = () => {
+    let content = buildStatsCards([
+      { label: 'Points in Circulation', value: String(stats.total_points_circulation) },
+      { label: 'Active Members', value: String(stats.active_members) },
+      { label: 'Total Redeemed', value: String(stats.total_redeemed) },
+    ]);
+    if (leaderboard.length > 0) {
+      const rows = leaderboard.map((c: any, i: number) => [String(i + 1), c.customer_name || c.name || '-', String(c.total_points || c.points || 0)]);
+      content += buildTable(['Rank', 'Customer', 'Points'], rows, { alignRight: [2], caption: 'Loyalty Leaderboard' });
+    }
+    printReport({ title: 'Loyalty Program Report', content });
+  };
+
   if (loading) return <div className="p-8"><div className="flex items-center justify-center p-12"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-600"></div></div></div>;
 
   return (
@@ -77,7 +91,10 @@ const LoyaltyProgram = () => {
           <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3"><Star className="text-yellow-500" size={32} /> Loyalty Program</h1>
           <p className="text-gray-500 mt-1">Manage customer rewards and loyalty points</p>
         </div>
-        <button onClick={() => { setAdjustModal(true); setAdjustCustomerId(''); setAdjustPoints(''); setAdjustDesc(''); }} className="flex items-center gap-2 bg-yellow-600 text-white px-4 py-2.5 rounded-xl hover:bg-yellow-700 transition-colors"><Plus size={20} /> Adjust Points</button>
+        <div className="flex items-center gap-3">
+          <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition"><Printer size={18} /> Print</button>
+          <button onClick={() => { setAdjustModal(true); setAdjustCustomerId(''); setAdjustPoints(''); setAdjustDesc(''); }} className="flex items-center gap-2 bg-yellow-600 text-white px-4 py-2.5 rounded-xl hover:bg-yellow-700 transition-colors"><Plus size={20} /> Adjust Points</button>
+        </div>
       </div>
 
       {/* Stats */}

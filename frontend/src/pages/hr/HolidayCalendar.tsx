@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Plus, Edit, Trash2, Filter } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
 
 const HolidayModal = ({ isOpen, onClose, onSuccess, holiday }: any) => {
   const toast = useToast();

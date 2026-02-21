@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BookOpen, Plus, Edit, Trash2, Search, Filter, X, Building2, CreditCard, Landmark, TrendingUp, TrendingDown } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
 
 const AccountModal = ({ isOpen, onClose, onSuccess, account, categoryType }: any) => {
   const toast = useToast();

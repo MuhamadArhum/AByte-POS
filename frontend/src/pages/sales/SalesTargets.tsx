@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Target, Plus, TrendingUp, Award, Users, Edit2, Trash2, X, BarChart3 } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
-import Pagination from '../components/Pagination';
+import { Target, Plus, TrendingUp, Award, Users, Edit2, Trash2, X, BarChart3, Printer } from 'lucide-react';
+import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
+import Pagination from '../../components/Pagination';
 
 interface TargetItem {
   target_id: number;
@@ -487,6 +488,20 @@ const SalesTargets = () => {
     return new Date(dateStr).toLocaleDateString();
   };
 
+  const handlePrint = () => {
+    let content = buildStatsCards([
+      { label: 'Active Targets', value: String(stats.active_targets) },
+      { label: 'Overall Achievement', value: `${stats.overall_achievement}%` },
+      { label: 'Top Performer', value: stats.top_performer ? `${stats.top_performer.name} (${stats.top_performer.percentage}%)` : '-' },
+      { label: 'Lowest Performer', value: stats.lowest_performer ? `${stats.lowest_performer.name} (${stats.lowest_performer.percentage}%)` : '-' },
+    ]);
+    if (dashboardItems.length > 0) {
+      const rows = dashboardItems.map(d => [d.user_name, d.target_type, `$${Number(d.target_amount).toFixed(2)}`, `$${Number(d.actual_amount).toFixed(2)}`, `${d.achievement_percentage}%`]);
+      content += buildTable(['Cashier', 'Type', 'Target', 'Actual', 'Achievement'], rows, { alignRight: [2, 3, 4], caption: 'Sales Targets Dashboard' });
+    }
+    printReport({ title: 'Sales Targets Report', content });
+  };
+
   // ---------- Render ----------
   return (
     <div className="p-8">
@@ -499,12 +514,21 @@ const SalesTargets = () => {
             <p className="text-gray-600 text-sm mt-1">Track cashier performance and manage sales goals</p>
           </div>
         </div>
-        <button
-          onClick={handleCreate}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition shadow-lg"
-        >
-          <Plus size={20} /> Create Target
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition"
+          >
+            <Printer size={18} />
+            Print
+          </button>
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition shadow-lg"
+          >
+            <Plus size={20} /> Create Target
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}

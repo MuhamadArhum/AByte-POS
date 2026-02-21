@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Archive, Plus, Search, DollarSign, Clock, CheckCircle, XCircle, X, Eye, Trash2 } from 'lucide-react';
-import api from '../utils/api';
-import Pagination from '../components/Pagination';
+import { Archive, Plus, Search, DollarSign, Clock, CheckCircle, XCircle, X, Eye, Trash2, Printer } from 'lucide-react';
+import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
+import api from '../../utils/api';
+import Pagination from '../../components/Pagination';
 
 interface LayawayOrder {
   layaway_id: number;
@@ -133,6 +134,21 @@ const Layaway = () => {
   const subtotal = formItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
   const filteredProducts = allProducts.filter(p => p.product_name.toLowerCase().includes(productSearch.toLowerCase()));
 
+  const handlePrint = () => {
+    let content = buildStatsCards([
+      { label: 'Active', value: String(stats.active_count) },
+      { label: 'Reserved Value', value: `$${Number(stats.total_reserved_value).toFixed(2)}` },
+      { label: 'Expiring Soon', value: String(stats.expiring_soon) },
+      { label: 'Completed', value: String(stats.completed_count) },
+    ]);
+    const rows = orders.map(o => [
+      o.layaway_number, o.customer_name, `$${Number(o.total_amount).toFixed(2)}`, `$${Number(o.paid_amount).toFixed(2)}`,
+      `$${Number(o.balance_due).toFixed(2)}`, o.expiry_date ? new Date(o.expiry_date).toLocaleDateString() : '-', o.status
+    ]);
+    content += buildTable(['Layaway #', 'Customer', 'Total', 'Paid', 'Balance', 'Expiry', 'Status'], rows, { alignRight: [2, 3, 4] });
+    printReport({ title: 'Layaway Orders Report', content });
+  };
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
@@ -140,7 +156,10 @@ const Layaway = () => {
           <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3"><Archive className="text-amber-600" size={32} /> Layaway</h1>
           <p className="text-gray-500 mt-1">Manage layaway orders with installment payments</p>
         </div>
-        <button onClick={openCreate} className="flex items-center gap-2 bg-amber-600 text-white px-4 py-2.5 rounded-xl hover:bg-amber-700 transition-colors"><Plus size={20} /> New Layaway</button>
+        <div className="flex gap-3">
+          <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition" disabled={orders.length === 0}><Printer size={18} /> Print</button>
+          <button onClick={openCreate} className="flex items-center gap-2 bg-amber-600 text-white px-4 py-2.5 rounded-xl hover:bg-amber-700 transition-colors"><Plus size={20} /> New Layaway</button>
+        </div>
       </div>
 
       {/* Stats */}

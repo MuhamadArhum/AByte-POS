@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { FileBarChart, Calendar, Download, RefreshCw } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
+import { FileBarChart, Calendar, Download, RefreshCw, Printer } from 'lucide-react';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
+import { printReport, buildTable } from '../../utils/reportPrinter';
 
 interface BalanceSheetSection {
   account_code: string;
@@ -97,6 +98,16 @@ const BalanceSheet = () => {
     ]);
   };
 
+  const handlePrint = () => {
+    if (!data) return;
+    let content = '';
+    content += buildTable(['Account Code', 'Account Name', 'Amount'], data.assets.map(a => [a.account_code, a.account_name, formatCurrency(a.amount)]), { alignRight: [2], summaryRow: ['', 'Total Assets', formatCurrency(data.total_assets)], caption: 'ASSETS' });
+    content += buildTable(['Account Code', 'Account Name', 'Amount'], data.liabilities.map(l => [l.account_code, l.account_name, formatCurrency(l.amount)]), { alignRight: [2], summaryRow: ['', 'Total Liabilities', formatCurrency(data.total_liabilities)], caption: 'LIABILITIES' });
+    content += buildTable(['Account Code', 'Account Name', 'Amount'], data.equity.map(e => [e.account_code, e.account_name, formatCurrency(e.amount)]), { alignRight: [2], summaryRow: ['', 'Total Equity', formatCurrency(data.total_equity)], caption: 'EQUITY' });
+    content += `<div style="margin-top:20px;padding:12px;border-top:3px solid #000;font-size:16px;font-weight:bold;display:flex;justify-content:space-between"><span>Total Liabilities + Equity</span><span>${formatCurrency(data.total_liabilities_equity)}</span></div>`;
+    printReport({ title: 'Balance Sheet', dateRange: `As of ${asOfDate}`, content });
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 2,
@@ -150,13 +161,22 @@ const BalanceSheet = () => {
           </button>
 
           {data && (
+            <>
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition ml-auto"
+            >
+              <Printer size={16} />
+              Print
+            </button>
             <button
               onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition ml-auto"
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
             >
               <Download size={16} />
               Export CSV
             </button>
+            </>
           )}
         </div>
       </div>

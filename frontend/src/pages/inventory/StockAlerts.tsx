@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, Search, XCircle, CheckCircle, Bell, Package } from 'lucide-react';
-import api from '../utils/api';
-import Pagination from '../components/Pagination';
+import api from '../../utils/api';
+import Pagination from '../../components/Pagination';
 
 interface StockAlert {
   alert_id: number;

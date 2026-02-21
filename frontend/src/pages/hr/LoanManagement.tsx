@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import React from 'react';
 import { DollarSign, Plus, CreditCard, Ban, Eye, Filter } from 'lucide-react';
-import api from '../utils/api';
-import { useToast } from '../components/Toast';
-import IssueLoanModal from '../components/IssueLoanModal';
-import LoanRepaymentModal from '../components/LoanRepaymentModal';
+import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
+import IssueLoanModal from '../../components/IssueLoanModal';
+import LoanRepaymentModal from '../../components/LoanRepaymentModal';
 
 const LoanManagement = () => {
   const toast = useToast();
