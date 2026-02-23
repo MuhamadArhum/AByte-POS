@@ -58,6 +58,9 @@ const POS = () => {
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
+  // Hold order token display
+  const [holdToken, setHoldToken] = useState<string | null>(null);
+
   // Check register on mount
   useEffect(() => {
     checkRegister();
@@ -262,9 +265,6 @@ const POS = () => {
   const handleHoldOrder = async () => {
     if (cart.length === 0) return;
 
-    const note = prompt("Enter Reference / Table No / Customer Name (Optional):");
-    if (note === null) return;
-
     try {
       const payload = {
         items: cart.map(item => ({
@@ -282,12 +282,13 @@ const POS = () => {
         status: 'pending',
         tax_percent: taxRate,
         additional_charges_percent: additionalRate,
-        note: note || ''
       };
 
-      await api.post('/sales', payload);
+      const res = await api.post('/sales', payload);
       clearCart();
-      alert('Order placed on hold (Pending)');
+      const token = res.data?.token_no || null;
+      setHoldToken(token);
+      setTimeout(() => setHoldToken(null), 5000);
     } catch (error) {
       console.error('Failed to hold order', error);
       alert('Failed to hold order');
@@ -819,6 +820,19 @@ const POS = () => {
             </div>
             <span className="text-2xl font-black text-emerald-400">Rs. {total.toFixed(2)}</span>
           </div>
+
+          {/* Hold Token Banner */}
+          {holdToken && (
+            <div className="mx-3 mb-1 px-4 py-2.5 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between">
+              <div>
+                <p className="text-xs text-amber-600 font-medium">Order Held</p>
+                <p className="text-xl font-black text-amber-700">Token: {holdToken}</p>
+              </div>
+              <button onClick={() => setHoldToken(null)} className="text-amber-400 hover:text-amber-600">
+                <X size={16} />
+              </button>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="p-3 grid grid-cols-2 gap-2">

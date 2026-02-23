@@ -12,6 +12,8 @@ interface ReceiptSale {
   amount_paid: number | string;
   sale_date?: string;
   note?: string;
+  token_no?: string;
+  invoice_no?: string;
   items: Array<{
     product_name: string;
     quantity: number;
@@ -408,10 +410,20 @@ export function generateReceiptHTML(
 
   <!-- Receipt Metadata -->
   <div class="receipt-meta">
+    ${sale.invoice_no ? `
+    <div class="meta-row">
+      <span class="meta-label" style="font-weight:bold;">Invoice:</span>
+      <span style="font-weight:bold;">${escapeHtml(sale.invoice_no)}</span>
+    </div>` : `
     <div class="meta-row">
       <span class="meta-label">Receipt #:</span>
       <span>${sale.sale_id}</span>
-    </div>
+    </div>`}
+    ${sale.token_no ? `
+    <div class="meta-row">
+      <span class="meta-label" style="font-weight:bold;">Token:</span>
+      <span style="font-weight:bold; font-size:1.2em;">${escapeHtml(sale.token_no)}</span>
+    </div>` : ''}
     <div class="meta-row">
       <span class="meta-label">Date:</span>
       <span>${dateStr} ${timeStr}</span>
@@ -679,7 +691,12 @@ export function generatePlainTextReceipt(
   if (storePhone) text += `Tel: ${storePhone}\n`;
   text += `==============================\n\n`;
   
-  text += `Receipt #: ${sale.sale_id}\n`;
+  if (sale.invoice_no) {
+    text += `Invoice: ${sale.invoice_no}\n`;
+  } else {
+    text += `Receipt #: ${sale.sale_id}\n`;
+  }
+  if (sale.token_no) text += `Token: ${sale.token_no}\n`;
   text += `Date: ${dateStr} ${timeStr}\n`;
   text += `Cashier: ${cashier}\n`;
   if (customerName) text += `Customer: ${customerName}\n`;

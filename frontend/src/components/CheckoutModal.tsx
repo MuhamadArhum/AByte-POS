@@ -276,6 +276,14 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
             {paymentMethod === 'credit' ? 'Credit Sale Recorded!' : 'Payment Successful!'}
           </h2>
+
+          {successSale.invoice_no && (
+            <div className="mb-3 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-xl inline-block">
+              <p className="text-xs text-emerald-600 font-medium">Invoice Number</p>
+              <p className="text-xl font-black text-emerald-700">{successSale.invoice_no}</p>
+            </div>
+          )}
+
           {paymentMethod === 'credit' ? (
             <p className="text-gray-500 mb-8">
               Amount Due: <span className="font-bold text-orange-600">${finalTotal.toFixed(2)}</span>

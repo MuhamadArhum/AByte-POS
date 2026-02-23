@@ -1,6 +1,6 @@
 -- AByte POS Database Schema (Reference Only)
 -- To setup database, run: npm run seed
--- Last updated: 2026-02-12 (matches production DB)
+-- Last updated: 2026-02-24 (matches production DB)
 CREATE DATABASE IF NOT EXISTS abyte_pos;
 USE abyte_pos;
 
@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS customers (
     email VARCHAR(150),
     company VARCHAR(150),
     tax_id VARCHAR(50),
+    loyalty_points INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE INDEX idx_customer_phone (phone_number)
 );
@@ -214,6 +215,57 @@ CREATE TABLE IF NOT EXISTS salary_increments (
     INDEX idx_increment_staff (staff_id)
 );
 
+-- Advance Payments (advance salary)
+CREATE TABLE IF NOT EXISTS advance_payments (
+    advance_id INT PRIMARY KEY AUTO_INCREMENT,
+    staff_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_date DATE NOT NULL,
+    payment_method ENUM('cash','bank_transfer','cheque') DEFAULT 'cash',
+    reason TEXT,
+    paid_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
+    FOREIGN KEY (paid_by) REFERENCES users(user_id),
+    INDEX idx_advance_staff (staff_id),
+    INDEX idx_advance_date (payment_date)
+);
+
+-- Holidays
+CREATE TABLE IF NOT EXISTS holidays (
+    holiday_id INT PRIMARY KEY AUTO_INCREMENT,
+    holiday_date DATE NOT NULL,
+    holiday_name VARCHAR(200) NOT NULL,
+    description TEXT,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_holiday_date (holiday_date)
+);
+
+-- Leave Requests
+CREATE TABLE IF NOT EXISTS leave_requests (
+    request_id INT PRIMARY KEY AUTO_INCREMENT,
+    staff_id INT NOT NULL,
+    leave_type ENUM('annual','sick','emergency','unpaid','other') DEFAULT 'annual',
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    days INT NOT NULL,
+    reason TEXT,
+    status ENUM('pending','approved','rejected') DEFAULT 'pending',
+    review_notes TEXT,
+    requested_by INT,
+    reviewed_by INT,
+    reviewed_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
+    FOREIGN KEY (requested_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (reviewed_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_leave_staff (staff_id),
+    INDEX idx_leave_status (status),
+    INDEX idx_leave_dates (from_date, to_date)
+);
+
 -- Store Settings (single row with setting_id=1)
 CREATE TABLE IF NOT EXISTS store_settings (
     setting_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -224,11 +276,52 @@ CREATE TABLE IF NOT EXISTS store_settings (
     website VARCHAR(100),
     receipt_header TEXT,
     receipt_footer TEXT DEFAULT 'Thank you for shopping with us!',
+    tax_rate DECIMAL(5,2) DEFAULT 0,
+    currency_symbol VARCHAR(10) DEFAULT 'Rs.',
+    receipt_logo TEXT,
+    low_stock_threshold INT DEFAULT 10,
+    default_payment_method ENUM('cash','card','online') DEFAULT 'cash',
+    auto_print_receipt TINYINT(1) DEFAULT 0,
+    barcode_prefix VARCHAR(10) DEFAULT '',
+    invoice_prefix VARCHAR(20) DEFAULT 'INV-',
+    date_format VARCHAR(20) DEFAULT 'DD/MM/YYYY',
+    timezone VARCHAR(50) DEFAULT 'Asia/Karachi',
+    business_hours_open TIME DEFAULT '09:00:00',
+    business_hours_close TIME DEFAULT '21:00:00',
+    allow_negative_stock TINYINT(1) DEFAULT 0,
+    discount_requires_approval TINYINT(1) DEFAULT 0,
+    max_cashier_discount DECIMAL(5,2) DEFAULT 50.00,
+    session_timeout_minutes INT DEFAULT 480,
+    receipt_show_store_name TINYINT(1) DEFAULT 1,
+    receipt_show_address TINYINT(1) DEFAULT 1,
+    receipt_show_phone TINYINT(1) DEFAULT 1,
+    receipt_show_tax TINYINT(1) DEFAULT 1,
+    receipt_paper_width ENUM('58mm','80mm') DEFAULT '80mm',
+    printer_type ENUM('none','network','usb') DEFAULT 'none',
+    printer_ip VARCHAR(100) DEFAULT NULL,
+    printer_port INT DEFAULT 9100,
+    printer_name VARCHAR(255) DEFAULT NULL,
+    printer_paper_width INT DEFAULT 80,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 INSERT IGNORE INTO store_settings (setting_id, store_name, receipt_footer)
 VALUES (1, 'AByte POS Store', 'Thank you for shopping with us!');
+
+-- Printers (multi-printer support)
+CREATE TABLE IF NOT EXISTS printers (
+    printer_id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    type ENUM('network','usb') NOT NULL,
+    ip_address VARCHAR(100) DEFAULT NULL,
+    port INT DEFAULT 9100,
+    printer_share_name VARCHAR(255) DEFAULT NULL,
+    paper_width INT DEFAULT 80,
+    purpose VARCHAR(50) NOT NULL DEFAULT 'receipt',
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
 -- Backups
 CREATE TABLE IF NOT EXISTS backups (
@@ -279,6 +372,173 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     INDEX idx_audit_action (action),
     INDEX idx_audit_entity (entity_type, entity_id),
     INDEX idx_audit_created (created_at)
+);
+
+-- ============================================================
+-- ACCOUNTING MODULE
+-- ============================================================
+
+-- Account Groups (asset, liability, equity, revenue, expense)
+CREATE TABLE IF NOT EXISTS account_groups (
+    group_id INT PRIMARY KEY AUTO_INCREMENT,
+    group_name VARCHAR(100) NOT NULL,
+    group_type ENUM('asset','liability','equity','revenue','expense') NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_group_type (group_type)
+);
+
+INSERT IGNORE INTO account_groups (group_id, group_name, group_type, description) VALUES
+(1, 'Current Assets', 'asset', 'Cash, inventory, accounts receivable'),
+(2, 'Fixed Assets', 'asset', 'Property, equipment, vehicles'),
+(3, 'Current Liabilities', 'liability', 'Accounts payable, short-term loans'),
+(4, 'Long-term Liabilities', 'liability', 'Long-term loans, mortgages'),
+(5, 'Equity', 'equity', 'Owner equity, retained earnings'),
+(6, 'Sales Revenue', 'revenue', 'Product and service sales'),
+(7, 'Other Revenue', 'revenue', 'Interest, gains'),
+(8, 'Cost of Goods Sold', 'expense', 'Direct costs'),
+(9, 'Operating Expenses', 'expense', 'Salaries, rent, utilities'),
+(10, 'Other Expenses', 'expense', 'Interest, losses');
+
+-- Chart of Accounts
+CREATE TABLE IF NOT EXISTS accounts (
+    account_id INT PRIMARY KEY AUTO_INCREMENT,
+    account_code VARCHAR(20) NOT NULL UNIQUE,
+    account_name VARCHAR(200) NOT NULL,
+    group_id INT NOT NULL,
+    parent_account_id INT NULL,
+    account_type ENUM('asset','liability','equity','revenue','expense') NOT NULL,
+    is_active TINYINT(1) DEFAULT 1,
+    opening_balance DECIMAL(15,2) DEFAULT 0,
+    current_balance DECIMAL(15,2) DEFAULT 0,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (group_id) REFERENCES account_groups(group_id),
+    FOREIGN KEY (parent_account_id) REFERENCES accounts(account_id) ON DELETE SET NULL,
+    INDEX idx_account_code (account_code),
+    INDEX idx_account_type (account_type),
+    INDEX idx_active (is_active)
+);
+
+INSERT IGNORE INTO accounts (account_code, account_name, group_id, account_type, opening_balance) VALUES
+('1001', 'Cash in Hand', 1, 'asset', 0),
+('1002', 'Cash at Bank', 1, 'asset', 0),
+('1003', 'Accounts Receivable', 1, 'asset', 0),
+('1004', 'Inventory', 1, 'asset', 0),
+('1101', 'Furniture & Fixtures', 2, 'asset', 0),
+('1102', 'Equipment', 2, 'asset', 0),
+('2001', 'Accounts Payable', 3, 'liability', 0),
+('2002', 'Short-term Loans', 3, 'liability', 0),
+('3001', 'Owner Capital', 5, 'equity', 0),
+('3002', 'Retained Earnings', 5, 'equity', 0),
+('4001', 'Product Sales', 6, 'revenue', 0),
+('4002', 'Service Revenue', 6, 'revenue', 0),
+('5001', 'Cost of Goods Sold', 8, 'expense', 0),
+('6001', 'Salaries Expense', 9, 'expense', 0),
+('6002', 'Rent Expense', 9, 'expense', 0),
+('6003', 'Utilities Expense', 9, 'expense', 0),
+('6004', 'Office Supplies', 9, 'expense', 0);
+
+-- Journal Entries (double-entry accounting)
+CREATE TABLE IF NOT EXISTS journal_entries (
+    entry_id INT PRIMARY KEY AUTO_INCREMENT,
+    entry_number VARCHAR(50) NOT NULL UNIQUE,
+    entry_date DATE NOT NULL,
+    reference_type VARCHAR(50) NULL,
+    reference_id INT NULL,
+    description TEXT,
+    total_debit DECIMAL(15,2) NOT NULL,
+    total_credit DECIMAL(15,2) NOT NULL,
+    status ENUM('draft','posted','reversed') DEFAULT 'draft',
+    created_by INT NOT NULL,
+    posted_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    INDEX idx_entry_date (entry_date),
+    INDEX idx_status (status),
+    INDEX idx_reference (reference_type, reference_id)
+);
+
+-- Journal Entry Lines
+CREATE TABLE IF NOT EXISTS journal_entry_lines (
+    line_id INT PRIMARY KEY AUTO_INCREMENT,
+    entry_id INT NOT NULL,
+    account_id INT NOT NULL,
+    description TEXT,
+    debit DECIMAL(15,2) DEFAULT 0,
+    credit DECIMAL(15,2) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (entry_id) REFERENCES journal_entries(entry_id) ON DELETE CASCADE,
+    FOREIGN KEY (account_id) REFERENCES accounts(account_id),
+    INDEX idx_entry (entry_id),
+    INDEX idx_account (account_id)
+);
+
+-- Bank Accounts
+CREATE TABLE IF NOT EXISTS bank_accounts (
+    bank_account_id INT PRIMARY KEY AUTO_INCREMENT,
+    account_id INT NOT NULL,
+    bank_name VARCHAR(200) NOT NULL,
+    account_number VARCHAR(50) NOT NULL,
+    account_holder VARCHAR(200),
+    branch VARCHAR(200),
+    ifsc_code VARCHAR(20),
+    opening_balance DECIMAL(15,2) DEFAULT 0,
+    current_balance DECIMAL(15,2) DEFAULT 0,
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(account_id),
+    INDEX idx_active (is_active)
+);
+
+-- Payment Vouchers
+CREATE TABLE IF NOT EXISTS payment_vouchers (
+    voucher_id INT PRIMARY KEY AUTO_INCREMENT,
+    voucher_number VARCHAR(50) NOT NULL UNIQUE,
+    voucher_date DATE NOT NULL,
+    payment_to VARCHAR(200) NOT NULL,
+    payment_type ENUM('supplier','expense','staff','other') DEFAULT 'expense',
+    account_id INT NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    payment_method ENUM('cash','bank','cheque','online') DEFAULT 'cash',
+    cheque_number VARCHAR(50) NULL,
+    bank_account_id INT NULL,
+    description TEXT,
+    journal_entry_id INT NULL,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(account_id),
+    FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(bank_account_id),
+    FOREIGN KEY (journal_entry_id) REFERENCES journal_entries(entry_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    INDEX idx_date (voucher_date),
+    INDEX idx_type (payment_type)
+);
+
+-- Receipt Vouchers
+CREATE TABLE IF NOT EXISTS receipt_vouchers (
+    voucher_id INT PRIMARY KEY AUTO_INCREMENT,
+    voucher_number VARCHAR(50) NOT NULL UNIQUE,
+    voucher_date DATE NOT NULL,
+    received_from VARCHAR(200) NOT NULL,
+    receipt_type ENUM('customer','sales','other') DEFAULT 'customer',
+    account_id INT NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    payment_method ENUM('cash','bank','cheque','online') DEFAULT 'cash',
+    cheque_number VARCHAR(50) NULL,
+    bank_account_id INT NULL,
+    description TEXT,
+    journal_entry_id INT NULL,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(account_id),
+    FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(bank_account_id),
+    FOREIGN KEY (journal_entry_id) REFERENCES journal_entries(entry_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    INDEX idx_date (voucher_date),
+    INDEX idx_type (receipt_type)
 );
 
 -- ============================================================
@@ -359,6 +619,13 @@ CREATE TABLE IF NOT EXISTS sales (
     additional_charges_amount DECIMAL(10, 2) DEFAULT 0.00,
     note TEXT,
     amount_paid DECIMAL(10, 2) DEFAULT 0.00,
+    coupon_id INT NULL,
+    coupon_discount DECIMAL(10,2) DEFAULT 0,
+    loyalty_points_earned INT DEFAULT 0,
+    loyalty_points_redeemed INT DEFAULT 0,
+    gift_card_amount DECIMAL(10,2) DEFAULT 0,
+    token_no VARCHAR(20) NULL,
+    invoice_no VARCHAR(20) NULL,
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
 );
@@ -461,6 +728,27 @@ CREATE TABLE IF NOT EXISTS stock_alerts (
     INDEX idx_alert_product (product_id)
 );
 
+-- Stock Adjustments (manual inventory corrections)
+CREATE TABLE IF NOT EXISTS stock_adjustments (
+    adjustment_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    variant_id INT NULL,
+    store_id INT DEFAULT 1,
+    adjustment_type ENUM('addition','subtraction','correction','damage','theft','return','opening_stock','expired') NOT NULL,
+    quantity_before INT NOT NULL,
+    quantity_adjusted INT NOT NULL,
+    quantity_after INT NOT NULL,
+    reason TEXT,
+    reference_number VARCHAR(100),
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    INDEX idx_adj_product (product_id),
+    INDEX idx_adj_type (adjustment_type),
+    INDEX idx_adj_date (created_at)
+);
+
 -- Supplier Payments
 CREATE TABLE IF NOT EXISTS supplier_payments (
     payment_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -479,7 +767,7 @@ CREATE TABLE IF NOT EXISTS supplier_payments (
     INDEX idx_payment_supplier (supplier_id)
 );
 
--- Store Inventory (stock per store)
+-- Store Inventory (stock per store for multi-store support)
 CREATE TABLE IF NOT EXISTS store_inventory (
     store_inventory_id INT PRIMARY KEY AUTO_INCREMENT,
     store_id INT NOT NULL,
@@ -491,36 +779,6 @@ CREATE TABLE IF NOT EXISTS store_inventory (
     UNIQUE KEY unique_store_product (store_id, product_id),
     INDEX idx_store_inv_store (store_id),
     INDEX idx_store_inv_product (product_id)
-);
-
--- Daily Sales Summary (materialized for fast analytics)
-CREATE TABLE IF NOT EXISTS daily_sales_summary (
-    summary_id INT PRIMARY KEY AUTO_INCREMENT,
-    summary_date DATE NOT NULL UNIQUE,
-    store_id INT DEFAULT 1,
-    total_sales DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-    total_transactions INT NOT NULL DEFAULT 0,
-    total_items_sold INT NOT NULL DEFAULT 0,
-    total_discount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-    avg_transaction_value DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_summary_date (summary_date),
-    INDEX idx_summary_store (store_id)
-);
-
--- Product Performance Metrics
-CREATE TABLE IF NOT EXISTS product_metrics (
-    metric_id INT PRIMARY KEY AUTO_INCREMENT,
-    product_id INT NOT NULL,
-    metric_date DATE NOT NULL,
-    units_sold INT NOT NULL DEFAULT 0,
-    revenue DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-    profit DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
-    UNIQUE KEY unique_product_date (product_id, metric_date),
-    INDEX idx_metric_date (metric_date),
-    INDEX idx_metric_product (product_id)
 );
 
 -- Returns
@@ -549,7 +807,7 @@ CREATE TABLE IF NOT EXISTS variant_combinations (
     INDEX idx_variant_combinations_variant_id (variant_id)
 );
 
--- Variant Inventory
+-- Variant Inventory (stock tracking per variant)
 CREATE TABLE IF NOT EXISTS variant_inventory (
     variant_inventory_id INT PRIMARY KEY AUTO_INCREMENT,
     variant_id INT NOT NULL UNIQUE,
@@ -667,10 +925,9 @@ CREATE TABLE IF NOT EXISTS stock_transfers (
     INDEX idx_transfer_date (transfer_date)
 );
 
--- ==========================================
--- Sales Module Extension Tables
--- Created by: migrate_sales_module.js
--- ==========================================
+-- ============================================================
+-- SALES MODULE EXTENSION TABLES
+-- ============================================================
 
 -- Coupons
 CREATE TABLE IF NOT EXISTS coupons (
@@ -693,6 +950,7 @@ CREATE TABLE IF NOT EXISTS coupons (
     INDEX idx_coupon_active (is_active)
 );
 
+-- Coupon Redemptions
 CREATE TABLE IF NOT EXISTS coupon_redemptions (
     redemption_id INT PRIMARY KEY AUTO_INCREMENT,
     coupon_id INT NOT NULL,
@@ -725,6 +983,7 @@ CREATE TABLE IF NOT EXISTS quotations (
     INDEX idx_quotation_customer (customer_id)
 );
 
+-- Quotation Items
 CREATE TABLE IF NOT EXISTS quotation_items (
     item_id INT PRIMARY KEY AUTO_INCREMENT,
     quotation_id INT NOT NULL,
@@ -756,6 +1015,7 @@ CREATE TABLE IF NOT EXISTS credit_sales (
     INDEX idx_credit_customer (customer_id)
 );
 
+-- Credit Payments
 CREATE TABLE IF NOT EXISTS credit_payments (
     payment_id INT PRIMARY KEY AUTO_INCREMENT,
     credit_sale_id INT NOT NULL,
@@ -768,7 +1028,7 @@ CREATE TABLE IF NOT EXISTS credit_payments (
     FOREIGN KEY (received_by) REFERENCES users(user_id)
 );
 
--- Layaway
+-- Layaway Orders
 CREATE TABLE IF NOT EXISTS layaway_orders (
     layaway_id INT PRIMARY KEY AUTO_INCREMENT,
     layaway_number VARCHAR(50) NOT NULL UNIQUE,
@@ -791,6 +1051,7 @@ CREATE TABLE IF NOT EXISTS layaway_orders (
     INDEX idx_layaway_customer (customer_id)
 );
 
+-- Layaway Items
 CREATE TABLE IF NOT EXISTS layaway_items (
     item_id INT PRIMARY KEY AUTO_INCREMENT,
     layaway_id INT NOT NULL,
@@ -803,6 +1064,7 @@ CREATE TABLE IF NOT EXISTS layaway_items (
     FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
 
+-- Layaway Payments
 CREATE TABLE IF NOT EXISTS layaway_payments (
     payment_id INT PRIMARY KEY AUTO_INCREMENT,
     layaway_id INT NOT NULL,
@@ -815,7 +1077,7 @@ CREATE TABLE IF NOT EXISTS layaway_payments (
     FOREIGN KEY (received_by) REFERENCES users(user_id)
 );
 
--- Loyalty Program
+-- Loyalty Program Config
 CREATE TABLE IF NOT EXISTS loyalty_config (
     config_id INT PRIMARY KEY AUTO_INCREMENT,
     points_per_amount DECIMAL(10,2) DEFAULT 1,
@@ -824,6 +1086,7 @@ CREATE TABLE IF NOT EXISTS loyalty_config (
     is_active TINYINT(1) DEFAULT 0
 );
 
+-- Loyalty Transactions
 CREATE TABLE IF NOT EXISTS loyalty_transactions (
     transaction_id INT PRIMARY KEY AUTO_INCREMENT,
     customer_id INT NOT NULL,
@@ -838,11 +1101,7 @@ CREATE TABLE IF NOT EXISTS loyalty_transactions (
     INDEX idx_loyalty_type (type)
 );
 
--- ==========================================
 -- Gift Cards
--- Created by: migrate_gift_cards.js
--- ==========================================
-
 CREATE TABLE IF NOT EXISTS gift_cards (
     card_id INT PRIMARY KEY AUTO_INCREMENT,
     card_number VARCHAR(50) NOT NULL UNIQUE,
@@ -859,6 +1118,7 @@ CREATE TABLE IF NOT EXISTS gift_cards (
     INDEX idx_gc_status (status)
 );
 
+-- Gift Card Transactions
 CREATE TABLE IF NOT EXISTS gift_card_transactions (
     transaction_id INT PRIMARY KEY AUTO_INCREMENT,
     card_id INT NOT NULL,
@@ -876,11 +1136,7 @@ CREATE TABLE IF NOT EXISTS gift_card_transactions (
     INDEX idx_gct_type (type)
 );
 
--- ==========================================
 -- Price Rules
--- Created by: migrate_price_rules.js
--- ==========================================
-
 CREATE TABLE IF NOT EXISTS price_rules (
     rule_id INT PRIMARY KEY AUTO_INCREMENT,
     rule_name VARCHAR(200) NOT NULL,
@@ -906,6 +1162,7 @@ CREATE TABLE IF NOT EXISTS price_rules (
     INDEX idx_pr_type (rule_type)
 );
 
+-- Price Rule Products (which products/categories a rule applies to)
 CREATE TABLE IF NOT EXISTS price_rule_products (
     id INT PRIMARY KEY AUTO_INCREMENT,
     rule_id INT NOT NULL,
@@ -916,6 +1173,7 @@ CREATE TABLE IF NOT EXISTS price_rule_products (
     FOREIGN KEY (category_id) REFERENCES categories(category_id)
 );
 
+-- Price Rule Usage
 CREATE TABLE IF NOT EXISTS price_rule_usage (
     usage_id INT PRIMARY KEY AUTO_INCREMENT,
     rule_id INT NOT NULL,
@@ -926,11 +1184,7 @@ CREATE TABLE IF NOT EXISTS price_rule_usage (
     FOREIGN KEY (sale_id) REFERENCES sales(sale_id)
 );
 
--- ==========================================
 -- Sales Targets
--- Created by: migrate_sales_targets.js
--- ==========================================
-
 CREATE TABLE IF NOT EXISTS sales_targets (
     target_id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NULL,
@@ -949,6 +1203,7 @@ CREATE TABLE IF NOT EXISTS sales_targets (
     INDEX idx_target_active (is_active)
 );
 
+-- Target Achievements
 CREATE TABLE IF NOT EXISTS target_achievements (
     achievement_id INT PRIMARY KEY AUTO_INCREMENT,
     target_id INT NOT NULL,
@@ -960,11 +1215,7 @@ CREATE TABLE IF NOT EXISTS target_achievements (
     UNIQUE KEY unique_target_date (target_id, achievement_date)
 );
 
--- ==========================================
 -- Invoices
--- Created by: migrate_invoices.js
--- ==========================================
-
 CREATE TABLE IF NOT EXISTS invoices (
     invoice_id INT PRIMARY KEY AUTO_INCREMENT,
     invoice_number VARCHAR(50) NOT NULL UNIQUE,
@@ -989,6 +1240,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     INDEX idx_inv_status (status)
 );
 
+-- Invoice Items
 CREATE TABLE IF NOT EXISTS invoice_items (
     item_id INT PRIMARY KEY AUTO_INCREMENT,
     invoice_id INT NOT NULL,
@@ -1001,14 +1253,3 @@ CREATE TABLE IF NOT EXISTS invoice_items (
     FOREIGN KEY (invoice_id) REFERENCES invoices(invoice_id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
-
--- ==========================================
--- ALTER TABLE additions for Sales Module
--- ==========================================
-
--- ALTER TABLE customers ADD COLUMN loyalty_points INT DEFAULT 0;
--- ALTER TABLE sales ADD COLUMN coupon_id INT NULL;
--- ALTER TABLE sales ADD COLUMN coupon_discount DECIMAL(10,2) DEFAULT 0;
--- ALTER TABLE sales ADD COLUMN loyalty_points_earned INT DEFAULT 0;
--- ALTER TABLE sales ADD COLUMN loyalty_points_redeemed INT DEFAULT 0;
--- ALTER TABLE sales ADD COLUMN gift_card_amount DECIMAL(10,2) DEFAULT 0;

@@ -173,7 +173,30 @@ exports.createSale = async (req, res) => {
       return res.status(400).json({ message: `Discount cannot exceed ${maxDiscountPercent}% of subtotal for your role` });
     }
 
-    // Step 3: Insert the sale header record
+    // Step 3: Generate token_no (hold) or invoice_no (completed sale)
+    let token_no = null;
+    let invoice_no = null;
+    if (status === 'pending') {
+      // Token resets per shift — count tokens since current shift opened
+      const shiftRows = await conn.query(
+        `SELECT opened_at FROM cash_registers WHERE status = 'open' ORDER BY register_id DESC LIMIT 1`
+      );
+      const shiftStart = shiftRows.length > 0 ? shiftRows[0].opened_at : new Date().toISOString().slice(0, 10);
+      const tokenResult = await conn.query(
+        `SELECT COALESCE(MAX(CAST(SUBSTRING(token_no, 2) AS UNSIGNED)), 0) + 1 as next_token
+         FROM sales WHERE token_no IS NOT NULL AND sale_date >= ?`,
+        [shiftStart]
+      );
+      token_no = `#${tokenResult[0].next_token}`;
+    } else {
+      const invResult = await conn.query(
+        `SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_no, 5) AS UNSIGNED)), 0) + 1 as next_inv
+         FROM sales WHERE invoice_no IS NOT NULL`
+      );
+      invoice_no = `INV-${String(invResult[0].next_inv).padStart(5, '0')}`;
+    }
+
+    // Step 4: Insert the sale header record
     const finalAmountPaid = is_credit ? 0 : (status === 'completed' ? (amount_paid || total_amount) : 0);
 
     const saleResult = await conn.query(
@@ -181,8 +204,8 @@ exports.createSale = async (req, res) => {
         total_amount, discount, bundle_discount, bundle_count, net_amount, user_id, customer_id,
         payment_method, amount_paid, status,
         tax_percent, tax_amount, additional_charges_percent, additional_charges_amount, note,
-        coupon_id, coupon_discount, loyalty_points_redeemed
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        coupon_id, coupon_discount, loyalty_points_redeemed, token_no, invoice_no
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         total_amount,
         discountAmt,
@@ -201,13 +224,15 @@ exports.createSale = async (req, res) => {
         note || null,
         couponId,
         couponDiscountAmt > 0 ? couponDiscountAmt : null,
-        actualPointsRedeemed > 0 ? actualPointsRedeemed : null
+        actualPointsRedeemed > 0 ? actualPointsRedeemed : null,
+        token_no,
+        invoice_no
       ]
     );
 
     const sale_id = Number(saleResult.insertId);
 
-    // Step 4: Insert each cart item as a sale detail record and deduct stock
+    // Step 5: Insert each cart item as a sale detail record and deduct stock
     for (const item of items) {
       await conn.query(
         'INSERT INTO sale_details (sale_id, product_id, variant_id, variant_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -398,15 +423,22 @@ exports.completeSale = async (req, res) => {
       return res.status(404).json({ message: 'Pending sale not found' });
     }
 
-    // Update sale status to completed
+    // Generate invoice_no for this completed sale
+    const invResult = await query(
+      `SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_no, 5) AS UNSIGNED)), 0) + 1 as next_inv
+       FROM sales WHERE invoice_no IS NOT NULL`
+    );
+    const invoice_no = `INV-${String(invResult[0].next_inv).padStart(5, '0')}`;
+
+    // Update sale status to completed with invoice_no
     await query(
-      'UPDATE sales SET status = "completed", payment_method = ?, amount_paid = ? WHERE sale_id = ?',
-      [payment_method || 'cash', amount_paid || sale[0].total_amount, id]
+      'UPDATE sales SET status = "completed", payment_method = ?, amount_paid = ?, invoice_no = ? WHERE sale_id = ?',
+      [payment_method || 'cash', amount_paid || sale[0].total_amount, invoice_no, id]
     );
 
-    await logAction(req.user.user_id, req.user.name, 'SALE_COMPLETED', 'sale', id, { payment_method: payment_method || 'cash' }, req.ip);
+    await logAction(req.user.user_id, req.user.name, 'SALE_COMPLETED', 'sale', id, { payment_method: payment_method || 'cash', invoice_no }, req.ip);
 
-    res.json({ message: 'Sale completed successfully', sale_id: id });
+    res.json({ message: 'Sale completed successfully', sale_id: id, invoice_no });
   } catch (error) {
     console.error('Complete sale error:', error);
     res.status(500).json({ message: 'Failed to complete sale' });
@@ -508,8 +540,8 @@ exports.getAll = async (req, res) => {
     if (date_to)   { sql += ' AND DATE(s.sale_date) <= ?'; params.push(date_to); }
 
     if (search) {
-      sql += ' AND (s.sale_id LIKE ? OR c.customer_name LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`);
+      sql += ' AND (s.sale_id LIKE ? OR c.customer_name LIKE ? OR s.invoice_no LIKE ? OR s.token_no LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
 
     if (page && limit) {
@@ -539,8 +571,8 @@ exports.getAll = async (req, res) => {
       if (date_to)   { countSql += ' AND DATE(s.sale_date) <= ?'; countParams.push(date_to); }
 
       if (search) {
-        countSql += ' AND (s.sale_id LIKE ? OR c.customer_name LIKE ?)';
-        countParams.push(`%${search}%`, `%${search}%`);
+        countSql += ' AND (s.sale_id LIKE ? OR c.customer_name LIKE ? OR s.invoice_no LIKE ? OR s.token_no LIKE ?)';
+        countParams.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
       }
 
       const countResult = await query(countSql, countParams);

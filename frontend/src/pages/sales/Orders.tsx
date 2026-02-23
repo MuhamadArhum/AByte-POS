@@ -232,7 +232,11 @@ const Orders = () => {
                     {/* Header */}
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <p className="font-bold text-lg text-gray-800">Order #{sale.sale_id}</p>
+                        {sale.token_no ? (
+                          <p className="text-2xl font-black text-amber-600">Token {sale.token_no}</p>
+                        ) : (
+                          <p className="font-bold text-lg text-gray-800">Order #{sale.sale_id}</p>
+                        )}
                         <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
                           <Calendar size={12} />
                           {new Date(sale.sale_date).toLocaleString('en-US', {
@@ -359,7 +363,7 @@ const Orders = () => {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type="text"
-                  placeholder="Search by Order ID, Customer Name, or Amount..."
+                  placeholder="Search by Invoice No, Order ID, Customer Name, or Amount..."
                   className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm text-gray-700 placeholder-gray-400"
                   value={doneSearch}
                   onChange={(e) => { setDoneSearch(e.target.value); setDonePage(1); }}
@@ -393,7 +397,7 @@ const Orders = () => {
                           <th className="px-6 py-4 font-bold border-b-2 border-gray-200">
                             <div className="flex items-center gap-2">
                               <Package size={16} />
-                              Order #
+                              Invoice / Order
                             </div>
                           </th>
                           <th className="px-6 py-4 font-bold border-b-2 border-gray-200">
@@ -427,7 +431,13 @@ const Orders = () => {
                       <tbody className="divide-y divide-gray-100">
                         {doneSales.map(sale => (
                           <tr key={sale.sale_id} className="hover:bg-gradient-to-r hover:from-emerald-50/30 hover:to-blue-50/30 transition-all duration-150">
-                            <td className="px-6 py-4 font-bold text-gray-900">#{sale.sale_id}</td>
+                            <td className="px-6 py-4">
+                              {sale.invoice_no ? (
+                                <span className="font-bold text-emerald-700">{sale.invoice_no}</span>
+                              ) : (
+                                <span className="font-bold text-gray-900">#{sale.sale_id}</span>
+                              )}
+                            </td>
                             <td className="px-6 py-4 text-gray-600 text-sm">
                               {new Date(sale.sale_date).toLocaleString('en-US', {
                                 month: 'short',
