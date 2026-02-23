@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, DollarSign, Package, Users } from 'lucide-react';
+import { TrendingUp, DollarSign, Package, Users, Calendar } from 'lucide-react';
 import api from '../../utils/api';
+
+const todayStr = new Date().toISOString().split('T')[0];
 
 const Analytics = () => {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
-    start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    end_date: new Date().toISOString().split('T')[0]
+    start_date: todayStr,
+    end_date: todayStr
   });
 
   useEffect(() => {
@@ -32,24 +34,41 @@ const Analytics = () => {
       <h1 className="text-3xl font-bold text-gray-800 mb-8">Analytics Dashboard</h1>
 
       {/* Date Range Selector */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-          <input
-            type="date"
-            value={dateRange.start_date}
-            onChange={(e) => setDateRange({ ...dateRange, start_date: e.target.value })}
-            className="px-4 py-2 border border-gray-200 rounded-lg"
-          />
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-wrap items-center gap-4">
+        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+          {[{label:'Today',key:'today'},{label:'This Week',key:'week'},{label:'This Month',key:'month'}].map(p => (
+            <button key={p.key} onClick={() => {
+              const d = new Date();
+              let from = todayStr, to = todayStr;
+              if (p.key === 'week') from = new Date(d.getTime() - 6 * 86400000).toISOString().split('T')[0];
+              else if (p.key === 'month') from = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+              setDateRange({ start_date: from, end_date: to });
+            }} className="px-3 py-1.5 rounded-md text-sm font-medium hover:bg-white hover:shadow transition-all">
+              {p.label}
+            </button>
+          ))}
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-          <input
-            type="date"
-            value={dateRange.end_date}
-            onChange={(e) => setDateRange({ ...dateRange, end_date: e.target.value })}
-            className="px-4 py-2 border border-gray-200 rounded-lg"
-          />
+        <div className="flex items-center gap-2">
+          <Calendar size={18} className="text-gray-400" />
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">From</label>
+            <input
+              type="date"
+              value={dateRange.start_date}
+              onChange={(e) => setDateRange({ ...dateRange, start_date: e.target.value })}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm"
+            />
+          </div>
+          <span className="text-gray-400 mt-4">to</span>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">To</label>
+            <input
+              type="date"
+              value={dateRange.end_date}
+              onChange={(e) => setDateRange({ ...dateRange, end_date: e.target.value })}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm"
+            />
+          </div>
         </div>
       </div>
 

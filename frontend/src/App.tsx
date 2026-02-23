@@ -12,10 +12,6 @@ import CashRegister from './pages/sales/CashRegister';
 import Returns from './pages/sales/Returns';
 import Quotations from './pages/sales/Quotations';
 import CreditSales from './pages/sales/CreditSales';
-import Layaway from './pages/sales/Layaway';
-import Coupons from './pages/sales/Coupons';
-import LoyaltyProgram from './pages/sales/LoyaltyProgram';
-import GiftCards from './pages/sales/GiftCards';
 import PriceRules from './pages/sales/PriceRules';
 import SalesTargets from './pages/sales/SalesTargets';
 import Invoices from './pages/sales/Invoices';
@@ -421,42 +417,10 @@ function App() {
                         }
                       />
                       <Route
-                        path="/layaway"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <Layaway />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/coupons"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <Coupons />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/loyalty"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <LoyaltyProgram />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
                         path="/sales-reports"
                         element={
                           <RoleRoute allowedRoles={['Admin', 'Manager']}>
                             <SalesReports />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/gift-cards"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <GiftCards />
                           </RoleRoute>
                         }
                       />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BarChart3, Package, DollarSign, AlertTriangle, XCircle, TrendingUp, Tag, Clock } from 'lucide-react';
+import { BarChart3, Package, DollarSign, AlertTriangle, XCircle, TrendingUp, Tag, Clock, Calendar } from 'lucide-react';
 import api from '../../utils/api';
 
 interface TopProduct {
@@ -28,8 +28,12 @@ interface SlowMover {
   value_at_risk: number;
 }
 
+const today = new Date().toISOString().split('T')[0];
+
 const InventoryReports = () => {
   const [loading, setLoading] = useState(true);
+  const [dateFrom, setDateFrom] = useState(today);
+  const [dateTo, setDateTo] = useState(today);
   const [summary, setSummary] = useState({
     total_products: 0, total_stock_value: 0, total_units: 0, low_stock_count: 0, out_of_stock_count: 0
   });
@@ -37,26 +41,37 @@ const InventoryReports = () => {
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const [slowMovers, setSlowMovers] = useState<SlowMover[]>([]);
 
+  const fetchAll = async (from = dateFrom, to = dateTo) => {
+    setLoading(true);
+    try {
+      const [summaryRes, topRes, catRes, slowRes] = await Promise.all([
+        api.get('/inventory-reports/summary'),
+        api.get('/inventory-reports/top-products', { params: { limit: 10, date_from: from, date_to: to } }),
+        api.get('/inventory-reports/category-breakdown'),
+        api.get('/inventory-reports/slow-movers?days=30'),
+      ]);
+      setSummary(summaryRes.data);
+      setTopProducts(topRes.data.data);
+      setCategories(catRes.data.data);
+      setSlowMovers(slowRes.data.data);
+    } catch (error) {
+      console.error('Failed to fetch reports', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const setPreset = (preset: string) => {
+    const d = new Date();
+    let from = today, to = today;
+    if (preset === 'week') from = new Date(d.getTime() - 6 * 86400000).toISOString().split('T')[0];
+    else if (preset === 'month') from = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+    setDateFrom(from);
+    setDateTo(to);
+    fetchAll(from, to);
+  };
+
   useEffect(() => {
-    const fetchAll = async () => {
-      setLoading(true);
-      try {
-        const [summaryRes, topRes, catRes, slowRes] = await Promise.all([
-          api.get('/inventory-reports/summary'),
-          api.get('/inventory-reports/top-products?limit=10'),
-          api.get('/inventory-reports/category-breakdown'),
-          api.get('/inventory-reports/slow-movers?days=30'),
-        ]);
-        setSummary(summaryRes.data);
-        setTopProducts(topRes.data.data);
-        setCategories(catRes.data.data);
-        setSlowMovers(slowRes.data.data);
-      } catch (error) {
-        console.error('Failed to fetch reports', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchAll();
   }, []);
 
@@ -79,6 +94,25 @@ const InventoryReports = () => {
           Inventory Reports
         </h1>
         <p className="text-gray-500 mt-1">Stock analytics and performance insights</p>
+      </div>
+
+      {/* Date Filter */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap items-center gap-4">
+        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+          {[{label:'Today',key:'today'},{label:'This Week',key:'week'},{label:'This Month',key:'month'}].map(p => (
+            <button key={p.key} onClick={() => setPreset(p.key)}
+              className="px-3 py-1.5 rounded-md text-sm font-medium hover:bg-white hover:shadow transition-all">
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <Calendar size={18} className="text-gray-400" />
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="px-3 py-1.5 border rounded-lg text-sm" />
+          <span className="text-gray-400">to</span>
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="px-3 py-1.5 border rounded-lg text-sm" />
+        </div>
+        <button onClick={() => fetchAll()} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">Apply</button>
       </div>
 
       {/* Summary Cards */}

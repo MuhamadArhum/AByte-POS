@@ -30,19 +30,34 @@ exports.getStockSummary = async (req, res) => {
 
 exports.getTopProducts = async (req, res) => {
   try {
-    const { limit = 10 } = req.query;
+    const { limit = 10, date_from, date_to } = req.query;
+    const params = [];
+    let dateWhere = '';
+    if (date_from && date_to) {
+      dateWhere = 'AND DATE(s.sale_date) BETWEEN ? AND ?';
+      params.push(date_from, date_to);
+    } else if (date_from) {
+      dateWhere = 'AND DATE(s.sale_date) >= ?';
+      params.push(date_from);
+    } else if (date_to) {
+      dateWhere = 'AND DATE(s.sale_date) <= ?';
+      params.push(date_to);
+    }
+    params.push(parseInt(limit));
+
     const data = await query(`
       SELECT p.product_id, p.product_name, p.price, c.category_name,
-        COALESCE(SUM(sd.quantity), 0) as units_sold,
-        COALESCE(SUM(sd.total_price), 0) as revenue
+        SUM(sd.quantity) as units_sold,
+        SUM(sd.total_price) as revenue
       FROM products p
-      LEFT JOIN sale_details sd ON p.product_id = sd.product_id
+      JOIN sale_details sd ON p.product_id = sd.product_id
+      JOIN sales s ON sd.sale_id = s.sale_id AND s.status = 'completed'
       LEFT JOIN categories c ON p.category_id = c.category_id
+      WHERE 1=1 ${dateWhere}
       GROUP BY p.product_id
-      HAVING units_sold > 0
       ORDER BY units_sold DESC
       LIMIT ?
-    `, [parseInt(limit)]);
+    `, params);
 
     res.json({ data });
   } catch (error) {

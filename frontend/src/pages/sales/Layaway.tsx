@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Archive, Plus, Search, DollarSign, Clock, CheckCircle, XCircle, X, Eye, Trash2, Printer } from 'lucide-react';
+import { Archive, Plus, Search, DollarSign, Clock, CheckCircle, XCircle, X, Eye, Trash2, Printer, Loader2 } from 'lucide-react';
 import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
@@ -37,6 +37,10 @@ const Layaway = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [stats, setStats] = useState({ active_count: 0, total_reserved_value: 0, expiring_soon: 0, completed_count: 0 });
+
+  // Thermal print
+  const [layawayThermalAvailable, setLayawayThermalAvailable] = useState(false);
+  const [thermalPrintingId, setThermalPrintingId] = useState<number | null>(null);
 
   // Modals
   const [showCreate, setShowCreate] = useState(false);
@@ -77,6 +81,11 @@ const Layaway = () => {
 
   useEffect(() => { fetchStats(); }, []);
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
+  useEffect(() => {
+    api.get('/settings/printers/check?purpose=layaway_receipt')
+      .then(res => setLayawayThermalAvailable(res.data.available))
+      .catch(() => {});
+  }, []);
 
   const openCreate = async () => {
     try {
@@ -129,6 +138,35 @@ const Layaway = () => {
   const viewDetail = async (id: number) => {
     try { const res = await api.get(`/layaway/${id}`); setDetailModal(res.data); }
     catch (err) { console.error(err); }
+  };
+
+  const handleThermalPrintLayaway = async (o: LayawayOrder) => {
+    setThermalPrintingId(o.layaway_id);
+    try {
+      await api.post('/settings/print-thermal-document', {
+        purpose: 'layaway_receipt',
+        documentData: {
+          layawayNumber: o.layaway_number,
+          customerName: o.customer_name,
+          totalAmount: o.total_amount,
+          depositAmount: o.deposit_amount,
+          paidAmount: o.paid_amount,
+          balanceDue: o.balance_due,
+          expiryDate: o.expiry_date,
+          status: o.status,
+        },
+      });
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Print failed');
+    } finally {
+      setThermalPrintingId(null);
+    }
+  };
+
+  const handlePrintRowLayaway = (o: LayawayOrder) => {
+    const rows = [[o.layaway_number, o.customer_name, `$${Number(o.total_amount).toFixed(2)}`, `$${Number(o.paid_amount).toFixed(2)}`, `$${Number(o.balance_due).toFixed(2)}`, o.expiry_date ? new Date(o.expiry_date).toLocaleDateString() : '-', o.status]];
+    const content = buildTable(['Layaway #', 'Customer', 'Total', 'Paid', 'Balance', 'Expiry', 'Status'], rows, { alignRight: [2, 3, 4] });
+    printReport({ title: `Layaway - ${o.layaway_number}`, content });
   };
 
   const subtotal = formItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
@@ -226,6 +264,14 @@ const Layaway = () => {
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
                           <button onClick={() => viewDetail(o.layaway_id)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg" title="View"><Eye size={16} /></button>
+                          <button
+                            onClick={() => layawayThermalAvailable ? handleThermalPrintLayaway(o) : handlePrintRowLayaway(o)}
+                            disabled={thermalPrintingId === o.layaway_id}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-60"
+                            title={layawayThermalAvailable ? 'Print Thermal Receipt' : 'Print Receipt (A4)'}
+                          >
+                            {thermalPrintingId === o.layaway_id ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
+                          </button>
                           {o.status === 'active' && <>
                             <button onClick={() => { setPaymentModal(o); setPayAmount(''); setPayMethod('Cash'); setPayNotes(''); }} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg" title="Make Payment"><DollarSign size={16} /></button>
                             <button onClick={() => handleCancel(o.layaway_id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg" title="Cancel"><XCircle size={16} /></button>

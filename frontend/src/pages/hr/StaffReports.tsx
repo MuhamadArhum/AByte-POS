@@ -57,14 +57,8 @@ const StaffReports = () => {
   const [attendanceLoading, setAttendanceLoading] = useState(false);
 
   // Salary report state
-  const [salaryFromDate, setSalaryFromDate] = useState(() => {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth() - 1, 1).toISOString().split('T')[0];
-  });
-  const [salaryToDate, setSalaryToDate] = useState(() => {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 0).toISOString().split('T')[0];
-  });
+  const [salaryFromDate, setSalaryFromDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [salaryToDate, setSalaryToDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [salaryData, setSalaryData] = useState<SalaryReportRow[]>([]);
   const [salaryLoading, setSalaryLoading] = useState(false);
 

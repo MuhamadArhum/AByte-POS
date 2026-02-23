@@ -9,52 +9,55 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCart }) => {
   return (
-    <div 
-      className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer flex flex-col justify-between h-full"
+    <div
+      className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer flex flex-col justify-between h-full"
       onClick={() => onAddToCart(product)}
     >
       <div>
-        <div className="relative h-32 bg-gray-50 rounded-lg mb-3 flex items-center justify-center text-emerald-600 text-2xl font-bold border border-gray-100">
-          {product.product_name.charAt(0)}
+        {/* Icon area */}
+        <div className="relative h-20 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg mb-2.5 flex items-center justify-center border border-emerald-100">
+          <span className="text-2xl font-black text-emerald-600">{product.product_name.charAt(0)}</span>
           {/* @ts-ignore - has_variants exists on product after backend query */}
           {product.has_variants && (
-            <span className="absolute top-2 left-2 bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-bold border border-blue-200">
-              Variants
-            </span>
-          )}
-          {product.stock_quantity <= 10 && product.stock_quantity > 0 && (
-            <span className="absolute top-2 right-2 bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold border border-orange-200">
-              Low Stock
+            <span className="absolute top-1 left-1 bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+              Var
             </span>
           )}
           {product.stock_quantity === 0 && (
-            <span className="absolute top-2 right-2 bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-bold border border-red-200">
-              Out of Stock
+            <div className="absolute inset-0 bg-white/70 rounded-lg flex items-center justify-center">
+              <span className="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded-full font-bold border border-red-200">Out of Stock</span>
+            </div>
+          )}
+          {product.stock_quantity > 0 && product.stock_quantity <= 10 && (
+            <span className="absolute top-1 right-1 bg-orange-100 text-orange-600 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+              Low
             </span>
           )}
         </div>
-        <h3 className="font-semibold text-gray-800 line-clamp-2">{product.product_name}</h3>
-        <p className={`text-sm mb-2 ${product.stock_quantity === 0 ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
-          Stock: {product.stock_quantity}
+
+        {/* Name */}
+        <h3 className="font-bold text-gray-800 text-xs leading-tight line-clamp-2 mb-1">{product.product_name}</h3>
+        <p className={`text-[11px] ${product.stock_quantity === 0 ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
+          Stk: {product.stock_quantity}
         </p>
       </div>
+
+      {/* Price + Add button */}
       <div className="flex items-center justify-between mt-2">
-        <span className="text-lg font-bold text-emerald-600">${product.price.toFixed(2)}</span>
-        <button 
-          className={`p-2 rounded-full transition-colors shadow-sm ${
-            product.stock_quantity === 0 
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-              : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+        <span className="text-sm font-black text-emerald-600">Rs. {product.price.toFixed(2)}</span>
+        <button
+          className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors shadow-sm ${
+            product.stock_quantity === 0
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-emerald-500 text-white hover:bg-emerald-600'
           }`}
           onClick={(e) => {
             e.stopPropagation();
-            if (product.stock_quantity > 0) {
-              onAddToCart(product);
-            }
+            if (product.stock_quantity > 0) onAddToCart(product);
           }}
           disabled={product.stock_quantity === 0}
         >
-          <Plus size={18} />
+          <Plus size={14} />
         </button>
       </div>
     </div>

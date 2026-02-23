@@ -483,9 +483,9 @@ exports.getToday = async (req, res) => {
 // --- Get All Sales ---
 exports.getAll = async (req, res) => {
   try {
-    const { page, limit, search, status } = req.query;
+    const { page, limit, search, status, date_from, date_to } = req.query;
     let sql = `
-      SELECT s.*, c.customer_name, u.name as cashier_name 
+      SELECT s.*, c.customer_name, u.name as cashier_name
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
@@ -503,6 +503,9 @@ exports.getAll = async (req, res) => {
         params.push(status);
       }
     }
+
+    if (date_from) { sql += ' AND DATE(s.sale_date) >= ?'; params.push(date_from); }
+    if (date_to)   { sql += ' AND DATE(s.sale_date) <= ?'; params.push(date_to); }
 
     if (search) {
       sql += ' AND (s.sale_id LIKE ? OR c.customer_name LIKE ?)';
@@ -531,6 +534,9 @@ exports.getAll = async (req, res) => {
           countParams.push(status);
         }
       }
+
+      if (date_from) { countSql += ' AND DATE(s.sale_date) >= ?'; countParams.push(date_from); }
+      if (date_to)   { countSql += ' AND DATE(s.sale_date) <= ?'; countParams.push(date_to); }
 
       if (search) {
         countSql += ' AND (s.sale_id LIKE ? OR c.customer_name LIKE ?)';

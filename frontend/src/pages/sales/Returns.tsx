@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RotateCcw, Search, Loader2, Check } from 'lucide-react';
+import { RotateCcw, Search, Loader2, Check, Printer } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
 
@@ -44,6 +44,11 @@ const Returns = () => {
   const [reasonNote, setReasonNote] = useState('');
   const [refundMethod, setRefundMethod] = useState('original');
   const [returnType, setReturnType] = useState<'return' | 'exchange'>('return');
+
+  // Return result for printing
+  const [returnData, setReturnData] = useState<{ saleId: number; items: { product_name: string; quantity: number; unit_price: string }[]; refundAmount: number; reason: string; refundMethod: string; returnType: string } | null>(null);
+  const [thermalAvailable, setThermalAvailable] = useState(false);
+  const [thermalPrinting, setThermalPrinting] = useState(false);
 
   // Recent returns
   const [recentReturns, setRecentReturns] = useState<any[]>([]);
@@ -112,6 +117,20 @@ const Returns = () => {
         quantity_returned: qty,
       }));
 
+      // Capture data for printing before clearing state
+      const printItems = Object.entries(selectedItems).map(([pid, qty]) => {
+        const item = sale!.items.find(i => i.product_id === Number(pid));
+        return { product_name: item?.product_name || '', quantity: qty, unit_price: item?.unit_price || '0' };
+      });
+      const capturedReturnData = {
+        saleId: sale!.sale_id,
+        items: printItems,
+        refundAmount: totalRefund,
+        reason: REASONS.find(r => r.value === reason)?.label || reason,
+        refundMethod,
+        returnType,
+      };
+
       await api.post('/returns', {
         sale_id: sale?.sale_id,
         items,
@@ -121,6 +140,7 @@ const Returns = () => {
         return_type: returnType,
       });
 
+      setReturnData(capturedReturnData);
       setSuccess(true);
       setSale(null);
       setSelectedItems({});
@@ -131,6 +151,27 @@ const Returns = () => {
       alert(error.response?.data?.message || 'Failed to process return');
     } finally {
       setProcessing(false);
+    }
+  };
+
+  useEffect(() => {
+    api.get('/settings/printers/check?purpose=return_receipt')
+      .then(res => setThermalAvailable(res.data.available))
+      .catch(() => {});
+  }, []);
+
+  const handleThermalPrint = async () => {
+    if (!returnData) return;
+    setThermalPrinting(true);
+    try {
+      await api.post('/settings/print-thermal-document', {
+        purpose: 'return_receipt',
+        documentData: returnData,
+      });
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Print failed');
+    } finally {
+      setThermalPrinting(false);
     }
   };
 
@@ -182,10 +223,22 @@ const Returns = () => {
 
       {/* Success Message */}
       {success && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6 flex items-center gap-3">
-          <Check size={20} className="text-emerald-600" />
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6 flex items-center gap-3 flex-wrap">
+          <Check size={20} className="text-emerald-600 flex-shrink-0" />
           <span className="text-emerald-700 font-medium">Return processed successfully! Stock has been restored.</span>
-          <button onClick={() => setSuccess(false)} className="ml-auto text-emerald-600 hover:text-emerald-800 text-sm">Dismiss</button>
+          <div className="ml-auto flex items-center gap-2">
+            {thermalAvailable && returnData && (
+              <button
+                onClick={handleThermalPrint}
+                disabled={thermalPrinting}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition-colors disabled:opacity-60"
+              >
+                {thermalPrinting ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />}
+                Print Return Receipt
+              </button>
+            )}
+            <button onClick={() => { setSuccess(false); setReturnData(null); }} className="text-emerald-600 hover:text-emerald-800 text-sm">Dismiss</button>
+          </div>
         </div>
       )}
 

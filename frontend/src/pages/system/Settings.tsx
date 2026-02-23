@@ -33,7 +33,9 @@ import {
   CheckCircle,
   XCircle,
   Play,
-  Tag
+  Tag,
+  RotateCcw,
+  CreditCard
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast';
@@ -96,13 +98,14 @@ const Settings = () => {
     port: number;
     printer_share_name: string | null;
     paper_width: number;
-    purpose: 'receipt' | 'invoice' | 'quotation';
+    purpose: string;
     is_active: number;
   }
+  type PrinterPurpose = 'receipt' | 'invoice' | 'quotation' | 'return_receipt' | 'credit_sale' | 'layaway_receipt';
   const [printers, setPrinters] = useState<PrinterEntry[]>([]);
   const [showPrinterModal, setShowPrinterModal] = useState(false);
   const [editingPrinter, setEditingPrinter] = useState<PrinterEntry | null>(null);
-  const [printerForm, setPrinterForm] = useState({ name: '', type: 'network' as 'network' | 'usb', ip_address: '', port: 9100, printer_share_name: '', paper_width: 80, purpose: 'receipt' as 'receipt' | 'invoice' | 'quotation', is_active: true });
+  const [printerForm, setPrinterForm] = useState({ name: '', type: 'network' as 'network' | 'usb', ip_address: '', port: 9100, printer_share_name: '', paper_width: 80, purpose: 'receipt' as PrinterPurpose, is_active: true });
   const [printerSaving, setPrinterSaving] = useState(false);
   const [testingPrinterId, setTestingPrinterId] = useState<number | null>(null);
   const [printerTestResults, setPrinterTestResults] = useState<Record<number, { success: boolean; message: string }>>({});
@@ -694,29 +697,35 @@ const Settings = () => {
                 </button>
               </div>
 
-              {/* Purpose legend */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[
-                  { purpose: 'receipt', label: 'Receipt Printer', desc: 'POS sales receipts — prints directly on thermal without popup', color: 'emerald', icon: Receipt },
-                  { purpose: 'invoice', label: 'Invoice Printer', desc: 'Customer invoices — prints directly on thermal without popup', color: 'blue', icon: FileText },
-                  { purpose: 'quotation', label: 'Quotation Printer', desc: 'Price quotations — prints directly on thermal without popup', color: 'purple', icon: Tag },
-                ].map(item => {
-                  const Icon = item.icon;
-                  const hasPrinter = printers.some(p => p.purpose === item.purpose && p.is_active);
-                  return (
-                    <div key={item.purpose} className={`p-4 rounded-xl border-2 ${hasPrinter ? 'border-emerald-200 bg-emerald-50' : 'border-gray-200 bg-gray-50'}`}>
-                      <div className="flex items-center gap-2 mb-1">
-                        <Icon size={16} className={hasPrinter ? 'text-emerald-600' : 'text-gray-400'} />
-                        <span className="font-semibold text-sm text-gray-700">{item.label}</span>
-                        {hasPrinter ? <CheckCircle size={14} className="text-emerald-500 ml-auto" /> : <XCircle size={14} className="text-gray-300 ml-auto" />}
+              {/* Purpose legend — Sales Module Sections */}
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Sales Module — Printer Assignment Status</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {[
+                    { purpose: 'receipt',        label: 'POS Receipt',    desc: 'Sale receipts',       icon: Receipt },
+                    { purpose: 'invoice',         label: 'Invoice',        desc: 'Customer invoices',   icon: FileText },
+                    { purpose: 'quotation',       label: 'Quotation',      desc: 'Price quotes',        icon: Tag },
+                    { purpose: 'return_receipt',  label: 'Return Receipt', desc: 'Return/exchange',     icon: RotateCcw },
+                    { purpose: 'credit_sale',     label: 'Credit Sale',    desc: 'Credit documents',    icon: CreditCard },
+                    { purpose: 'layaway_receipt', label: 'Layaway',        desc: 'Layaway receipts',    icon: Package },
+                  ].map(item => {
+                    const Icon = item.icon;
+                    const hasPrinter = printers.some(p => p.purpose === item.purpose && p.is_active);
+                    return (
+                      <div key={item.purpose} className={`p-3 rounded-xl border-2 ${hasPrinter ? 'border-emerald-200 bg-emerald-50' : 'border-gray-200 bg-gray-50'}`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Icon size={14} className={hasPrinter ? 'text-emerald-600' : 'text-gray-400'} />
+                          <span className="font-semibold text-xs text-gray-700">{item.label}</span>
+                          {hasPrinter ? <CheckCircle size={12} className="text-emerald-500 ml-auto" /> : <XCircle size={12} className="text-gray-300 ml-auto" />}
+                        </div>
+                        <p className="text-xs text-gray-400">{item.desc}</p>
+                        <p className={`text-xs font-semibold mt-1 ${hasPrinter ? 'text-emerald-600' : 'text-gray-400'}`}>
+                          {hasPrinter ? '✓ Configured' : 'Not set'}
+                        </p>
                       </div>
-                      <p className="text-xs text-gray-500">{item.desc}</p>
-                      <p className={`text-xs font-semibold mt-1 ${hasPrinter ? 'text-emerald-600' : 'text-gray-400'}`}>
-                        {hasPrinter ? '✓ Configured' : 'Not configured'}
-                      </p>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Printers List */}
@@ -733,7 +742,8 @@ const Settings = () => {
                 <div className="space-y-3">
                   {printers.map(printer => {
                     const testResult = printerTestResults[printer.printer_id];
-                    const purposeColors: Record<string, string> = { receipt: 'bg-emerald-100 text-emerald-700', invoice: 'bg-blue-100 text-blue-700', quotation: 'bg-purple-100 text-purple-700' };
+                    const purposeColors: Record<string, string> = { receipt: 'bg-emerald-100 text-emerald-700', invoice: 'bg-blue-100 text-blue-700', quotation: 'bg-purple-100 text-purple-700', return_receipt: 'bg-orange-100 text-orange-700', credit_sale: 'bg-rose-100 text-rose-700', layaway_receipt: 'bg-indigo-100 text-indigo-700' };
+                    const purposeLabels: Record<string, string> = { receipt: 'POS Receipt', invoice: 'Invoice', quotation: 'Quotation', return_receipt: 'Return', credit_sale: 'Credit Sale', layaway_receipt: 'Layaway' };
                     const typeColors: Record<string, string> = { network: 'bg-sky-100 text-sky-700', usb: 'bg-orange-100 text-orange-700' };
                     return (
                       <div key={printer.printer_id} className={`p-4 rounded-xl border-2 flex items-start gap-4 ${printer.is_active ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-50 opacity-60'}`}>
@@ -743,7 +753,7 @@ const Settings = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-gray-800">{printer.name}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${purposeColors[printer.purpose]}`}>{printer.purpose.toUpperCase()}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${purposeColors[printer.purpose]}`}>{purposeLabels[printer.purpose] || printer.purpose.toUpperCase()}</span>
                             <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${typeColors[printer.type]}`}>{printer.type === 'network' ? 'Network' : 'USB'}</span>
                             {!printer.is_active && <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">INACTIVE</span>}
                           </div>
@@ -1177,20 +1187,22 @@ const Settings = () => {
 
               {/* Purpose */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Purpose *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Purpose *</label>
+                <p className="text-xs text-gray-400 mb-2">Select what this printer will be used for in the Sales module</p>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { value: 'receipt', label: 'Receipt', desc: 'POS sales', color: 'emerald' },
-                    { value: 'invoice', label: 'Invoice', desc: 'Customer bills', color: 'blue' },
-                    { value: 'quotation', label: 'Quotation', desc: 'Price quotes', color: 'purple' },
+                    { value: 'receipt',        label: 'POS Receipt',    desc: 'Sale receipts' },
+                    { value: 'invoice',         label: 'Invoice',        desc: 'Customer bills' },
+                    { value: 'quotation',       label: 'Quotation',      desc: 'Price quotes' },
+                    { value: 'return_receipt',  label: 'Return',         desc: 'Return/exchange' },
+                    { value: 'credit_sale',     label: 'Credit Sale',    desc: 'Credit docs' },
+                    { value: 'layaway_receipt', label: 'Layaway',        desc: 'Layaway orders' },
                   ].map(p => (
                     <button key={p.value} type="button"
                       onClick={() => setPrinterForm({ ...printerForm, purpose: p.value as any })}
-                      className={`p-3 rounded-lg border-2 text-center transition-all ${printerForm.purpose === p.value
-                        ? p.color === 'emerald' ? 'border-emerald-500 bg-emerald-50' : p.color === 'blue' ? 'border-blue-500 bg-blue-50' : 'border-purple-500 bg-purple-50'
-                        : 'border-gray-200 hover:bg-gray-50'}`}>
-                      <p className="font-semibold text-sm text-gray-800">{p.label}</p>
-                      <p className="text-xs text-gray-500">{p.desc}</p>
+                      className={`p-2.5 rounded-lg border-2 text-center transition-all ${printerForm.purpose === p.value ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                      <p className={`font-semibold text-xs ${printerForm.purpose === p.value ? 'text-emerald-700' : 'text-gray-800'}`}>{p.label}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{p.desc}</p>
                     </button>
                   ))}
                 </div>

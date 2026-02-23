@@ -7,8 +7,8 @@ const EmployeeLedger = () => {
   const toast = useToast();
   const [staff, setStaff] = useState<any[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState('');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [fromDate, setFromDate] = useState(new Date().toISOString().split('T')[0]);
+  const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
 

@@ -2,44 +2,11 @@ import { useState, useEffect } from 'react';
 import { X, Printer, Zap } from 'lucide-react';
 import api from '../utils/api';
 import { printReport } from '../utils/reportPrinter';
+import { buildInvoiceHTML, type PrintInvoice, type StoreInfo } from '../templates/invoiceTemplate';
 
 interface InvoicePrintModalProps {
   invoiceId: number;
   onClose: () => void;
-}
-
-interface PrintItem {
-  description: string;
-  product_name?: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-}
-
-interface PrintInvoice {
-  invoice_id: number;
-  invoice_number: string;
-  customer_name: string;
-  customer_phone?: string;
-  customer_email?: string;
-  customer_address?: string;
-  subtotal: number;
-  tax_amount: number;
-  discount: number;
-  total_amount: number;
-  status: string;
-  due_date: string | null;
-  payment_terms: string | null;
-  notes: string | null;
-  created_at: string;
-  items: PrintItem[];
-}
-
-interface StoreInfo {
-  store_name: string;
-  address?: string;
-  phone?: string;
-  email?: string;
 }
 
 const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
@@ -75,112 +42,10 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
 
   const handlePrint = () => {
     if (!invoice || !store) return;
-
-    const itemsRows = invoice.items.map((item, idx) =>
-      `<tr style="border-bottom:1px solid #e5e7eb;">
-        <td style="padding:10px 8px;font-size:13px;color:#666;">${idx + 1}</td>
-        <td style="padding:10px 8px;font-size:13px;color:#1f2937;">${item.description || item.product_name || 'Item'}</td>
-        <td style="padding:10px 8px;font-size:13px;color:#1f2937;text-align:right;">${item.quantity}</td>
-        <td style="padding:10px 8px;font-size:13px;color:#1f2937;text-align:right;">Rs. ${Number(item.unit_price).toFixed(2)}</td>
-        <td style="padding:10px 8px;font-size:13px;color:#1f2937;text-align:right;font-weight:500;">Rs. ${Number(item.total_price).toFixed(2)}</td>
-      </tr>`
-    ).join('');
-
-    const statusColors: Record<string, string> = {
-      paid: 'background:#dcfce7;color:#15803d;',
-      overdue: 'background:#fee2e2;color:#b91c1c;',
-      partial: 'background:#fef9c3;color:#a16207;',
-      sent: 'background:#dbeafe;color:#1d4ed8;',
-      draft: 'background:#f3f4f6;color:#374151;'
-    };
-
-    const content = `
-      <div style="max-width:700px;margin:0 auto;">
-        <!-- Store Header -->
-        <div style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:2px solid #1f2937;">
-          <h1 style="font-size:26px;font-weight:bold;color:#1f2937;margin:0;">${store.store_name}</h1>
-          ${store.address ? `<p style="font-size:13px;color:#666;margin:4px 0 0;">${store.address}</p>` : ''}
-          <div style="font-size:13px;color:#666;margin-top:4px;">
-            ${store.phone ? `Tel: ${store.phone}` : ''}${store.phone && store.email ? ' &nbsp;|&nbsp; ' : ''}${store.email ? `Email: ${store.email}` : ''}
-          </div>
-        </div>
-
-        <!-- Invoice Title -->
-        <div style="text-align:center;margin-bottom:30px;">
-          <h2 style="font-size:22px;font-weight:bold;color:#1f2937;letter-spacing:2px;text-transform:uppercase;margin:0;">Invoice</h2>
-        </div>
-
-        <!-- Customer & Invoice Details -->
-        <table style="width:100%;margin-bottom:30px;"><tr>
-          <td style="vertical-align:top;width:50%;">
-            <p style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;margin:0 0 8px;">Bill To</p>
-            <p style="font-size:16px;font-weight:600;color:#1f2937;margin:0;">${invoice.customer_name}</p>
-            ${invoice.customer_phone ? `<p style="font-size:13px;color:#666;margin:2px 0 0;">${invoice.customer_phone}</p>` : ''}
-            ${invoice.customer_email ? `<p style="font-size:13px;color:#666;margin:2px 0 0;">${invoice.customer_email}</p>` : ''}
-            ${invoice.customer_address ? `<p style="font-size:13px;color:#666;margin:2px 0 0;font-weight:bold;">${invoice.customer_address}</p>` : ''}
-          </td>
-          <td style="vertical-align:top;width:50%;text-align:right;">
-            <p style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;margin:0 0 8px;">Invoice Details</p>
-            <p style="font-size:16px;font-weight:600;color:#1f2937;margin:0;">${invoice.invoice_number}</p>
-            <p style="font-size:13px;color:#666;margin:2px 0 0;">Date: ${new Date(invoice.created_at).toLocaleDateString()}</p>
-            ${invoice.due_date ? `<p style="font-size:13px;color:#666;margin:2px 0 0;">Due: ${new Date(invoice.due_date).toLocaleDateString()}</p>` : ''}
-            <p style="margin:6px 0 0;"><span style="display:inline-block;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:600;text-transform:uppercase;${statusColors[invoice.status] || statusColors.draft}">${invoice.status}</span></p>
-          </td>
-        </tr></table>
-
-        <!-- Items Table -->
-        <table style="width:100%;border-collapse:collapse;margin-bottom:30px;">
-          <thead>
-            <tr style="border-bottom:2px solid #1f2937;">
-              <th style="padding:10px 8px;text-align:left;font-size:12px;font-weight:600;color:#374151;width:40px;">#</th>
-              <th style="padding:10px 8px;text-align:left;font-size:12px;font-weight:600;color:#374151;">Description</th>
-              <th style="padding:10px 8px;text-align:right;font-size:12px;font-weight:600;color:#374151;width:60px;">Qty</th>
-              <th style="padding:10px 8px;text-align:right;font-size:12px;font-weight:600;color:#374151;width:120px;">Unit Price</th>
-              <th style="padding:10px 8px;text-align:right;font-size:12px;font-weight:600;color:#374151;width:120px;">Total</th>
-            </tr>
-          </thead>
-          <tbody>${itemsRows}</tbody>
-        </table>
-
-        <!-- Totals -->
-        <div style="display:flex;justify-content:flex-end;margin-bottom:30px;">
-          <div style="width:280px;">
-            <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;">
-              <span style="color:#666;">Subtotal</span>
-              <span style="color:#1f2937;font-weight:500;">Rs. ${Number(invoice.subtotal).toFixed(2)}</span>
-            </div>
-            ${Number(invoice.tax_amount) > 0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;">
-              <span style="color:#666;">Tax</span>
-              <span style="color:#1f2937;font-weight:500;">Rs. ${Number(invoice.tax_amount).toFixed(2)}</span>
-            </div>` : ''}
-            ${Number(invoice.discount) > 0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;">
-              <span style="color:#666;">Discount</span>
-              <span style="color:#dc2626;font-weight:500;">-Rs. ${Number(invoice.discount).toFixed(2)}</span>
-            </div>` : ''}
-            <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid #1f2937;margin-top:8px;">
-              <span style="font-size:16px;font-weight:bold;color:#1f2937;">Grand Total</span>
-              <span style="font-size:16px;font-weight:bold;color:#1f2937;">Rs. ${Number(invoice.total_amount).toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Payment Terms & Notes -->
-        ${invoice.payment_terms || invoice.notes ? `<div style="border-top:1px solid #e5e7eb;padding-top:20px;">
-          ${invoice.payment_terms ? `<div style="margin-bottom:12px;"><h4 style="font-size:13px;font-weight:600;color:#374151;margin:0 0 4px;">Payment Terms</h4><p style="font-size:13px;color:#666;margin:0;">${invoice.payment_terms}</p></div>` : ''}
-          ${invoice.notes ? `<div><h4 style="font-size:13px;font-weight:600;color:#374151;margin:0 0 4px;">Notes</h4><p style="font-size:13px;color:#666;margin:0;">${invoice.notes}</p></div>` : ''}
-        </div>` : ''}
-
-        <!-- Footer -->
-        <div style="text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid #e5e7eb;">
-          <p style="font-size:13px;color:#6b7280;margin:0;">Thank you for your business!</p>
-        </div>
-      </div>
-    `;
-
     printReport({
       title: `Invoice ${invoice.invoice_number}`,
       storeName: store.store_name,
-      content
+      content: buildInvoiceHTML(invoice, store),
     });
   };
 

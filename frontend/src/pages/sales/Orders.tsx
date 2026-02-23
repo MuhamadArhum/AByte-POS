@@ -25,6 +25,9 @@ const Orders = () => {
   const [doneTotalItems, setDoneTotalItems] = useState(0);
   const [doneTotalPages, setDoneTotalPages] = useState(0);
   const [doneSearch, setDoneSearch] = useState('');
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [doneDateFrom, setDoneDateFrom] = useState(todayStr);
+  const [doneDateTo, setDoneDateTo] = useState(todayStr);
 
   const fetchPending = useCallback(async () => {
     setPendingLoading(true);
@@ -54,7 +57,9 @@ const Orders = () => {
           page: donePage,
           limit: doneItemsPerPage,
           status: 'completed,refunded',
-          search: doneSearch
+          search: doneSearch,
+          date_from: doneDateFrom,
+          date_to: doneDateTo,
         }
       });
       if (res.data.pagination) {
@@ -69,7 +74,7 @@ const Orders = () => {
     } finally {
       setDoneLoading(false);
     }
-  }, [donePage, doneItemsPerPage, doneSearch]);
+  }, [donePage, doneItemsPerPage, doneSearch, doneDateFrom, doneDateTo]);
 
   useEffect(() => {
     if (activeTab === 'pending') fetchPending();
@@ -322,14 +327,40 @@ const Orders = () => {
         ) : (
           /* DONE TAB */
           <>
-            {/* Search Bar */}
-            <div className="mb-5">
-              <div className="relative max-w-xl">
+            {/* Date Filter + Search Bar */}
+            <div className="mb-5 flex flex-wrap items-center gap-3">
+              {/* Presets */}
+              <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
+                {[{label:'Today',key:'today'},{label:'This Week',key:'week'},{label:'This Month',key:'month'}].map(p => (
+                  <button key={p.key} onClick={() => {
+                    const d = new Date();
+                    let from = todayStr, to = todayStr;
+                    if (p.key === 'week') from = new Date(d.getTime() - 6 * 86400000).toISOString().split('T')[0];
+                    else if (p.key === 'month') from = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+                    setDoneDateFrom(from);
+                    setDoneDateTo(to);
+                    setDonePage(1);
+                  }} className="px-3 py-1.5 rounded-lg text-sm font-semibold text-gray-600 hover:bg-emerald-50 hover:text-emerald-700 transition-all">
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              {/* Date Inputs */}
+              <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm">
+                <Calendar size={16} className="text-gray-400" />
+                <input type="date" value={doneDateFrom} onChange={e => { setDoneDateFrom(e.target.value); setDonePage(1); }}
+                  className="text-sm text-gray-700 outline-none border-none bg-transparent" />
+                <span className="text-gray-400 text-sm">—</span>
+                <input type="date" value={doneDateTo} onChange={e => { setDoneDateTo(e.target.value); setDonePage(1); }}
+                  className="text-sm text-gray-700 outline-none border-none bg-transparent" />
+              </div>
+              {/* Search */}
+              <div className="relative flex-1 min-w-[220px]">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type="text"
                   placeholder="Search by Order ID, Customer Name, or Amount..."
-                  className="w-full pl-12 pr-4 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm text-gray-700 placeholder-gray-400"
+                  className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm text-gray-700 placeholder-gray-400"
                   value={doneSearch}
                   onChange={(e) => { setDoneSearch(e.target.value); setDonePage(1); }}
                 />

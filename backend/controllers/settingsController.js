@@ -203,7 +203,9 @@ exports.getPrinters = async (req, res) => {
 exports.createPrinter = async (req, res) => {
   try {
     const { name, type, ip_address, port, printer_share_name, paper_width, purpose } = req.body;
+    const validPurposes = ['receipt', 'invoice', 'quotation', 'return_receipt', 'credit_sale', 'layaway_receipt'];
     if (!name || !type || !purpose) return res.status(400).json({ message: 'Name, type, and purpose are required' });
+    if (!validPurposes.includes(purpose)) return res.status(400).json({ message: 'Invalid purpose value' });
     if (type === 'network' && !ip_address) return res.status(400).json({ message: 'IP address required for network printer' });
     if (type === 'usb' && !printer_share_name) return res.status(400).json({ message: 'Printer share name required for USB printer' });
 

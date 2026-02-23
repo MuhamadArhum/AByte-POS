@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CreditCard, Search, DollarSign, AlertTriangle, Clock, CheckCircle, X, Printer } from 'lucide-react';
+import { CreditCard, Search, DollarSign, AlertTriangle, Clock, CheckCircle, X, Printer, Loader2 } from 'lucide-react';
 import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
@@ -36,6 +36,10 @@ const CreditSales = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [stats, setStats] = useState({ total_outstanding: 0, overdue_count: 0, collected_this_month: 0, active_count: 0 });
 
+  // Thermal print
+  const [creditThermalAvailable, setCreditThermalAvailable] = useState(false);
+  const [thermalPrintingId, setThermalPrintingId] = useState<number | null>(null);
+
   // Payment modal
   const [paymentModal, setPaymentModal] = useState<CreditSale | null>(null);
   const [payAmount, setPayAmount] = useState('');
@@ -64,6 +68,11 @@ const CreditSales = () => {
 
   useEffect(() => { fetchStats(); }, []);
   useEffect(() => { fetchSales(); }, [fetchSales]);
+  useEffect(() => {
+    api.get('/settings/printers/check?purpose=credit_sale')
+      .then(res => setCreditThermalAvailable(res.data.available))
+      .catch(() => {});
+  }, []);
 
   const openPayment = (cs: CreditSale) => {
     setPaymentModal(cs);
@@ -85,6 +94,34 @@ const CreditSales = () => {
   };
 
   const isOverdue = (cs: CreditSale) => cs.status !== 'paid' && new Date(cs.due_date) < new Date();
+
+  const handleThermalPrintCS = async (cs: CreditSale) => {
+    setThermalPrintingId(cs.credit_sale_id);
+    try {
+      await api.post('/settings/print-thermal-document', {
+        purpose: 'credit_sale',
+        documentData: {
+          saleId: cs.sale_id,
+          customerName: cs.customer_name,
+          totalAmount: cs.total_amount,
+          paidAmount: cs.paid_amount,
+          balanceDue: cs.balance_due,
+          dueDate: cs.due_date,
+          status: cs.status,
+        },
+      });
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Print failed');
+    } finally {
+      setThermalPrintingId(null);
+    }
+  };
+
+  const handlePrintRow = (cs: CreditSale) => {
+    const rows = [[`#${cs.sale_id}`, cs.customer_name, `$${Number(cs.total_amount).toFixed(2)}`, `$${Number(cs.paid_amount).toFixed(2)}`, `$${Number(cs.balance_due).toFixed(2)}`, new Date(cs.due_date).toLocaleDateString(), cs.status]];
+    const content = buildTable(['Sale #', 'Customer', 'Total', 'Paid', 'Balance', 'Due Date', 'Status'], rows, { alignRight: [2, 3, 4] });
+    printReport({ title: `Credit Sale - ${cs.customer_name}`, content });
+  };
 
   const handlePrint = () => {
     let content = buildStatsCards([
@@ -188,11 +225,21 @@ const CreditSales = () => {
                       <td className="px-4 py-3 text-xs text-gray-500">{new Date(cs.due_date).toLocaleDateString()}</td>
                       <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>{badge.label}</span></td>
                       <td className="px-4 py-3">
-                        {cs.status !== 'paid' && (
-                          <button onClick={() => openPayment(cs)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
-                            <DollarSign size={14} /> Record Payment
+                        <div className="flex items-center gap-1">
+                          {cs.status !== 'paid' && (
+                            <button onClick={() => openPayment(cs)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
+                              <DollarSign size={14} /> Record Payment
+                            </button>
+                          )}
+                          <button
+                            onClick={() => creditThermalAvailable ? handleThermalPrintCS(cs) : handlePrintRow(cs)}
+                            disabled={thermalPrintingId === cs.credit_sale_id}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-60"
+                            title={creditThermalAvailable ? 'Print Thermal Receipt' : 'Print Receipt (A4)'}
+                          >
+                            {thermalPrintingId === cs.credit_sale_id ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />}
                           </button>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   );
