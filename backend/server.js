@@ -47,6 +47,7 @@ const giftCardRoutes = require('./routes/giftCardRoutes');               // Gift
 const priceRuleRoutes = require('./routes/priceRuleRoutes');             // Price rules routes
 const salesTargetRoutes = require('./routes/salesTargetRoutes');         // Sales targets routes
 const invoiceRoutes = require('./routes/invoiceRoutes');                 // Invoice routes
+const permissionRoutes = require('./routes/permissionRoutes');           // RBAC permission routes
 
 // Create the Express application instance
 const app = express();
@@ -96,6 +97,7 @@ app.use('/api/gift-cards', giftCardRoutes);              // Gift card routes
 app.use('/api/price-rules', priceRuleRoutes);            // Price rules routes
 app.use('/api/sales-targets', salesTargetRoutes);        // Sales targets routes
 app.use('/api/invoices', invoiceRoutes);                 // Invoice routes
+app.use('/api/permissions', permissionRoutes);           // RBAC permission routes
 
 // Health check endpoint - used to verify server is running
 // Example: GET /api/health returns { status: 'ok' }

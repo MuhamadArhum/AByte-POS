@@ -174,7 +174,7 @@ exports.update = async (req, res) => {
     }
 
     // Check if supplier exists
-    const [existing] = await query('SELECT supplier_id FROM suppliers WHERE supplier_id = ?', [id]);
+    const [existing] = await query('SELECT * FROM suppliers WHERE supplier_id = ?', [id]);
     if (!existing) {
       return res.status(404).json({ message: 'Supplier not found' });
     }
@@ -202,7 +202,7 @@ exports.update = async (req, res) => {
       WHERE supplier_id = ?
     `, [supplier_name, contact_person || null, phone || null, email || null, address || null, tax_id || null, payment_terms || null, is_active !== undefined ? is_active : 1, id]);
 
-    // Audit log
+    // Audit log with old/new values
     await logAction(
       req.user.user_id,
       req.user.name,
@@ -210,7 +210,9 @@ exports.update = async (req, res) => {
       'supplier',
       id,
       { supplier_name, is_active },
-      req.ip
+      req.ip,
+      { supplier_name: existing.supplier_name, phone: existing.phone, email: existing.email, is_active: existing.is_active },
+      { supplier_name, phone: phone || null, email: email || null, is_active: is_active !== undefined ? is_active : 1 }
     );
 
     res.json({ message: 'Supplier updated successfully' });

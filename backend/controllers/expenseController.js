@@ -127,7 +127,7 @@ exports.update = async (req, res) => {
       return res.status(400).json({ message: 'Title and amount are required' });
     }
 
-    const [existing] = await query('SELECT expense_id FROM expenses WHERE expense_id = ?', [id]);
+    const [existing] = await query('SELECT * FROM expenses WHERE expense_id = ?', [id]);
     if (!existing) {
       return res.status(404).json({ message: 'Expense not found' });
     }
@@ -144,7 +144,9 @@ exports.update = async (req, res) => {
       'expense',
       id,
       { title, amount },
-      req.ip
+      req.ip,
+      { title: existing.title, amount: existing.amount, category: existing.category },
+      { title, amount, category: category || null }
     );
 
     res.json({ message: 'Expense updated successfully' });

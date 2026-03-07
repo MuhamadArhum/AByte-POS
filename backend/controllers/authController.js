@@ -59,6 +59,16 @@ exports.login = async (req, res) => {
     // Log login action
     await logAction(user.user_id, user.username, 'USER_LOGIN', 'user', user.user_id, { email }, req.ip);
 
+    // Fetch permissions for non-Admin roles (Admin gets null = full access)
+    let permissions = null;
+    if (user.role_name !== 'Admin') {
+      const permRows = await query(
+        'SELECT module_key FROM role_permissions WHERE role_name = ? AND is_allowed = 1',
+        [user.role_name]
+      );
+      permissions = permRows.map(r => r.module_key);
+    }
+
     // Send the token and user info back to the frontend
     // Frontend stores the token in localStorage and sends it with every request
     res.json({
@@ -70,6 +80,7 @@ exports.login = async (req, res) => {
         email: user.email,
         role_name: user.role_name,
       },
+      permissions,
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -82,6 +93,15 @@ exports.login = async (req, res) => {
 // The authenticate middleware (auth.js) has already verified the token and set req.user.
 // This just returns the user data back to the frontend.
 exports.verify = async (req, res) => {
+  let permissions = null;
+  if (req.user.role_name !== 'Admin') {
+    const permRows = await query(
+      'SELECT module_key FROM role_permissions WHERE role_name = ? AND is_allowed = 1',
+      [req.user.role_name]
+    );
+    permissions = permRows.map(r => r.module_key);
+  }
+
   res.json({
     user: {
       user_id: req.user.user_id,
@@ -90,5 +110,6 @@ exports.verify = async (req, res) => {
       email: req.user.email,
       role_name: req.user.role_name,
     },
+    permissions,
   });
 };

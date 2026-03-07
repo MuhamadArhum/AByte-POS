@@ -7,6 +7,7 @@
 // =============================================================
 
 const { query } = require('../config/database');  // Database query helper
+const { logAction } = require('../services/auditService');
 
 // Helper: Validate and parse pagination params
 const parsePagination = (page, limit) => {
@@ -96,6 +97,14 @@ exports.create = async (req, res) => {
 
     // Return full customer object for auto-selection in POS
     const newCustomer = await query('SELECT * FROM customers WHERE customer_id = ?', [customerId]);
+
+    await logAction(
+      req.user?.user_id, req.user?.name || req.user?.username,
+      'CUSTOMER_CREATED', 'customer', customerId,
+      { customer_name, phone: phone, email: emailVal },
+      req.ip
+    );
+
     res.status(201).json({ message: 'Customer created', customer_id: customerId, customer: newCustomer[0] });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
@@ -199,6 +208,14 @@ exports.update = async (req, res) => {
 
     // Return updated customer
     const updatedCustomer = await query('SELECT * FROM customers WHERE customer_id = ?', [id]);
+
+    await logAction(
+      req.user?.user_id, req.user?.name || req.user?.username,
+      'CUSTOMER_UPDATED', 'customer', id,
+      { customer_name },
+      req.ip
+    );
+
     res.json({ message: 'Customer updated', customer: updatedCustomer[0] });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
@@ -226,7 +243,16 @@ exports.remove = async (req, res) => {
       return res.status(400).json({ message: 'Cannot delete customer with purchase history' });
     }
 
+    const [deletedCustomer] = await query('SELECT customer_name FROM customers WHERE customer_id = ?', [id]);
     await query('DELETE FROM customers WHERE customer_id = ?', [id]);
+
+    await logAction(
+      req.user?.user_id, req.user?.name || req.user?.username,
+      'CUSTOMER_DELETED', 'customer', id,
+      { customer_name: deletedCustomer?.customer_name },
+      req.ip
+    );
+
     res.json({ message: 'Customer deleted' });
   } catch (err) {
     console.error(err);

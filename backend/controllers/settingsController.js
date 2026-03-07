@@ -1,6 +1,6 @@
 const { query } = require('../config/database');
 const { logAction } = require('../services/auditService');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const net = require('net');
 
 // --- Get Store Settings ---
@@ -90,17 +90,17 @@ exports.changePassword = async (req, res) => {
     }
 
     // Verify current password
-    const [user] = await query('SELECT password FROM users WHERE user_id = ?', [req.user.user_id]);
+    const [user] = await query('SELECT password_hash FROM users WHERE user_id = ?', [req.user.user_id]);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const isMatch = await bcrypt.compare(current_password, user.password);
+    const isMatch = await bcrypt.compare(current_password, user.password_hash);
     if (!isMatch) {
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
 
     // Hash and update
     const hashedPassword = await bcrypt.hash(new_password, 10);
-    await query('UPDATE users SET password = ? WHERE user_id = ?', [hashedPassword, req.user.user_id]);
+    await query('UPDATE users SET password_hash = ? WHERE user_id = ?', [hashedPassword, req.user.user_id]);
 
     await logAction(req.user.user_id, req.user.name, 'PASSWORD_CHANGED', 'users', req.user.user_id, {}, req.ip);
     res.json({ message: 'Password changed successfully' });

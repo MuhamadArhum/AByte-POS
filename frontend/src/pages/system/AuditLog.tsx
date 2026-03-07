@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Search, Filter, ScrollText, Clock, User } from 'lucide-react';
+import { useState, useEffect, Fragment } from 'react';
+import { ScrollText, Clock, User, ChevronDown, ChevronRight, Download } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
 
@@ -11,12 +11,18 @@ interface AuditEntry {
   user_id: number;
   user_name: string;
   details: string;
+  old_values: string | null;
+  new_values: string | null;
   ip_address: string;
   created_at: string;
 }
 
 const ACTION_COLORS: Record<string, string> = {
   USER_LOGIN: 'bg-blue-100 text-blue-700',
+  USER_LOGOUT: 'bg-blue-100 text-blue-700',
+  USER_CREATED: 'bg-blue-100 text-blue-700',
+  USER_UPDATED: 'bg-blue-100 text-blue-700',
+  USER_DELETED: 'bg-red-100 text-red-700',
   SALE_CREATED: 'bg-emerald-100 text-emerald-700',
   SALE_COMPLETED: 'bg-emerald-100 text-emerald-700',
   SALE_DELETED: 'bg-red-100 text-red-700',
@@ -25,9 +31,8 @@ const ACTION_COLORS: Record<string, string> = {
   PRODUCT_UPDATED: 'bg-purple-100 text-purple-700',
   PRODUCT_DELETED: 'bg-red-100 text-red-700',
   STOCK_UPDATED: 'bg-yellow-100 text-yellow-700',
-  USER_CREATED: 'bg-blue-100 text-blue-700',
-  USER_UPDATED: 'bg-blue-100 text-blue-700',
-  USER_DELETED: 'bg-red-100 text-red-700',
+  STOCK_ADJUSTED: 'bg-yellow-100 text-yellow-700',
+  STOCK_TRANSFERRED: 'bg-yellow-100 text-yellow-700',
   SETTINGS_UPDATED: 'bg-gray-100 text-gray-700',
   REGISTER_OPENED: 'bg-teal-100 text-teal-700',
   REGISTER_CLOSED: 'bg-teal-100 text-teal-700',
@@ -37,7 +42,120 @@ const ACTION_COLORS: Record<string, string> = {
   BACKUP_RESTORED: 'bg-indigo-100 text-indigo-700',
   BACKUP_DELETED: 'bg-red-100 text-red-700',
   BARCODE_GENERATED: 'bg-purple-100 text-purple-700',
+  CUSTOMER_CREATED: 'bg-cyan-100 text-cyan-700',
+  CUSTOMER_UPDATED: 'bg-cyan-100 text-cyan-700',
+  CUSTOMER_DELETED: 'bg-red-100 text-red-700',
+  STAFF_CREATED: 'bg-violet-100 text-violet-700',
+  STAFF_UPDATED: 'bg-violet-100 text-violet-700',
+  STAFF_DEACTIVATED: 'bg-red-100 text-red-700',
+  SALARY_PAID: 'bg-green-100 text-green-700',
+  SALARY_INCREMENT: 'bg-green-100 text-green-700',
+  LOAN_ISSUED: 'bg-amber-100 text-amber-700',
+  LOAN_REPAYMENT: 'bg-amber-100 text-amber-700',
+  LOAN_CANCELLED: 'bg-red-100 text-red-700',
+  LEAVE_REQUESTED: 'bg-sky-100 text-sky-700',
+  LEAVE_APPROVED: 'bg-emerald-100 text-emerald-700',
+  LEAVE_REJECTED: 'bg-red-100 text-red-700',
+  HOLIDAY_CREATED: 'bg-sky-100 text-sky-700',
+  ATTENDANCE_MARKED: 'bg-teal-100 text-teal-700',
+  SUPPLIER_CREATED: 'bg-lime-100 text-lime-700',
+  SUPPLIER_UPDATED: 'bg-lime-100 text-lime-700',
+  SUPPLIER_DELETED: 'bg-red-100 text-red-700',
+  PO_CREATED: 'bg-orange-100 text-orange-700',
+  PO_RECEIVED: 'bg-emerald-100 text-emerald-700',
+  PO_CANCELLED: 'bg-red-100 text-red-700',
+  EXPENSE_CREATED: 'bg-rose-100 text-rose-700',
+  EXPENSE_UPDATED: 'bg-rose-100 text-rose-700',
+  EXPENSE_DELETED: 'bg-red-100 text-red-700',
+  ACCOUNT_CREATED: 'bg-indigo-100 text-indigo-700',
+  ACCOUNT_UPDATED: 'bg-indigo-100 text-indigo-700',
+  JOURNAL_ENTRY_CREATED: 'bg-indigo-100 text-indigo-700',
+  PAYMENT_VOUCHER_CREATED: 'bg-indigo-100 text-indigo-700',
+  RECEIPT_VOUCHER_CREATED: 'bg-indigo-100 text-indigo-700',
+  COUPON_CREATED: 'bg-pink-100 text-pink-700',
+  COUPON_UPDATED: 'bg-pink-100 text-pink-700',
 };
+
+function parseJSON(val: string | null): Record<string, unknown> | null {
+  if (!val) return null;
+  try {
+    return typeof val === 'string' ? JSON.parse(val) : val as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function FieldDiffTable({ oldValues, newValues }: { oldValues: Record<string, unknown>; newValues: Record<string, unknown> }) {
+  const allKeys = Array.from(new Set([...Object.keys(oldValues), ...Object.keys(newValues)]));
+  const changedKeys = allKeys.filter(k => String(oldValues[k] ?? '') !== String(newValues[k] ?? ''));
+
+  if (changedKeys.length === 0) return <p className="text-xs text-gray-400 italic">No field changes detected</p>;
+
+  return (
+    <table className="w-full text-xs border border-gray-200 rounded-lg overflow-hidden">
+      <thead>
+        <tr className="bg-gray-100 text-gray-600 font-semibold">
+          <th className="px-3 py-2 text-left w-1/4">Field</th>
+          <th className="px-3 py-2 text-left w-5/12">Before</th>
+          <th className="px-3 py-2 text-left w-5/12">After</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-100">
+        {changedKeys.map(key => (
+          <tr key={key}>
+            <td className="px-3 py-2 font-medium text-gray-700 capitalize">{key.replace(/_/g, ' ')}</td>
+            <td className="px-3 py-2 bg-red-50 text-red-700 font-mono">
+              {oldValues[key] != null ? String(oldValues[key]) : <span className="italic text-gray-400">empty</span>}
+            </td>
+            <td className="px-3 py-2 bg-green-50 text-green-700 font-mono">
+              {newValues[key] != null ? String(newValues[key]) : <span className="italic text-gray-400">empty</span>}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function ExpandedRow({ log }: { log: AuditEntry }) {
+  const details = parseJSON(log.details);
+  const oldValues = parseJSON(log.old_values);
+  const newValues = parseJSON(log.new_values);
+  const hasDiff = oldValues && newValues;
+
+  return (
+    <tr>
+      <td colSpan={5} className="px-6 pb-4 bg-gray-50 border-b border-gray-100">
+        <div className="space-y-3 pt-2">
+          {hasDiff && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Field Changes</p>
+              <FieldDiffTable oldValues={oldValues} newValues={newValues} />
+            </div>
+          )}
+          {details && Object.keys(details).length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Details</p>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(details).map(([k, v]) => (
+                  <span key={k} className="inline-flex items-center gap-1 bg-white border border-gray-200 rounded px-2 py-0.5 text-xs text-gray-600">
+                    <span className="font-medium text-gray-500">{k.replace(/_/g, ' ')}:</span>
+                    <span>{String(v)}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex items-center gap-4 text-xs text-gray-400">
+            <span>Log ID: #{log.log_id}</span>
+            {log.ip_address && <span>IP: {log.ip_address}</span>}
+            <span>Entity: {log.entity_type}{log.entity_id ? ` #${log.entity_id}` : ''}</span>
+          </div>
+        </div>
+      </td>
+    </tr>
+  );
+}
 
 const AuditLog = () => {
   const [logs, setLogs] = useState<AuditEntry[]>([]);
@@ -88,15 +206,26 @@ const AuditLog = () => {
     }
   };
 
-  const formatDetails = (details: string) => {
+  const handleExport = async () => {
     try {
-      const parsed = JSON.parse(details);
-      return Object.entries(parsed)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join(', ');
-    } catch {
-      return details;
+      const params = new URLSearchParams();
+      if (selectedAction) params.append('action', selectedAction);
+      if (dateStart) params.append('date_start', dateStart);
+      if (dateEnd) params.append('date_end', dateEnd);
+      const res = await api.get(`/audit/export?${params.toString()}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-log-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed', error);
     }
+  };
+
+  const toggleExpand = (logId: number) => {
+    setExpandedLog(prev => (prev === logId ? null : logId));
   };
 
   return (
@@ -109,6 +238,13 @@ const AuditLog = () => {
           </h1>
           <p className="text-gray-500 mt-1">{total} total entries</p>
         </div>
+        <button
+          onClick={handleExport}
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium"
+        >
+          <Download size={16} />
+          Export CSV
+        </button>
       </div>
 
       {/* Filters */}
@@ -163,49 +299,71 @@ const AuditLog = () => {
             <table className="w-full text-left text-sm">
               <thead className="bg-gray-50 text-gray-600 font-medium">
                 <tr>
+                  <th className="p-4 w-8"></th>
                   <th className="p-4">Time</th>
                   <th className="p-4">User</th>
                   <th className="p-4">Action</th>
                   <th className="p-4">Entity</th>
-                  <th className="p-4">Details</th>
+                  <th className="p-4">Summary</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {logs.map((log) => (
-                  <tr
-                    key={log.log_id}
-                    className="hover:bg-gray-50 transition-colors cursor-pointer"
-                    onClick={() => setExpandedLog(expandedLog === log.log_id ? null : log.log_id)}
-                  >
-                    <td className="p-4 whitespace-nowrap text-gray-500">
-                      <div className="flex items-center gap-1.5">
-                        <Clock size={14} />
-                        {new Date(log.created_at).toLocaleString()}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-1.5">
-                        <User size={14} className="text-gray-400" />
-                        <span className="font-medium text-gray-700">{log.user_name}</span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${ACTION_COLORS[log.action] || 'bg-gray-100 text-gray-700'}`}>
-                        {log.action.replace(/_/g, ' ')}
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-600">
-                      {log.entity_type}
-                      {log.entity_id ? ` #${log.entity_id}` : ''}
-                    </td>
-                    <td className="p-4 text-gray-500 max-w-xs truncate">
-                      {log.details ? formatDetails(log.details) : '-'}
-                    </td>
-                  </tr>
-                ))}
+                {logs.map((log) => {
+                  const isExpanded = expandedLog === log.log_id;
+                  const hasDiff = log.old_values && log.new_values;
+                  const details = parseJSON(log.details);
+                  const detailSummary = details
+                    ? Object.entries(details).slice(0, 2).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(' · ')
+                    : '';
+
+                  return (
+                    <Fragment key={log.log_id}>
+                      <tr
+                        className={`hover:bg-gray-50 transition-colors cursor-pointer ${isExpanded ? 'bg-gray-50' : ''}`}
+                        onClick={() => toggleExpand(log.log_id)}
+                      >
+                        <td className="pl-4 py-3 text-gray-400">
+                          {isExpanded
+                            ? <ChevronDown size={15} />
+                            : <ChevronRight size={15} />}
+                        </td>
+                        <td className="p-4 whitespace-nowrap text-gray-500 text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <Clock size={13} />
+                            {new Date(log.created_at).toLocaleString()}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-1.5">
+                            <User size={13} className="text-gray-400" />
+                            <span className="font-medium text-gray-700">{log.user_name}</span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${ACTION_COLORS[log.action] || 'bg-gray-100 text-gray-700'}`}>
+                            {log.action.replace(/_/g, ' ')}
+                          </span>
+                          {hasDiff && (
+                            <span className="ml-1.5 inline-flex px-1.5 py-0.5 rounded text-xs bg-amber-50 text-amber-600 border border-amber-200">
+                              diff
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-4 text-gray-600 text-xs">
+                          <span className="capitalize">{log.entity_type?.replace(/_/g, ' ')}</span>
+                          {log.entity_id ? <span className="text-gray-400"> #{log.entity_id}</span> : ''}
+                        </td>
+                        <td className="p-4 text-gray-400 text-xs max-w-xs truncate">
+                          {detailSummary || '-'}
+                        </td>
+                      </tr>
+                      {isExpanded && <ExpandedRow log={log} />}
+                    </Fragment>
+                  );
+                })}
                 {logs.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="p-12 text-center text-gray-400">
+                    <td colSpan={6} className="p-12 text-center text-gray-400">
                       No audit logs found
                     </td>
                   </tr>
@@ -214,7 +372,7 @@ const AuditLog = () => {
             </table>
 
             {/* Pagination */}
-            <Pagination 
+            <Pagination
               currentPage={page}
               totalPages={totalPages}
               onPageChange={setPage}

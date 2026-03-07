@@ -37,7 +37,8 @@ import {
   PieChart,
   Percent,
   Target,
-  FileCheck
+  FileCheck,
+  Tag
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -47,7 +48,7 @@ interface MenuItem {
   icon: any;
   label: string;
   path?: string;
-  roles: string[];
+  moduleKey?: string;
   color?: string;
   children?: MenuItem[];
 }
@@ -55,7 +56,7 @@ interface MenuItem {
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -78,113 +79,113 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       icon: LayoutDashboard,
       label: 'Dashboard',
       path: '/',
-      roles: ['Admin', 'Manager', 'Cashier'],
+      moduleKey: 'dashboard',
       color: 'blue'
     },
     {
       icon: ShoppingCart,
       label: 'Sales',
-      roles: ['Admin', 'Manager', 'Cashier'],
+      moduleKey: 'sales',
       color: 'emerald',
       children: [
-        { icon: ShoppingCart, label: 'POS', path: '/pos', roles: ['Admin', 'Manager', 'Cashier'] },
-        { icon: ScrollText, label: 'Orders', path: '/orders', roles: ['Admin', 'Manager', 'Cashier'] },
-        { icon: Wallet, label: 'Cash Register', path: '/cash-register', roles: ['Admin', 'Manager', 'Cashier'] },
-        { icon: RotateCcw, label: 'Returns', path: '/returns', roles: ['Admin', 'Manager'] },
-        { icon: FileText, label: 'Quotations', path: '/quotations', roles: ['Admin', 'Manager'] },
-        { icon: BookOpen, label: 'Credit Sales', path: '/credit-sales', roles: ['Admin', 'Manager'] },
-        { icon: Percent, label: 'Price Rules', path: '/price-rules', roles: ['Admin', 'Manager'] },
-        { icon: Target, label: 'Sales Targets', path: '/sales-targets', roles: ['Admin', 'Manager'] },
-        { icon: FileCheck, label: 'Invoices', path: '/invoices', roles: ['Admin', 'Manager'] },
-        { icon: PieChart, label: 'Sales Reports', path: '/sales-reports', roles: ['Admin', 'Manager'] },
+        { icon: ShoppingCart, label: 'POS', path: '/pos', moduleKey: 'sales.pos' },
+        { icon: ScrollText, label: 'Orders', path: '/orders', moduleKey: 'sales.orders' },
+        { icon: Wallet, label: 'Cash Register', path: '/cash-register', moduleKey: 'sales.register' },
+        { icon: RotateCcw, label: 'Returns', path: '/returns', moduleKey: 'sales.returns' },
+        { icon: FileText, label: 'Quotations', path: '/quotations', moduleKey: 'sales.quotations' },
+        { icon: BookOpen, label: 'Credit Sales', path: '/credit-sales', moduleKey: 'sales.credit' },
+        { icon: Wallet, label: 'Layaway', path: '/layaway', moduleKey: 'sales.layaway' },
+        { icon: Tag, label: 'Coupons', path: '/coupons', moduleKey: 'sales.coupons' },
+        { icon: CreditCard, label: 'Loyalty', path: '/loyalty', moduleKey: 'sales.loyalty' },
+        { icon: Receipt, label: 'Gift Cards', path: '/gift-cards', moduleKey: 'sales.giftcards' },
+        { icon: Percent, label: 'Price Rules', path: '/price-rules', moduleKey: 'sales.pricerules' },
+        { icon: Target, label: 'Sales Targets', path: '/sales-targets', moduleKey: 'sales.targets' },
+        { icon: FileCheck, label: 'Invoices', path: '/invoices', moduleKey: 'sales.invoices' },
+        { icon: PieChart, label: 'Sales Reports', path: '/sales-reports', moduleKey: 'sales.reports' },
       ]
     },
     {
       icon: Package,
       label: 'Inventory',
-      roles: ['Admin', 'Manager'],
+      moduleKey: 'inventory',
       color: 'purple',
       children: [
-        { icon: Package, label: 'Products', path: '/inventory', roles: ['Admin', 'Manager'] },
-        { icon: ScrollText, label: 'Categories', path: '/categories', roles: ['Admin', 'Manager'] },
-        { icon: Package, label: 'Purchase Orders', path: '/purchase-orders', roles: ['Admin', 'Manager'] },
-        { icon: RotateCcw, label: 'Stock Transfers', path: '/stock-transfers', roles: ['Admin', 'Manager'] },
-        { icon: FileText, label: 'Stock Adjustments', path: '/stock-adjustments', roles: ['Admin', 'Manager'] },
-        { icon: Bell, label: 'Stock Alerts', path: '/stock-alerts', roles: ['Admin', 'Manager'] },
-        { icon: Users, label: 'Suppliers', path: '/suppliers', roles: ['Admin', 'Manager'] },
-        { icon: BarChart3, label: 'Inventory Reports', path: '/inventory-reports', roles: ['Admin', 'Manager'] },
+        { icon: Package, label: 'Products', path: '/inventory', moduleKey: 'inventory.products' },
+        { icon: ScrollText, label: 'Categories', path: '/categories', moduleKey: 'inventory.categories' },
+        { icon: Package, label: 'Purchase Orders', path: '/purchase-orders', moduleKey: 'inventory.purchases' },
+        { icon: RotateCcw, label: 'Stock Transfers', path: '/stock-transfers', moduleKey: 'inventory.transfers' },
+        { icon: FileText, label: 'Stock Adjustments', path: '/stock-adjustments', moduleKey: 'inventory.adjustments' },
+        { icon: Bell, label: 'Stock Alerts', path: '/stock-alerts', moduleKey: 'inventory.alerts' },
+        { icon: Users, label: 'Suppliers', path: '/suppliers', moduleKey: 'inventory.suppliers' },
+        { icon: BarChart3, label: 'Inventory Reports', path: '/inventory-reports', moduleKey: 'inventory.reports' },
       ]
     },
     {
       icon: Users,
       label: 'Human Resources',
-      roles: ['Admin', 'Manager', 'Cashier'],
+      moduleKey: 'hr',
       color: 'cyan',
       children: [
-        { icon: Users, label: 'Customers', path: '/customers', roles: ['Admin', 'Manager', 'Cashier'] },
-        { icon: User, label: 'Staff', path: '/staff', roles: ['Admin'] },
-        { icon: ScrollText, label: 'Attendance', path: '/attendance', roles: ['Admin', 'Manager'] },
-        { icon: ScrollText, label: 'Daily Attendance', path: '/daily-attendance', roles: ['Admin', 'Manager'] },
-        { icon: DollarSign, label: 'Salary Sheet', path: '/salary-sheet', roles: ['Admin', 'Manager'] },
-        { icon: DollarSign, label: 'Payroll Processing', path: '/payroll', roles: ['Admin'] },
-        { icon: DollarSign, label: 'Advance Payments', path: '/advance-payments', roles: ['Admin', 'Manager'] },
-        { icon: DollarSign, label: 'Loans', path: '/loans', roles: ['Admin', 'Manager'] },
-        { icon: TrendingUp, label: 'Increments', path: '/increments', roles: ['Admin', 'Manager'] },
-        { icon: ScrollText, label: 'Employee Ledger', path: '/employee-ledger', roles: ['Admin', 'Manager'] },
-        { icon: Calendar, label: 'Holidays', path: '/holidays', roles: ['Admin', 'Manager'] },
-        { icon: FileText, label: 'Leave Requests', path: '/leave-requests', roles: ['Admin', 'Manager'] },
-        { icon: BarChart3, label: 'Staff Reports', path: '/staff-reports', roles: ['Admin', 'Manager'] },
+        { icon: Users, label: 'Customers', path: '/customers', moduleKey: 'hr.customers' },
+        { icon: User, label: 'Staff', path: '/staff', moduleKey: 'hr.staff' },
+        { icon: ScrollText, label: 'Attendance', path: '/attendance', moduleKey: 'hr.attendance' },
+        { icon: ScrollText, label: 'Daily Attendance', path: '/daily-attendance', moduleKey: 'hr.daily-attendance' },
+        { icon: DollarSign, label: 'Salary Sheet', path: '/salary-sheet', moduleKey: 'hr.salary-sheet' },
+        { icon: DollarSign, label: 'Payroll Processing', path: '/payroll', moduleKey: 'hr.payroll' },
+        { icon: DollarSign, label: 'Advance Payments', path: '/advance-payments', moduleKey: 'hr.advances' },
+        { icon: DollarSign, label: 'Loans', path: '/loans', moduleKey: 'hr.loans' },
+        { icon: TrendingUp, label: 'Increments', path: '/increments', moduleKey: 'hr.increments' },
+        { icon: ScrollText, label: 'Employee Ledger', path: '/employee-ledger', moduleKey: 'hr.ledger' },
+        { icon: Calendar, label: 'Holidays', path: '/holidays', moduleKey: 'hr.holidays' },
+        { icon: FileText, label: 'Leave Requests', path: '/leave-requests', moduleKey: 'hr.leaves' },
+        { icon: BarChart3, label: 'Staff Reports', path: '/staff-reports', moduleKey: 'hr.reports' },
       ]
     },
     {
       icon: DollarSign,
       label: 'Accounts',
-      roles: ['Admin', 'Manager'],
+      moduleKey: 'accounts',
       color: 'rose',
       children: [
-        { icon: BookOpen, label: 'Chart of Accounts', path: '/chart-of-accounts', roles: ['Admin', 'Manager'] },
-        { icon: FileText, label: 'Journal Entries', path: '/journal-entries', roles: ['Admin', 'Manager'] },
-        { icon: Book, label: 'General Ledger', path: '/general-ledger', roles: ['Admin', 'Manager'] },
-        { icon: Scale, label: 'Trial Balance', path: '/trial-balance', roles: ['Admin', 'Manager'] },
-        { icon: TrendingUp, label: 'Profit & Loss', path: '/profit-loss', roles: ['Admin', 'Manager'] },
-        { icon: FileBarChart, label: 'Balance Sheet', path: '/balance-sheet', roles: ['Admin', 'Manager'] },
-        { icon: Building2, label: 'Bank Accounts', path: '/bank-accounts', roles: ['Admin', 'Manager'] },
-        { icon: CreditCard, label: 'Payment Vouchers', path: '/payment-vouchers', roles: ['Admin', 'Manager'] },
-        { icon: Receipt, label: 'Receipt Vouchers', path: '/receipt-vouchers', roles: ['Admin', 'Manager'] },
-        { icon: Wallet, label: 'Expenses', path: '/expenses', roles: ['Admin', 'Manager'] },
-        { icon: TrendingUp, label: 'Analytics', path: '/analytics', roles: ['Admin', 'Manager', 'Cashier'] },
-        { icon: BarChart3, label: 'Reports', path: '/reports', roles: ['Admin', 'Manager'] },
+        { icon: BookOpen, label: 'Chart of Accounts', path: '/chart-of-accounts', moduleKey: 'accounts.chart' },
+        { icon: FileText, label: 'Journal Entries', path: '/journal-entries', moduleKey: 'accounts.journal' },
+        { icon: Book, label: 'General Ledger', path: '/general-ledger', moduleKey: 'accounts.ledger' },
+        { icon: Scale, label: 'Trial Balance', path: '/trial-balance', moduleKey: 'accounts.trial-balance' },
+        { icon: TrendingUp, label: 'Profit & Loss', path: '/profit-loss', moduleKey: 'accounts.profit-loss' },
+        { icon: FileBarChart, label: 'Balance Sheet', path: '/balance-sheet', moduleKey: 'accounts.balance-sheet' },
+        { icon: Building2, label: 'Bank Accounts', path: '/bank-accounts', moduleKey: 'accounts.bank-accounts' },
+        { icon: CreditCard, label: 'Payment Vouchers', path: '/payment-vouchers', moduleKey: 'accounts.payment-vouchers' },
+        { icon: Receipt, label: 'Receipt Vouchers', path: '/receipt-vouchers', moduleKey: 'accounts.receipt-vouchers' },
+        { icon: Wallet, label: 'Expenses', path: '/expenses', moduleKey: 'accounts.expenses' },
+        { icon: TrendingUp, label: 'Analytics', path: '/analytics', moduleKey: 'accounts.analytics' },
+        { icon: BarChart3, label: 'Reports', path: '/reports', moduleKey: 'accounts.reports' },
       ]
     },
     {
       icon: Settings,
       label: 'System',
-      roles: ['Admin', 'Manager'],
+      moduleKey: 'system',
       color: 'gray',
       children: [
-        { icon: Store, label: 'Stores', path: '/stores', roles: ['Admin'] },
-        { icon: ScrollText, label: 'Audit Log', path: '/audit-log', roles: ['Admin', 'Manager'] },
-        { icon: Database, label: 'Backup', path: '/backup', roles: ['Admin'] },
-        { icon: Settings, label: 'Settings', path: '/settings', roles: ['Admin'] },
+        { icon: Store, label: 'Stores', path: '/stores', moduleKey: 'system.stores' },
+        { icon: ScrollText, label: 'Audit Log', path: '/audit-log', moduleKey: 'system.audit' },
+        { icon: Database, label: 'Backup', path: '/backup', moduleKey: 'system.backup' },
+        { icon: Settings, label: 'Settings', path: '/settings', moduleKey: 'system.settings' },
       ]
     }
   ];
 
-  const filterMenuByRole = (items: MenuItem[]): MenuItem[] => {
-    const userRole = user?.role_name || user?.role;
-    if (!userRole) return [];
-
-    return items.filter(item => {
-      if (!item.roles.includes(userRole)) return false;
-      if (item.children) {
-        item.children = filterMenuByRole(item.children);
-        return item.children.length > 0;
-      }
-      return true;
-    });
+  const filterMenuByPermission = (items: MenuItem[]): MenuItem[] => {
+    return items
+      .filter(item => item.moduleKey ? hasPermission(item.moduleKey) : true)
+      .map(item => ({
+        ...item,
+        children: item.children ? filterMenuByPermission(item.children) : undefined,
+      }))
+      .filter(item => !item.children || item.children.length > 0);
   };
 
-  const filteredMenu = filterMenuByRole(menuStructure);
+  const filteredMenu = filterMenuByPermission(menuStructure);
 
   const toggleMenu = (menuKey: string) => {
     setExpandedMenus(prev => ({ ...prev, [menuKey]: !prev[menuKey] }));
@@ -203,7 +204,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     const isExpanded = expandedMenus[menuKey];
     const isActive = item.path && location.pathname === item.path;
     const hasChildren = item.children && item.children.length > 0;
-    const isParentActive = hasChildren && item.children.some(child => child.path === location.pathname);
+    const isParentActive = hasChildren && item.children!.some(child => child.path === location.pathname);
 
     if (hasChildren && !isCollapsed) {
       return (
@@ -243,7 +244,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 transition={{ duration: 0.2 }}
                 className="ml-4 space-y-1 border-l-2 border-gray-100 pl-2"
               >
-                {item.children.map((child, childIndex) => {
+                {item.children!.map((child, childIndex) => {
                   const ChildIcon = child.icon;
                   const isChildActive = child.path && location.pathname === child.path;
                   return (

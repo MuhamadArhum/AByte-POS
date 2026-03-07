@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
+import PermissionGuard from './components/PermissionGuard';
 // Root Pages
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
@@ -65,6 +66,12 @@ import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
 
+// Sales Extra
+import Layaway from './pages/sales/Layaway';
+import Coupons from './pages/sales/Coupons';
+import Loyalty from './pages/sales/LoyaltyProgram';
+import GiftCards from './pages/sales/GiftCards';
+
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -84,22 +91,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Role Protected Route Component
-const RoleRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles: string[] }) => {
-  const { user, isLoading } = useAuth();
-
-  if (isLoading) return null;
-
-  // Support both role_name (backend sends this) and role (backward compatibility)
-  const userRole = user?.role_name || user?.role;
-
-  if (!user || !userRole || !allowedRoles.includes(userRole)) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <>{children}</>;
-};
-
 function App() {
   return (
     <AuthProvider>
@@ -114,348 +105,69 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <Routes>
+                      {/* Unguarded - all authenticated users */}
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/pos" element={<POS />} />
                       <Route path="/orders" element={<Orders />} />
                       <Route path="/cash-register" element={<CashRegister />} />
-                      <Route
-                        path="/inventory"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <Inventory />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/returns"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <Returns />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/reports"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <Reports />
-                          </RoleRoute>
-                        }
-                      />
                       <Route path="/customers" element={<Customers />} />
-                      <Route
-                        path="/audit-log"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <AuditLog />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/backup"
-                        element={
-                          <RoleRoute allowedRoles={['Admin']}>
-                            <Backup />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/suppliers"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <Suppliers />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/expenses"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <Expenses />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/staff"
-                        element={
-                          <RoleRoute allowedRoles={['Admin']}>
-                            <Staff />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/attendance"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <Attendance />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/purchase-orders"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <PurchaseOrders />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/stock-alerts"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <StockAlerts />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/categories"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <Categories />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/stock-adjustments"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <StockAdjustments />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/stock-transfers"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <StockTransfers />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/inventory-reports"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <InventoryReports />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/stores"
-                        element={
-                          <RoleRoute allowedRoles={['Admin']}>
-                            <Stores />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route path="/analytics" element={<Analytics />} />
-                      <Route
-                        path="/staff-reports"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <StaffReports />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/salary-sheet"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <SalarySheet />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/daily-attendance"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <DailyAttendance />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/loans"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <LoanManagement />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/employee-ledger"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <EmployeeLedger />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/increments"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <IncrementHistory />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/payroll"
-                        element={
-                          <RoleRoute allowedRoles={['Admin']}>
-                            <PayrollProcessing />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/advance-payments"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <AdvancePayments />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/holidays"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <HolidayCalendar />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/leave-requests"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <LeaveRequests />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/chart-of-accounts"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <ChartOfAccounts />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/journal-entries"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <JournalEntries />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/general-ledger"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <GeneralLedger />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/trial-balance"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <TrialBalance />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/profit-loss"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <ProfitLoss />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/balance-sheet"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <BalanceSheet />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/bank-accounts"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <BankAccounts />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/payment-vouchers"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <PaymentVouchers />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/receipt-vouchers"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <ReceiptVouchers />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/quotations"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <Quotations />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/credit-sales"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <CreditSales />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/sales-reports"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <SalesReports />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/price-rules"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <PriceRules />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/sales-targets"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <SalesTargets />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/invoices"
-                        element={
-                          <RoleRoute allowedRoles={['Admin', 'Manager']}>
-                            <Invoices />
-                          </RoleRoute>
-                        }
-                      />
-                      <Route
-                        path="/settings"
-                        element={
-                          <RoleRoute allowedRoles={['Admin']}>
-                            <SettingsPage />
-                          </RoleRoute>
-                        }
-                      />
+
+                      {/* Sales */}
+                      <Route path="/returns" element={<PermissionGuard moduleKey="sales.returns"><Returns /></PermissionGuard>} />
+                      <Route path="/quotations" element={<PermissionGuard moduleKey="sales.quotations"><Quotations /></PermissionGuard>} />
+                      <Route path="/credit-sales" element={<PermissionGuard moduleKey="sales.credit"><CreditSales /></PermissionGuard>} />
+                      <Route path="/layaway" element={<PermissionGuard moduleKey="sales.layaway"><Layaway /></PermissionGuard>} />
+                      <Route path="/coupons" element={<PermissionGuard moduleKey="sales.coupons"><Coupons /></PermissionGuard>} />
+                      <Route path="/loyalty" element={<PermissionGuard moduleKey="sales.loyalty"><Loyalty /></PermissionGuard>} />
+                      <Route path="/gift-cards" element={<PermissionGuard moduleKey="sales.giftcards"><GiftCards /></PermissionGuard>} />
+                      <Route path="/price-rules" element={<PermissionGuard moduleKey="sales.pricerules"><PriceRules /></PermissionGuard>} />
+                      <Route path="/sales-targets" element={<PermissionGuard moduleKey="sales.targets"><SalesTargets /></PermissionGuard>} />
+                      <Route path="/invoices" element={<PermissionGuard moduleKey="sales.invoices"><Invoices /></PermissionGuard>} />
+                      <Route path="/sales-reports" element={<PermissionGuard moduleKey="sales.reports"><SalesReports /></PermissionGuard>} />
+
+                      {/* Inventory */}
+                      <Route path="/inventory" element={<PermissionGuard moduleKey="inventory.products"><Inventory /></PermissionGuard>} />
+                      <Route path="/categories" element={<PermissionGuard moduleKey="inventory.categories"><Categories /></PermissionGuard>} />
+                      <Route path="/purchase-orders" element={<PermissionGuard moduleKey="inventory.purchases"><PurchaseOrders /></PermissionGuard>} />
+                      <Route path="/stock-transfers" element={<PermissionGuard moduleKey="inventory.transfers"><StockTransfers /></PermissionGuard>} />
+                      <Route path="/stock-adjustments" element={<PermissionGuard moduleKey="inventory.adjustments"><StockAdjustments /></PermissionGuard>} />
+                      <Route path="/stock-alerts" element={<PermissionGuard moduleKey="inventory.alerts"><StockAlerts /></PermissionGuard>} />
+                      <Route path="/suppliers" element={<PermissionGuard moduleKey="inventory.suppliers"><Suppliers /></PermissionGuard>} />
+                      <Route path="/inventory-reports" element={<PermissionGuard moduleKey="inventory.reports"><InventoryReports /></PermissionGuard>} />
+
+                      {/* HR */}
+                      <Route path="/staff" element={<PermissionGuard moduleKey="hr.staff"><Staff /></PermissionGuard>} />
+                      <Route path="/attendance" element={<PermissionGuard moduleKey="hr.attendance"><Attendance /></PermissionGuard>} />
+                      <Route path="/daily-attendance" element={<PermissionGuard moduleKey="hr.daily-attendance"><DailyAttendance /></PermissionGuard>} />
+                      <Route path="/salary-sheet" element={<PermissionGuard moduleKey="hr.salary-sheet"><SalarySheet /></PermissionGuard>} />
+                      <Route path="/payroll" element={<PermissionGuard moduleKey="hr.payroll"><PayrollProcessing /></PermissionGuard>} />
+                      <Route path="/advance-payments" element={<PermissionGuard moduleKey="hr.advances"><AdvancePayments /></PermissionGuard>} />
+                      <Route path="/loans" element={<PermissionGuard moduleKey="hr.loans"><LoanManagement /></PermissionGuard>} />
+                      <Route path="/increments" element={<PermissionGuard moduleKey="hr.increments"><IncrementHistory /></PermissionGuard>} />
+                      <Route path="/employee-ledger" element={<PermissionGuard moduleKey="hr.ledger"><EmployeeLedger /></PermissionGuard>} />
+                      <Route path="/holidays" element={<PermissionGuard moduleKey="hr.holidays"><HolidayCalendar /></PermissionGuard>} />
+                      <Route path="/leave-requests" element={<PermissionGuard moduleKey="hr.leaves"><LeaveRequests /></PermissionGuard>} />
+                      <Route path="/staff-reports" element={<PermissionGuard moduleKey="hr.reports"><StaffReports /></PermissionGuard>} />
+
+                      {/* Accounts */}
+                      <Route path="/chart-of-accounts" element={<PermissionGuard moduleKey="accounts.chart"><ChartOfAccounts /></PermissionGuard>} />
+                      <Route path="/journal-entries" element={<PermissionGuard moduleKey="accounts.journal"><JournalEntries /></PermissionGuard>} />
+                      <Route path="/general-ledger" element={<PermissionGuard moduleKey="accounts.ledger"><GeneralLedger /></PermissionGuard>} />
+                      <Route path="/trial-balance" element={<PermissionGuard moduleKey="accounts.trial-balance"><TrialBalance /></PermissionGuard>} />
+                      <Route path="/profit-loss" element={<PermissionGuard moduleKey="accounts.profit-loss"><ProfitLoss /></PermissionGuard>} />
+                      <Route path="/balance-sheet" element={<PermissionGuard moduleKey="accounts.balance-sheet"><BalanceSheet /></PermissionGuard>} />
+                      <Route path="/bank-accounts" element={<PermissionGuard moduleKey="accounts.bank-accounts"><BankAccounts /></PermissionGuard>} />
+                      <Route path="/payment-vouchers" element={<PermissionGuard moduleKey="accounts.payment-vouchers"><PaymentVouchers /></PermissionGuard>} />
+                      <Route path="/receipt-vouchers" element={<PermissionGuard moduleKey="accounts.receipt-vouchers"><ReceiptVouchers /></PermissionGuard>} />
+                      <Route path="/expenses" element={<PermissionGuard moduleKey="accounts.expenses"><Expenses /></PermissionGuard>} />
+                      <Route path="/analytics" element={<PermissionGuard moduleKey="accounts.analytics"><Analytics /></PermissionGuard>} />
+                      <Route path="/reports" element={<PermissionGuard moduleKey="accounts.reports"><Reports /></PermissionGuard>} />
+
+                      {/* System */}
+                      <Route path="/stores" element={<PermissionGuard moduleKey="system.stores"><Stores /></PermissionGuard>} />
+                      <Route path="/audit-log" element={<PermissionGuard moduleKey="system.audit"><AuditLog /></PermissionGuard>} />
+                      <Route path="/backup" element={<PermissionGuard moduleKey="system.backup"><Backup /></PermissionGuard>} />
+                      <Route path="/settings" element={<PermissionGuard moduleKey="system.settings"><SettingsPage /></PermissionGuard>} />
                     </Routes>
                   </Layout>
                 </ProtectedRoute>
