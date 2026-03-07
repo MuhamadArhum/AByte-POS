@@ -63,11 +63,10 @@ function parseNumber(value: number | string): number {
   return 0;
 }
 
-function formatDate(date: Date): { dateStr: string; timeStr: string; dateTimeISO: string } {
+function formatDate(date: Date): { dateStr: string; timeStr: string } {
   return {
     dateStr: date.toLocaleDateString(),
     timeStr: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    dateTimeISO: date.toISOString()
   };
 }
 
@@ -109,10 +108,10 @@ export function generateReceiptHTML(
 
   // Date handling
   const saleDate = sale.sale_date ? new Date(sale.sale_date) : new Date();
-  const { dateStr, timeStr, dateTimeISO } = formatDate(saleDate);
+  const { dateStr, timeStr } = formatDate(saleDate);
 
   // Generate item rows
-  const itemRows = (sale.items || []).map((item, index) => {
+  const itemRows = (sale.items || []).map((item) => {
     const qty = item.quantity;
     const price = parseNumber(item.unit_price);
     const itemDiscount = parseNumber(item.discount || 0);

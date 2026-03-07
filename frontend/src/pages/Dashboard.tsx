@@ -2,38 +2,31 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { 
-  DollarSign, 
-  ShoppingBag, 
+import {
+  DollarSign,
+  ShoppingBag,
   ShoppingCart,
-  AlertTriangle, 
+  AlertTriangle,
   TrendingUp,
   TrendingDown,
-  Plus, 
-  Users, 
-  Package, 
-  CreditCard, 
+  Plus,
+  Users,
+  Package,
+  CreditCard,
   ArrowRight,
   Clock,
   CheckCircle,
-  XCircle,
   Box,
   Activity
 } from 'lucide-react';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  Legend
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
 } from 'recharts';
 
 interface DashboardStats {
@@ -230,12 +223,6 @@ const Dashboard = () => {
     { label: 'View Reports', icon: TrendingUp, path: '/reports', color: 'bg-orange-100 text-orange-600' },
   ];
 
-  const periodLabels = {
-    week: 'Last 7 Days',
-    month: 'Last 30 Days',
-    year: 'Last Year'
-  };
-
   return (
     <div className="space-y-6 p-6">
       <header className="flex items-center justify-between">
@@ -417,9 +404,9 @@ const Dashboard = () => {
                     boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                     padding: '12px'
                   }}
-                  formatter={(value: number, name: string) => {
-                    if (name === 'sales') return [`$${value.toFixed(2)}`, 'Revenue'];
-                    return [value, 'Orders'];
+                  formatter={(value: number | undefined, name: string | undefined) => {
+                    if (name === 'sales') return [`$${(value ?? 0).toFixed(2)}`, 'Revenue'] as [string, string];
+                    return [value ?? 0, 'Orders'] as [number, string];
                   }}
                 />
                 <Area 
@@ -506,7 +493,7 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-gray-800">${parseFloat(order.total).toFixed(2)}</p>
+                    <p className="font-bold text-gray-800">${Number(order.total).toFixed(2)}</p>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs">
                       <CheckCircle size={10} />
                       Completed

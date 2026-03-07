@@ -15,7 +15,7 @@ const { logAction } = require('../services/auditService');
 exports.getAll = async (req, res) => {
   try {
     const rows = await query(
-      'SELECT u.user_id, u.name, u.email, u.role_id, r.role_name as role, u.created_at FROM users u JOIN roles r ON u.role_id = r.role_id ORDER BY u.created_at DESC'
+      'SELECT u.user_id, u.username, u.name, u.email, u.role_id, r.role_name as role, u.created_at FROM users u JOIN roles r ON u.role_id = r.role_id ORDER BY u.created_at DESC'
     );
     res.json({ data: rows });
   } catch (err) {
@@ -30,10 +30,10 @@ exports.getAll = async (req, res) => {
 // Validates: all fields required, password min 8 chars, email must be unique.
 exports.create = async (req, res) => {
   try {
-    const { name, email, password, role_id } = req.body;
+    const { username, name, email, password, role_id } = req.body;
 
     // Validate all required fields are present
-    if (!name || !email || !password || !role_id) {
+    if (!username || !name || !email || !password || !role_id) {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
@@ -56,12 +56,12 @@ exports.create = async (req, res) => {
     const role_name = roleRow.length > 0 ? roleRow[0].role_name : 'Cashier';
 
     const result = await query(
-      'INSERT INTO users (name, email, password_hash, role_id, role_name) VALUES (?, ?, ?, ?, ?)',
-      [name, email, password_hash, role_id, role_name]
+      'INSERT INTO users (username, name, email, password_hash, role_id, role_name) VALUES (?, ?, ?, ?, ?, ?)',
+      [username, name, email, password_hash, role_id, role_name]
     );
 
     const newUserId = Number(result.insertId);
-    await logAction(req.user.user_id, req.user.name, 'USER_CREATED', 'user', newUserId, { name, email, role_id }, req.ip);
+    await logAction(req.user.user_id, req.user.name, 'USER_CREATED', 'user', newUserId, { username, name, email, role_id }, req.ip);
 
     // Return success with the new user's ID
     res.status(201).json({ message: 'User created', user_id: newUserId });
@@ -77,7 +77,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, password, role_id } = req.body;
+    const { username, name, email, password, role_id } = req.body;
 
     const existing = await query('SELECT user_id FROM users WHERE user_id = ?', [id]);
     if (existing.length === 0) {
@@ -88,6 +88,7 @@ exports.update = async (req, res) => {
     const updates = [];
     const params = [];
 
+    if (username !== undefined) { updates.push('username = ?'); params.push(username); }
     if (name !== undefined) { updates.push('name = ?'); params.push(name); }
     if (email !== undefined) { updates.push('email = ?'); params.push(email); }
     if (role_id !== undefined) {

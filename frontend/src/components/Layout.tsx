@@ -15,7 +15,6 @@ import {
   ChevronRight,
   ChevronUp,
   User,
-  Search,
   Wallet,
   RotateCcw,
   ScrollText,
@@ -24,7 +23,6 @@ import {
   Store,
   TrendingUp,
   HelpCircle,
-  X,
   Calendar,
   FileText,
   BookOpen,
@@ -168,6 +166,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       color: 'gray',
       children: [
         { icon: Store, label: 'Stores', path: '/stores', moduleKey: 'system.stores' },
+        { icon: Building2, label: 'Clients', path: '/tenants', moduleKey: 'system.tenants' },
         { icon: ScrollText, label: 'Audit Log', path: '/audit-log', moduleKey: 'system.audit' },
         { icon: Database, label: 'Backup', path: '/backup', moduleKey: 'system.backup' },
         { icon: Settings, label: 'Settings', path: '/settings', moduleKey: 'system.settings' },

@@ -6,46 +6,46 @@
 // These are applied to routes to protect them from unauthorized access.
 // =============================================================
 
-const jwt = require('jsonwebtoken');         // Library to verify JSON Web Tokens
-const { query } = require('../config/database');  // Database query helper
+const jwt = require('jsonwebtoken');
+const { queryDb, tenantStorage } = require('../config/database');
 
 // --- authenticate Middleware ---
-// Runs on every protected route to verify the user is logged in.
-// Flow: Extract token from header -> Verify token -> Fetch user from DB -> Attach to req.user
-// If any step fails, returns 401 Unauthorized.
+// Multi-tenant aware: reads tenant_db from JWT, routes request to correct DB.
+// Flow: Verify JWT → get tenant_db → fetch user from tenant DB
+//       → set tenantStorage → all subsequent queries use correct DB
 const authenticate = async (req, res, next) => {
   try {
-    // Step 1: Get the Authorization header (format: "Bearer <token>")
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    // Step 2: Extract the token part (everything after "Bearer ")
     const token = authHeader.split(' ')[1];
-
-    // Step 3: Verify the token using the secret key from .env
-    // jwt.verify() throws an error if the token is invalid or expired
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Step 4: Fetch the full user data from the database using the user_id stored in the token
-    // Get username and role_name directly from users table (added via migration)
-    const rows = await query(
+    // Get tenant DB from JWT (set during login).
+    // Falls back to default DB for backward compatibility with old tokens.
+    const tenantDb = decoded.tenant_db || process.env.DB_NAME || 'abyte_pos';
+
+    // Fetch user from the correct tenant's database
+    const rows = await queryDb(
+      tenantDb,
       'SELECT u.user_id, u.username, u.name, u.email, u.role_name FROM users u WHERE u.user_id = ?',
       [decoded.user_id]
     );
 
-    // Step 5: Check if the user still exists in the database
     if (rows.length === 0) {
       return res.status(401).json({ message: 'User not found' });
     }
 
-    // Step 6: Attach user data to the request object
-    // All subsequent middleware and route handlers can access req.user
     req.user = rows[0];
-    next();  // Continue to the next middleware or route handler
+    req.tenantDb = tenantDb;
+
+    // CRITICAL: Run the rest of this request inside the tenant's DB context.
+    // All query() and getConnection() calls in controllers will automatically
+    // use this tenant's database without any code changes.
+    tenantStorage.run(tenantDb, next);
   } catch (err) {
-    // Handle specific JWT errors
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({ message: 'Token expired' });
     }

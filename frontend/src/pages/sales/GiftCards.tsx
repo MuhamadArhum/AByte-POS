@@ -49,7 +49,7 @@ const GiftCards = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit, _setLimit] = useState(20);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [stats, setStats] = useState<Stats>({ active_count: 0, total_balance: 0, total_issued: 0, redeemed_this_month: 0 });

@@ -48,6 +48,7 @@ const priceRuleRoutes = require('./routes/priceRuleRoutes');             // Pric
 const salesTargetRoutes = require('./routes/salesTargetRoutes');         // Sales targets routes
 const invoiceRoutes = require('./routes/invoiceRoutes');                 // Invoice routes
 const permissionRoutes = require('./routes/permissionRoutes');           // RBAC permission routes
+const tenantRoutes = require('./routes/tenantRoutes');                   // Multi-tenant management routes
 
 // Create the Express application instance
 const app = express();
@@ -98,6 +99,7 @@ app.use('/api/price-rules', priceRuleRoutes);            // Price rules routes
 app.use('/api/sales-targets', salesTargetRoutes);        // Sales targets routes
 app.use('/api/invoices', invoiceRoutes);                 // Invoice routes
 app.use('/api/permissions', permissionRoutes);           // RBAC permission routes
+app.use('/api/tenants', tenantRoutes);                   // Multi-tenant management routes
 
 // Health check endpoint - used to verify server is running
 // Example: GET /api/health returns { status: 'ok' }

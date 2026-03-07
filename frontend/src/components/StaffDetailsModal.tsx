@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, User, Calendar, DollarSign, Clock, TrendingUp, Edit, Trash2, BarChart3, CreditCard, Printer } from 'lucide-react';
+import { X, User, Calendar, DollarSign, TrendingUp, Edit, Trash2, BarChart3, CreditCard, Printer } from 'lucide-react';
 import api from '../utils/api';
 import { useToast } from './Toast';
 import { useAuth } from '../context/AuthContext';

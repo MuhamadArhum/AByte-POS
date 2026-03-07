@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
-import { Lock, Mail, Loader2, Eye, EyeOff, ShoppingCart, BarChart3, Users, Package, Shield, Zap } from 'lucide-react';
+import { Lock, Mail, Loader2, Eye, EyeOff, ShoppingCart, BarChart3, Users, Package, Shield, Zap, Building2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const features = [
@@ -13,9 +13,11 @@ const features = [
 ];
 
 const Login = () => {
+  const [tenantCode, setTenantCode] = useState('');
   const [email, setEmail] = useState('admin@pos.com');
   const [password, setPassword] = useState('Admin@123');
   const [showPassword, setShowPassword] = useState(false);
+  const [showTenant, setShowTenant] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -26,7 +28,9 @@ const Login = () => {
     setError('');
     setLoading(true);
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const payload: any = { email, password };
+      if (tenantCode.trim()) payload.tenant_code = tenantCode.trim().toLowerCase();
+      const response = await api.post('/auth/login', payload);
       const { token, user, permissions } = response.data;
       login(token, user, permissions ?? null);
       navigate('/');
@@ -188,6 +192,33 @@ const Login = () => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
+
+            {/* Company Code (optional, shown on toggle) */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowTenant(!showTenant)}
+                className="flex items-center gap-2 text-xs text-gray-400 hover:text-emerald-600 transition-colors mb-1"
+              >
+                <Building2 size={13} />
+                {showTenant ? 'Hide company code' : 'Have a company code?'}
+              </button>
+              {showTenant && (
+                <div className="relative group">
+                  <Building2
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors duration-200"
+                    size={18}
+                  />
+                  <input
+                    type="text"
+                    value={tenantCode}
+                    onChange={e => setTenantCode(e.target.value.toLowerCase())}
+                    className="w-full pl-11 pr-4 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-0 focus:border-emerald-500 outline-none transition-all duration-200 text-gray-800 placeholder-gray-400 text-sm"
+                    placeholder="e.g. client_a (leave blank for default)"
+                  />
+                </div>
+              )}
+            </div>
 
             {/* Email */}
             <div>

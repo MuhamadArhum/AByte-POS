@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Calendar, Filter, TrendingUp, Users, CheckCircle, XCircle, Edit, Trash2, Download } from 'lucide-react';
+import { Plus, Calendar, TrendingUp, Users, CheckCircle, XCircle, Edit, Trash2, Download } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 import { useAuth } from '../../context/AuthContext';

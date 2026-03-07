@@ -60,9 +60,9 @@ exports.updatePermissions = async (req, res) => {
     // Insert new permissions
     if (permissions.length > 0) {
       const values = permissions.map(key => [role, key, 1]);
-      await conn.query(
-        'INSERT INTO role_permissions (role_name, module_key, is_allowed) VALUES ?',
-        [values]
+      await conn.batch(
+        'INSERT INTO role_permissions (role_name, module_key, is_allowed) VALUES (?, ?, ?)',
+        values
       );
     }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Plus, Eye, Send, Trash2, Filter } from 'lucide-react';
+import { FileText, Plus, Send, Trash2, Filter } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 

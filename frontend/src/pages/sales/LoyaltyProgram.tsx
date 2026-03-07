@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Star, Settings, Search, Trophy, Users, X, Plus, Minus, Printer } from 'lucide-react';
+import { Star, Settings, Search, Trophy, Users, X, Plus, Printer } from 'lucide-react';
 import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
 import api from '../../utils/api';
 

@@ -42,6 +42,7 @@ import { useToast } from '../../components/Toast';
 
 interface User {
   user_id: number;
+  username: string;
   name: string;
   email: string;
   role: string;
@@ -73,7 +74,8 @@ const Settings = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [userForm, setUserForm] = useState({ name: '', email: '', password: '', role_id: 3 });
+  const [userForm, setUserForm] = useState({ username: '', name: '', email: '', password: '', role_id: 3 });
+  const [showUserPassword, setShowUserPassword] = useState(false);
 
   // Password
   const [passwordForm, setPasswordForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
@@ -84,10 +86,6 @@ const Settings = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  // Printer test (legacy)
-  const [printerTesting, setPrinterTesting] = useState(false);
-  const [printerTestResult, setPrinterTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Multi-printer management
   interface PrinterEntry {
@@ -168,7 +166,7 @@ const Settings = () => {
   const openPrinterModal = (printer?: PrinterEntry) => {
     if (printer) {
       setEditingPrinter(printer);
-      setPrinterForm({ name: printer.name, type: printer.type, ip_address: printer.ip_address || '', port: printer.port || 9100, printer_share_name: printer.printer_share_name || '', paper_width: printer.paper_width || 80, purpose: printer.purpose, is_active: printer.is_active === 1 });
+      setPrinterForm({ name: printer.name, type: printer.type, ip_address: printer.ip_address || '', port: printer.port || 9100, printer_share_name: printer.printer_share_name || '', paper_width: printer.paper_width || 80, purpose: printer.purpose as PrinterPurpose, is_active: printer.is_active === 1 });
     } else {
       setEditingPrinter(null);
       setPrinterForm({ name: '', type: 'network', ip_address: '', port: 9100, printer_share_name: '', paper_width: 80, purpose: 'receipt', is_active: true });
@@ -239,7 +237,7 @@ const Settings = () => {
     setSaving(true);
     try {
       if (editingUser) {
-        const payload: any = { name: userForm.name, email: userForm.email, role_id: userForm.role_id };
+        const payload: any = { username: userForm.username, name: userForm.name, email: userForm.email, role_id: userForm.role_id };
         if (userForm.password) payload.password = userForm.password;
         await api.put(`/users/${editingUser.user_id}`, payload);
         toast.success('User updated');
@@ -249,7 +247,8 @@ const Settings = () => {
       }
       setShowUserModal(false);
       setEditingUser(null);
-      setUserForm({ name: '', email: '', password: '', role_id: 3 });
+      setUserForm({ username: '', name: '', email: '', password: '', role_id: 3 });
+      setShowUserPassword(false);
       fetchUsers();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to save user');
@@ -297,10 +296,10 @@ const Settings = () => {
   const openUserModal = (user?: User) => {
     if (user) {
       setEditingUser(user);
-      setUserForm({ name: user.name, email: user.email, password: '', role_id: user.role_id });
+      setUserForm({ username: user.username, name: user.name, email: user.email, password: '', role_id: user.role_id });
     } else {
       setEditingUser(null);
-      setUserForm({ name: '', email: '', password: '', role_id: 3 });
+      setUserForm({ username: '', name: '', email: '', password: '', role_id: 3 });
     }
     setShowUserModal(true);
   };
@@ -309,24 +308,6 @@ const Settings = () => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     return `${h}h ${m}m`;
-  };
-
-  const handleTestPrinter = async () => {
-    setPrinterTesting(true);
-    setPrinterTestResult(null);
-    try {
-      const res = await api.post('/settings/test-printer', {
-        printer_type: settings.printer_type,
-        printer_ip: settings.printer_ip,
-        printer_port: settings.printer_port || 9100,
-        printer_name: settings.printer_name,
-      });
-      setPrinterTestResult({ success: true, message: res.data.message });
-    } catch (err: any) {
-      setPrinterTestResult({ success: false, message: err.response?.data?.message || 'Test failed' });
-    } finally {
-      setPrinterTesting(false);
-    }
   };
 
   // ===== ACCESS CONTROL STATE =====
@@ -974,6 +955,7 @@ const Settings = () => {
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Username</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Role</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Joined</th>
@@ -991,6 +973,7 @@ const Settings = () => {
                             <span className="font-medium text-gray-800">{user.name}</span>
                           </div>
                         </td>
+                        <td className="px-6 py-4 text-gray-500 text-sm font-mono">{user.username}</td>
                         <td className="px-6 py-4 text-gray-600">{user.email}</td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${user.role === 'Admin' ? 'bg-purple-100 text-purple-700'
@@ -1370,7 +1353,7 @@ const Settings = () => {
               <h3 className="text-xl font-bold text-gray-800">
                 {editingUser ? 'Edit User' : 'Add New User'}
               </h3>
-              <button onClick={() => { setShowUserModal(false); setEditingUser(null); }}
+              <button onClick={() => { setShowUserModal(false); setEditingUser(null); setShowUserPassword(false); }}
                 className="text-gray-400 hover:text-gray-600">
                 <X size={24} />
               </button>
@@ -1378,28 +1361,47 @@ const Settings = () => {
 
             <form onSubmit={handleUserSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Name</label>
-                <input type="text" value={userForm.name}
-                  onChange={e => setUserForm({ ...userForm, name: e.target.value })}
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Username <span className="text-red-500">*</span></label>
+                <input type="text" value={userForm.username}
+                  onChange={e => setUserForm({ ...userForm, username: e.target.value })}
+                  placeholder="e.g. john_cashier"
                   className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" required />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name <span className="text-red-500">*</span></label>
+                <input type="text" value={userForm.name}
+                  onChange={e => setUserForm({ ...userForm, name: e.target.value })}
+                  placeholder="e.g. John Smith"
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" required />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Email <span className="text-red-500">*</span></label>
                 <input type="email" value={userForm.email}
                   onChange={e => setUserForm({ ...userForm, email: e.target.value })}
+                  placeholder="e.g. john@store.com"
                   className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" required />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Password {editingUser && '(leave blank to keep current)'}
+                  Password {editingUser ? <span className="text-gray-400 font-normal">(blank = keep current)</span> : <span className="text-red-500">*</span>}
                 </label>
-                <input type="password" value={userForm.password}
-                  onChange={e => setUserForm({ ...userForm, password: e.target.value })}
-                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                  required={!editingUser} />
+                <div className="relative">
+                  <input type={showUserPassword ? 'text' : 'password'} value={userForm.password}
+                    onChange={e => setUserForm({ ...userForm, password: e.target.value })}
+                    placeholder="Min 8 characters"
+                    className="w-full px-4 pr-12 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    required={!editingUser} minLength={editingUser ? undefined : 8} />
+                  <button type="button" onClick={() => setShowUserPassword(!showUserPassword)}
+                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+                    {showUserPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {userForm.password && userForm.password.length < 8 && (
+                  <p className="text-xs text-red-500 mt-1">Password must be at least 8 characters</p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Role</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Role <span className="text-red-500">*</span></label>
                 <select value={userForm.role_id}
                   onChange={e => setUserForm({ ...userForm, role_id: parseInt(e.target.value) })}
                   className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
@@ -1409,7 +1411,7 @@ const Settings = () => {
                 </select>
               </div>
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => { setShowUserModal(false); setEditingUser(null); }}
+                <button type="button" onClick={() => { setShowUserModal(false); setEditingUser(null); setShowUserPassword(false); }}
                   className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold transition">
                   Cancel
                 </button>

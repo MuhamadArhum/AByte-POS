@@ -297,13 +297,6 @@ const TargetModal = ({
   );
 };
 
-// ---------- Helper: achievement color ----------
-const getAchievementColor = (pct: number) => {
-  if (pct >= 80) return 'green';
-  if (pct >= 50) return 'yellow';
-  return 'red';
-};
-
 const getProgressBarClass = (pct: number): string => {
   if (pct >= 80) return 'bg-green-500';
   if (pct >= 50) return 'bg-yellow-500';

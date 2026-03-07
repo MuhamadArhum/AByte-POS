@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, FileText, Printer, DollarSign, CreditCard, Smartphone, RefreshCw, BarChart } from 'lucide-react';
+import { X, Printer, DollarSign, CreditCard, Smartphone, RefreshCw, BarChart } from 'lucide-react';
 import api from '../utils/api';
 
 interface DailyReportModalProps {
@@ -9,7 +9,7 @@ interface DailyReportModalProps {
 
 const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) => {
   const [sales, setSales] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [summary, setSummary] = useState({
     totalSales: 0,
     cash: 0,

@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Calendar, Download, Printer } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Calendar, Download } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../../utils/api';
-import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
 
 const SalesReports = () => {
   const [dateFrom, setDateFrom] = useState(new Date().toISOString().split('T')[0]);
@@ -124,7 +123,7 @@ const SalesReports = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="hour" tick={{ fontSize: 11 }} tickFormatter={(h) => `${h}:00`} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, 'Revenue']} labelFormatter={(h) => `${h}:00 - ${h}:59`} />
+                  <Tooltip formatter={(v: number | undefined) => v !== undefined ? [`$${v.toFixed(2)}`, 'Revenue'] : ['$0.00', 'Revenue']} labelFormatter={(h) => `${h}:00 - ${h}:59`} />
                   <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -141,7 +140,7 @@ const SalesReports = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(d) => new Date(d).toLocaleDateString('en', { month: 'short', day: 'numeric' })} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, 'Revenue']} />
+                  <Tooltip formatter={(v: number | undefined) => v !== undefined ? [`$${v.toFixed(2)}`, 'Revenue'] : ['$0.00', 'Revenue']} />
                   <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>

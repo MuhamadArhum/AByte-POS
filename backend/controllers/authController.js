@@ -4,9 +4,10 @@
 // Used by: POST /api/auth/login and GET /api/auth/verify
 // =============================================================
 
-const bcrypt = require('bcryptjs');          // Library to compare hashed passwords
-const jwt = require('jsonwebtoken');         // Library to create and verify JWT tokens
-const { query } = require('../config/database');  // Database query helper
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { queryDb } = require('../config/database');
+const { masterQuery } = require('../config/masterDatabase');
 const { logAction } = require('../services/auditService');
 
 // --- Login Handler ---
@@ -15,62 +16,71 @@ const { logAction } = require('../services/auditService');
 // Returns: { token, user: { user_id, name, email, role } }
 exports.login = async (req, res) => {
   try {
-    // Extract email and password from the request body (sent by frontend)
-    const { email, password } = req.body;
+    const { email, password, tenant_code } = req.body;
 
-    // Validate that both fields are provided
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    // Look up the user in the database by email
-    // Get role_name directly from users table (added via migration)
-    const rows = await query(
-      'SELECT u.* FROM users u WHERE u.email = ?',
-      [email]
-    );
+    // Step 1: Resolve tenant DB
+    // If tenant_code provided → look up in master DB
+    // If not provided → use default DB (backward compatibility)
+    let tenantDb = process.env.DB_NAME || 'abyte_pos';
+    let tenantName = 'Default';
 
-    // If no user found with this email, return generic error
-    // (We don't say "email not found" to prevent email enumeration attacks)
+    if (tenant_code) {
+      let tenants;
+      try {
+        tenants = await masterQuery(
+          'SELECT db_name, tenant_name FROM tenants WHERE tenant_code = ? AND is_active = 1',
+          [tenant_code]
+        );
+      } catch (masterErr) {
+        // Master DB not set up yet — fall back to default
+        tenants = [];
+      }
+
+      if (tenants.length === 0) {
+        return res.status(404).json({ message: 'Company code not found or inactive' });
+      }
+      tenantDb = tenants[0].db_name;
+      tenantName = tenants[0].tenant_name;
+    }
+
+    // Step 2: Find user in tenant's database
+    const rows = await queryDb(tenantDb, 'SELECT * FROM users WHERE email = ?', [email]);
+
     if (rows.length === 0) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     const user = rows[0];
-
-    // Compare the plain text password with the bcrypt hash stored in the database
-    // bcrypt.compare() handles the salt automatically
     const isMatch = await bcrypt.compare(password, user.password_hash);
-
-    // If password doesn't match, return generic error
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Password is correct - generate a JWT token
-    // The token contains: user_id, username, and role_name (payload)
-    // It's signed with the secret key and expires in 24 hours
+    // Step 3: Generate JWT — includes tenant_db so auth middleware
+    // knows which database to use on every subsequent request
     const token = jwt.sign(
-      { user_id: user.user_id, username: user.username, role_name: user.role_name },  // Payload (data stored in token)
-      process.env.JWT_SECRET,                            // Secret key for signing
-      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' } // Token expiry time
+      { user_id: user.user_id, username: user.username, role_name: user.role_name, tenant_db: tenantDb },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
 
-    // Log login action
-    await logAction(user.user_id, user.username, 'USER_LOGIN', 'user', user.user_id, { email }, req.ip);
+    await logAction(user.user_id, user.username, 'USER_LOGIN', 'user', user.user_id, { email, tenant_db: tenantDb }, req.ip);
 
-    // Fetch permissions for non-Admin roles (Admin gets null = full access)
+    // Step 4: Fetch permissions from tenant DB
     let permissions = null;
     if (user.role_name !== 'Admin') {
-      const permRows = await query(
+      const permRows = await queryDb(
+        tenantDb,
         'SELECT module_key FROM role_permissions WHERE role_name = ? AND is_allowed = 1',
         [user.role_name]
       );
       permissions = permRows.map(r => r.module_key);
     }
 
-    // Send the token and user info back to the frontend
-    // Frontend stores the token in localStorage and sends it with every request
     res.json({
       token,
       user: {
@@ -79,6 +89,8 @@ exports.login = async (req, res) => {
         name: user.name,
         email: user.email,
         role_name: user.role_name,
+        tenant_db: tenantDb,
+        tenant_name: tenantName,
       },
       permissions,
     });

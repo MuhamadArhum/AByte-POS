@@ -59,6 +59,7 @@ import Reports from './pages/accounts/Reports';
 
 // System Module
 import Stores from './pages/system/Stores';
+import Tenants from './pages/system/Tenants';
 import AuditLog from './pages/system/AuditLog';
 import Backup from './pages/system/Backup';
 import SettingsPage from './pages/system/Settings';
@@ -165,6 +166,7 @@ function App() {
 
                       {/* System */}
                       <Route path="/stores" element={<PermissionGuard moduleKey="system.stores"><Stores /></PermissionGuard>} />
+                      <Route path="/tenants" element={<PermissionGuard moduleKey="system.tenants"><Tenants /></PermissionGuard>} />
                       <Route path="/audit-log" element={<PermissionGuard moduleKey="system.audit"><AuditLog /></PermissionGuard>} />
                       <Route path="/backup" element={<PermissionGuard moduleKey="system.backup"><Backup /></PermissionGuard>} />
                       <Route path="/settings" element={<PermissionGuard moduleKey="system.settings"><SettingsPage /></PermissionGuard>} />

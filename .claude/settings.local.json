@@ -41,7 +41,10 @@
       "Bash(H=\"Authorization: Bearer $TOKEN\")",
       "Bash(git mv:*)",
       "Bash(NODE_PATH=./node_modules node:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(cmd.exe:*)",
+      "Bash(node:*)",
+      "Bash(echo === Test 1: Login without tenant_code ===:*)"
     ]
   }
 }

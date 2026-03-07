@@ -87,6 +87,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
   const resetForm = () => {
     setFormData({
       user_id: '',
+      employee_id: '',
       full_name: '',
       phone: '',
       email: '',

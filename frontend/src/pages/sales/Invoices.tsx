@@ -58,6 +58,7 @@ const Invoices = () => {
   const [stats, setStats] = useState<Stats>({ outstanding: 0, overdue_count: 0, draft_count: 0, total_invoices: 0, paid_this_month: 0 });
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
@@ -89,6 +90,7 @@ const Invoices = () => {
       const res = await api.get(`/invoices?${params}`);
       setInvoices(res.data.data);
       setTotalPages(res.data.pagination.totalPages);
+      setTotalItems(res.data.pagination.total ?? 0);
     } catch { /* ignore */ } finally { setLoading(false); }
   }, [page, search, statusFilter]);
 
@@ -384,7 +386,7 @@ const Invoices = () => {
             </table>
           </div>
         )}
-        <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+        <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} totalItems={totalItems} itemsPerPage={20} />
       </div>
 
       {/* Create/Edit Invoice Modal */}

@@ -1,53 +1,86 @@
 // =============================================================
-// database.js - MariaDB Database Connection Configuration
-// This file creates a connection pool to the MariaDB database
-// and exports helper functions for executing SQL queries.
-// All controllers use these functions to interact with the DB.
+// database.js - Multi-Tenant MariaDB Connection Manager
+//
+// HOW MULTI-TENANCY WORKS:
+// - Each client (tenant) has their own separate database
+// - A single server handles ALL tenants
+// - AsyncLocalStorage tracks which DB to use per HTTP request
+// - query() and getConnection() automatically use the correct DB
+// - NO controller code needs to change — it's fully transparent
+//
+// Flow:
+//   Login (tenant_code) → JWT includes tenant_db
+//   → auth middleware sets tenantStorage → query() uses correct DB
 // =============================================================
 
-const mariadb = require('mariadb');  // MariaDB Node.js driver for database connections
-require('dotenv').config();           // Load DB credentials from .env file
+const mariadb = require('mariadb');
+const { AsyncLocalStorage } = require('async_hooks');
+require('dotenv').config();
 
-// --- Connection Pool ---
-// A pool maintains multiple reusable database connections.
-// Instead of opening/closing a connection for each query,
-// the pool lends a connection and takes it back when done.
-// This is much faster for a high-traffic POS system.
-const pool = mariadb.createPool({
-  host: process.env.DB_HOST || 'localhost',       // Database server address
-  port: parseInt(process.env.DB_PORT) || 3306,    // MariaDB port (default 3306)
-  user: process.env.DB_USER || 'root',            // Database username
-  password: process.env.DB_PASSWORD || '',         // Database password
-  database: process.env.DB_NAME || 'abyte_pos',   // Database name to connect to
-  connectionLimit: 10,                             // Max 10 simultaneous connections in the pool
-  acquireTimeout: 30000,                           // Wait max 30 seconds to get a connection from pool
-  bigIntAsNumber: true,                            // Convert BIGINT (COUNT/SUM results) to JS Number
-  decimalAsNumber: true,                           // Convert DECIMAL to JS Number instead of string
-});
+// AsyncLocalStorage: stores current tenant's DB name per async context
+// Each HTTP request gets its own isolated storage slot
+const tenantStorage = new AsyncLocalStorage();
 
-// --- getConnection() ---
-// Returns a raw connection from the pool.
-// Used when you need a transaction (BEGIN, COMMIT, ROLLBACK) - see salesController.js
-// IMPORTANT: You must call conn.release() when done to return it to the pool.
-async function getConnection() {
-  return await pool.getConnection();
+// Shared pool options (same for all tenant DBs)
+const poolOptions = {
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT) || 3306,
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  connectionLimit: 5,          // 5 connections per tenant (saves resources)
+  acquireTimeout: 30000,
+  bigIntAsNumber: true,        // Convert BIGINT to JS Number
+  insertIdAsNumber: true,      // Convert insertId to JS Number (prevents BigInt JSON error)
+  decimalAsNumber: true,       // Convert DECIMAL to JS Number
+};
+
+// Pool registry: dbName -> pool instance
+// Pools are created on-demand and reused across requests
+const pools = new Map();
+
+// --- getPool(dbName) ---
+// Returns (or creates) a connection pool for a specific database.
+function getPool(dbName) {
+  if (!pools.has(dbName)) {
+    pools.set(dbName, mariadb.createPool({ ...poolOptions, database: dbName }));
+  }
+  return pools.get(dbName);
 }
 
-// --- query(sql, params) ---
-// Executes a single SQL query and automatically releases the connection.
-// This is the most commonly used function in all controllers.
-// Example: query('SELECT * FROM products WHERE product_id = ?', [1])
-// The ? placeholders prevent SQL injection by using parameterized queries.
-async function query(sql, params) {
+// --- getCurrentDb() ---
+// Returns the current tenant's DB name from AsyncLocalStorage.
+// Falls back to default DB if called outside a request context.
+function getCurrentDb() {
+  return tenantStorage.getStore() || process.env.DB_NAME || 'abyte_pos';
+}
+
+// --- queryDb(dbName, sql, params) ---
+// Direct query to a SPECIFIC database (used by auth middleware before
+// tenant context is set, and by setup scripts).
+async function queryDb(dbName, sql, params) {
+  const pool = getPool(dbName);
   let conn;
   try {
-    conn = await pool.getConnection();           // Borrow a connection from the pool
-    const result = await conn.query(sql, params); // Execute the SQL query
-    return result;                                // Return the query results (rows)
+    conn = await pool.getConnection();
+    return await conn.query(sql, params);
   } finally {
-    if (conn) conn.release();  // Always return the connection to the pool, even if an error occurs
+    if (conn) conn.release();
   }
 }
 
-// Export the pool and helper functions for use in controllers
-module.exports = { pool, getConnection, query };
+// --- query(sql, params) ---
+// Standard query function used by ALL controllers.
+// Automatically routes to the current tenant's database.
+// Controllers never need to know which DB they're using.
+async function query(sql, params) {
+  return queryDb(getCurrentDb(), sql, params);
+}
+
+// --- getConnection() ---
+// Returns a raw connection for transactions (BEGIN/COMMIT/ROLLBACK).
+// Automatically uses the current tenant's database pool.
+async function getConnection() {
+  return getPool(getCurrentDb()).getConnection();
+}
+
+module.exports = { query, queryDb, getConnection, tenantStorage, getPool };
