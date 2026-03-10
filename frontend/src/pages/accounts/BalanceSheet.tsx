@@ -122,9 +122,9 @@ const BalanceSheet = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <FileBarChart className="text-purple-600" size={32} />
+          <FileBarChart className="text-purple-600" size={20} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Balance Sheet</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Balance Sheet</h1>
             <p className="text-gray-600 text-sm mt-1">Financial position as of date</p>
           </div>
         </div>
@@ -219,7 +219,7 @@ const BalanceSheet = () => {
           <div className="p-8">
             {/* Assets Section */}
             <div className="mb-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-4 pb-2 border-b-2 border-purple-200">
+              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-purple-200">
                 ASSETS
               </h2>
               {data.assets.length === 0 ? (
@@ -249,7 +249,7 @@ const BalanceSheet = () => {
 
             {/* Liabilities Section */}
             <div className="mb-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-4 pb-2 border-b-2 border-purple-200">
+              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-purple-200">
                 LIABILITIES
               </h2>
               {data.liabilities.length === 0 ? (
@@ -279,7 +279,7 @@ const BalanceSheet = () => {
 
             {/* Equity Section */}
             <div className="mb-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-4 pb-2 border-b-2 border-purple-200">
+              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-purple-200">
                 EQUITY
               </h2>
               {data.equity.length === 0 ? (

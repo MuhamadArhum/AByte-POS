@@ -129,7 +129,7 @@ const EditSalaryPaymentModal = ({ isOpen, onClose, onSuccess, payment, staffName
           <div className="flex items-center gap-3">
             <Edit className="text-white" size={24} />
             <div>
-              <h2 className="text-xl font-bold text-white">Edit Salary Payment</h2>
+              <h2 className="text-base font-semibold text-white">Edit Salary Payment</h2>
               <p className="text-purple-200 text-sm">{staffName}</p>
             </div>
           </div>

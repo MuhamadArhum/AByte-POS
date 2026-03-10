@@ -207,8 +207,8 @@ const Returns = () => {
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <RotateCcw className="text-emerald-600" size={32} />
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
+            <RotateCcw className="text-emerald-600" size={20} />
             Returns & Exchanges
           </h1>
           <p className="text-gray-500 mt-1">Process returns and exchanges for completed sales</p>
@@ -244,7 +244,7 @@ const Returns = () => {
 
       {/* Sale Search */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-        <h2 className="font-bold text-gray-800 mb-4">Find Sale</h2>
+        <h2 className="font-semibold text-gray-800 mb-4">Find Sale</h2>
         <div className="flex gap-3">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -298,7 +298,7 @@ const Returns = () => {
             {/* Items Selection */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="p-4 border-b border-gray-100">
-                <h3 className="font-bold text-gray-800">Select Items to Return</h3>
+                <h3 className="font-semibold text-gray-800">Select Items to Return</h3>
               </div>
               <div className="divide-y divide-gray-100">
                 {sale.items.map(item => (
@@ -343,7 +343,7 @@ const Returns = () => {
           <div className="space-y-6">
             {/* Return Type */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="font-bold text-gray-800 mb-3">Return Type</h3>
+              <h3 className="font-semibold text-gray-800 mb-3">Return Type</h3>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setReturnType('return')}
@@ -366,7 +366,7 @@ const Returns = () => {
 
             {/* Reason */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="font-bold text-gray-800 mb-3">Reason</h3>
+              <h3 className="font-semibold text-gray-800 mb-3">Reason</h3>
               <div className="space-y-2">
                 {REASONS.map(r => (
                   <button
@@ -390,7 +390,7 @@ const Returns = () => {
 
             {/* Refund Method */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="font-bold text-gray-800 mb-3">Refund Method</h3>
+              <h3 className="font-semibold text-gray-800 mb-3">Refund Method</h3>
               <select
                 value={refundMethod}
                 onChange={(e) => setRefundMethod(e.target.value)}
@@ -405,7 +405,7 @@ const Returns = () => {
 
             {/* Refund Summary */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="font-bold text-gray-800 mb-3">Refund Summary</h3>
+              <h3 className="font-semibold text-gray-800 mb-3">Refund Summary</h3>
               <div className="text-center">
                 <p className="text-sm text-gray-500">Total Refund Amount</p>
                 <p className="text-3xl font-bold text-red-600 mt-1">${totalRefund.toFixed(2)}</p>
@@ -428,7 +428,7 @@ const Returns = () => {
       {/* Recent Returns */}
       {showRecent && recentReturns.length > 0 && (
         <div className="mt-8">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Recent Returns</h3>
+          <h3 className="text-sm font-semibold text-gray-800 mb-4">Recent Returns</h3>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <table className="w-full text-left text-sm">
               <thead className="bg-gray-50 text-gray-600 font-medium">

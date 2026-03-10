@@ -80,7 +80,7 @@ const AccountModal = ({ isOpen, onClose, onSuccess, account, categoryType }: any
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">{getCategoryTitle()}</h2>
+        <h2 className="text-base font-semibold text-gray-800 mb-6">{getCategoryTitle()}</h2>
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -276,9 +276,9 @@ const ChartOfAccounts = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <BookOpen className="text-indigo-600" size={32} />
+          <BookOpen className="text-indigo-600" size={20} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Chart of Accounts</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Chart of Accounts</h1>
             <p className="text-gray-600 text-sm mt-1">Manage your account structure</p>
           </div>
         </div>
@@ -294,7 +294,7 @@ const ChartOfAccounts = () => {
           <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-8">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-3xl font-bold text-gray-800">Select Account Category</h2>
+                <h2 className="text-base font-semibold text-gray-800">Select Account Category</h2>
                 <p className="text-gray-600 mt-2">Choose the type of account you want to create</p>
               </div>
               <button onClick={() => setShowCategorySelector(false)}
@@ -317,7 +317,7 @@ const ChartOfAccounts = () => {
                         <Icon size={48} className={option.iconColor} />
                       </div>
                       <div>
-                        <h3 className="text-2xl font-bold text-gray-800 mb-2">{option.label}</h3>
+                        <h3 className="text-base font-semibold text-gray-800 mb-2">{option.label}</h3>
                         <p className="text-sm text-gray-600">{option.description}</p>
                       </div>
                     </div>

@@ -87,8 +87,8 @@ const StockAlerts = () => {
     <div className="p-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-          <Bell className="text-orange-600" size={32} />
+        <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
+          <Bell className="text-orange-600" size={20} />
           Stock Alerts
         </h1>
         <p className="text-gray-500 mt-1">Monitor low stock, out of stock, and overstock items</p>

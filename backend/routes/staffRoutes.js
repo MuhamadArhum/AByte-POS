@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const staffController = require('../controllers/staffController');
 const { authenticate, authorize } = require('../middleware/auth');
+const { requireModule }           = require('../middleware/moduleGuard');
 
 router.use(authenticate);
+router.use(requireModule('hr_payroll')); // Professional+ plan required
 
 // Report endpoints (most specific paths first)
 router.get('/reports/attendance-monthly', staffController.getMonthlyAttendanceReport);

@@ -115,7 +115,7 @@ const CashMovementModal: React.FC<CashMovementModalProps> = ({
                 <DollarSign size={28} className="text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">Cash Movement</h2>
+                <h2 className="text-base font-semibold text-gray-800">Cash Movement</h2>
                 <p className="text-sm text-gray-500 mt-0.5">Record cash in/out transactions</p>
               </div>
             </div>

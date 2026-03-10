@@ -85,7 +85,7 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
           <div className="flex items-center gap-3">
             <FileText size={28} />
             <div>
-              <h2 className="text-2xl font-bold">Purchase Order Details</h2>
+              <h2 className="text-base font-semibold">Purchase Order Details</h2>
               {po && (
                 <p className="text-purple-100 text-sm mt-1">PO Number: {po.po_number}</p>
               )}

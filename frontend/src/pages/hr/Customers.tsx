@@ -31,13 +31,13 @@ const Customers = () => {
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
   // History Pagination State
   const [historyPage, setHistoryPage] = useState(1);
-  const [historyItemsPerPage] = useState(5);
+  const [historyItemsPerPage, setHistoryItemsPerPage] = useState(5);
   const [historyTotalItems, setHistoryTotalItems] = useState(0);
   const [historyTotalPages, setHistoryTotalPages] = useState(0);
 
@@ -146,7 +146,7 @@ const Customers = () => {
     <div className="p-8 h-[calc(100vh-64px)] overflow-hidden flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Customers</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900">Customers</h1>
           <p className="text-gray-600">Manage customer profiles and history</p>
         </div>
         <button
@@ -223,12 +223,13 @@ const Customers = () => {
               </tbody>
             </table>
           </div>
-          <Pagination 
+          <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={handlePageChange}
             totalItems={totalItems}
             itemsPerPage={itemsPerPage}
+            onItemsPerPageChange={(l) => { setItemsPerPage(l); setCurrentPage(1); }}
           />
         </div>
 
@@ -240,7 +241,7 @@ const Customers = () => {
                 <div className="w-20 h-20 rounded-full bg-white border-4 border-emerald-100 flex items-center justify-center text-emerald-600 text-3xl font-bold mx-auto mb-3 shadow-sm">
                   {selectedCustomer.customer_name.charAt(0)}
                 </div>
-                <h2 className="text-xl font-bold text-gray-800">{selectedCustomer.customer_name}</h2>
+                <h2 className="text-base font-semibold text-gray-800">{selectedCustomer.customer_name}</h2>
                 <p className="text-gray-500 flex items-center justify-center gap-2 mt-1">
                   <Phone size={14} />
                   {selectedCustomer.phone_number || 'No Phone'}
@@ -289,12 +290,13 @@ const Customers = () => {
               </div>
               {purchaseHistory.length > 0 && (
                 <div className="p-2 border-t border-gray-100">
-                   <Pagination 
+                   <Pagination
                     currentPage={historyPage}
                     totalPages={historyTotalPages}
                     onPageChange={setHistoryPage}
                     totalItems={historyTotalItems}
                     itemsPerPage={historyItemsPerPage}
+                    onItemsPerPageChange={(l) => { setHistoryItemsPerPage(l); setHistoryPage(1); }}
                   />
                 </div>
               )}

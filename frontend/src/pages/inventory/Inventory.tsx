@@ -146,8 +146,8 @@ const Inventory = () => {
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <Package className="text-emerald-600" size={32} />
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
+            <Package className="text-emerald-600" size={20} />
             Inventory Management
           </h1>
           <p className="text-gray-500 mt-1">Track stock, manage products</p>

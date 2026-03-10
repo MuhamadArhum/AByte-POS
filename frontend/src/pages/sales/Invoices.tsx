@@ -57,6 +57,7 @@ const Invoices = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stats, setStats] = useState<Stats>({ outstanding: 0, overdue_count: 0, draft_count: 0, total_invoices: 0, paid_this_month: 0 });
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [search, setSearch] = useState('');
@@ -84,7 +85,7 @@ const Invoices = () => {
   const fetchInvoices = useCallback(async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({ page: String(page), limit: '20' });
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (search) params.append('search', search);
       if (statusFilter) params.append('status', statusFilter);
       const res = await api.get(`/invoices?${params}`);
@@ -92,7 +93,7 @@ const Invoices = () => {
       setTotalPages(res.data.pagination.totalPages);
       setTotalItems(res.data.pagination.total ?? 0);
     } catch { /* ignore */ } finally { setLoading(false); }
-  }, [page, search, statusFilter]);
+  }, [page, limit, search, statusFilter]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -228,7 +229,7 @@ const Invoices = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Invoices</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-gray-900 mb-6">Invoices</h1>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
@@ -386,7 +387,7 @@ const Invoices = () => {
             </table>
           </div>
         )}
-        <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} totalItems={totalItems} itemsPerPage={20} />
+        <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} totalItems={totalItems} itemsPerPage={limit} onItemsPerPageChange={(l) => { setLimit(l); setPage(1); }} />
       </div>
 
       {/* Create/Edit Invoice Modal */}
@@ -394,7 +395,7 @@ const Invoices = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-lg font-bold">{editMode ? 'Edit Invoice' : 'Create Invoice'}</h2>
+              <h2 className="text-sm font-semibold">{editMode ? 'Edit Invoice' : 'Create Invoice'}</h2>
               <button onClick={() => { setShowCreate(false); resetForm(); }} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-4">
@@ -485,7 +486,7 @@ const Invoices = () => {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
               <div>
-                <h2 className="text-lg font-bold">{selectedInvoice.invoice_number}</h2>
+                <h2 className="text-sm font-semibold">{selectedInvoice.invoice_number}</h2>
                 <p className="text-sm text-gray-500">{fmtDate(selectedInvoice.created_at)}</p>
               </div>
               <div className="flex items-center gap-2">
@@ -562,7 +563,7 @@ const Invoices = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
             <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-lg font-bold">Generate Invoice from Sale</h2>
+              <h2 className="text-sm font-semibold">Generate Invoice from Sale</h2>
               <button onClick={() => { setShowFromSale(false); setSaleId(''); }} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6">

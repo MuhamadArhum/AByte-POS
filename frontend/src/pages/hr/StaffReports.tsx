@@ -134,9 +134,9 @@ const StaffReports = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <BarChart3 className="text-indigo-600" size={32} />
+          <BarChart3 className="text-indigo-600" size={20} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Staff Reports</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Staff Reports</h1>
             <p className="text-gray-600 text-sm mt-1">Attendance & salary analytics</p>
           </div>
         </div>

@@ -67,8 +67,13 @@ const Settings = () => {
     session_timeout_minutes: 480,
     receipt_show_store_name: true, receipt_show_address: true, receipt_show_phone: true, receipt_show_tax: true,
     receipt_paper_width: '80mm',
-    printer_type: 'none', printer_ip: '', printer_port: 9100, printer_name: '', printer_paper_width: 80
+    printer_type: 'none', printer_ip: '', printer_port: 9100, printer_name: '', printer_paper_width: 80,
+    view_completed_orders_password: '', refund_password: ''
   });
+
+  // Show/hide state for POS security password fields
+  const [showViewCompletedPw, setShowViewCompletedPw] = useState(false);
+  const [showRefundPw, setShowRefundPw] = useState(false);
 
   // Users
   const [users, setUsers] = useState<User[]>([]);
@@ -481,7 +486,7 @@ const Settings = () => {
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
+        <h1 className="text-xl font-semibold tracking-tight text-gray-900 mb-2 flex items-center gap-3">
           <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
             <SettingsIcon className="text-white" size={24} />
           </div>
@@ -517,7 +522,7 @@ const Settings = () => {
           {/* ========== STORE INFO TAB ========== */}
           {activeTab === 'store' && (
             <form onSubmit={handleSaveSettings} className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Store Information</h2>
+              <h2 className="text-base font-semibold text-gray-800 mb-4">Store Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Store Name *</label>
@@ -609,7 +614,7 @@ const Settings = () => {
           {/* ========== RECEIPT & INVOICE TAB ========== */}
           {activeTab === 'receipt' && (
             <form onSubmit={handleSaveSettings} className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Receipt & Invoice Settings</h2>
+              <h2 className="text-base font-semibold text-gray-800 mb-4">Receipt & Invoice Settings</h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -728,7 +733,7 @@ const Settings = () => {
           {/* ========== POS SETTINGS TAB ========== */}
           {activeTab === 'pos' && (
             <form onSubmit={handleSaveSettings} className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">POS Configuration</h2>
+              <h2 className="text-base font-semibold text-gray-800 mb-4">POS Configuration</h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -820,7 +825,7 @@ const Settings = () => {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-800">Printer Management</h2>
+                  <h2 className="text-base font-semibold text-gray-800">Printer Management</h2>
                   <p className="text-sm text-gray-500 mt-1">Add multiple printers and assign each to a specific purpose (Receipt, Invoice, Quotation)</p>
                 </div>
                 <button onClick={() => openPrinterModal()} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-semibold transition">
@@ -925,7 +930,7 @@ const Settings = () => {
           {activeTab === 'users' && currentUser?.role_name === 'Admin' && (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-800">User Management</h2>
+                <h2 className="text-base font-semibold text-gray-800">User Management</h2>
                 <button onClick={() => openUserModal()}
                   className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition font-semibold shadow-sm">
                   <Plus size={18} /> Add User
@@ -1013,7 +1018,7 @@ const Settings = () => {
             <div className="space-y-8">
               {/* Change Password */}
               <div>
-                <h2 className="text-xl font-bold text-gray-800 mb-2">Change Password</h2>
+                <h2 className="text-base font-semibold text-gray-800 mb-2">Change Password</h2>
                 <p className="text-sm text-gray-600 mb-6">Update your account password. Must be at least 6 characters.</p>
 
                 <form onSubmit={handleChangePassword} className="max-w-lg space-y-4">
@@ -1076,10 +1081,77 @@ const Settings = () => {
                 </form>
               </div>
 
+              {/* POS Security Passwords (Admin only) */}
+              {currentUser?.role_name === 'Admin' && (
+                <div className="border-t border-gray-200 pt-8">
+                  <h2 className="text-base font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                    <Lock size={18} className="text-amber-600" />
+                    POS Security
+                  </h2>
+                  <p className="text-sm text-gray-600 mb-6">
+                    Set passwords to restrict access to sensitive POS actions. Leave empty to disable password protection.
+                  </p>
+
+                  <form onSubmit={handleSaveSettings} className="max-w-lg space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        View Completed Orders Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showViewCompletedPw ? 'text' : 'password'}
+                          value={settings.view_completed_orders_password || ''}
+                          onChange={e => setSettings({ ...settings, view_completed_orders_password: e.target.value })}
+                          className="w-full pl-4 pr-10 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                          placeholder="Leave empty to disable"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowViewCompletedPw(!showViewCompletedPw)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showViewCompletedPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Require password to view the Completed Orders tab in Orders Management</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Refund Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showRefundPw ? 'text' : 'password'}
+                          value={settings.refund_password || ''}
+                          onChange={e => setSettings({ ...settings, refund_password: e.target.value })}
+                          className="w-full pl-4 pr-10 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                          placeholder="Leave empty to disable"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowRefundPw(!showRefundPw)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showRefundPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Require password before processing a refund</p>
+                    </div>
+
+                    <button type="submit" disabled={saving}
+                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-lg hover:from-amber-600 hover:to-amber-700 disabled:opacity-50 font-semibold shadow-lg transition-all">
+                      {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                      Save POS Security Settings
+                    </button>
+                  </form>
+                </div>
+              )}
+
               {/* Session Settings (Admin only) */}
               {currentUser?.role_name === 'Admin' && (
                 <div className="border-t border-gray-200 pt-8">
-                  <h2 className="text-xl font-bold text-gray-800 mb-2">Session & Security Settings</h2>
+                  <h2 className="text-base font-semibold text-gray-800 mb-2">Session & Security Settings</h2>
                   <p className="text-sm text-gray-600 mb-6">Configure session timeout and security policies.</p>
 
                   <form onSubmit={handleSaveSettings} className="max-w-lg space-y-4">
@@ -1116,7 +1188,7 @@ const Settings = () => {
           {activeTab === 'system' && currentUser?.role_name === 'Admin' && (
             <div className="space-y-8">
               <div>
-                <h2 className="text-xl font-bold text-gray-800 mb-2">System Configuration</h2>
+                <h2 className="text-base font-semibold text-gray-800 mb-2">System Configuration</h2>
                 <p className="text-sm text-gray-600 mb-6">Regional settings and system information.</p>
 
                 <form onSubmit={handleSaveSettings} className="space-y-6">
@@ -1158,7 +1230,7 @@ const Settings = () => {
 
               {/* System Information */}
               <div className="border-t border-gray-200 pt-8">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">System Information</h2>
+                <h2 className="text-base font-semibold text-gray-800 mb-4">System Information</h2>
                 {systemInfo ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
@@ -1225,7 +1297,7 @@ const Settings = () => {
               {/* About */}
               <div className="border-t border-gray-200 pt-8">
                 <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border-2 border-emerald-200 p-6 text-center">
-                  <h3 className="text-2xl font-bold text-gray-800 mb-2">AByte POS</h3>
+                  <h3 className="text-base font-semibold text-gray-800 mb-2">AByte POS</h3>
                   <p className="text-gray-600 mb-1">Enterprise Point of Sale System</p>
                   <p className="text-sm text-gray-500">Version 1.0.0</p>
                 </div>
@@ -1237,7 +1309,7 @@ const Settings = () => {
           {activeTab === 'access' && currentUser?.role_name === 'Admin' && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-gray-800 mb-1">Access Control</h2>
+                <h2 className="text-base font-semibold text-gray-800 mb-1">Access Control</h2>
                 <p className="text-sm text-gray-500 mb-6">
                   Configure which modules Manager and Cashier roles can access. Admin always has full access.
                 </p>
@@ -1350,7 +1422,7 @@ const Settings = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-gray-800">
+              <h3 className="text-sm font-semibold text-gray-800">
                 {editingUser ? 'Edit User' : 'Add New User'}
               </h3>
               <button onClick={() => { setShowUserModal(false); setEditingUser(null); setShowUserPassword(false); }}
@@ -1430,7 +1502,7 @@ const Settings = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full">
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-gray-800">
+              <h3 className="text-sm font-semibold text-gray-800">
                 {editingPrinter ? 'Edit Printer' : 'Add New Printer'}
               </h3>
               <button onClick={() => { setShowPrinterModal(false); setEditingPrinter(null); }} className="text-gray-400 hover:text-gray-600">

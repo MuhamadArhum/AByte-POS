@@ -123,9 +123,9 @@ const Staff = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <User className="text-cyan-600" size={32} />
+          <User className="text-cyan-600" size={20} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Staff Management</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Staff Management</h1>
             <p className="text-gray-600 text-sm mt-1">Manage your team members</p>
           </div>
         </div>

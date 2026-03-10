@@ -7,6 +7,7 @@ const api = axios.create({
   },
 });
 
+// ── Request interceptor ───────────────────────────────────────
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -15,17 +16,18 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
+// ── Response interceptor ──────────────────────────────────────
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('permissions');
+      localStorage.removeItem('tenantConfig');
       window.location.href = '/login';
     }
     return Promise.reject(error);

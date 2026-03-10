@@ -83,7 +83,7 @@ const AddSupplierModal: React.FC<AddSupplierModalProps> = ({ isOpen, onClose, on
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl w-full max-w-2xl shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center p-6 border-b border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-800">
+          <h2 className="text-base font-semibold text-gray-800">
             {supplierToEdit ? 'Edit Supplier' : 'Add New Supplier'}
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">

@@ -36,8 +36,25 @@ exports.updateSettings = async (req, res) => {
       session_timeout_minutes,
       receipt_show_store_name, receipt_show_address, receipt_show_phone, receipt_show_tax,
       receipt_paper_width,
-      printer_type, printer_ip, printer_port, printer_name, printer_paper_width
+      printer_type, printer_ip, printer_port, printer_name, printer_paper_width,
+      view_completed_orders_password, refund_password
     } = req.body;
+
+    // Build dynamic SET clause to handle optional columns gracefully
+    const baseParams = [
+      store_name, address, phone, email, website,
+      receipt_header || null, receipt_footer, receipt_logo || null,
+      tax_rate || 0, currency_symbol || 'Rs.',
+      low_stock_threshold || 10, default_payment_method || 'cash', auto_print_receipt ? 1 : 0,
+      barcode_prefix || '', invoice_prefix || 'INV-', date_format || 'DD/MM/YYYY', timezone || 'Asia/Karachi',
+      business_hours_open || '09:00:00', business_hours_close || '21:00:00',
+      allow_negative_stock ? 1 : 0, discount_requires_approval ? 1 : 0, max_cashier_discount || 50,
+      session_timeout_minutes || 480,
+      receipt_show_store_name !== false ? 1 : 0, receipt_show_address !== false ? 1 : 0,
+      receipt_show_phone !== false ? 1 : 0, receipt_show_tax !== false ? 1 : 0,
+      receipt_paper_width || '80mm',
+      printer_type || 'none', printer_ip || null, printer_port || 9100, printer_name || null, printer_paper_width || 80
+    ];
 
     await query(
       `UPDATE store_settings SET
@@ -53,21 +70,21 @@ exports.updateSettings = async (req, res) => {
         receipt_paper_width=?,
         printer_type=?, printer_ip=?, printer_port=?, printer_name=?, printer_paper_width=?
       WHERE setting_id=1`,
-      [
-        store_name, address, phone, email, website,
-        receipt_header || null, receipt_footer, receipt_logo || null,
-        tax_rate || 0, currency_symbol || 'Rs.',
-        low_stock_threshold || 10, default_payment_method || 'cash', auto_print_receipt ? 1 : 0,
-        barcode_prefix || '', invoice_prefix || 'INV-', date_format || 'DD/MM/YYYY', timezone || 'Asia/Karachi',
-        business_hours_open || '09:00:00', business_hours_close || '21:00:00',
-        allow_negative_stock ? 1 : 0, discount_requires_approval ? 1 : 0, max_cashier_discount || 50,
-        session_timeout_minutes || 480,
-        receipt_show_store_name !== false ? 1 : 0, receipt_show_address !== false ? 1 : 0,
-        receipt_show_phone !== false ? 1 : 0, receipt_show_tax !== false ? 1 : 0,
-        receipt_paper_width || '80mm',
-        printer_type || 'none', printer_ip || null, printer_port || 9100, printer_name || null, printer_paper_width || 80
-      ]
+      baseParams
     );
+
+    // Update POS security passwords separately (columns may not exist on older DBs)
+    try {
+      await query(
+        `UPDATE store_settings SET
+          view_completed_orders_password=?, refund_password=?
+        WHERE setting_id=1`,
+        [view_completed_orders_password || null, refund_password || null]
+      );
+    } catch (pwErr) {
+      // Columns don't exist yet — run migrate_pos_security.js to add them
+      console.warn('POS security password columns not found. Run migrate_pos_security.js');
+    }
 
     await logAction(req.user.user_id, req.user.name, 'SETTINGS_UPDATED', 'settings', 1, { store_name }, req.ip);
     res.json({ message: 'Settings updated successfully' });

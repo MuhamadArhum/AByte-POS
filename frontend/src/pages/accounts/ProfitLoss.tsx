@@ -123,9 +123,9 @@ const ProfitLoss = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <TrendingUp className="text-blue-600" size={32} />
+          <TrendingUp className="text-blue-600" size={20} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Profit & Loss Statement</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Profit & Loss Statement</h1>
             <p className="text-gray-600 text-sm mt-1">Income statement for the period</p>
           </div>
         </div>
@@ -208,7 +208,7 @@ const ProfitLoss = () => {
           <div className="p-8">
             {/* Revenue Section */}
             <div className="mb-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-4 pb-2 border-b-2 border-blue-200">
+              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-blue-200">
                 REVENUE
               </h2>
               {data.revenue.length === 0 ? (
@@ -238,7 +238,7 @@ const ProfitLoss = () => {
 
             {/* Expenses Section */}
             <div className="mb-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-4 pb-2 border-b-2 border-blue-200">
+              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-blue-200">
                 EXPENSES
               </h2>
               {data.expenses.length === 0 ? (

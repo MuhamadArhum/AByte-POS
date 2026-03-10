@@ -83,7 +83,7 @@ const IssueLoanModal = ({ isOpen, onClose, onSuccess }: Props) => {
         <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 p-6 text-white flex items-center justify-between rounded-t-2xl">
           <div className="flex items-center gap-3">
             <DollarSign size={28} />
-            <h2 className="text-xl font-bold">Issue New Loan</h2>
+            <h2 className="text-base font-semibold">Issue New Loan</h2>
           </div>
           <button onClick={onClose} className="text-white hover:bg-white/20 p-2 rounded-lg transition"><X size={24} /></button>
         </div>

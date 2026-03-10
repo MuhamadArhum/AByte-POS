@@ -132,7 +132,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
                 {customerToEdit ? <Edit3 size={24} className="text-white" /> : <UserPlus size={24} className="text-white" />}
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">
+                <h2 className="text-base font-semibold text-gray-800">
                   {customerToEdit ? 'Edit Customer' : 'Add New Customer'}
                 </h2>
                 <p className="text-sm text-gray-500 mt-0.5">

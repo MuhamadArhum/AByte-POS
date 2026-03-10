@@ -140,7 +140,7 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
           <div className="flex items-center gap-3">
             <DollarSign size={28} />
             <div>
-              <h2 className="text-2xl font-bold">Record Salary Payment</h2>
+              <h2 className="text-base font-semibold">Record Salary Payment</h2>
               <p className="text-purple-100 text-sm mt-1">
                 {staffMember.full_name} - {staffMember.position}
               </p>

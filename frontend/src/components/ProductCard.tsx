@@ -36,7 +36,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCa
         </div>
 
         {/* Name */}
-        <h3 className="font-bold text-gray-800 text-xs leading-tight line-clamp-2 mb-1">{product.product_name}</h3>
+        <h3 className="font-semibold text-gray-800 text-xs leading-tight line-clamp-2 mb-1">{product.product_name}</h3>
         <p className={`text-[11px] ${product.stock_quantity === 0 ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
           Stk: {product.stock_quantity}
         </p>

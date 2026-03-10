@@ -40,7 +40,7 @@ class ErrorBoundary extends Component<Props, State> {
               <AlertTriangle className="text-red-500" size={32} />
             </div>
 
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">Something went wrong</h1>
+            <h1 className="text-xl font-semibold text-gray-900 mb-2">Something went wrong</h1>
             <p className="text-gray-500 mb-6">
               The application encountered an unexpected error. We apologize for the inconvenience.
             </p>

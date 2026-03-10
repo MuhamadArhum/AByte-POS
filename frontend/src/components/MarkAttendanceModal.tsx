@@ -152,7 +152,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
           <div className="flex items-center gap-3">
             <CheckCircle size={28} />
             <div>
-              <h2 className="text-2xl font-bold">Mark Attendance</h2>
+              <h2 className="text-base font-semibold">Mark Attendance</h2>
               <p className="text-green-100 text-sm mt-1">Record staff attendance</p>
             </div>
           </div>

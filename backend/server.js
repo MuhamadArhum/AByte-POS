@@ -1,121 +1,153 @@
 // =============================================================
 // server.js - Main Entry Point for AByte POS Backend
-// This file sets up the Express server, applies middleware,
-// registers all API routes, and starts listening for requests.
+//
+// Multi-tenant SaaS flow:
+//   1. Frontend sends X-Tenant-Subdomain header (set from window.location.hostname)
+//   2. authController reads subdomain → looks up tenant in abyte_master
+//   3. JWT includes { tenant_db, tenant_id, plan }
+//   4. authenticate middleware routes all queries to correct tenant DB
+//   5. requireModule middleware guards plan-based features
 // =============================================================
 
-const express = require('express');     // Web framework for building the REST API
-const cors = require('cors');           // Allows frontend (port 5173) to call backend (port 5000)
-const helmet = require('helmet');       // Adds security headers to all HTTP responses
-const morgan = require('morgan');       // Logs every HTTP request to the console (method, url, status, time)
-require('dotenv').config();             // Loads environment variables from .env file into process.env
+const express = require('express');
+const cors    = require('cors');
+const helmet  = require('helmet');
+const morgan  = require('morgan');
+require('dotenv').config();
 
 // --- Import Route Files ---
-// Each route file handles a specific group of API endpoints
-const authRoutes = require('./routes/authRoutes');           // Login and token verification
-const userRoutes = require('./routes/userRoutes');           // CRUD operations for system users (Admin only)
-const productRoutes = require('./routes/productRoutes');     // CRUD operations for products and categories
-const inventoryRoutes = require('./routes/inventoryRoutes'); // View and update stock levels
-const salesRoutes = require('./routes/salesRoutes');         // Create sales and view sale history
-const customerRoutes = require('./routes/customerRoutes');   // Manage customer records
-const reportRoutes = require('./routes/reportRoutes');       // Sales and inventory reports
-const settingsRoutes = require('./routes/settingsRoutes');   // Store settings
-const aiRoutes = require('./routes/aiRoutes');               // AI Assistant routes
-const auditRoutes = require('./routes/auditRoutes');         // Audit log routes
-const registerRoutes = require('./routes/registerRoutes');   // Cash register routes
-const returnRoutes = require('./routes/returnRoutes');       // Returns/exchange routes
-const backupRoutes = require('./routes/backupRoutes');       // Backup & restore routes
-const variantRoutes = require('./routes/variantRoutes');     // Product variants routes
-const bundleRoutes = require('./routes/bundleRoutes');       // Product bundles routes
-const supplierRoutes = require('./routes/supplierRoutes');   // Supplier/vendor management routes
-const expenseRoutes = require('./routes/expenseRoutes');     // Expense management routes
-const staffRoutes = require('./routes/staffRoutes');         // Staff management routes
-const purchaseOrderRoutes = require('./routes/purchaseOrderRoutes'); // Purchase orders routes
-const storeRoutes = require('./routes/storeRoutes');         // Multi-store management routes
-const analyticsRoutes = require('./routes/analyticsRoutes'); // Analytics dashboard routes
-const accountingRoutes = require('./routes/accountingRoutes'); // Accounting module routes
-const stockAdjustmentRoutes = require('./routes/stockAdjustmentRoutes'); // Stock adjustment routes
-const stockTransferRoutes = require('./routes/stockTransferRoutes');     // Stock transfer routes
-const inventoryReportRoutes = require('./routes/inventoryReportRoutes'); // Inventory report routes
-const salesReportRoutes = require('./routes/salesReportRoutes');         // Sales report routes
-const couponRoutes = require('./routes/couponRoutes');                   // Coupon management routes
-const loyaltyRoutes = require('./routes/loyaltyRoutes');                 // Loyalty program routes
-const creditSaleRoutes = require('./routes/creditSaleRoutes');           // Credit sales routes
-const layawayRoutes = require('./routes/layawayRoutes');                 // Layaway orders routes
-const quotationRoutes = require('./routes/quotationRoutes');             // Quotation routes
-const giftCardRoutes = require('./routes/giftCardRoutes');               // Gift card routes
-const priceRuleRoutes = require('./routes/priceRuleRoutes');             // Price rules routes
-const salesTargetRoutes = require('./routes/salesTargetRoutes');         // Sales targets routes
-const invoiceRoutes = require('./routes/invoiceRoutes');                 // Invoice routes
-const permissionRoutes = require('./routes/permissionRoutes');           // RBAC permission routes
-const tenantRoutes = require('./routes/tenantRoutes');                   // Multi-tenant management routes
+const authRoutes            = require('./routes/authRoutes');
+const userRoutes            = require('./routes/userRoutes');
+const productRoutes         = require('./routes/productRoutes');
+const inventoryRoutes       = require('./routes/inventoryRoutes');
+const salesRoutes           = require('./routes/salesRoutes');
+const customerRoutes        = require('./routes/customerRoutes');
+const reportRoutes          = require('./routes/reportRoutes');
+const settingsRoutes        = require('./routes/settingsRoutes');
+const aiRoutes              = require('./routes/aiRoutes');
+const auditRoutes           = require('./routes/auditRoutes');
+const registerRoutes        = require('./routes/registerRoutes');
+const returnRoutes          = require('./routes/returnRoutes');
+const backupRoutes          = require('./routes/backupRoutes');
+const variantRoutes         = require('./routes/variantRoutes');
+const bundleRoutes          = require('./routes/bundleRoutes');
+const supplierRoutes        = require('./routes/supplierRoutes');
+const expenseRoutes         = require('./routes/expenseRoutes');
+const staffRoutes           = require('./routes/staffRoutes');
+const purchaseOrderRoutes   = require('./routes/purchaseOrderRoutes');
+const storeRoutes           = require('./routes/storeRoutes');
+const analyticsRoutes       = require('./routes/analyticsRoutes');
+const accountingRoutes      = require('./routes/accountingRoutes');
+const stockAdjustmentRoutes = require('./routes/stockAdjustmentRoutes');
+const stockTransferRoutes   = require('./routes/stockTransferRoutes');
+const inventoryReportRoutes = require('./routes/inventoryReportRoutes');
+const salesReportRoutes     = require('./routes/salesReportRoutes');
+const couponRoutes          = require('./routes/couponRoutes');
+const loyaltyRoutes         = require('./routes/loyaltyRoutes');
+const creditSaleRoutes      = require('./routes/creditSaleRoutes');
+const layawayRoutes         = require('./routes/layawayRoutes');
+const quotationRoutes       = require('./routes/quotationRoutes');
+const giftCardRoutes        = require('./routes/giftCardRoutes');
+const priceRuleRoutes       = require('./routes/priceRuleRoutes');
+const salesTargetRoutes     = require('./routes/salesTargetRoutes');
+const invoiceRoutes         = require('./routes/invoiceRoutes');
+const permissionRoutes      = require('./routes/permissionRoutes');
+const tenantRoutes          = require('./routes/tenantRoutes');
 
-// Create the Express application instance
+// --- Module Guard (plan-based access) ---
+const { requireModule } = require('./middleware/moduleGuard');
+
 const app = express();
 
-// --- Middleware Setup ---
-// Middleware runs on every request before it reaches the route handlers
-app.use(helmet());         // Security: sets headers like X-Content-Type-Options, X-Frame-Options, etc.
-app.use(cors());           // CORS: allows cross-origin requests from the React frontend
-app.use(morgan('dev'));    // Logging: prints colored request logs like "GET /api/products 200 12ms"
-app.use(express.json());   // Body Parser: parses incoming JSON request bodies into req.body
+// ── Global Middleware ────────────────────────────────────────
+app.use(helmet());
+app.use(cors());   // Allow all origins — restrict in production via nginx/reverse proxy
 
-// --- API Route Registration ---
-// Each route is mounted under /api/ prefix
-// Example: authRoutes handles POST /api/auth/login, GET /api/auth/verify
-app.use('/api/auth', authRoutes);           // Authentication routes (login, verify token)
-app.use('/api/users', userRoutes);          // User management routes (Admin only)
-app.use('/api/products', productRoutes);    // Product and category routes
-app.use('/api/inventory', inventoryRoutes); // Inventory/stock routes
-app.use('/api/sales', salesRoutes);         // Sales transaction routes
-app.use('/api/customers', customerRoutes);  // Customer management routes
-app.use('/api/reports', reportRoutes);      // Report generation routes
-app.use('/api/settings', settingsRoutes);   // Store settings routes
-app.use('/api/ai', aiRoutes);               // AI Assistant routes
-app.use('/api/audit', auditRoutes);         // Audit log routes
-app.use('/api/register', registerRoutes);   // Cash register routes
-app.use('/api/returns', returnRoutes);      // Returns/exchange routes
-app.use('/api/backup', backupRoutes);       // Backup & restore routes
-app.use('/api/variants', variantRoutes);    // Product variants routes
-app.use('/api/bundles', bundleRoutes);      // Product bundles routes
-app.use('/api/suppliers', supplierRoutes);  // Supplier/vendor management routes
-app.use('/api/expenses', expenseRoutes);    // Expense management routes
-app.use('/api/staff', staffRoutes);         // Staff management routes
-app.use('/api/purchase-orders', purchaseOrderRoutes); // Purchase orders routes
-app.use('/api/stores', storeRoutes);        // Multi-store management routes
-app.use('/api/analytics', analyticsRoutes); // Analytics dashboard routes
-app.use('/api/accounting', accountingRoutes); // Accounting module routes
-app.use('/api/stock-adjustments', stockAdjustmentRoutes); // Stock adjustment routes
-app.use('/api/stock-transfers', stockTransferRoutes);     // Stock transfer routes
-app.use('/api/inventory-reports', inventoryReportRoutes); // Inventory report routes
-app.use('/api/sales-reports', salesReportRoutes);         // Sales report routes
-app.use('/api/coupons', couponRoutes);                   // Coupon management routes
-app.use('/api/loyalty', loyaltyRoutes);                  // Loyalty program routes
-app.use('/api/credit-sales', creditSaleRoutes);          // Credit sales routes
-app.use('/api/layaway', layawayRoutes);                  // Layaway orders routes
-app.use('/api/quotations', quotationRoutes);             // Quotation routes
-app.use('/api/gift-cards', giftCardRoutes);              // Gift card routes
-app.use('/api/price-rules', priceRuleRoutes);            // Price rules routes
-app.use('/api/sales-targets', salesTargetRoutes);        // Sales targets routes
-app.use('/api/invoices', invoiceRoutes);                 // Invoice routes
-app.use('/api/permissions', permissionRoutes);           // RBAC permission routes
-app.use('/api/tenants', tenantRoutes);                   // Multi-tenant management routes
+app.use(morgan('dev'));
+app.use(express.json({ limit: '10mb' }));
 
-// Health check endpoint - used to verify server is running
-// Example: GET /api/health returns { status: 'ok' }
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+// Request logger header
+app.use((req, res, next) => {
+  next();
+});
 
-// --- Global Error Handler ---
-// Catches any unhandled errors thrown in route handlers
-// Express identifies this as an error handler because it has 4 parameters (err, req, res, next)
+// ── API Routes ───────────────────────────────────────────────
+
+// Auth (no tenant guard needed — login resolves tenant itself)
+app.use('/api/auth',    authRoutes);
+
+// Tenant management (Admin-only, uses master DB)
+app.use('/api/tenants', tenantRoutes);
+
+// Core routes (available on all plans)
+app.use('/api/users',           userRoutes);
+app.use('/api/customers',       customerRoutes);
+app.use('/api/settings',        settingsRoutes);
+app.use('/api/ai',              aiRoutes);
+app.use('/api/audit',           auditRoutes);
+app.use('/api/backup',          backupRoutes);
+app.use('/api/permissions',     permissionRoutes);
+app.use('/api/stores',          storeRoutes);
+app.use('/api/analytics',       analyticsRoutes);
+
+// Sales module (basic+)
+app.use('/api/sales',           salesRoutes);
+app.use('/api/register',        registerRoutes);
+app.use('/api/returns',         returnRoutes);
+app.use('/api/coupons',         couponRoutes);
+app.use('/api/loyalty',         loyaltyRoutes);
+app.use('/api/credit-sales',    creditSaleRoutes);
+app.use('/api/layaway',         layawayRoutes);
+app.use('/api/quotations',      quotationRoutes);
+app.use('/api/gift-cards',      giftCardRoutes);
+app.use('/api/price-rules',     priceRuleRoutes);
+app.use('/api/sales-targets',   salesTargetRoutes);
+app.use('/api/invoices',        invoiceRoutes);
+
+// Inventory module (basic+)
+app.use('/api/products',            productRoutes);
+app.use('/api/variants',            variantRoutes);
+app.use('/api/bundles',             bundleRoutes);
+app.use('/api/inventory',           inventoryRoutes);
+app.use('/api/suppliers',           supplierRoutes);
+app.use('/api/purchase-orders',     purchaseOrderRoutes);
+app.use('/api/stock-adjustments',   stockAdjustmentRoutes);
+app.use('/api/stock-transfers',     stockTransferRoutes);
+
+// Reports module (basic+)
+app.use('/api/reports',             reportRoutes);
+app.use('/api/sales-reports',       salesReportRoutes);
+app.use('/api/inventory-reports',   inventoryReportRoutes);
+app.use('/api/expenses',            expenseRoutes);
+
+// Accounting module — PROFESSIONAL+ only
+// requireModule is applied INSIDE accountingRoutes (see Step 4 note)
+app.use('/api/accounting',          accountingRoutes);
+
+// HR/Payroll module — PROFESSIONAL+ only
+app.use('/api/staff',               staffRoutes);
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', ts: new Date().toISOString() });
+});
+
+// ── Global Error Handler ─────────────────────────────────────
 app.use((err, req, res, next) => {
-  console.error(err.stack);  // Log the full error stack trace to console
+  // CORS errors
+  if (err.message && err.message.startsWith('CORS')) {
+    return res.status(403).json({ message: err.message });
+  }
+  console.error('[ERROR]', err.stack);
   res.status(500).json({ message: 'Internal server error' });
 });
 
-// --- Start Server ---
-// Reads port from .env file (default: 5000) and starts listening
+// ── Start Server ─────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`\n╔══════════════════════════════════════════╗`);
+  console.log(`║  AByte POS  –  Backend Server            ║`);
+  console.log(`║  Listening on port ${PORT}                  ║`);
+  console.log(`║  DB: ${(process.env.DB_NAME || 'abyte_pos').padEnd(35)}║`);
+  console.log(`╚══════════════════════════════════════════╝\n`);
 });

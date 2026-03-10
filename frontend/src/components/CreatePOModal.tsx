@@ -182,7 +182,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold">Create Purchase Order</h2>
+            <h2 className="text-base font-semibold">Create Purchase Order</h2>
             <p className="text-blue-100 text-sm mt-1">Step {step} of 3</p>
           </div>
           <button onClick={handleClose} className="text-white hover:bg-white/20 p-2 rounded-lg transition">

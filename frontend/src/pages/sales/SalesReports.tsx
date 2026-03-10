@@ -65,7 +65,7 @@ const SalesReports = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3"><BarChart3 className="text-emerald-600" size={32} /> Sales Reports</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3"><BarChart3 className="text-emerald-600" size={20} /> Sales Reports</h1>
           <p className="text-gray-500 mt-1">Comprehensive sales analytics and insights</p>
         </div>
       </div>
@@ -117,7 +117,7 @@ const SalesReports = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Hourly Sales */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="font-bold text-gray-800 mb-4">Hourly Sales</h3>
+              <h3 className="font-semibold text-gray-800 mb-4">Hourly Sales</h3>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={hourly}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -132,7 +132,7 @@ const SalesReports = () => {
             {/* Daily Trend */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-gray-800">Daily Trend</h3>
+                <h3 className="font-semibold text-gray-800">Daily Trend</h3>
                 <button onClick={() => exportCSV(dailyTrend, 'daily_trend.csv')} className="text-xs text-gray-500 hover:text-emerald-600 flex items-center gap-1"><Download size={14} /> CSV</button>
               </div>
               <ResponsiveContainer width="100%" height={250}>
@@ -150,7 +150,7 @@ const SalesReports = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Payment Breakdown */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="font-bold text-gray-800 mb-4">Payment Methods</h3>
+              <h3 className="font-semibold text-gray-800 mb-4">Payment Methods</h3>
               {paymentBreakdown.length === 0 ? <p className="text-center text-gray-400 py-8">No data</p> : (
                 <div className="space-y-3">{paymentBreakdown.map((p) => (
                   <div key={p.method}>
@@ -164,7 +164,7 @@ const SalesReports = () => {
             {/* Cashier Performance */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-gray-800">Cashier Performance</h3>
+                <h3 className="font-semibold text-gray-800">Cashier Performance</h3>
                 <button onClick={() => exportCSV(cashierPerf, 'cashier_performance.csv')} className="text-xs text-gray-500 hover:text-emerald-600 flex items-center gap-1"><Download size={14} /> CSV</button>
               </div>
               {cashierPerf.length === 0 ? <p className="text-center text-gray-400 py-8">No data</p> : (
@@ -181,7 +181,7 @@ const SalesReports = () => {
             {/* Top Customers */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-gray-800">Top Customers</h3>
+                <h3 className="font-semibold text-gray-800">Top Customers</h3>
                 <button onClick={() => exportCSV(topCustomers, 'top_customers.csv')} className="text-xs text-gray-500 hover:text-emerald-600 flex items-center gap-1"><Download size={14} /> CSV</button>
               </div>
               {topCustomers.length === 0 ? <p className="text-center text-gray-400 py-8">No data</p> : (

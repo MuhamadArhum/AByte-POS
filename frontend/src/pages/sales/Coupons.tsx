@@ -111,7 +111,7 @@ const Coupons = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3"><Ticket className="text-indigo-600" size={32} /> Coupons</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3"><Ticket className="text-indigo-600" size={20} /> Coupons</h1>
           <p className="text-gray-500 mt-1">Manage discount codes and promotions</p>
         </div>
         <div className="flex gap-3">
@@ -219,7 +219,7 @@ const Coupons = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold">{editCoupon ? 'Edit Coupon' : 'Create Coupon'}</h2>
+              <h2 className="text-base font-semibold">{editCoupon ? 'Edit Coupon' : 'Create Coupon'}</h2>
               <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">

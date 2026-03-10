@@ -67,7 +67,7 @@ const LoanRepaymentModal = ({ isOpen, onClose, onSuccess, loan }: Props) => {
           <div className="flex items-center gap-3">
             <DollarSign size={24} />
             <div>
-              <h2 className="text-lg font-bold">Record Repayment</h2>
+              <h2 className="text-sm font-semibold">Record Repayment</h2>
               <p className="text-purple-200 text-sm">{loan.full_name} - Remaining: ${Number(loan.remaining_balance).toLocaleString()}</p>
             </div>
           </div>

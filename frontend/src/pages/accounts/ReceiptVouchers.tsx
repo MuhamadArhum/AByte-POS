@@ -57,7 +57,7 @@ const ReceiptVoucherModal = ({ isOpen, onClose, onSuccess }: any) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Create Receipt Voucher</h2>
+          <h2 className="text-base font-semibold text-gray-800">Create Receipt Voucher</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X size={24} />
           </button>
@@ -226,9 +226,9 @@ const ReceiptVouchers = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <Receipt className="text-green-600" size={32} />
+          <Receipt className="text-green-600" size={20} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Receipt Vouchers</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Receipt Vouchers</h1>
             <p className="text-gray-600 text-sm mt-1">Track all incoming payments</p>
           </div>
         </div>

@@ -115,9 +115,9 @@ const PayrollProcessing = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <DollarSign className="text-blue-600" size={32} />
+          <DollarSign className="text-blue-600" size={20} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Payroll Processing</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Payroll Processing</h1>
             <p className="text-gray-600 text-sm mt-1">Bulk salary generation for staff</p>
           </div>
         </div>
@@ -143,7 +143,7 @@ const PayrollProcessing = () => {
       {/* Step 1: Setup */}
       {step === 'setup' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-6">Payroll Configuration</h2>
+          <h2 className="text-base font-semibold text-gray-800 mb-6">Payroll Configuration</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">From Date *</label>
@@ -252,7 +252,7 @@ const PayrollProcessing = () => {
       {step === 'processing' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
           <div className="animate-spin w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <h3 className="text-xl font-bold text-gray-800 mb-2">Processing Payroll...</h3>
+          <h3 className="text-sm font-semibold text-gray-800 mb-2">Processing Payroll...</h3>
           <p className="text-gray-600">Please wait while we process salary payments.</p>
         </div>
       )}
@@ -261,7 +261,7 @@ const PayrollProcessing = () => {
       {step === 'complete' && result && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
           <CheckCircle className="text-green-600 w-20 h-20 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold text-gray-800 mb-4">Payroll Processed Successfully!</h3>
+          <h3 className="text-base font-semibold text-gray-800 mb-4">Payroll Processed Successfully!</h3>
           <div className="text-left max-w-md mx-auto bg-gray-50 rounded-lg p-6 mb-8">
             <p className="text-gray-700 mb-2"><span className="font-semibold">Successful Payments:</span> {result.successCount}</p>
             {result.errors && result.errors.length > 0 && (

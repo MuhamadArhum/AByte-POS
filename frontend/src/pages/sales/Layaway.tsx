@@ -191,7 +191,7 @@ const Layaway = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3"><Archive className="text-amber-600" size={32} /> Layaway</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3"><Archive className="text-amber-600" size={20} /> Layaway</h1>
           <p className="text-gray-500 mt-1">Manage layaway orders with installment payments</p>
         </div>
         <div className="flex gap-3">
@@ -294,7 +294,7 @@ const Layaway = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
-              <div><h2 className="text-xl font-bold">{detailModal.layaway_number}</h2><p className="text-sm text-gray-500">{detailModal.customer_name}</p></div>
+              <div><h2 className="text-base font-semibold">{detailModal.layaway_number}</h2><p className="text-sm text-gray-500">{detailModal.customer_name}</p></div>
               <button onClick={() => setDetailModal(null)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
             </div>
             <div className="p-6">
@@ -333,7 +333,7 @@ const Layaway = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-6 border-b">
-              <div><h2 className="text-xl font-bold">Make Payment</h2><p className="text-sm text-gray-500">{paymentModal.layaway_number}</p></div>
+              <div><h2 className="text-base font-semibold">Make Payment</h2><p className="text-sm text-gray-500">{paymentModal.layaway_number}</p></div>
               <button onClick={() => setPaymentModal(null)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
@@ -355,7 +355,7 @@ const Layaway = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold">New Layaway Order</h2>
+              <h2 className="text-base font-semibold">New Layaway Order</h2>
               <button onClick={() => setShowCreate(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">

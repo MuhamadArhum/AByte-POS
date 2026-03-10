@@ -184,7 +184,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
           <div className="flex items-center gap-3">
             <User size={28} />
             <div>
-              <h2 className="text-2xl font-bold">{staffToEdit ? 'Edit Staff Member' : 'Add New Staff Member'}</h2>
+              <h2 className="text-base font-semibold">{staffToEdit ? 'Edit Staff Member' : 'Add New Staff Member'}</h2>
               <p className="text-cyan-100 text-sm mt-1">Enter staff details below</p>
             </div>
           </div>

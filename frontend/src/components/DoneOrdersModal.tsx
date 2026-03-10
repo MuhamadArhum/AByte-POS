@@ -77,7 +77,7 @@ const DoneOrdersModal: React.FC<DoneOrdersModalProps> = ({ isOpen, onClose }) =>
         
         {/* Header */}
         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
-          <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+          <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
             <CheckCircle size={24} className="text-emerald-600" />
             Done Orders
           </h2>

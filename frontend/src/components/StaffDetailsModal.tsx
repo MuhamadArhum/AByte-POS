@@ -175,7 +175,7 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
           <div className="flex items-center gap-3">
             <User size={28} />
             <div>
-              <h2 className="text-2xl font-bold">Staff Details</h2>
+              <h2 className="text-base font-semibold">Staff Details</h2>
               {staff && <p className="text-cyan-100 text-sm mt-1">{staff.full_name} - {staff.position}</p>}
             </div>
           </div>

@@ -53,7 +53,7 @@ const Reports = () => {
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Analytics & Reports</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900">Analytics & Reports</h1>
           <p className="text-gray-600">Financial insights and performance metrics</p>
         </div>
       </div>
@@ -85,7 +85,7 @@ const Reports = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Sales Chart */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-96">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Revenue vs Profit</h3>
+            <h3 className="text-sm font-semibold text-gray-800 mb-4">Revenue vs Profit</h3>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={salesData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -104,7 +104,7 @@ const Reports = () => {
 
           {/* Trend Chart */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-96">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Sales Trend</h3>
+            <h3 className="text-sm font-semibold text-gray-800 mb-4">Sales Trend</h3>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={salesData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />

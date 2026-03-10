@@ -165,7 +165,7 @@ const AuditLog = () => {
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
   const [page, setPage] = useState(1);
-  const [itemsPerPage] = useState(30);
+  const [itemsPerPage, setItemsPerPage] = useState(30);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [expandedLog, setExpandedLog] = useState<number | null>(null);
@@ -176,7 +176,7 @@ const AuditLog = () => {
 
   useEffect(() => {
     fetchLogs();
-  }, [page, selectedAction, dateStart, dateEnd]);
+  }, [page, itemsPerPage, selectedAction, dateStart, dateEnd]);
 
   const fetchActions = async () => {
     try {
@@ -232,8 +232,8 @@ const AuditLog = () => {
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <ScrollText className="text-emerald-600" size={32} />
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
+            <ScrollText className="text-emerald-600" size={20} />
             Audit Log
           </h1>
           <p className="text-gray-500 mt-1">{total} total entries</p>
@@ -378,6 +378,7 @@ const AuditLog = () => {
               onPageChange={setPage}
               totalItems={total}
               itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(l) => { setItemsPerPage(l); setPage(1); }}
             />
           </>
         )}

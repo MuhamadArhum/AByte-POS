@@ -96,9 +96,9 @@ const TrialBalance = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <Scale className="text-emerald-600" size={32} />
+          <Scale className="text-emerald-600" size={20} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Trial Balance</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Trial Balance</h1>
             <p className="text-gray-600 text-sm mt-1">Verify debits and credits balance</p>
           </div>
         </div>

@@ -227,7 +227,7 @@ const Dashboard = () => {
     <div className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Dashboard Overview</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900">Dashboard Overview</h1>
           <p className="text-gray-500 mt-1">Welcome back, {user?.name}. Here's what's happening today.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -362,7 +362,7 @@ const Dashboard = () => {
         {/* Revenue Chart */}
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-gray-800">Revenue Overview</h2>
+            <h2 className="text-base font-semibold text-gray-800">Revenue Overview</h2>
             <select 
               value={chartPeriod}
               onChange={(e) => setChartPeriod(e.target.value as 'week' | 'month' | 'year')}
@@ -425,7 +425,7 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Quick Actions</h2>
+            <h2 className="text-base font-semibold text-gray-800 mb-4">Quick Actions</h2>
             <div className="grid grid-cols-2 gap-3">
               {quickActions.map((action, index) => {
                 const Icon = action.icon;
@@ -450,7 +450,7 @@ const Dashboard = () => {
             <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center mb-3">
               <Package size={20} />
             </div>
-            <h2 className="text-lg font-bold mb-2">Pro Tip</h2>
+            <h2 className="text-sm font-semibold mb-2">Pro Tip</h2>
             <p className="text-emerald-100 text-sm mb-4">
               Check your low stock items regularly to ensure you never run out of best-sellers.
             </p>
@@ -469,7 +469,7 @@ const Dashboard = () => {
         {/* Recent Orders */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-800">Recent Orders</h2>
+            <h2 className="text-base font-semibold text-gray-800">Recent Orders</h2>
             <Link to="/sales" className="text-emerald-600 text-sm hover:underline flex items-center gap-1">
               View all <ArrowRight size={14} />
             </Link>
@@ -513,7 +513,7 @@ const Dashboard = () => {
         {/* Top Products */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-800">Top Selling Products</h2>
+            <h2 className="text-base font-semibold text-gray-800">Top Selling Products</h2>
             <Link to="/reports" className="text-emerald-600 text-sm hover:underline flex items-center gap-1">
               View all <ArrowRight size={14} />
             </Link>

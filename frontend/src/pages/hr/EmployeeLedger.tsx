@@ -114,9 +114,9 @@ const EmployeeLedger = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <BookOpen className="text-indigo-600" size={32} />
+          <BookOpen className="text-indigo-600" size={20} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Employee Ledger</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Employee Ledger</h1>
             <p className="text-gray-600 text-sm mt-1">Complete financial history per employee</p>
           </div>
         </div>
@@ -176,7 +176,7 @@ const EmployeeLedger = () => {
                 {data.staff.full_name?.charAt(0) || '?'}
               </div>
               <div>
-                <h2 className="text-2xl font-bold">{data.staff.full_name}</h2>
+                <h2 className="text-base font-semibold">{data.staff.full_name}</h2>
                 <p className="text-indigo-200">
                   {data.staff.employee_id ? `ID: ${data.staff.employee_id} | ` : ''}{data.staff.position} - {data.staff.department || 'N/A'}
                 </p>
@@ -235,7 +235,7 @@ const EmployeeLedger = () => {
 
           {/* Attendance Summary */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-3">Attendance Summary</h3>
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">Attendance Summary</h3>
             <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
               {[
                 { label: 'Present', value: data.attendance_summary.present, bg: 'bg-green-50 border-green-200', text: 'text-green-600' },
@@ -256,7 +256,7 @@ const EmployeeLedger = () => {
           {/* Ledger Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 border-b bg-gray-50">
-              <h3 className="text-lg font-bold text-gray-800">Transaction History</h3>
+              <h3 className="text-sm font-semibold text-gray-800">Transaction History</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">

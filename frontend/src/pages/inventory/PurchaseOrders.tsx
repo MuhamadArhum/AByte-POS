@@ -89,8 +89,8 @@ const PurchaseOrders = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <FileText className="text-blue-600" size={32} />
-          <h1 className="text-3xl font-bold text-gray-800">Purchase Orders</h1>
+          <FileText className="text-blue-600" size={20} />
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900">Purchase Orders</h1>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}

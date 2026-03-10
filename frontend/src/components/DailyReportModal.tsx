@@ -143,7 +143,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
         
         {/* Header */}
         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
-          <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+          <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
             <BarChart size={24} className="text-emerald-600" />
             Daily Sales Report (Z-Report)
           </h2>
@@ -209,7 +209,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
           {/* Transactions Table */}
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 border-b border-gray-100 bg-gray-50">
-               <h3 className="font-bold text-gray-800">Today's Transactions</h3>
+               <h3 className="font-semibold text-gray-800">Today's Transactions</h3>
             </div>
             <table className="w-full text-left border-collapse">
               <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">

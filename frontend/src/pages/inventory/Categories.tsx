@@ -107,8 +107,8 @@ const Categories = () => {
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <Tag className="text-emerald-600" size={32} />
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
+            <Tag className="text-emerald-600" size={20} />
             Categories
           </h1>
           <p className="text-gray-500 mt-1">Organize your products into categories</p>
@@ -188,7 +188,7 @@ const Categories = () => {
                       <Tag size={20} className={cat.is_active ? 'text-emerald-600' : 'text-gray-400'} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-gray-800">{cat.category_name}</h3>
+                      <h3 className="font-semibold text-gray-800">{cat.category_name}</h3>
                       {cat.description && <p className="text-sm text-gray-500 mt-0.5">{cat.description}</p>}
                     </div>
                   </div>
@@ -231,7 +231,7 @@ const Categories = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
                 <Tag size={22} className="text-emerald-600" />
                 {editCategory ? 'Edit Category' : 'Add Category'}
               </h2>

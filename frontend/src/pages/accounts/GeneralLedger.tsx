@@ -123,9 +123,9 @@ const GeneralLedger = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <Book className="text-indigo-600" size={32} />
+          <Book className="text-indigo-600" size={20} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">General Ledger</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">General Ledger</h1>
             <p className="text-gray-600 text-sm mt-1">View all posted transactions</p>
           </div>
         </div>

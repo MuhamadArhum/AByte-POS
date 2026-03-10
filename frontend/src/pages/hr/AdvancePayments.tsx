@@ -55,7 +55,7 @@ const AdvancePaymentModal = ({ isOpen, onClose, onSuccess }: AdvancePaymentModal
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Record Advance Payment</h2>
+        <h2 className="text-base font-semibold text-gray-800 mb-6">Record Advance Payment</h2>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
@@ -167,9 +167,9 @@ const AdvancePayments = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <DollarSign className="text-purple-600" size={32} />
+          <DollarSign className="text-purple-600" size={20} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Advance Payments</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Advance Payments</h1>
             <p className="text-gray-600 text-sm mt-1">Manage advance salary payments to staff</p>
           </div>
         </div>

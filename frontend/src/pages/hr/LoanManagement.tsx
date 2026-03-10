@@ -83,9 +83,9 @@ const LoanManagement = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <CreditCard className="text-cyan-600" size={32} />
+          <CreditCard className="text-cyan-600" size={20} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Loan Management</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Loan Management</h1>
             <p className="text-gray-600 text-sm mt-1">Manage employee loans and repayments</p>
           </div>
         </div>

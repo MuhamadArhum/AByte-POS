@@ -2,35 +2,31 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
-import { Lock, Mail, Loader2, Eye, EyeOff, ShoppingCart, BarChart3, Users, Package, Shield, Zap, Building2 } from 'lucide-react';
+import { Lock, Mail, Loader2, Eye, EyeOff, ShoppingCart, BarChart3, Users, Package, Shield, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const features = [
-  { icon: ShoppingCart, label: 'Point of Sale', desc: 'Fast & intuitive POS system' },
-  { icon: BarChart3, label: 'Sales Analytics', desc: 'Real-time reports & insights' },
-  { icon: Package, label: 'Inventory Control', desc: 'Stock tracking & alerts' },
-  { icon: Users, label: 'HR Management', desc: 'Staff, attendance & payroll' },
+  { icon: ShoppingCart, label: 'Point of Sale',     desc: 'Fast & intuitive POS system' },
+  { icon: BarChart3,    label: 'Sales Analytics',   desc: 'Real-time reports & insights' },
+  { icon: Package,      label: 'Inventory Control', desc: 'Stock tracking & alerts' },
+  { icon: Users,        label: 'HR Management',     desc: 'Staff, attendance & payroll' },
 ];
 
 const Login = () => {
-  const [tenantCode, setTenantCode] = useState('');
-  const [email, setEmail] = useState('admin@pos.com');
-  const [password, setPassword] = useState('Admin@123');
+  const [email,        setEmail]        = useState('admin@pos.com');
+  const [password,     setPassword]     = useState('Admin@123');
   const [showPassword, setShowPassword] = useState(false);
-  const [showTenant, setShowTenant] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [error,        setError]        = useState('');
+  const [loading,      setLoading]      = useState(false);
   const { login } = useAuth();
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const payload: any = { email, password };
-      if (tenantCode.trim()) payload.tenant_code = tenantCode.trim().toLowerCase();
-      const response = await api.post('/auth/login', payload);
+      const response = await api.post('/auth/login', { email, password });
       const { token, user, permissions } = response.data;
       login(token, user, permissions ?? null);
       navigate('/');
@@ -59,12 +55,6 @@ const Login = () => {
             transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
             className="absolute -bottom-40 -left-20 w-[500px] h-[500px] bg-teal-500/8 rounded-full blur-3xl"
           />
-          <motion.div
-            animate={{ y: [0, -20, 0] }}
-            transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-emerald-400/5 rounded-full blur-2xl"
-          />
-          {/* Grid pattern overlay */}
           <div className="absolute inset-0" style={{
             backgroundImage: 'radial-gradient(circle, rgba(16,185,129,0.06) 1px, transparent 1px)',
             backgroundSize: '32px 32px'
@@ -83,7 +73,7 @@ const Login = () => {
           </div>
           <div>
             <p className="text-white font-bold text-lg leading-tight">AByte POS</p>
-            <p className="text-emerald-400/70 text-xs">Enterprise Edition</p>
+            <p className="text-emerald-400/70 text-xs">Complete Business Solution</p>
           </div>
         </motion.div>
 
@@ -150,7 +140,6 @@ const Login = () => {
       {/* ===== RIGHT PANEL — Form ===== */}
       <div className="flex-1 flex items-center justify-center p-6 bg-gray-50 relative overflow-hidden">
 
-        {/* Subtle background for right panel */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 right-0 w-72 h-72 bg-emerald-100/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
           <div className="absolute bottom-0 left-0 w-56 h-56 bg-teal-100/40 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4" />
@@ -162,7 +151,7 @@ const Login = () => {
           transition={{ duration: 0.6, ease: 'easeOut' }}
           className="w-full max-w-md relative z-10"
         >
-          {/* Mobile logo (shows only on small screens) */}
+          {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
             <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
               <span className="text-lg font-black text-white">A</span>
@@ -192,33 +181,6 @@ const Login = () => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-
-            {/* Company Code (optional, shown on toggle) */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowTenant(!showTenant)}
-                className="flex items-center gap-2 text-xs text-gray-400 hover:text-emerald-600 transition-colors mb-1"
-              >
-                <Building2 size={13} />
-                {showTenant ? 'Hide company code' : 'Have a company code?'}
-              </button>
-              {showTenant && (
-                <div className="relative group">
-                  <Building2
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors duration-200"
-                    size={18}
-                  />
-                  <input
-                    type="text"
-                    value={tenantCode}
-                    onChange={e => setTenantCode(e.target.value.toLowerCase())}
-                    className="w-full pl-11 pr-4 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-0 focus:border-emerald-500 outline-none transition-all duration-200 text-gray-800 placeholder-gray-400 text-sm"
-                    placeholder="e.g. client_a (leave blank for default)"
-                  />
-                </div>
-              )}
-            </div>
 
             {/* Email */}
             <div>
@@ -280,15 +242,12 @@ const Login = () => {
                   Signing in...
                 </>
               ) : (
-                <>
-                  Sign In to Dashboard
-                </>
+                'Sign In to Dashboard'
               )}
             </motion.button>
 
           </form>
 
-          {/* Bottom note */}
           <p className="text-center text-xs text-gray-400 mt-8">
             Protected by enterprise-grade security &nbsp;&middot;&nbsp; AByte POS &copy; 2025
           </p>

@@ -31,7 +31,7 @@ const Analytics = () => {
 
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">Analytics Dashboard</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-gray-900 mb-8">Analytics Dashboard</h1>
 
       {/* Date Range Selector */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-wrap items-center gap-4">
@@ -110,7 +110,7 @@ const Analytics = () => {
 
       {/* Top Products */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Top Selling Products</h2>
+        <h2 className="text-base font-semibold text-gray-800 mb-4">Top Selling Products</h2>
         <table className="w-full">
           <thead>
             <tr className="border-b">

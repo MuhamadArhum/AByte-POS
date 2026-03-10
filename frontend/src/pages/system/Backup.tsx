@@ -42,7 +42,7 @@ const Backup = () => {
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -132,8 +132,8 @@ const Backup = () => {
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <Database className="text-emerald-600" size={32} />
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
+            <Database className="text-emerald-600" size={20} />
             Backup & Restore
           </h1>
           <p className="text-gray-500 mt-1">Manage database backups and recovery</p>
@@ -212,7 +212,7 @@ const Backup = () => {
       {/* Backups Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-4 border-b border-gray-100">
-          <h3 className="font-bold text-gray-800">Backup History</h3>
+          <h3 className="font-semibold text-gray-800">Backup History</h3>
         </div>
 
         {loading ? (
@@ -302,15 +302,14 @@ const Backup = () => {
             </tbody>
           </table>
         )}
-        {backups.length > 0 && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            totalItems={totalItems}
-            itemsPerPage={itemsPerPage}
-          />
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          onItemsPerPageChange={(l) => { setItemsPerPage(l); setCurrentPage(1); }}
+        />
       </div>
     </div>
   );

@@ -46,7 +46,7 @@ const CashRegister = () => {
   const [history, setHistory] = useState<Register[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -122,8 +122,8 @@ const CashRegister = () => {
   if (!register) {
     return (
       <div className="p-8">
-        <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3 mb-8">
-          <Wallet className="text-emerald-600" size={32} />
+        <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3 mb-8">
+          <Wallet className="text-emerald-600" size={20} />
           Cash Register
         </h1>
 
@@ -132,7 +132,7 @@ const CashRegister = () => {
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Lock size={32} className="text-gray-400" />
             </div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Register is Closed</h2>
+            <h2 className="text-base font-semibold text-gray-800 mb-2">Register is Closed</h2>
             <p className="text-gray-500 mb-6">Open the register to start your shift</p>
 
             <div className="mb-4">
@@ -171,7 +171,7 @@ const CashRegister = () => {
 
         {showHistory && (
           <div className="mt-8">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Shift History</h3>
+            <h3 className="text-sm font-semibold text-gray-800 mb-4">Shift History</h3>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <table className="w-full text-left text-sm">
                 <thead className="bg-gray-50 text-gray-600 font-medium">
@@ -209,12 +209,13 @@ const CashRegister = () => {
                   ))}
                 </tbody>
               </table>
-              <Pagination 
+              <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
                 onPageChange={setCurrentPage}
                 totalItems={totalItems}
                 itemsPerPage={itemsPerPage}
+                onItemsPerPageChange={(l) => { setItemsPerPage(l); setCurrentPage(1); }}
               />
             </div>
           </div>
@@ -235,8 +236,8 @@ const CashRegister = () => {
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <Wallet className="text-emerald-600" size={32} />
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
+            <Wallet className="text-emerald-600" size={20} />
             Cash Register
           </h1>
           <p className="text-gray-500 mt-1">
@@ -305,7 +306,7 @@ const CashRegister = () => {
       {register.movements && register.movements.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-4 border-b border-gray-100">
-            <h3 className="font-bold text-gray-800">Cash Movements</h3>
+            <h3 className="font-semibold text-gray-800">Cash Movements</h3>
           </div>
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 text-gray-600 font-medium">

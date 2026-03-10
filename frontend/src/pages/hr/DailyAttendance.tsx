@@ -114,9 +114,9 @@ const DailyAttendance = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <Calendar className="text-green-600" size={32} />
+          <Calendar className="text-green-600" size={20} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Daily Attendance</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Daily Attendance</h1>
             <p className="text-gray-600 text-sm mt-1">All employees attendance for a specific day</p>
           </div>
         </div>

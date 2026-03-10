@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, ShoppingCart, Trash2, Minus, Plus, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Mail, Building2 } from 'lucide-react';
+import { Search, ShoppingCart, Trash2, Minus, Plus, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Mail, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCart, Product } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import ProductCard from '../../components/ProductCard';
@@ -31,10 +31,20 @@ const POS = () => {
   const [searchBarcode, setSearchBarcode] = useState('');
   const [searchCode, setSearchCode] = useState('');
 
+  // Product pagination
+  const [productPage, setProductPage] = useState(1);
+  const [productTotalPages, setProductTotalPages] = useState(1);
+  const [productTotalItems, setProductTotalItems] = useState(0);
+  const productLimit = 20;
+
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [selectedPendingSale, setSelectedPendingSale] = useState<any>(null);
+
+  // Edit pending order state
+  const [editingSaleId, setEditingSaleId] = useState<number | null>(null);
+  const [editingTokenNo, setEditingTokenNo] = useState<string | null>(null);
 
   const [isDailyReportOpen, setIsDailyReportOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -71,10 +81,57 @@ const POS = () => {
     if (location.state?.pendingSale) {
       setSelectedPendingSale(location.state.pendingSale);
       setIsCheckoutOpen(true);
-      // Clear location state
+      window.history.replaceState({}, document.title);
+    }
+    if (location.state?.editOrder) {
+      loadEditOrder(location.state.editOrder);
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
+
+  const loadEditOrder = async (sale: any) => {
+    try {
+      const res = await api.get(`/sales/${sale.sale_id}`);
+      const saleData = res.data;
+      clearCart();
+      // Add items to cart one by one, then update quantity
+      const items: any[] = saleData.items || [];
+      for (const item of items) {
+        const product = {
+          product_id: item.product_id,
+          product_name: item.product_name,
+          price: parseFloat(item.unit_price),
+          stock_quantity: 999,
+          barcode: null,
+          has_variants: false,
+        } as any;
+        addToCart(product);
+        // quantity > 1: will be set via updateQuantity below
+      }
+      // After adding all items, update quantities (requires a small delay for state to settle)
+      setTimeout(() => {
+        for (const item of items) {
+          const qty = parseInt(item.quantity);
+          if (qty > 1) {
+            updateQuantity(item.product_id, qty);
+          }
+        }
+      }, 100);
+      // Set customer if available
+      if (saleData.customer_id && saleData.customer_id !== 1) {
+        const custRes = await api.get(`/customers/${saleData.customer_id}`).catch(() => null);
+        if (custRes?.data) setSelectedCustomer(custRes.data);
+      }
+      // Set tax/additional rates from sale
+      if (saleData.tax_percent !== undefined) setTaxRate(parseFloat(saleData.tax_percent) || 0);
+      if (saleData.additional_charges_percent !== undefined) setAdditionalRate(parseFloat(saleData.additional_charges_percent) || 0);
+      setEditingSaleId(sale.sale_id);
+      setEditingTokenNo(sale.token_no || null);
+    } catch (err) {
+      console.error('Failed to load edit order', err);
+      alert('Failed to load order for editing');
+    }
+  };
 
   const checkRegister = async () => {
     setRegisterLoading(true);
@@ -106,27 +163,36 @@ const POS = () => {
     }
   };
 
-  // Fetch products and customers once register is open
+  // Fetch products with server-side pagination, search, and category filter
+  const fetchProducts = useCallback(async (page = 1, search = '', category = 'All') => {
+    if (!register) return;
+    setLoading(true);
+    try {
+      const params: any = { page, limit: productLimit };
+      if (search) params.search = search;
+      if (category !== 'All') params.category = category;
+      const res = await api.get('/products', { params });
+      const rows = res.data.data || res.data;
+      const mappedProducts = (Array.isArray(rows) ? rows : []).map((p: any) => ({
+        ...p,
+        price: typeof p.price === 'string' ? parseFloat(p.price) : p.price,
+        stock_quantity: p.available_stock || p.stock_quantity || 0
+      }));
+      setProducts(mappedProducts);
+      if (res.data.pagination) {
+        setProductTotalPages(res.data.pagination.totalPages || 1);
+        setProductTotalItems(res.data.pagination.total || 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch products", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [register, productLimit]);
+
+  // Initial load: categories + customers + products
   useEffect(() => {
     if (!register) return;
-
-    const fetchProducts = async () => {
-      try {
-        const res = await api.get('/products');
-        const rows = res.data.data || res.data;
-        const mappedProducts = (Array.isArray(rows) ? rows : []).map((p: any) => ({
-          ...p,
-          price: typeof p.price === 'string' ? parseFloat(p.price) : p.price,
-          stock_quantity: p.available_stock || p.stock_quantity || 0
-        }));
-        setProducts(mappedProducts);
-      } catch (error) {
-        console.error("Failed to fetch products", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     const fetchCategories = async () => {
       try {
         const res = await api.get('/products/categories');
@@ -135,27 +201,56 @@ const POS = () => {
         console.error("Failed to fetch categories", error);
       }
     };
-
     fetchCustomers();
     fetchCategories();
-    fetchProducts();
+    fetchProducts(1, '', 'All');
   }, [register]);
 
-  // Barcode Auto-Add
+  // Re-fetch when page, category, or search changes (debounce search)
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (searchBarcode) {
-      const match = products.find(p => p.barcode === searchBarcode);
-      if (match) {
-        if (match.stock_quantity > 0) {
-          handleAddProduct(match); // Use handleAddProduct to support variants
-          setSearchBarcode('');
-        } else {
-          alert('Product Out of Stock!');
-          setSearchBarcode('');
+    if (!register) return;
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setProductPage(1);
+      fetchProducts(1, searchName, selectedCategory);
+    }, 300);
+    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
+  }, [searchName, selectedCategory]);
+
+  useEffect(() => {
+    if (!register) return;
+    fetchProducts(productPage, searchName, selectedCategory);
+  }, [productPage]);
+
+  // Barcode Auto-Add: search server-side for exact barcode match
+  useEffect(() => {
+    if (!searchBarcode) return;
+    const findByBarcode = async () => {
+      try {
+        const res = await api.get('/products', { params: { search: searchBarcode, limit: 5 } });
+        const rows: any[] = res.data.data || res.data;
+        const match = rows.find((p: any) => p.barcode === searchBarcode);
+        if (match) {
+          const mapped = {
+            ...match,
+            price: typeof match.price === 'string' ? parseFloat(match.price) : match.price,
+            stock_quantity: match.available_stock || match.stock_quantity || 0
+          };
+          if (mapped.stock_quantity > 0) {
+            handleAddProduct(mapped);
+          } else {
+            alert('Product Out of Stock!');
+          }
         }
+      } catch (err) {
+        console.error('Barcode search failed', err);
+      } finally {
+        setSearchBarcode('');
       }
-    }
-  }, [searchBarcode, products]);
+    };
+    findByBarcode();
+  }, [searchBarcode]);
 
   // Hotkeys
   useEffect(() => {
@@ -256,7 +351,7 @@ const POS = () => {
   const filteredCustomers = useMemo(() => {
     if (!customerSearch.trim()) return [];
     const q = customerSearch.toLowerCase();
-    return customers.filter(c =>
+    return customers.filter((c: any) =>
       c.customer_name.toLowerCase().includes(q) ||
       (c.phone_number && c.phone_number.includes(customerSearch))
     ).slice(0, 8);
@@ -333,15 +428,10 @@ const POS = () => {
     }
   };
 
-  const filteredProducts = useMemo(() => products.filter(p => {
-    const matchName = searchName ? p.product_name.toLowerCase().includes(searchName.toLowerCase()) : true;
-    const matchBarcode = searchBarcode ? (p.barcode && p.barcode.includes(searchBarcode)) : true;
-    const matchCode = searchCode ? p.product_id.toString().includes(searchCode) : true;
-    const matchCategory = selectedCategory === 'All'
-      ? true
-      : ((p as any).category_id && (p as any).category_id.toString() === selectedCategory);
-    return matchName && matchBarcode && matchCode && matchCategory;
-  }), [products, searchName, searchBarcode, searchCode, selectedCategory]);
+  // Client-side code search filter only (search/category handled server-side)
+  const filteredProducts = searchCode
+    ? products.filter(p => p.product_id.toString().includes(searchCode))
+    : products;
 
   const expectedCash = register ? (
     parseFloat(register.opening_balance || 0) +
@@ -370,7 +460,7 @@ const POS = () => {
           <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/30">
             <DollarSign size={40} className="text-white" strokeWidth={2.5} />
           </div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-3">Open Register</h2>
+          <h2 className="text-base font-semibold text-gray-800 mb-3">Open Register</h2>
           <p className="text-gray-600 mb-8">Enter the opening cash balance to start your shift</p>
 
           <div className="relative mb-6">
@@ -426,7 +516,7 @@ const POS = () => {
                 <ShoppingBag size={24} className="text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-800">Point of Sale</h1>
+                <h1 className="text-xl font-semibold text-gray-900">Point of Sale</h1>
                 <p className="text-xs text-gray-500">Cashier: {user?.name}</p>
               </div>
             </div>
@@ -544,18 +634,59 @@ const POS = () => {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-3">
-              {filteredProducts.map(product => (
-                <ProductCard key={product.product_id} product={product} onAddToCart={handleAddProduct} />
-              ))}
-              {filteredProducts.length === 0 && (
-                <div className="col-span-full text-center py-16">
-                  <ShoppingBag size={64} className="mx-auto text-gray-300 mb-4" />
-                  <p className="text-gray-500 text-lg font-medium">No products found</p>
-                  <p className="text-gray-400 text-sm mt-2">Try adjusting your search filters</p>
+            <>
+              <div className="grid grid-cols-4 gap-3">
+                {filteredProducts.map(product => (
+                  <ProductCard key={product.product_id} product={product} onAddToCart={handleAddProduct} />
+                ))}
+                {filteredProducts.length === 0 && (
+                  <div className="col-span-full text-center py-16">
+                    <ShoppingBag size={64} className="mx-auto text-gray-300 mb-4" />
+                    <p className="text-gray-500 text-lg font-medium">No products found</p>
+                    <p className="text-gray-400 text-sm mt-2">Try adjusting your search filters</p>
+                  </div>
+                )}
+              </div>
+              {/* Pagination */}
+              {productTotalPages > 1 && (
+                <div className="mt-4 flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm">
+                  <span className="text-xs text-gray-500">
+                    Page {productPage} of {productTotalPages} &nbsp;·&nbsp; {productTotalItems} products
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setProductPage(p => Math.max(1, p - 1))}
+                      disabled={productPage === 1}
+                      className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    {Array.from({ length: Math.min(5, productTotalPages) }, (_, i) => {
+                      const start = Math.max(1, Math.min(productPage - 2, productTotalPages - 4));
+                      const pg = start + i;
+                      return pg <= productTotalPages ? (
+                        <button
+                          key={pg}
+                          onClick={() => setProductPage(pg)}
+                          className={`w-7 h-7 rounded-lg text-xs font-bold transition-colors ${
+                            pg === productPage ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          {pg}
+                        </button>
+                      ) : null;
+                    })}
+                    <button
+                      onClick={() => setProductPage(p => Math.min(productTotalPages, p + 1))}
+                      disabled={productPage === productTotalPages}
+                      className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
                 </div>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -570,14 +701,20 @@ const POS = () => {
               <ShoppingCart size={20} className="text-emerald-400" />
             </div>
             <div>
-              <h2 className="text-white font-bold text-base leading-tight">Current Sale</h2>
+              <h2 className="text-white font-bold text-base leading-tight">
+                {editingSaleId ? (
+                  <span className="text-amber-400">
+                    Editing Token #{editingTokenNo || editingSaleId}
+                  </span>
+                ) : 'Current Sale'}
+              </h2>
               <p className="text-gray-400 text-xs">{cart.length === 0 ? 'No items' : `${cart.length} item${cart.length > 1 ? 's' : ''} · Rs. ${subtotal.toFixed(2)}`}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {cart.length > 0 && (
               <button
-                onClick={clearCart}
+                onClick={() => { clearCart(); setEditingSaleId(null); setEditingTokenNo(null); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-xs font-semibold transition-colors"
                 title="Clear Cart"
               >
@@ -587,6 +724,16 @@ const POS = () => {
             )}
           </div>
         </div>
+
+        {/* ── Editing Banner ── */}
+        {editingSaleId && (
+          <div className="bg-amber-500/20 border-b border-amber-500/30 px-5 py-2 flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
+            <p className="text-amber-300 text-xs font-semibold">
+              Editing Token #{editingTokenNo || editingSaleId} — Pay Now to complete this order
+            </p>
+          </div>
+        )}
 
         {/* ── Customer Panel ── */}
         <div className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0">
@@ -846,13 +993,25 @@ const POS = () => {
               <span className="text-amber-200 text-xs font-normal">F8</span>
             </button>
             <button
-              onClick={() => { setSelectedPendingSale(null); setIsCheckoutOpen(true); }}
+              onClick={() => {
+                if (editingSaleId) {
+                  // Cart-based edit mode: use cart total (not DB items)
+                  setSelectedPendingSale({ sale_id: editingSaleId, token_no: editingTokenNo, isCartEdit: true });
+                } else {
+                  setSelectedPendingSale(null);
+                }
+                setIsCheckoutOpen(true);
+              }}
               disabled={cart.length === 0}
-              className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+              className={`flex items-center justify-center gap-2 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none ${
+                editingSaleId
+                  ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30'
+                  : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+              }`}
             >
               <DollarSign size={18} />
-              Pay Now
-              <span className="text-emerald-200 text-xs font-normal">F9</span>
+              {editingSaleId ? 'Complete Order' : 'Pay Now'}
+              <span className="text-white/60 text-xs font-normal">F9</span>
             </button>
           </div>
         </div>
@@ -863,7 +1022,7 @@ const POS = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowShortcuts(false)}>
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
                 <Keyboard size={24} className="text-emerald-600" />
                 Keyboard Shortcuts
               </h3>
@@ -903,6 +1062,8 @@ const POS = () => {
         onSuccess={() => {
           setIsCheckoutOpen(false);
           setSelectedPendingSale(null);
+          setEditingSaleId(null);
+          setEditingTokenNo(null);
           const walkin = customers.find(c => c.customer_id === 1);
           setSelectedCustomer(walkin || null);
         }}

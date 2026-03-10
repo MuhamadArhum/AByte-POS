@@ -109,7 +109,7 @@ const ReceiveStockModal = ({ isOpen, onClose, onSuccess, poId, poNumber }: Recei
           <div className="flex items-center gap-3">
             <Package size={28} />
             <div>
-              <h2 className="text-2xl font-bold">Receive Stock</h2>
+              <h2 className="text-base font-semibold">Receive Stock</h2>
               <p className="text-green-100 text-sm mt-1">PO Number: {poNumber}</p>
             </div>
           </div>

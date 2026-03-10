@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -58,6 +58,22 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const notifRef   = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setIsProfileOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setIsNotificationOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
     sales: false,
     inventory: false,
@@ -87,7 +103,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       color: 'emerald',
       children: [
         { icon: ShoppingCart, label: 'POS', path: '/pos', moduleKey: 'sales.pos' },
-        { icon: ScrollText, label: 'Orders', path: '/orders', moduleKey: 'sales.orders' },
+        { icon: Users, label: 'Customers', path: '/customers', moduleKey: 'sales.customers' },
         { icon: Wallet, label: 'Cash Register', path: '/cash-register', moduleKey: 'sales.register' },
         { icon: RotateCcw, label: 'Returns', path: '/returns', moduleKey: 'sales.returns' },
         { icon: FileText, label: 'Quotations', path: '/quotations', moduleKey: 'sales.quotations' },
@@ -124,7 +140,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       moduleKey: 'hr',
       color: 'cyan',
       children: [
-        { icon: Users, label: 'Customers', path: '/customers', moduleKey: 'hr.customers' },
         { icon: User, label: 'Staff', path: '/staff', moduleKey: 'hr.staff' },
         { icon: ScrollText, label: 'Attendance', path: '/attendance', moduleKey: 'hr.attendance' },
         { icon: ScrollText, label: 'Daily Attendance', path: '/daily-attendance', moduleKey: 'hr.daily-attendance' },
@@ -166,7 +181,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       color: 'gray',
       children: [
         { icon: Store, label: 'Stores', path: '/stores', moduleKey: 'system.stores' },
-        { icon: Building2, label: 'Clients', path: '/tenants', moduleKey: 'system.tenants' },
         { icon: ScrollText, label: 'Audit Log', path: '/audit-log', moduleKey: 'system.audit' },
         { icon: Database, label: 'Backup', path: '/backup', moduleKey: 'system.backup' },
         { icon: Settings, label: 'Settings', path: '/settings', moduleKey: 'system.settings' },
@@ -414,16 +428,16 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               <Menu size={24} />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">AByte POS</h1>
+              <h1 className="text-xl font-semibold text-gray-900">AByte POS</h1>
               <p className="text-sm text-gray-500">Complete Business Management</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {/* Notifications */}
-            <div className="relative">
+            <div className="relative" ref={notifRef}>
               <button
-                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                onClick={() => { setIsNotificationOpen(!isNotificationOpen); setIsProfileOpen(false); }}
                 className="relative p-2.5 text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
               >
                 <Bell size={22} />
@@ -433,22 +447,107 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                   </span>
                 )}
               </button>
+
+              {/* Notification Dropdown */}
+              {isNotificationOpen && (
+                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
+                    <h3 className="text-sm font-semibold text-gray-800">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <span className="px-2 py-0.5 bg-red-100 text-red-600 text-xs font-semibold rounded-full">
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </div>
+                  <div className="divide-y divide-gray-50 max-h-72 overflow-y-auto">
+                    {notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer ${!n.read ? 'bg-emerald-50/40' : ''}`}
+                      >
+                        <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${!n.read ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-semibold ${!n.read ? 'text-gray-800' : 'text-gray-600'}`}>{n.title}</p>
+                          <p className="text-xs text-gray-500 truncate">{n.message}</p>
+                        </div>
+                        <span className="text-xs text-gray-400 flex-shrink-0">{n.time}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50">
+                    <button className="w-full text-xs text-emerald-600 font-semibold hover:text-emerald-700 transition-colors">
+                      Mark all as read
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* User Profile */}
-            <button
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 rounded-xl transition-all"
-            >
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-md">
-                {user?.name?.charAt(0) || 'A'}
-              </div>
-              <div className="text-left hidden lg:block">
-                <p className="text-sm font-semibold text-gray-800">{user?.name || 'User'}</p>
-                <p className="text-xs text-gray-500 capitalize">{user?.role_name || user?.role}</p>
-              </div>
-              <ChevronDown size={16} className="text-gray-400" />
-            </button>
+            <div className="relative" ref={profileRef}>
+              <button
+                onClick={() => { setIsProfileOpen(!isProfileOpen); setIsNotificationOpen(false); }}
+                className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-xl transition-all border border-transparent hover:border-gray-200"
+              >
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-md text-sm">
+                  {user?.name?.charAt(0)?.toUpperCase() || 'A'}
+                </div>
+                <div className="text-left hidden lg:block">
+                  <p className="text-sm font-semibold text-gray-800 leading-tight">{user?.name || 'User'}</p>
+                  <p className="text-xs text-emerald-600 font-medium capitalize">{user?.role_name || user?.role}</p>
+                </div>
+                <ChevronDown size={15} className={`text-gray-400 transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Profile Dropdown */}
+              {isProfileOpen && (
+                <div className="absolute right-0 top-full mt-2 w-60 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                  {/* User Info Header */}
+                  <div className="px-4 py-4 bg-gradient-to-br from-emerald-50 to-teal-50 border-b border-emerald-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-2 ring-white">
+                        {user?.name?.charAt(0)?.toUpperCase() || 'A'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-gray-800 truncate">{user?.name || 'User'}</p>
+                        <p className="text-xs text-emerald-600 font-medium capitalize">{user?.role_name || user?.role || 'Staff'}</p>
+                        <p className="text-xs text-gray-400 truncate">{user?.email || ''}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Menu Items */}
+                  <div className="py-2">
+                    <Link
+                      to="/settings"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                    >
+                      <Settings size={16} className="text-gray-400" />
+                      Settings
+                    </Link>
+                    <Link
+                      to="/audit-log"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                    >
+                      <ScrollText size={16} className="text-gray-400" />
+                      Activity Log
+                    </Link>
+                  </div>
+
+                  <div className="py-2 border-t border-gray-100">
+                    <button
+                      onClick={() => { setIsProfileOpen(false); handleLogout(); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
+                    >
+                      <LogOut size={16} />
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -457,6 +556,76 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           {children}
         </main>
       </div>
+
+      {/* Mobile Sidebar Drawer */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/40 z-30 md:hidden"
+            />
+            {/* Drawer */}
+            <motion.aside
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed left-0 top-0 bottom-0 w-72 bg-white shadow-2xl z-40 flex flex-col md:hidden"
+            >
+              {/* Logo */}
+              <div className="h-20 flex items-center gap-3 px-5 border-b-2 border-gray-100 bg-gradient-to-r from-emerald-50/50 to-teal-50/50">
+                <div className="w-11 h-11 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-lg flex-shrink-0">
+                  A
+                </div>
+                <div>
+                  <span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">AByte</span>
+                  <p className="text-xs text-gray-500 font-medium">Point of Sale</p>
+                </div>
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="ml-auto p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ChevronLeft size={20} className="text-gray-500" />
+                </button>
+              </div>
+
+              {/* User card */}
+              <div className="mx-4 mt-4 p-3 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-md">
+                    {user?.name?.charAt(0) || 'A'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-800 truncate">{user?.name || 'User'}</p>
+                    <p className="text-xs text-emerald-600 font-semibold capitalize">{user?.role_name || 'Staff'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Nav */}
+              <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
+                {filteredMenu.map((item, index) => renderMenuItem(item, index))}
+              </nav>
+
+              {/* Bottom */}
+              <div className="p-4 border-t-2 border-gray-100">
+                <button
+                  onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-all font-medium"
+                >
+                  <LogOut size={18} />
+                  <span>Logout</span>
+                </button>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* AI Widget */}
       <AIWidget />

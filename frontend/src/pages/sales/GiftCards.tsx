@@ -49,7 +49,7 @@ const GiftCards = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
-  const [limit, _setLimit] = useState(20);
+  const [limit, setLimit] = useState(20);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [stats, setStats] = useState<Stats>({ active_count: 0, total_balance: 0, total_issued: 0, redeemed_this_month: 0 });
@@ -218,8 +218,8 @@ const GiftCards = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <Gift className="text-purple-600" size={32} /> Gift Cards
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
+            <Gift className="text-purple-600" size={20} /> Gift Cards
           </h1>
           <p className="text-gray-500 mt-1">Issue, manage, and track gift cards</p>
         </div>
@@ -389,6 +389,7 @@ const GiftCards = () => {
           onPageChange={setPage}
           totalItems={totalItems}
           itemsPerPage={limit}
+          onItemsPerPageChange={(l) => { setLimit(l); setPage(1); }}
         />
       </div>
 
@@ -397,7 +398,7 @@ const GiftCards = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold">Issue Gift Card</h2>
+              <h2 className="text-base font-semibold">Issue Gift Card</h2>
               <button onClick={() => setShowIssueModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
@@ -472,7 +473,7 @@ const GiftCards = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold">Check Balance</h2>
+              <h2 className="text-base font-semibold">Check Balance</h2>
               <button onClick={() => setShowCheckBalanceModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
@@ -530,7 +531,7 @@ const GiftCards = () => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-6 border-b">
               <div>
-                <h2 className="text-xl font-bold">Load Funds</h2>
+                <h2 className="text-base font-semibold">Load Funds</h2>
                 <p className="text-sm text-gray-500 font-mono">{loadCard.card_number}</p>
               </div>
               <button onClick={() => { setShowLoadModal(false); setLoadCard(null); }} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
@@ -566,7 +567,7 @@ const GiftCards = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold">Gift Card Details</h2>
+              <h2 className="text-base font-semibold">Gift Card Details</h2>
               <button onClick={() => { setShowDetailModal(false); setDetailCard(null); }} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
             </div>
             {detailLoading ? (

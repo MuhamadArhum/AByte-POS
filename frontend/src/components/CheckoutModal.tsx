@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, CreditCard, Banknote, Smartphone, Check, Loader2, Printer, Tag, Star, BookOpen } from 'lucide-react';
+import { X, CreditCard, Banknote, Smartphone, Check, Loader2, Printer, Tag, Star, BookOpen, Percent } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
@@ -26,6 +26,12 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   const [isProcessing, setIsProcessing] = useState(false);
   const [successSale, setSuccessSale] = useState<any>(null);
   const [settings, setSettings] = useState<any>(null);
+
+  // Pending sale items & rates
+  const [pendingItems, setPendingItems] = useState<any[]>([]);
+  const [pendingTaxRate, setPendingTaxRate] = useState(0);
+  const [pendingAdditionalRate, setPendingAdditionalRate] = useState(0);
+  const [pendingItemsLoading, setPendingItemsLoading] = useState(false);
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -56,14 +62,34 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       setRedeemPoints(false);
       setPointsToRedeem('');
       setCreditDueDate('');
+      setPendingItems([]);
       fetchSettings();
       if (selectedCustomer && selectedCustomer.customer_id !== 1) {
         fetchLoyaltyInfo(selectedCustomer.customer_id);
       } else {
         setLoyaltyInfo(null);
       }
+      // If paying a pending sale (not cart-edit mode), fetch its items
+      if (pendingSale?.sale_id && !pendingSale.isCartEdit) {
+        fetchPendingSaleDetails(pendingSale.sale_id);
+      }
     }
   }, [isOpen]);
+
+  const fetchPendingSaleDetails = async (saleId: number) => {
+    setPendingItemsLoading(true);
+    try {
+      const res = await api.get(`/sales/${saleId}`);
+      const saleData = res.data;
+      setPendingItems(saleData.items || []);
+      setPendingTaxRate(parseFloat(saleData.tax_percent || 0));
+      setPendingAdditionalRate(parseFloat(saleData.additional_charges_percent || 0));
+    } catch (err) {
+      console.error('Failed to fetch pending sale details', err);
+    } finally {
+      setPendingItemsLoading(false);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -120,7 +146,21 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
 
   if (!isOpen) return null;
 
-  const baseTotal = pendingSale ? parseFloat(pendingSale.total_amount) : total;
+  // For pending sales, recalculate from items + editable rates
+  const pendingSubtotal = pendingItems.reduce(
+    (sum: number, item: any) => sum + parseFloat(item.unit_price) * parseFloat(item.quantity), 0
+  );
+  const pendingTaxAmount = pendingSubtotal * pendingTaxRate / 100;
+  const pendingAdditionalAmount = pendingSubtotal * pendingAdditionalRate / 100;
+
+  const baseTotal = pendingSale
+    ? (pendingSale.isCartEdit
+        ? total  // Cart-edit mode: use current cart total
+        : pendingItems.length > 0
+          ? pendingSubtotal + pendingTaxAmount + pendingAdditionalAmount
+          : parseFloat(pendingSale.total_amount || 0))
+    : total;
+
   const discountValue = parseFloat(discount) || 0;
   const couponDiscount = appliedCoupon ? parseFloat(appliedCoupon.discount_amount) : 0;
 
@@ -160,12 +200,12 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
         const cash = parseFloat(splitCash) || 0;
         const card = parseFloat(splitCard) || 0;
         if (Math.abs((cash + card) - finalTotal) > 0.01) {
-          alert(`Split amounts ($${(cash + card).toFixed(2)}) do not match Total ($${finalTotal.toFixed(2)})`);
+          alert(`Split amounts (Rs. ${(cash + card).toFixed(2)}) do not match Total (Rs. ${finalTotal.toFixed(2)})`);
           setIsProcessing(false);
           return;
         }
         finalAmountPaid = finalTotal;
-        noteStr = `${note ? note + ' | ' : ''}Split: Cash $${cash.toFixed(2)}, Card $${card.toFixed(2)}`;
+        noteStr = `${note ? note + ' | ' : ''}Split: Cash Rs. ${cash.toFixed(2)}, Card Rs. ${card.toFixed(2)}`;
       }
 
       if (paymentMethod === 'credit') {
@@ -177,6 +217,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
         await api.put(`/sales/${pendingSale.sale_id}/complete`, {
           payment_method: paymentMethodStr,
           amount_paid: finalAmountPaid,
+          discount: discountValue,
+          total_amount: finalTotal,
           note: noteStr
         });
         const fullSaleRes = await api.get(`/sales/${pendingSale.sale_id}`);
@@ -273,7 +315,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
           <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
             <Check size={32} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+          <h2 className="text-base font-semibold text-gray-800 mb-2">
             {paymentMethod === 'credit' ? 'Credit Sale Recorded!' : 'Payment Successful!'}
           </h2>
 
@@ -286,13 +328,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
 
           {paymentMethod === 'credit' ? (
             <p className="text-gray-500 mb-8">
-              Amount Due: <span className="font-bold text-orange-600">${finalTotal.toFixed(2)}</span>
+              Amount Due: <span className="font-bold text-orange-600">Rs. {finalTotal.toFixed(2)}</span>
               <br />
               <span className="text-sm">Due: {creditDueDate}</span>
             </p>
           ) : (
             <p className="text-gray-500 mb-8">
-              Change Due: <span className="font-bold text-emerald-600">${changeDueAmount.toFixed(2)}</span>
+              Change Due: <span className="font-bold text-emerald-600">Rs. {changeDueAmount.toFixed(2)}</span>
             </p>
           )}
 
@@ -334,23 +376,126 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0">
-          <h2 className="text-xl font-bold text-gray-800">Checkout</h2>
+          <h2 className="text-base font-semibold text-gray-800">Checkout</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X size={24} />
           </button>
         </div>
 
         <div className="p-6 space-y-5 overflow-y-auto">
+
+          {/* Pending Sale Items (read-only) - only shown when paying from Orders page, not cart-edit mode */}
+          {pendingSale && !pendingSale.isCartEdit && (
+            <div className="space-y-2">
+              {pendingItemsLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="animate-spin text-emerald-500" size={20} />
+                  <span className="ml-2 text-sm text-gray-500">Loading items...</span>
+                </div>
+              ) : pendingItems.length > 0 ? (
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    Order Items
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-t border-gray-100">
+                      <tr>
+                        <th className="px-3 py-1.5 text-left text-gray-500 font-medium">Item</th>
+                        <th className="px-3 py-1.5 text-center text-gray-500 font-medium">Qty</th>
+                        <th className="px-3 py-1.5 text-right text-gray-500 font-medium">Price</th>
+                        <th className="px-3 py-1.5 text-right text-gray-500 font-medium">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {pendingItems.map((item: any, idx: number) => (
+                        <tr key={idx}>
+                          <td className="px-3 py-1.5 text-gray-800 font-medium text-xs">{item.product_name}</td>
+                          <td className="px-3 py-1.5 text-center text-gray-600 text-xs">{item.quantity}</td>
+                          <td className="px-3 py-1.5 text-right text-gray-600 text-xs">Rs. {parseFloat(item.unit_price).toFixed(2)}</td>
+                          <td className="px-3 py-1.5 text-right font-semibold text-gray-800 text-xs">Rs. {(parseFloat(item.unit_price) * parseFloat(item.quantity)).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+
+              {/* Editable Tax & Additional Charges for pending sales */}
+              {pendingItems.length > 0 && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                    <label className="text-xs font-semibold text-gray-500 flex items-center gap-1 mb-1.5">
+                      <Percent size={11} /> Tax %
+                    </label>
+                    <input
+                      type="number"
+                      value={pendingTaxRate}
+                      onChange={e => setPendingTaxRate(parseFloat(e.target.value) || 0)}
+                      className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-center text-sm font-bold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white"
+                      step="0.1"
+                      min="0"
+                    />
+                    {pendingTaxRate > 0 && (
+                      <p className="text-xs text-gray-400 mt-1 text-center">Rs. {pendingTaxAmount.toFixed(2)}</p>
+                    )}
+                  </div>
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                    <label className="text-xs font-semibold text-gray-500 flex items-center gap-1 mb-1.5">
+                      <Tag size={11} /> Charges %
+                    </label>
+                    <input
+                      type="number"
+                      value={pendingAdditionalRate}
+                      onChange={e => setPendingAdditionalRate(parseFloat(e.target.value) || 0)}
+                      className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-center text-sm font-bold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white"
+                      step="0.1"
+                      min="0"
+                    />
+                    {pendingAdditionalRate > 0 && (
+                      <p className="text-xs text-gray-400 mt-1 text-center">Rs. {pendingAdditionalAmount.toFixed(2)}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Price Summary */}
           <div className="space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100">
-            <div className="flex justify-between items-center text-gray-600">
-              <span>Subtotal</span>
-              <span>${baseTotal.toFixed(2)}</span>
-            </div>
+            {pendingSale && pendingItems.length > 0 && (
+              <div className="flex justify-between items-center text-gray-600 text-sm">
+                <span>Subtotal</span>
+                <span>Rs. {pendingSubtotal.toFixed(2)}</span>
+              </div>
+            )}
+            {pendingSale && pendingTaxRate > 0 && pendingItems.length > 0 && (
+              <div className="flex justify-between items-center text-gray-600 text-sm">
+                <span>Tax ({pendingTaxRate}%)</span>
+                <span>Rs. {pendingTaxAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {pendingSale && pendingAdditionalRate > 0 && pendingItems.length > 0 && (
+              <div className="flex justify-between items-center text-gray-600 text-sm">
+                <span>Charges ({pendingAdditionalRate}%)</span>
+                <span>Rs. {pendingAdditionalAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {!pendingSale && (
+              <div className="flex justify-between items-center text-gray-600">
+                <span>Subtotal</span>
+                <span>Rs. {baseTotal.toFixed(2)}</span>
+              </div>
+            )}
+            {pendingSale && pendingItems.length === 0 && (
+              <div className="flex justify-between items-center text-gray-600">
+                <span>Subtotal</span>
+                <span>Rs. {baseTotal.toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex justify-between items-center text-gray-600">
                <span className="flex items-center gap-1">Discount <span className="text-xs text-gray-400">(Optional)</span></span>
                <div className="flex items-center gap-1 w-28">
-                 <span className="text-gray-400">- $</span>
+                 <span className="text-gray-400">- Rs.</span>
                  <input
                    type="number"
                    value={discount}
@@ -363,18 +508,18 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
             {couponDiscount > 0 && (
               <div className="flex justify-between items-center text-green-600">
                 <span className="flex items-center gap-1"><Tag size={14} /> Coupon</span>
-                <span>- ${couponDiscount.toFixed(2)}</span>
+                <span>- Rs. {couponDiscount.toFixed(2)}</span>
               </div>
             )}
             {loyaltyDiscount > 0 && (
               <div className="flex justify-between items-center text-amber-600">
                 <span className="flex items-center gap-1"><Star size={14} /> Points</span>
-                <span>- ${loyaltyDiscount.toFixed(2)}</span>
+                <span>- Rs. {loyaltyDiscount.toFixed(2)}</span>
               </div>
             )}
             <div className="flex justify-between items-center text-lg pt-2 border-t border-gray-200">
               <span className="font-bold text-gray-800">Net Payable</span>
-              <span className="font-bold text-2xl text-emerald-600">${finalTotal.toFixed(2)}</span>
+              <span className="font-bold text-2xl text-emerald-600">Rs. {finalTotal.toFixed(2)}</span>
             </div>
           </div>
 
@@ -386,7 +531,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                 <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-2">
                   <div>
                     <span className="font-bold text-green-700">{couponCode}</span>
-                    <span className="text-green-600 text-sm ml-2">-${couponDiscount.toFixed(2)} off</span>
+                    <span className="text-green-600 text-sm ml-2">-Rs. {couponDiscount.toFixed(2)} off</span>
                   </div>
                   <button onClick={removeCoupon} className="text-red-400 hover:text-red-600"><X size={16} /></button>
                 </div>
@@ -447,7 +592,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                     />
                   )}
                   {redeemPoints && loyaltyDiscount > 0 && (
-                    <span className="text-xs text-amber-600">= ${loyaltyDiscount.toFixed(2)} off</span>
+                    <span className="text-xs text-amber-600">= Rs. {loyaltyDiscount.toFixed(2)} off</span>
                   )}
                 </div>
               )}
@@ -551,7 +696,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
           {paymentMethod === 'split' ? (
              <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cash ($)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cash (Rs.)</label>
                 <input
                   type="number"
                   className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none font-bold"
@@ -561,7 +706,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Card ($)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Card (Rs.)</label>
                 <input
                   type="number"
                   className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none font-bold"
@@ -573,24 +718,24 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
              </div>
           ) : paymentMethod === 'credit' ? (
             <div className="text-center text-orange-700 text-sm font-medium py-2">
-              Full amount of ${finalTotal.toFixed(2)} will be recorded as credit
+              Full amount of Rs. {finalTotal.toFixed(2)} will be recorded as credit
             </div>
           ) : (
              <div className="space-y-2">
                <label className="text-sm font-medium text-gray-700">Amount Paid</label>
                <div className="relative">
-                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">$</span>
+                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-sm">Rs.</span>
                  <input
                    type="number"
                    value={amountPaid}
                    onChange={(e) => setAmountPaid(e.target.value)}
-                   className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all font-bold text-lg"
+                   className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all font-bold text-lg"
                    placeholder={finalTotal.toFixed(2)}
                  />
                </div>
                <div className="flex justify-between items-center text-sm">
                  <span className="text-gray-500">Change Due</span>
-                 <span className="font-bold text-gray-800">${changeDue.toFixed(2)}</span>
+                 <span className="font-bold text-gray-800">Rs. {changeDue.toFixed(2)}</span>
                </div>
              </div>
           )}

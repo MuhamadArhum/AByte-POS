@@ -139,9 +139,9 @@ const Attendance = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <Calendar className="text-indigo-600" size={32} />
+          <Calendar className="text-indigo-600" size={20} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Attendance Management</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Attendance Management</h1>
             <p className="text-gray-600 text-sm mt-1">Track staff attendance records</p>
           </div>
         </div>

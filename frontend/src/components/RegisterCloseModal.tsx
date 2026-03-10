@@ -81,7 +81,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                 <Lock size={28} className="text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">Close Cash Register</h2>
+                <h2 className="text-base font-semibold text-gray-800">Close Cash Register</h2>
                 <p className="text-sm text-gray-500 mt-0.5">Complete your shift and reconcile cash</p>
               </div>
             </div>
@@ -124,7 +124,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
 
           {/* Detailed Shift Summary */}
           <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-5">
-            <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
+            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2 text-lg">
               <FileText size={20} className="text-gray-600" />
               Shift Summary
             </h3>

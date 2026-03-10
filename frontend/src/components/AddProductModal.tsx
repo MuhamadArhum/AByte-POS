@@ -181,7 +181,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
                 <PackagePlus size={28} className="text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">{productToEdit ? 'Edit Product' : 'Add New Product'}</h2>
+                <h2 className="text-base font-semibold text-gray-800">{productToEdit ? 'Edit Product' : 'Add New Product'}</h2>
                 <p className="text-sm text-gray-500 mt-0.5">{productToEdit ? 'Update product details' : 'Fill in product details and inventory information'}</p>
               </div>
             </div>

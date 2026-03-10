@@ -89,8 +89,8 @@ const InventoryReports = () => {
     <div className="p-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-          <BarChart3 className="text-emerald-600" size={32} />
+        <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
+          <BarChart3 className="text-emerald-600" size={20} />
           Inventory Reports
         </h1>
         <p className="text-gray-500 mt-1">Stock analytics and performance insights</p>
@@ -160,7 +160,7 @@ const InventoryReports = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-5 border-b border-gray-100 flex items-center gap-2">
             <TrendingUp size={20} className="text-emerald-600" />
-            <h2 className="font-bold text-gray-800">Top Selling Products</h2>
+            <h2 className="font-semibold text-gray-800">Top Selling Products</h2>
           </div>
           {topProducts.length === 0 ? (
             <div className="p-8 text-center text-gray-400">No sales data available</div>
@@ -191,7 +191,7 @@ const InventoryReports = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-5 border-b border-gray-100 flex items-center gap-2">
             <Tag size={20} className="text-purple-600" />
-            <h2 className="font-bold text-gray-800">Category Breakdown</h2>
+            <h2 className="font-semibold text-gray-800">Category Breakdown</h2>
           </div>
           {categories.length === 0 ? (
             <div className="p-8 text-center text-gray-400">No categories found</div>
@@ -226,7 +226,7 @@ const InventoryReports = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-5 border-b border-gray-100 flex items-center gap-2">
           <Clock size={20} className="text-orange-600" />
-          <h2 className="font-bold text-gray-800">Slow Moving Products</h2>
+          <h2 className="font-semibold text-gray-800">Slow Moving Products</h2>
           <span className="text-sm text-gray-400 ml-1">(not sold in 30+ days)</span>
         </div>
         {slowMovers.length === 0 ? (

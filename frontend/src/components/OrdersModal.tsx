@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { X, Clock, CheckCircle, Trash2, Printer, Search, Archive, RotateCcw, FileText, DollarSign, User, Calendar, CreditCard, Package } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Clock, CheckCircle, Printer, Search, Archive, RotateCcw, FileText, DollarSign, User, Calendar, CreditCard, Package } from 'lucide-react';
 import api from '../utils/api';
 import { printReceipt } from '../utils/receiptPrinter';
 import Pagination from './Pagination';
@@ -8,10 +8,10 @@ interface OrdersModalProps {
   isOpen: boolean;
   onClose: () => void;
   onPayPending: (sale: any) => void;
-  onDeletePending: (saleId: number) => void;
+  onDeletePending?: (saleId: number) => void;
 }
 
-const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending, onDeletePending }) => {
+const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending }) => {
   const [activeTab, setActiveTab] = useState<'pending' | 'done'>('pending');
 
   // Pending tab state
@@ -109,10 +109,7 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
     }
   };
 
-  const handleDelete = async (saleId: number) => {
-    onDeletePending(saleId);
-    setTimeout(() => fetchPending(), 500);
-  };
+  // handleDelete kept in backend but removed from UI per requirements
 
   if (!isOpen) return null;
 
@@ -127,7 +124,7 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
                 <FileText size={28} className="text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">Orders Management</h2>
+                <h2 className="text-base font-semibold text-gray-800">Orders Management</h2>
                 <p className="text-sm text-gray-500">Track and manage all your orders</p>
               </div>
             </div>
@@ -240,7 +237,7 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
                           Total Amount
                         </span>
                         <span className="font-bold text-lg text-emerald-600">
-                          ${parseFloat(sale.total_amount).toFixed(2)}
+                          Rs. {parseFloat(sale.total_amount).toFixed(2)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -255,7 +252,7 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
                       {sale.note && (
                         <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mt-2">
                           <p className="text-xs text-amber-800 font-medium italic">
-                            📝 {sale.note}
+                            Note: {sale.note}
                           </p>
                         </div>
                       )}
@@ -263,13 +260,6 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
 
                     {/* Actions */}
                     <div className="flex gap-2 mt-4">
-                      <button
-                        onClick={() => handleDelete(sale.sale_id)}
-                        className="p-2.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 hover:scale-110 transition-all duration-200 border border-red-200"
-                        title="Delete Order"
-                      >
-                        <Trash2 size={18} />
-                      </button>
                       <button
                         onClick={() => handlePrintOrder(sale.sale_id)}
                         className="p-2.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 hover:scale-110 transition-all duration-200 border border-blue-200"
@@ -385,7 +375,7 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
                               {sale.customer_name || 'Walk-in Customer'}
                             </td>
                             <td className="px-6 py-4 font-bold text-lg text-emerald-600">
-                              ${parseFloat(sale.total_amount).toFixed(2)}
+                              Rs. {parseFloat(sale.total_amount).toFixed(2)}
                             </td>
                             <td className="px-6 py-4">
                               <span className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 text-xs rounded-full font-bold capitalize border border-emerald-200 shadow-sm">

@@ -88,7 +88,7 @@ const LoyaltyProgram = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3"><Star className="text-yellow-500" size={32} /> Loyalty Program</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3"><Star className="text-yellow-500" size={20} /> Loyalty Program</h1>
           <p className="text-gray-500 mt-1">Manage customer rewards and loyalty points</p>
         </div>
         <div className="flex items-center gap-3">
@@ -116,7 +116,7 @@ const LoyaltyProgram = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Config Panel */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4"><Settings size={20} /> Configuration</h2>
+          <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2 mb-4"><Settings size={20} /> Configuration</h2>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700">Enable Loyalty</span>
@@ -142,7 +142,7 @@ const LoyaltyProgram = () => {
 
         {/* Customer Lookup */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4"><Search size={20} /> Customer Lookup</h2>
+          <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2 mb-4"><Search size={20} /> Customer Lookup</h2>
           <div className="flex gap-2 mb-4">
             <input type="text" value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && searchCustomer()} className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none" placeholder="Search customer..." />
             <button onClick={searchCustomer} className="px-3 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200"><Search size={18} /></button>
@@ -177,7 +177,7 @@ const LoyaltyProgram = () => {
 
         {/* Leaderboard */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4"><Trophy size={20} /> Leaderboard</h2>
+          <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2 mb-4"><Trophy size={20} /> Leaderboard</h2>
           {leaderboard.length === 0 ? (
             <p className="text-center text-gray-400 py-8">No loyalty members yet</p>
           ) : (
@@ -199,7 +199,7 @@ const LoyaltyProgram = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold">Adjust Points</h2>
+              <h2 className="text-base font-semibold">Adjust Points</h2>
               <button onClick={() => setAdjustModal(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">

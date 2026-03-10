@@ -156,7 +156,7 @@ const AIWidget = () => {
                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-blue-700 animate-pulse"></div>
               </div>
               <div>
-                <h3 className="font-bold text-lg flex items-center gap-2">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
                   AByte AI Assistant
                   <Sparkles size={16} className="text-yellow-300 animate-pulse" />
                 </h3>

@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const accountingController = require('../controllers/accountingController');
 const { authenticate, authorize } = require('../middleware/auth');
+const { requireModule }           = require('../middleware/moduleGuard');
 
 router.use(authenticate);
+router.use(requireModule('accounting')); // Professional+ plan required
 
 // Account Groups
 router.get('/account-groups', accountingController.getAccountGroups);

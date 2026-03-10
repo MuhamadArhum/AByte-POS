@@ -156,7 +156,7 @@ const TargetModal = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">
+          <h2 className="text-base font-semibold text-gray-800">
             {target ? 'Edit Target' : 'Create Target'}
           </h2>
           <button
@@ -472,6 +472,10 @@ const SalesTargets = () => {
     setPagination((prev) => ({ ...prev, page }));
   };
 
+  const handleLimitChange = (limit: number) => {
+    setPagination((prev) => ({ ...prev, limit, page: 1 }));
+  };
+
   const formatCurrency = (amount: number): string => {
     return `Rs ${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
@@ -501,9 +505,9 @@ const SalesTargets = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <Target className="text-indigo-600" size={32} />
+          <Target className="text-indigo-600" size={20} />
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Sales Targets</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Sales Targets</h1>
             <p className="text-gray-600 text-sm mt-1">Track cashier performance and manage sales goals</p>
           </div>
         </div>
@@ -828,15 +832,14 @@ const SalesTargets = () => {
             </table>
 
             {/* Pagination */}
-            {pagination.totalPages > 1 && (
-              <Pagination
-                currentPage={pagination.page}
-                totalPages={pagination.totalPages}
-                onPageChange={handlePageChange}
-                totalItems={pagination.total}
-                itemsPerPage={pagination.limit}
-              />
-            )}
+            <Pagination
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange}
+              totalItems={pagination.total}
+              itemsPerPage={pagination.limit}
+              onItemsPerPageChange={handleLimitChange}
+            />
           </div>
         </>
       )}

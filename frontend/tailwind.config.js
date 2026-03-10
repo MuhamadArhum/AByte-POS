@@ -5,7 +5,36 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+      },
+      fontSize: {
+        // Tighter line-heights for business/data-dense UI
+        'xs':   ['11px', { lineHeight: '16px', letterSpacing: '0.01em' }],
+        'sm':   ['13px', { lineHeight: '20px', letterSpacing: '-0.001em' }],
+        'base': ['14px', { lineHeight: '22px', letterSpacing: '-0.002em' }],
+        'md':   ['15px', { lineHeight: '24px', letterSpacing: '-0.003em' }],
+        'lg':   ['16px', { lineHeight: '24px', letterSpacing: '-0.003em' }],
+        'xl':   ['18px', { lineHeight: '28px', letterSpacing: '-0.01em'  }],
+        '2xl':  ['22px', { lineHeight: '30px', letterSpacing: '-0.02em'  }],
+        '3xl':  ['26px', { lineHeight: '34px', letterSpacing: '-0.02em'  }],
+        '4xl':  ['32px', { lineHeight: '40px', letterSpacing: '-0.03em'  }],
+      },
+      letterSpacing: {
+        tightest: '-0.03em',
+        tighter:  '-0.02em',
+        tight:    '-0.01em',
+        normal:   '-0.002em',
+        wide:     '0.01em',
+        wider:    '0.04em',
+        widest:   '0.08em',
+      },
+      lineHeight: {
+        'tight-heading': '1.25',
+        'snug-heading':  '1.35',
+      },
+    },
   },
   plugins: [],
 }

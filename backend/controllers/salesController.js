@@ -415,7 +415,7 @@ exports.getPending = async (req, res) => {
 exports.completeSale = async (req, res) => {
   try {
     const { id } = req.params;
-    const { payment_method, amount_paid } = req.body;
+    const { payment_method, amount_paid, discount, total_amount, note } = req.body;
 
     // Check if sale exists and is pending
     const sale = await query('SELECT * FROM sales WHERE sale_id = ? AND status = "pending"', [id]);
@@ -430,10 +430,18 @@ exports.completeSale = async (req, res) => {
     );
     const invoice_no = `INV-${String(invResult[0].next_inv).padStart(5, '0')}`;
 
-    // Update sale status to completed with invoice_no
+    // Update sale status to completed with invoice_no, discount, total_amount, note
     await query(
-      'UPDATE sales SET status = "completed", payment_method = ?, amount_paid = ?, invoice_no = ? WHERE sale_id = ?',
-      [payment_method || 'cash', amount_paid || sale[0].total_amount, invoice_no, id]
+      'UPDATE sales SET status = "completed", payment_method = ?, amount_paid = ?, invoice_no = ?, discount = ?, total_amount = ?, note = ? WHERE sale_id = ?',
+      [
+        payment_method || 'cash',
+        amount_paid || sale[0].total_amount,
+        invoice_no,
+        discount !== undefined && discount !== null ? discount : sale[0].discount,
+        total_amount !== undefined && total_amount !== null ? total_amount : sale[0].total_amount,
+        note !== undefined && note !== null ? note : (sale[0].note || null),
+        id
+      ]
     );
 
     await logAction(req.user.user_id, req.user.name, 'SALE_COMPLETED', 'sale', id, { payment_method: payment_method || 'cash', invoice_no }, req.ip);

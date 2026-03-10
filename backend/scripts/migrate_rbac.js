@@ -3,14 +3,14 @@ const { query, getConnection } = require('../config/database');
 
 const MANAGER_MODULES = [
   'dashboard',
-  'sales', 'sales.pos', 'sales.orders', 'sales.register', 'sales.returns',
+  'sales', 'sales.pos', 'sales.orders', 'sales.customers', 'sales.register', 'sales.returns',
   'sales.quotations', 'sales.credit', 'sales.layaway', 'sales.coupons',
   'sales.loyalty', 'sales.giftcards', 'sales.pricerules', 'sales.targets',
   'sales.invoices', 'sales.reports',
   'inventory', 'inventory.products', 'inventory.categories', 'inventory.purchases',
   'inventory.transfers', 'inventory.adjustments', 'inventory.alerts',
   'inventory.suppliers', 'inventory.reports',
-  'hr', 'hr.customers', 'hr.staff', 'hr.attendance', 'hr.daily-attendance',
+  'hr', 'hr.staff', 'hr.attendance', 'hr.daily-attendance',
   'hr.salary-sheet', 'hr.payroll', 'hr.advances', 'hr.loans', 'hr.increments',
   'hr.ledger', 'hr.holidays', 'hr.leaves', 'hr.reports',
   'accounts', 'accounts.chart', 'accounts.journal', 'accounts.ledger',
@@ -23,8 +23,8 @@ const MANAGER_MODULES = [
 
 const CASHIER_MODULES = [
   'dashboard',
-  'sales', 'sales.pos', 'sales.orders', 'sales.register',
-  'hr', 'hr.customers',
+  'sales', 'sales.pos', 'sales.orders', 'sales.register', 'sales.customers',
+  'hr',
 ];
 
 async function migrate() {

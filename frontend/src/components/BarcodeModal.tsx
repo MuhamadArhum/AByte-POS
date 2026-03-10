@@ -123,7 +123,7 @@ const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, onClose, product, o
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-          <h2 className="text-xl font-bold text-gray-800">Barcode Label</h2>
+          <h2 className="text-base font-semibold text-gray-800">Barcode Label</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
         </div>
 

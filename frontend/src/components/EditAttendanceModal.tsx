@@ -80,7 +80,7 @@ const EditAttendanceModal = ({ isOpen, onClose, onSuccess, record }: EditAttenda
           <div className="flex items-center gap-3">
             <Edit className="text-white" size={24} />
             <div>
-              <h2 className="text-xl font-bold text-white">Edit Attendance</h2>
+              <h2 className="text-base font-semibold text-white">Edit Attendance</h2>
               <p className="text-amber-100 text-sm">{record.full_name} - {new Date(record.attendance_date).toLocaleDateString()}</p>
             </div>
           </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
-  Building2, Plus, Edit, Trash2, X, Loader2, Eye, EyeOff,
-  Users, Package, ShoppingCart, CheckCircle, XCircle, RefreshCw, Key
+  Building2, Plus, Edit, X, Loader2, Eye, EyeOff,
+  Users, Package, ShoppingCart, CheckCircle, XCircle, Key
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
@@ -128,7 +128,7 @@ const Tenants = () => {
       {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
             <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
               <Building2 className="text-white" size={24} />
             </div>
@@ -235,7 +235,7 @@ const Tenants = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-gray-800">Add New Client</h3>
+              <h3 className="text-sm font-semibold text-gray-800">Add New Client</h3>
               <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
             </div>
             <form onSubmit={handleCreate} className="p-6 space-y-4">
@@ -298,7 +298,7 @@ const Tenants = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-gray-800">Edit Client</h3>
+              <h3 className="text-sm font-semibold text-gray-800">Edit Client</h3>
               <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
             </div>
             <form onSubmit={handleEdit} className="p-6 space-y-4">
@@ -326,7 +326,7 @@ const Tenants = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-gray-800">Reset Admin Password</h3>
+              <h3 className="text-sm font-semibold text-gray-800">Reset Admin Password</h3>
               <button onClick={() => setShowPasswordModal(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
             </div>
             <form onSubmit={handleResetPassword} className="p-6 space-y-4">

@@ -204,7 +204,7 @@ const RuleModal = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">
+          <h2 className="text-base font-semibold text-gray-800">
             {editRule ? 'Edit Price Rule' : 'Create Price Rule'}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -537,7 +537,7 @@ const DeleteModal = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-800">Delete Price Rule</h2>
+          <h2 className="text-base font-semibold text-gray-800">Delete Price Rule</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X size={20} />
           </button>
@@ -587,7 +587,7 @@ const PriceRules = () => {
   });
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [itemsPerPage] = useState(20);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -715,8 +715,8 @@ const PriceRules = () => {
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <Percent className="text-emerald-600" size={32} />
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
+            <Percent className="text-emerald-600" size={20} />
             Price Rules
           </h1>
           <p className="text-gray-500 mt-1">Manage promotions, discounts, and pricing rules</p>
@@ -924,6 +924,7 @@ const PriceRules = () => {
               onPageChange={setPage}
               totalItems={total}
               itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(l) => { setItemsPerPage(l); setPage(1); }}
             />
           </>
         )}
