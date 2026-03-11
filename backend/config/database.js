@@ -26,11 +26,19 @@ const tenantStorage = new AsyncLocalStorage();
 const isRemote = process.env.DB_HOST && process.env.DB_HOST !== 'localhost' && process.env.DB_HOST !== '127.0.0.1';
 
 // Build SSL config: use CA cert file if provided, otherwise skip cert verification
-const sslConfig = isRemote
-  ? process.env.DB_SSL_CA
-    ? { ssl: { ca: fs.readFileSync(process.env.DB_SSL_CA), rejectUnauthorized: true } }
-    : { ssl: { rejectUnauthorized: false } }
-  : {};
+let sslConfig = {};
+if (isRemote) {
+  if (process.env.DB_SSL_CA) {
+    try {
+      sslConfig = { ssl: { ca: fs.readFileSync(process.env.DB_SSL_CA), rejectUnauthorized: true } };
+    } catch (e) {
+      // CA file not found (e.g. on cloud server) — fallback to skip cert verification
+      sslConfig = { ssl: { rejectUnauthorized: false } };
+    }
+  } else {
+    sslConfig = { ssl: { rejectUnauthorized: false } };
+  }
+}
 
 const poolOptions = {
   host: process.env.DB_HOST || 'localhost',
