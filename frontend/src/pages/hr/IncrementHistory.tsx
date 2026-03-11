@@ -94,7 +94,7 @@ const IncrementHistory = () => {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Total Salary Added</p>
-          <p className="text-3xl font-bold text-blue-600 mt-2">
+          <p className="text-3xl font-bold text-emerald-600 mt-2">
             ${increments.reduce((s, i) => s + Math.max(0, Number(i.increment_amount || 0)), 0).toLocaleString()}
           </p>
         </div>

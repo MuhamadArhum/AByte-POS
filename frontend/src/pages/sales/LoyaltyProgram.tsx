@@ -104,8 +104,8 @@ const LoyaltyProgram = () => {
           <div><p className="text-2xl font-bold text-yellow-600">{stats.total_points_circulation.toLocaleString()}</p><p className="text-sm text-gray-500">Points in Circulation</p></div></div>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-center gap-3"><div className="p-3 bg-blue-50 rounded-xl"><Users size={24} className="text-blue-600" /></div>
-          <div><p className="text-2xl font-bold text-blue-600">{stats.active_members}</p><p className="text-sm text-gray-500">Active Members</p></div></div>
+          <div className="flex items-center gap-3"><div className="p-3 bg-emerald-50 rounded-xl"><Users size={24} className="text-emerald-600" /></div>
+          <div><p className="text-2xl font-bold text-emerald-600">{stats.active_members}</p><p className="text-sm text-gray-500">Active Members</p></div></div>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3"><div className="p-3 bg-green-50 rounded-xl"><Trophy size={24} className="text-green-600" /></div>
@@ -165,7 +165,7 @@ const LoyaltyProgram = () => {
               {customerData.transactions && customerData.transactions.length > 0 && (
                 <div className="space-y-2 max-h-48 overflow-y-auto">{customerData.transactions.map((t: any) => (
                   <div key={t.transaction_id} className="flex justify-between items-center text-xs bg-gray-50 p-2 rounded-lg">
-                    <div><span className={`font-medium ${t.type === 'earn' ? 'text-green-600' : t.type === 'redeem' ? 'text-red-600' : 'text-blue-600'}`}>{t.type.toUpperCase()}</span>
+                    <div><span className={`font-medium ${t.type === 'earn' ? 'text-green-600' : t.type === 'redeem' ? 'text-red-600' : 'text-emerald-600'}`}>{t.type.toUpperCase()}</span>
                     <span className="text-gray-400 ml-2">{new Date(t.created_at).toLocaleDateString()}</span></div>
                     <span className={`font-bold ${t.points > 0 ? 'text-green-600' : 'text-red-600'}`}>{t.points > 0 ? '+' : ''}{t.points}</span>
                   </div>

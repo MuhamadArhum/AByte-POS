@@ -174,18 +174,18 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
   if (!isOpen) return null;
 
   const inputClass = (field: string) =>
-    `w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${formErrors[field] ? 'border-red-500' : 'border-gray-200'}`;
+    `w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${formErrors[field] ? 'border-red-500' : 'border-gray-200'}`;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 p-6 text-white flex items-center justify-between">
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
             <User size={28} />
             <div>
               <h2 className="text-base font-semibold">{staffToEdit ? 'Edit Staff Member' : 'Add New Staff Member'}</h2>
-              <p className="text-cyan-100 text-sm mt-1">Enter staff details below</p>
+              <p className="text-emerald-100 text-sm mt-1">Enter staff details below</p>
             </div>
           </div>
           <button onClick={handleClose} className="text-white hover:bg-white/20 p-2 rounded-lg transition">
@@ -197,7 +197,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
             {/* Link to User Account */}
-            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+            <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <User className="inline mr-2" size={16} />
                 Link to User Account (Optional)
@@ -206,7 +206,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
                 name="user_id"
                 value={formData.user_id}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               >
                 <option value="">-- No User Account --</option>
                 {users.map(user => (
@@ -219,7 +219,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
             </div>
 
             {/* Personal Information */}
-            <div className="border-l-4 border-cyan-500 pl-4">
+            <div className="border-l-4 border-emerald-500 pl-4">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Personal Information</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -353,7 +353,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
                     name="is_active"
                     value={formData.is_active}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   >
                     <option value={1}>Active</option>
                     <option value={0}>Inactive</option>
@@ -363,7 +363,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
             </div>
 
             {/* Salary Information */}
-            <div className="border-l-4 border-purple-500 pl-4">
+            <div className="border-l-4 border-emerald-500 pl-4">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Salary Information</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -391,7 +391,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
                     name="salary_type"
                     value={formData.salary_type}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   >
                     <option value="hourly">Hourly</option>
                     <option value="daily">Daily</option>
@@ -431,7 +431,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="px-6 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Saving...' : staffToEdit ? 'Update Staff Member' : 'Add Staff Member'}
           </button>

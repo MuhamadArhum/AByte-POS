@@ -132,7 +132,7 @@ const SalarySlipModal = ({ isOpen, onClose, payment }: SalarySlipModalProps) => 
                 )}
                 <tr className="bg-gray-50 font-bold">
                   <td className="p-4 text-gray-800">Net Salary</td>
-                  <td className="p-4 text-right text-lg text-blue-600">${Number(payment.net_amount).toLocaleString()}</td>
+                  <td className="p-4 text-right text-lg text-emerald-600">${Number(payment.net_amount).toLocaleString()}</td>
                 </tr>
               </tbody>
             </table>

@@ -144,9 +144,9 @@ const Categories = () => {
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 rounded-xl"><Package size={24} className="text-blue-600" /></div>
+            <div className="p-3 bg-emerald-50 rounded-xl"><Package size={24} className="text-emerald-600" /></div>
             <div>
-              <p className="text-2xl font-bold text-blue-600">{totalProducts}</p>
+              <p className="text-2xl font-bold text-emerald-600">{totalProducts}</p>
               <p className="text-sm text-gray-500">Total Products</p>
             </div>
           </div>
@@ -206,7 +206,7 @@ const Categories = () => {
                   <div className="flex gap-1">
                     <button
                       onClick={() => openModal(cat)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                       title="Edit"
                     >
                       <Pencil size={16} />

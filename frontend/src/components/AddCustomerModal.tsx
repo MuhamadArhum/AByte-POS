@@ -121,12 +121,12 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-200">
         {/* Header */}
-        <div className="p-6 border-b-2 border-gray-100 bg-gradient-to-r from-emerald-50 via-white to-blue-50">
+        <div className="p-6 border-b-2 border-gray-100 bg-gradient-to-r from-emerald-50 via-white to-emerald-50">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div className={`p-2.5 rounded-xl shadow-lg ${
                 customerToEdit 
-                  ? 'bg-gradient-to-br from-blue-500 to-blue-600' 
+                  ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' 
                   : 'bg-gradient-to-br from-emerald-500 to-emerald-600'
               }`}>
                 {customerToEdit ? <Edit3 size={24} className="text-white" /> : <UserPlus size={24} className="text-white" />}
@@ -189,7 +189,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
             {/* Phone Number */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                <Phone size={16} className="text-blue-600" />
+                <Phone size={16} className="text-emerald-600" />
                 Phone Number
               </label>
               <div className="relative">
@@ -199,7 +199,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   onBlur={() => setTouched({ ...touched, phone: true })}
-                  className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm ${
+                  className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm ${
                     touched.phone && phone && !validatePhone(phone) ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
                   }`}
                   placeholder="+1 (234) 567-8900"
@@ -215,7 +215,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
             {/* Email */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                <Mail size={16} className="text-purple-600" />
+                <Mail size={16} className="text-emerald-600" />
                 Email Address
               </label>
               <div className="relative">
@@ -225,7 +225,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onBlur={() => setTouched({ ...touched, email: true })}
-                  className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all shadow-sm ${
+                  className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm ${
                     touched.email && email && !validateEmail(email) ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
                   }`}
                   placeholder="customer@email.com"
@@ -241,7 +241,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
             {/* Company */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                <Building2 size={16} className="text-indigo-600" />
+                <Building2 size={16} className="text-emerald-600" />
                 Company Name
               </label>
               <div className="relative">
@@ -250,7 +250,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
                   type="text"
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm bg-white"
+                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm bg-white"
                   placeholder="ABC Corporation"
                 />
               </div>
@@ -293,8 +293,8 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
           </div>
 
           {/* Info Box */}
-          <div className="mt-5 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">
-            <p className="text-sm text-blue-800 flex items-start gap-2">
+          <div className="mt-5 p-4 bg-gradient-to-r from-emerald-50 to-emerald-50 border-2 border-emerald-200 rounded-xl">
+            <p className="text-sm text-emerald-800 flex items-start gap-2">
               <span className="text-lg">💡</span>
               <span>
                 <strong>Note:</strong> Only the customer name is required. All other fields are optional and can be filled later.
@@ -316,7 +316,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
               disabled={loading || !isFormValid()}
               className={`flex-1 px-6 py-3 font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg ${
                 customerToEdit
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white disabled:from-gray-400 disabled:to-gray-500'
+                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white disabled:from-gray-400 disabled:to-gray-500'
                   : 'bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white disabled:from-gray-400 disabled:to-gray-500'
               } disabled:cursor-not-allowed disabled:shadow-none`}
             >

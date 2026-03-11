@@ -87,21 +87,21 @@ const AccountModal = ({ isOpen, onClose, onSuccess, account, categoryType }: any
               <label className="block text-sm font-medium text-gray-700 mb-2">Account Code *</label>
               <input type="text" value={formData.account_code}
                 onChange={(e) => setFormData({ ...formData, account_code: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 placeholder="e.g., 1001" required disabled={!!account} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Account Name *</label>
               <input type="text" value={formData.account_name}
                 onChange={(e) => setFormData({ ...formData, account_name: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 placeholder="e.g., Cash in Hand" required />
             </div>
             {account && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Account Type *</label>
                 <select value={formData.account_type} onChange={(e) => setFormData({ ...formData, account_type: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500" disabled>
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" disabled>
                   <option value="asset">Asset</option>
                   <option value="liability">Liability</option>
                   <option value="equity">Equity</option>
@@ -113,7 +113,7 @@ const AccountModal = ({ isOpen, onClose, onSuccess, account, categoryType }: any
             <div className={account ? '' : 'col-span-2'}>
               <label className="block text-sm font-medium text-gray-700 mb-2">Account Group *</label>
               <select value={formData.group_id} onChange={(e) => setFormData({ ...formData, group_id: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" required>
                 <option value="">Select Group</option>
                 {groups.filter(g => g.group_type === formData.account_type).map(g => (
                   <option key={g.group_id} value={g.group_id}>{g.group_name}</option>
@@ -123,7 +123,7 @@ const AccountModal = ({ isOpen, onClose, onSuccess, account, categoryType }: any
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Parent Account</label>
               <select value={formData.parent_account_id} onChange={(e) => setFormData({ ...formData, parent_account_id: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500">
                 <option value="">None (Top Level)</option>
                 {accounts.filter(a => a.account_type === formData.account_type && a.account_id !== account?.account_id).map(a => (
                   <option key={a.account_id} value={a.account_id}>[{a.account_code}] {a.account_name}</option>
@@ -135,13 +135,13 @@ const AccountModal = ({ isOpen, onClose, onSuccess, account, categoryType }: any
                 <label className="block text-sm font-medium text-gray-700 mb-2">Opening Balance</label>
                 <input type="number" step="0.01" value={formData.opening_balance}
                   onChange={(e) => setFormData({ ...formData, opening_balance: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" />
               </div>
             )}
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
               <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500" rows={3} />
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" rows={3} />
             </div>
           </div>
           <div className="flex gap-3 mt-6">
@@ -150,7 +150,7 @@ const AccountModal = ({ isOpen, onClose, onSuccess, account, categoryType }: any
               Cancel
             </button>
             <button type="submit" disabled={loading}
-              className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition disabled:opacity-50">
+              className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition disabled:opacity-50">
               {loading ? 'Saving...' : account ? 'Update' : 'Create'}
             </button>
           </div>
@@ -203,9 +203,9 @@ const ChartOfAccounts = () => {
 
   const typeBadge = (type: string) => {
     const map: Record<string, string> = {
-      asset: 'bg-blue-100 text-blue-700',
+      asset: 'bg-emerald-100 text-emerald-700',
       liability: 'bg-red-100 text-red-700',
-      equity: 'bg-purple-100 text-purple-700',
+      equity: 'bg-emerald-100 text-emerald-700',
       revenue: 'bg-green-100 text-green-700',
       expense: 'bg-orange-100 text-orange-700'
     };
@@ -217,10 +217,10 @@ const ChartOfAccounts = () => {
       type: 'asset',
       label: 'Assets',
       icon: Building2,
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200',
-      iconColor: 'text-blue-600',
-      hoverBg: 'hover:bg-blue-100',
+      bgColor: 'bg-emerald-50',
+      borderColor: 'border-emerald-200',
+      iconColor: 'text-emerald-600',
+      hoverBg: 'hover:bg-emerald-100',
       description: 'Cash, Bank, Inventory, Equipment, etc.'
     },
     {
@@ -237,10 +237,10 @@ const ChartOfAccounts = () => {
       type: 'equity',
       label: 'Equity',
       icon: Landmark,
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200',
-      iconColor: 'text-purple-600',
-      hoverBg: 'hover:bg-purple-100',
+      bgColor: 'bg-emerald-50',
+      borderColor: 'border-emerald-200',
+      iconColor: 'text-emerald-600',
+      hoverBg: 'hover:bg-emerald-100',
       description: 'Owner Capital, Retained Earnings, etc.'
     },
     {
@@ -276,14 +276,14 @@ const ChartOfAccounts = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <BookOpen className="text-indigo-600" size={20} />
+          <BookOpen className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Chart of Accounts</h1>
             <p className="text-gray-600 text-sm mt-1">Manage your account structure</p>
           </div>
         </div>
         <button onClick={() => setShowCategorySelector(true)}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition shadow-lg">
+          className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg">
           <Plus size={20} /> Add New Account
         </button>
       </div>
@@ -334,7 +334,7 @@ const ChartOfAccounts = () => {
         <div className="flex flex-wrap items-center gap-4">
           <Filter size={20} className="text-gray-600" />
           <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500">
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500">
             <option value="all">All Types</option>
             <option value="asset">Assets</option>
             <option value="liability">Liabilities</option>
@@ -346,7 +346,7 @@ const ChartOfAccounts = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by code or name..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" />
           </div>
         </div>
       </div>
@@ -389,7 +389,7 @@ const ChartOfAccounts = () => {
                   <td className="p-4 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <button onClick={() => { setSelectedAccount(acc); setShowModal(true); }}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit">
+                        className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Edit">
                         <Edit size={16} />
                       </button>
                       <button onClick={() => handleDelete(acc)}

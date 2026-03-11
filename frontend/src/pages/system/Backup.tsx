@@ -174,11 +174,11 @@ const Backup = () => {
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 rounded-xl">
-              <HardDrive size={24} className="text-blue-600" />
+            <div className="p-3 bg-emerald-50 rounded-xl">
+              <HardDrive size={24} className="text-emerald-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-blue-600">{formatFileSize(allStats.totalSize)}</p>
+              <p className="text-2xl font-bold text-emerald-600">{formatFileSize(allStats.totalSize)}</p>
               <p className="text-sm text-gray-500">Page Storage</p>
             </div>
           </div>
@@ -259,7 +259,7 @@ const Backup = () => {
                   <td className="p-4 text-gray-600">{backup.created_by_name}</td>
                   <td className="p-4">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      backup.type === 'scheduled' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                      backup.type === 'scheduled' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'
                     }`}>
                       {backup.type}
                     </span>
@@ -275,7 +275,7 @@ const Backup = () => {
                     <div className="flex gap-1">
                       <button
                         onClick={() => handleDownload(backup.filename)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                         title="Download"
                       >
                         <Download size={16} />

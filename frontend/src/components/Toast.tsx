@@ -52,7 +52,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const colors = {
     success: 'bg-emerald-600 text-white',
     error: 'bg-red-600 text-white',
-    info: 'bg-blue-600 text-white'
+    info: 'bg-emerald-600 text-white'
   };
 
   return (

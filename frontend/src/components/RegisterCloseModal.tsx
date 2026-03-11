@@ -97,19 +97,19 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
         <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto space-y-6">
           {/* Shift Info Banner */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl p-4">
-              <div className="flex items-center gap-2 text-blue-600 mb-2">
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-emerald-600 mb-2">
                 <Clock size={18} />
                 <p className="text-xs font-semibold uppercase">Duration</p>
               </div>
-              <p className="text-2xl font-bold text-blue-800">{formatDuration(shiftDuration)}</p>
+              <p className="text-2xl font-bold text-emerald-800">{formatDuration(shiftDuration)}</p>
             </div>
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-200 rounded-xl p-4">
-              <div className="flex items-center gap-2 text-purple-600 mb-2">
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-emerald-600 mb-2">
                 <User size={18} />
                 <p className="text-xs font-semibold uppercase">Cashier</p>
               </div>
-              <p className="text-lg font-bold text-purple-800 truncate">{register.opened_by_name || 'Staff'}</p>
+              <p className="text-lg font-bold text-emerald-800 truncate">{register.opened_by_name || 'Staff'}</p>
             </div>
             <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-xl p-4">
               <div className="flex items-center gap-2 text-emerald-600 mb-2">
@@ -132,7 +132,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
               {/* Opening Balance */}
               <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
                 <span className="text-gray-600 font-medium flex items-center gap-2">
-                  <DollarSign size={16} className="text-blue-500" />
+                  <DollarSign size={16} className="text-emerald-500" />
                   Opening Balance
                 </span>
                 <span className="font-bold text-gray-800">
@@ -152,11 +152,11 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
               </div>
 
               {/* Card Sales */}
-              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <span className="text-blue-700 font-medium flex items-center gap-2">
+              <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                <span className="text-emerald-700 font-medium flex items-center gap-2">
                   💳 Card Sales
                 </span>
-                <span className="font-bold text-blue-700">
+                <span className="font-bold text-emerald-700">
                   ${parseFloat(register.card_sales_total || 0).toFixed(2)}
                 </span>
               </div>
@@ -184,12 +184,12 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
               </div>
 
               {/* Expected Cash - Highlighted */}
-              <div className="flex justify-between items-center p-4 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-lg border-2 border-indigo-300 shadow-md">
-                <span className="font-bold text-indigo-800 flex items-center gap-2">
-                  <Calculator size={18} className="text-indigo-600" />
+              <div className="flex justify-between items-center p-4 bg-gradient-to-r from-emerald-100 to-emerald-100 rounded-lg border-2 border-emerald-300 shadow-md">
+                <span className="font-bold text-emerald-800 flex items-center gap-2">
+                  <Calculator size={18} className="text-emerald-600" />
                   Expected Cash in Drawer
                 </span>
-                <span className="font-bold text-2xl text-indigo-900">
+                <span className="font-bold text-2xl text-emerald-900">
                   ${expectedCash.toFixed(2)}
                 </span>
               </div>
@@ -226,7 +226,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
               Math.abs(difference) < 0.01 
                 ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-300 text-emerald-800' 
                 : difference > 0 
-                ? 'bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-300 text-blue-800' 
+                ? 'bg-gradient-to-r from-emerald-50 to-emerald-50 border-emerald-300 text-emerald-800' 
                 : 'bg-gradient-to-r from-red-50 to-orange-50 border-red-300 text-red-800'
             }`}>
               <div className="flex-shrink-0">
@@ -235,7 +235,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                     <CheckCircle size={24} className="text-white" />
                   </div>
                 ) : (
-                  <div className={`p-2 rounded-full ${difference > 0 ? 'bg-blue-500' : 'bg-red-500'}`}>
+                  <div className={`p-2 rounded-full ${difference > 0 ? 'bg-emerald-500' : 'bg-red-500'}`}>
                     <AlertTriangle size={24} className="text-white" />
                   </div>
                 )}

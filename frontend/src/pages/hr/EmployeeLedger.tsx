@@ -114,14 +114,14 @@ const EmployeeLedger = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <BookOpen className="text-indigo-600" size={20} />
+          <BookOpen className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Employee Ledger</h1>
             <p className="text-gray-600 text-sm mt-1">Complete financial history per employee</p>
           </div>
         </div>
         {data && entries.length > 0 && (
-          <button onClick={exportCSV} className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 transition shadow">
+          <button onClick={exportCSV} className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl hover:bg-emerald-700 transition shadow">
             <Download size={18} /> Export CSV
           </button>
         )}
@@ -137,7 +137,7 @@ const EmployeeLedger = () => {
             <select
               value={selectedStaffId}
               onChange={(e) => setSelectedStaffId(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             >
               <option value="">-- Select Employee --</option>
               {staff.map(s => (
@@ -152,15 +152,15 @@ const EmployeeLedger = () => {
               <Calendar size={16} className="inline mr-1" /> From Date
             </label>
             <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" />
           </div>
           <div className="min-w-[160px]">
             <label className="block text-sm font-medium text-gray-700 mb-2">To Date</label>
             <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" />
           </div>
           <button onClick={fetchLedger} disabled={loading}
-            className="bg-indigo-600 text-white px-8 py-2.5 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50">
+            className="bg-emerald-600 text-white px-8 py-2.5 rounded-lg hover:bg-emerald-700 transition disabled:opacity-50">
             {loading ? 'Loading...' : 'Generate'}
           </button>
         </div>
@@ -170,17 +170,17 @@ const EmployeeLedger = () => {
       {data && (
         <>
           {/* Staff Info */}
-          <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl p-6 text-white mb-6">
+          <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-xl p-6 text-white mb-6">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center text-2xl font-bold">
                 {data.staff.full_name?.charAt(0) || '?'}
               </div>
               <div>
                 <h2 className="text-base font-semibold">{data.staff.full_name}</h2>
-                <p className="text-indigo-200">
+                <p className="text-emerald-200">
                   {data.staff.employee_id ? `ID: ${data.staff.employee_id} | ` : ''}{data.staff.position} - {data.staff.department || 'N/A'}
                 </p>
-                <p className="text-indigo-200">Base Salary: ${Number(data.staff.salary || 0).toLocaleString()}</p>
+                <p className="text-emerald-200">Base Salary: ${Number(data.staff.salary || 0).toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -211,12 +211,12 @@ const EmployeeLedger = () => {
             </div>
             <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <CreditCard className="text-blue-600" size={20} />
+                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                  <CreditCard className="text-emerald-600" size={20} />
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Total Repaid</p>
-                  <p className="text-xl font-bold text-blue-600">${data.totals.totalRepaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <p className="text-xl font-bold text-emerald-600">${data.totals.totalRepaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
               </div>
             </div>
@@ -241,8 +241,8 @@ const EmployeeLedger = () => {
                 { label: 'Present', value: data.attendance_summary.present, bg: 'bg-green-50 border-green-200', text: 'text-green-600' },
                 { label: 'Absent', value: data.attendance_summary.absent, bg: 'bg-red-50 border-red-200', text: 'text-red-600' },
                 { label: 'Half Day', value: data.attendance_summary.half_day, bg: 'bg-yellow-50 border-yellow-200', text: 'text-yellow-600' },
-                { label: 'Leave', value: data.attendance_summary.leave, bg: 'bg-blue-50 border-blue-200', text: 'text-blue-600' },
-                { label: 'Holiday', value: data.attendance_summary.holiday, bg: 'bg-purple-50 border-purple-200', text: 'text-purple-600' },
+                { label: 'Leave', value: data.attendance_summary.leave, bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-600' },
+                { label: 'Holiday', value: data.attendance_summary.holiday, bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-600' },
                 { label: 'Total Days', value: data.attendance_summary.total, bg: 'bg-gray-50 border-gray-200', text: 'text-gray-600' },
               ].map(item => (
                 <div key={item.label} className={`${item.bg} border rounded-lg p-3 text-center`}>
@@ -277,7 +277,7 @@ const EmployeeLedger = () => {
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                           entry.type === 'Salary' ? 'bg-green-100 text-green-700' :
                           entry.type === 'Loan' ? 'bg-red-100 text-red-700' :
-                          'bg-blue-100 text-blue-700'
+                          'bg-emerald-100 text-emerald-700'
                         }`}>
                           {entry.type}
                         </span>

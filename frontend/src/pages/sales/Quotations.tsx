@@ -23,11 +23,11 @@ interface Quotation {
 
 const STATUS_BADGES: Record<string, { label: string; bg: string; text: string }> = {
   draft: { label: 'Draft', bg: 'bg-gray-100', text: 'text-gray-700' },
-  sent: { label: 'Sent', bg: 'bg-blue-100', text: 'text-blue-700' },
+  sent: { label: 'Sent', bg: 'bg-emerald-100', text: 'text-emerald-700' },
   accepted: { label: 'Accepted', bg: 'bg-green-100', text: 'text-green-700' },
   rejected: { label: 'Rejected', bg: 'bg-red-100', text: 'text-red-700' },
   expired: { label: 'Expired', bg: 'bg-yellow-100', text: 'text-yellow-700' },
-  converted: { label: 'Converted', bg: 'bg-purple-100', text: 'text-purple-700' },
+  converted: { label: 'Converted', bg: 'bg-emerald-100', text: 'text-emerald-700' },
 };
 
 const Quotations = () => {
@@ -138,19 +138,19 @@ const Quotations = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3"><FileText className="text-blue-600" size={20} /> Quotations</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3"><FileText className="text-emerald-600" size={20} /> Quotations</h1>
           <p className="text-gray-500 mt-1">Create and manage price quotations</p>
         </div>
-        <button onClick={openCreate} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors"><Plus size={20} /> New Quotation</button>
+        <button onClick={openCreate} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl hover:bg-emerald-700 transition-colors"><Plus size={20} /> New Quotation</button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total', value: stats.total, bg: 'bg-blue-50', iconColor: 'text-blue-600' },
+          { label: 'Total', value: stats.total, bg: 'bg-emerald-50', iconColor: 'text-emerald-600' },
           { label: 'Draft', value: stats.draft, bg: 'bg-gray-50', iconColor: 'text-gray-600' },
           { label: 'Sent/Accepted', value: stats.active, bg: 'bg-green-50', iconColor: 'text-green-600' },
-          { label: 'Converted', value: stats.converted, bg: 'bg-purple-50', iconColor: 'text-purple-600' },
+          { label: 'Converted', value: stats.converted, bg: 'bg-emerald-50', iconColor: 'text-emerald-600' },
         ].map((s) => (
           <div key={s.label} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
             <div className="flex items-center gap-3">
@@ -166,7 +166,7 @@ const Quotations = () => {
         <div className="p-4 border-b border-gray-100 flex flex-wrap gap-4 items-center">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input type="text" placeholder="Search by QT# or customer..." className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+            <input type="text" placeholder="Search by QT# or customer..." className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
           </div>
           <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-200 rounded-lg text-sm">
             <option value="">All Status</option>
@@ -176,7 +176,7 @@ const Quotations = () => {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center p-12"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div></div>
+          <div className="flex items-center justify-center p-12"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -196,7 +196,7 @@ const Quotations = () => {
                   const badge = STATUS_BADGES[q.status] || STATUS_BADGES.draft;
                   return (
                     <tr key={q.quotation_id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-mono font-medium text-blue-700">{q.quotation_number}</td>
+                      <td className="px-4 py-3 font-mono font-medium text-emerald-700">{q.quotation_number}</td>
                       <td className="px-4 py-3 text-gray-700">{q.customer_name}</td>
                       <td className="px-4 py-3 text-right font-semibold">${Number(q.total_amount).toFixed(2)}</td>
                       <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>{badge.label}</span></td>
@@ -205,13 +205,13 @@ const Quotations = () => {
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
                           <button onClick={() => viewDetail(q.quotation_id)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg" title="View"><Eye size={16} /></button>
-                          <button onClick={() => setPrintQuotationId(q.quotation_id)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Print"><Printer size={16} /></button>
-                          {q.status === 'draft' && <button onClick={() => handleStatusChange(q.quotation_id, 'sent')} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Send"><Send size={16} /></button>}
+                          <button onClick={() => setPrintQuotationId(q.quotation_id)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Print"><Printer size={16} /></button>
+                          {q.status === 'draft' && <button onClick={() => handleStatusChange(q.quotation_id, 'sent')} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Send"><Send size={16} /></button>}
                           {q.status === 'sent' && <>
                             <button onClick={() => handleStatusChange(q.quotation_id, 'accepted')} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg" title="Accept"><Check size={16} /></button>
                             <button onClick={() => handleStatusChange(q.quotation_id, 'rejected')} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg" title="Reject"><XCircle size={16} /></button>
                           </>}
-                          {q.status === 'accepted' && <button onClick={() => handleConvert(q.quotation_id)} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg" title="Convert to Sale"><ShoppingCart size={16} /></button>}
+                          {q.status === 'accepted' && <button onClick={() => handleConvert(q.quotation_id)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Convert to Sale"><ShoppingCart size={16} /></button>}
                           {q.status === 'draft' && <button onClick={() => handleDelete(q.quotation_id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg" title="Delete"><Trash2 size={16} /></button>}
                         </div>
                       </td>
@@ -233,7 +233,7 @@ const Quotations = () => {
             <div className="flex items-center justify-between p-6 border-b">
               <div><h2 className="text-base font-semibold">{detailQt.quotation_number}</h2><p className="text-sm text-gray-500">{detailQt.customer_name}</p></div>
               <div className="flex items-center gap-2">
-                <button onClick={() => { setDetailQt(null); setPrintQuotationId(detailQt.quotation_id); }} className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"><Printer size={16} /> Print</button>
+                <button onClick={() => { setDetailQt(null); setPrintQuotationId(detailQt.quotation_id); }} className="flex items-center gap-1 px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"><Printer size={16} /> Print</button>
                 <button onClick={() => setDetailQt(null)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
               </div>
             </div>
@@ -270,23 +270,23 @@ const Quotations = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
-                  <select value={formCustomer} onChange={(e) => setFormCustomer(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                  <select value={formCustomer} onChange={(e) => setFormCustomer(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
                     <option value="">Select Customer</option>
                     {customers.map((c: any) => <option key={c.customer_id} value={c.customer_id}>{c.customer_name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Valid Until</label>
-                  <input type="date" value={formValidUntil} onChange={(e) => setFormValidUntil(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input type="date" value={formValidUntil} onChange={(e) => setFormValidUntil(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Add Products</label>
-                <input type="text" placeholder="Search products..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                <input type="text" placeholder="Search products..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
                 {productSearch && (
                   <div className="border rounded-lg mt-1 max-h-32 overflow-y-auto bg-white shadow-lg">
                     {filteredProducts.slice(0, 10).map((p: any) => (
-                      <button key={p.product_id} onClick={() => addProduct(p)} className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm flex justify-between"><span>{p.product_name}</span><span className="text-gray-400">${Number(p.price).toFixed(2)}</span></button>
+                      <button key={p.product_id} onClick={() => addProduct(p)} className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-sm flex justify-between"><span>{p.product_name}</span><span className="text-gray-400">${Number(p.price).toFixed(2)}</span></button>
                     ))}
                   </div>
                 )}
@@ -310,13 +310,13 @@ const Quotations = () => {
               <div className="grid grid-cols-3 gap-4">
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">Tax Amount</label><input type="number" min="0" step="0.01" value={formTax} onChange={(e) => setFormTax(e.target.value)} className="w-full px-3 py-2 border rounded-lg" /></div>
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">Discount</label><input type="number" min="0" step="0.01" value={formDiscount} onChange={(e) => setFormDiscount(e.target.value)} className="w-full px-3 py-2 border rounded-lg" /></div>
-                <div className="flex items-end"><div className="w-full bg-blue-50 border border-blue-200 rounded-lg p-2 text-center"><p className="text-xs text-blue-600">Total</p><p className="text-lg font-bold text-blue-800">${(subtotal + (parseFloat(formTax) || 0) - (parseFloat(formDiscount) || 0)).toFixed(2)}</p></div></div>
+                <div className="flex items-end"><div className="w-full bg-emerald-50 border border-emerald-200 rounded-lg p-2 text-center"><p className="text-xs text-emerald-600">Total</p><p className="text-lg font-bold text-emerald-800">${(subtotal + (parseFloat(formTax) || 0) - (parseFloat(formDiscount) || 0)).toFixed(2)}</p></div></div>
               </div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Notes</label><textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} rows={2} className="w-full px-3 py-2 border rounded-lg" placeholder="Optional notes" /></div>
             </div>
             <div className="flex justify-end gap-3 p-6 border-t">
               <button onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleCreate} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Create Quotation</button>
+              <button onClick={handleCreate} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Create Quotation</button>
             </div>
           </div>
         </div>

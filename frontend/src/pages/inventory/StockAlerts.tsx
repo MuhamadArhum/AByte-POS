@@ -18,7 +18,7 @@ interface StockAlert {
 const ALERT_BADGES: Record<string, { label: string; bg: string; text: string }> = {
   low_stock: { label: 'Low Stock', bg: 'bg-yellow-100', text: 'text-yellow-700' },
   out_of_stock: { label: 'Out of Stock', bg: 'bg-red-100', text: 'text-red-700' },
-  overstock: { label: 'Overstock', bg: 'bg-blue-100', text: 'text-blue-700' },
+  overstock: { label: 'Overstock', bg: 'bg-emerald-100', text: 'text-emerald-700' },
 };
 
 const StockAlerts = () => {
@@ -125,9 +125,9 @@ const StockAlerts = () => {
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 rounded-xl"><Package size={24} className="text-blue-600" /></div>
+            <div className="p-3 bg-emerald-50 rounded-xl"><Package size={24} className="text-emerald-600" /></div>
             <div>
-              <p className="text-2xl font-bold text-blue-600">{stats.overstock}</p>
+              <p className="text-2xl font-bold text-emerald-600">{stats.overstock}</p>
               <p className="text-sm text-gray-500">Overstock</p>
             </div>
           </div>

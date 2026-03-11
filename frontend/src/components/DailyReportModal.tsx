@@ -177,7 +177,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
 
              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                 <div className="flex items-center gap-3 mb-2">
-                   <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                   <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
                       <CreditCard size={20} />
                    </div>
                    <p className="text-sm text-gray-500 font-medium">Card Sales</p>
@@ -187,7 +187,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
 
              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                 <div className="flex items-center gap-3 mb-2">
-                   <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+                   <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
                       <Smartphone size={20} />
                    </div>
                    <p className="text-sm text-gray-500 font-medium">Online Sales</p>

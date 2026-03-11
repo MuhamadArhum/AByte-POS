@@ -218,8 +218,8 @@ const Dashboard = () => {
 
   const quickActions = [
     { label: 'New Sale', icon: ShoppingCart, path: '/pos', color: 'bg-emerald-100 text-emerald-600' },
-    { label: 'Add Product', icon: Plus, path: '/inventory', color: 'bg-blue-100 text-blue-600' },
-    { label: 'Add Customer', icon: Users, path: '/customers', color: 'bg-purple-100 text-purple-600' },
+    { label: 'Add Product', icon: Plus, path: '/inventory', color: 'bg-emerald-100 text-emerald-600' },
+    { label: 'Add Customer', icon: Users, path: '/customers', color: 'bg-emerald-100 text-emerald-600' },
     { label: 'View Reports', icon: TrendingUp, path: '/reports', color: 'bg-orange-100 text-orange-600' },
   ];
 
@@ -264,11 +264,11 @@ const Dashboard = () => {
         {/* Orders Card */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-all duration-200">
           <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
               <ShoppingBag size={24} />
             </div>
             <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-              stats.ordersGrowth >= 0 ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-600'
+              stats.ordersGrowth >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
             }`}>
               {stats.ordersGrowth >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
               <span>{Math.abs(stats.ordersGrowth).toFixed(1)}%</span>
@@ -305,7 +305,7 @@ const Dashboard = () => {
         {/* Customers Card */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-all duration-200">
           <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600 group-hover:scale-110 transition-transform">
+            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
               <Users size={24} />
             </div>
           </div>
@@ -325,7 +325,7 @@ const Dashboard = () => {
               <p className="text-gray-500 text-sm font-medium">This Week</p>
               <p className="text-2xl font-bold text-gray-800 mt-1">${stats.weekRevenue.toFixed(2)}</p>
             </div>
-            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
+            <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
               <TrendingUp size={20} />
             </div>
           </div>
@@ -337,7 +337,7 @@ const Dashboard = () => {
               <p className="text-gray-500 text-sm font-medium">This Month</p>
               <p className="text-2xl font-bold text-gray-800 mt-1">${stats.monthRevenue.toFixed(2)}</p>
             </div>
-            <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600">
+            <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
               <DollarSign size={20} />
             </div>
           </div>
@@ -523,7 +523,7 @@ const Dashboard = () => {
               topProducts.map((product, index) => (
                 <div key={product.product_id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600 font-bold text-sm">
+                    <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 font-bold text-sm">
                       #{index + 1}
                     </div>
                     <div>

@@ -46,7 +46,7 @@ interface Stats {
 
 const STATUS_BADGES: Record<string, { label: string; bg: string; text: string }> = {
   draft: { label: 'Draft', bg: 'bg-gray-100', text: 'text-gray-700' },
-  sent: { label: 'Sent', bg: 'bg-blue-100', text: 'text-blue-700' },
+  sent: { label: 'Sent', bg: 'bg-emerald-100', text: 'text-emerald-700' },
   paid: { label: 'Paid', bg: 'bg-green-100', text: 'text-green-700' },
   partial: { label: 'Partial', bg: 'bg-yellow-100', text: 'text-yellow-700' },
   overdue: { label: 'Overdue', bg: 'bg-red-100', text: 'text-red-700' },
@@ -235,7 +235,7 @@ const Invoices = () => {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-lg"><FileText className="w-5 h-5 text-blue-600" /></div>
+            <div className="p-2 bg-emerald-50 rounded-lg"><FileText className="w-5 h-5 text-emerald-600" /></div>
             <div>
               <p className="text-sm text-gray-500">Total Invoices</p>
               <p className="text-xl font-bold text-gray-800">{stats.total_invoices}</p>
@@ -290,13 +290,13 @@ const Invoices = () => {
               placeholder="Search invoices..."
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             />
           </div>
           <select
             value={statusFilter}
             onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
           >
             <option value="">All Statuses</option>
             <option value="draft">Draft</option>
@@ -309,7 +309,7 @@ const Invoices = () => {
           <button onClick={() => setShowFromSale(true)} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2">
             <FileCheck className="w-4 h-4" /> From Sale
           </button>
-          <button onClick={() => { resetForm(); setShowCreate(true); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+          <button onClick={() => { resetForm(); setShowCreate(true); }} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2">
             <Plus className="w-4 h-4" /> Create Invoice
           </button>
         </div>
@@ -341,7 +341,7 @@ const Invoices = () => {
                   const badge = STATUS_BADGES[inv.status] || STATUS_BADGES.draft;
                   return (
                     <tr key={inv.invoice_id} className="hover:bg-gray-50">
-                      <td className="py-3 px-4 font-medium text-blue-600">{inv.invoice_number}</td>
+                      <td className="py-3 px-4 font-medium text-emerald-600">{inv.invoice_number}</td>
                       <td className="py-3 px-4 text-gray-700">{inv.customer_name}</td>
                       <td className="py-3 px-4 text-right font-semibold">{fmt(inv.total_amount)}</td>
                       <td className="py-3 px-4 text-center">
@@ -352,7 +352,7 @@ const Invoices = () => {
                       <td className="py-3 px-4 text-gray-600 text-sm">{fmtDate(inv.created_at)}</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => handleViewDetail(inv)} className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded" title="View">
+                          <button onClick={() => handleViewDetail(inv)} className="p-1.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded" title="View">
                             <Eye className="w-4 h-4" />
                           </button>
                           {inv.status === 'draft' && (
@@ -360,11 +360,11 @@ const Invoices = () => {
                               <Edit2 className="w-4 h-4" />
                             </button>
                           )}
-                          <button onClick={() => { setSelectedInvoice(inv); setShowPrint(true); }} className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded" title="Print">
+                          <button onClick={() => { setSelectedInvoice(inv); setShowPrint(true); }} className="p-1.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded" title="Print">
                             <Printer className="w-4 h-4" />
                           </button>
                           {inv.status === 'draft' && (
-                            <button onClick={() => handleStatusChange(inv.invoice_id, 'sent')} className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded" title="Send">
+                            <button onClick={() => handleStatusChange(inv.invoice_id, 'sent')} className="p-1.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded" title="Send">
                               <Send className="w-4 h-4" />
                             </button>
                           )}
@@ -422,7 +422,7 @@ const Invoices = () => {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-semibold text-gray-700">Items</label>
-                  <button onClick={addItem} className="text-sm text-blue-600 hover:text-blue-700 font-medium">+ Add Item</button>
+                  <button onClick={addItem} className="text-sm text-emerald-600 hover:text-emerald-700 font-medium">+ Add Item</button>
                 </div>
                 <div className="border rounded-lg overflow-hidden">
                   <table className="w-full text-sm">
@@ -472,7 +472,7 @@ const Invoices = () => {
             </div>
             <div className="flex justify-end gap-3 p-6 border-t">
               <button onClick={() => { setShowCreate(false); resetForm(); }} className="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleSave} disabled={saving || !formCustomerId} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              <button onClick={handleSave} disabled={saving || !formCustomerId} className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
                 {saving ? 'Saving...' : editMode ? 'Update' : 'Create'}
               </button>
             </div>
@@ -536,7 +536,7 @@ const Invoices = () => {
             </div>
             <div className="flex justify-end gap-2 p-6 border-t">
               {selectedInvoice.status === 'draft' && (
-                <button onClick={() => { handleStatusChange(selectedInvoice.invoice_id, 'sent'); setShowDetail(false); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                <button onClick={() => { handleStatusChange(selectedInvoice.invoice_id, 'sent'); setShowDetail(false); }} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2">
                   <Send className="w-4 h-4" /> Send
                 </button>
               )}
@@ -545,7 +545,7 @@ const Invoices = () => {
                   <CheckCircle className="w-4 h-4" /> Mark Paid
                 </button>
               )}
-              <button onClick={() => { setShowDetail(false); setSelectedInvoice(selectedInvoice); setShowPrint(true); }} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2">
+              <button onClick={() => { setShowDetail(false); setSelectedInvoice(selectedInvoice); setShowPrint(true); }} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2">
                 <Printer className="w-4 h-4" /> Print
               </button>
             </div>
@@ -572,7 +572,7 @@ const Invoices = () => {
             </div>
             <div className="flex justify-end gap-3 p-6 border-t">
               <button onClick={() => { setShowFromSale(false); setSaleId(''); }} className="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleFromSale} disabled={saving || !saleId} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              <button onClick={handleFromSale} disabled={saving || !saleId} className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
                 {saving ? 'Generating...' : 'Generate'}
               </button>
             </div>

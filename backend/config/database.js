@@ -15,6 +15,7 @@
 
 const mariadb = require('mariadb');
 const { AsyncLocalStorage } = require('async_hooks');
+const fs = require('fs');
 require('dotenv').config();
 
 // AsyncLocalStorage: stores current tenant's DB name per async context
@@ -22,6 +23,15 @@ require('dotenv').config();
 const tenantStorage = new AsyncLocalStorage();
 
 // Shared pool options (same for all tenant DBs)
+const isRemote = process.env.DB_HOST && process.env.DB_HOST !== 'localhost' && process.env.DB_HOST !== '127.0.0.1';
+
+// Build SSL config: use CA cert file if provided, otherwise skip cert verification
+const sslConfig = isRemote
+  ? process.env.DB_SSL_CA
+    ? { ssl: { ca: fs.readFileSync(process.env.DB_SSL_CA), rejectUnauthorized: true } }
+    : { ssl: { rejectUnauthorized: false } }
+  : {};
+
 const poolOptions = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT) || 3306,
@@ -29,9 +39,11 @@ const poolOptions = {
   password: process.env.DB_PASSWORD || '',
   connectionLimit: 5,          // 5 connections per tenant (saves resources)
   acquireTimeout: 30000,
+  connectTimeout: 10000,
   bigIntAsNumber: true,        // Convert BIGINT to JS Number
   insertIdAsNumber: true,      // Convert insertId to JS Number (prevents BigInt JSON error)
   decimalAsNumber: true,       // Convert DECIMAL to JS Number
+  ...sslConfig,
 };
 
 // Pool registry: dbName -> pool instance

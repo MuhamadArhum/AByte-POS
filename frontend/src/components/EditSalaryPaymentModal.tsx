@@ -120,17 +120,17 @@ const EditSalaryPaymentModal = ({ isOpen, onClose, onSuccess, payment, staffName
 
   const netAmount = calculateNetAmount();
   const inputClass = (field: string) =>
-    `w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${formErrors[field] ? 'border-red-500' : 'border-gray-200'}`;
+    `w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${formErrors[field] ? 'border-red-500' : 'border-gray-200'}`;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 rounded-t-2xl flex justify-between items-center">
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-600 p-6 rounded-t-2xl flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Edit className="text-white" size={24} />
             <div>
               <h2 className="text-base font-semibold text-white">Edit Salary Payment</h2>
-              <p className="text-purple-200 text-sm">{staffName}</p>
+              <p className="text-emerald-200 text-sm">{staffName}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-white/80 hover:text-white transition-colors">
@@ -211,7 +211,7 @@ const EditSalaryPaymentModal = ({ isOpen, onClose, onSuccess, payment, staffName
             <button type="button" onClick={onClose} className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
               Cancel
             </button>
-            <button type="submit" disabled={loading} className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all disabled:opacity-50">
+            <button type="submit" disabled={loading} className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-600 text-white rounded-lg hover:from-emerald-700 hover:to-emerald-700 transition-all disabled:opacity-50">
               {loading ? 'Saving...' : 'Update Payment'}
             </button>
           </div>

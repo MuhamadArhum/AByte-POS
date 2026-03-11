@@ -44,7 +44,17 @@
       "Bash(grep:*)",
       "Bash(cmd.exe:*)",
       "Bash(node:*)",
-      "Bash(echo === Test 1: Login without tenant_code ===:*)"
+      "Bash(echo === Test 1: Login without tenant_code ===:*)",
+      "Bash(for file:*)",
+      "Bash(do echo:*)",
+      "Read(//f/AByte-POS/backend/**)",
+      "Bash(uniq -c done)",
+      "Bash(cd \"f:/AByte-POS/frontend/src/pages\" && for file in sales/Orders.tsx sales/Quotations.tsx sales/Invoices.tsx sales/GiftCards.tsx sales/CreditSales.tsx sales/Coupons.tsx sales/SalesTargets.tsx; do\n  sed -i \\\\\n    -e 's/bg-blue-\\\\\\([0-9]*\\\\\\)/bg-emerald-\\\\1/g' \\\\\n    -e 's/bg-indigo-\\\\\\([0-9]*\\\\\\)/bg-emerald-\\\\1/g' \\\\\n    -e 's/bg-purple-\\\\\\([0-9]*\\\\\\)/bg-emerald-\\\\1/g' \\\\\n    -e 's/text-blue-\\\\\\([0-9]*\\\\\\)/text-emerald-\\\\1/g' \\\\\n    -e 's/text-indigo-\\\\\\([0-9]*\\\\\\)/text-emerald-\\\\1/g' \\\\\n    -e 's/text-purple-\\\\\\([0-9]*\\\\\\)/text-emerald-\\\\1/g' \\\\\n    -e 's/ring-blue-\\\\\\([0-9]*\\\\\\)/ring-emerald-\\\\1/g' \\\\\n    -e 's/ring-indigo-\\\\\\([0-9]*\\\\\\)/ring-emerald-\\\\1/g' \\\\\n    -e 's/ring-purple-\\\\\\([0-9]*\\\\\\)/ring-emerald-\\\\1/g' \\\\\n    -e 's/border-blue-\\\\\\([0-9]*\\\\\\)/border-emerald-\\\\1/g' \\\\\n    -e 's/border-indigo-\\\\\\([0-9]*\\\\\\)/border-emerald-\\\\1/g' \\\\\n    -e 's/border-purple-\\\\\\([0-9]*\\\\\\)/border-emerald-\\\\1/g' \\\\\n    -e 's/from-blue-\\\\\\([0-9]*\\\\\\)/from-emerald-\\\\1/g' \\\\\n    -e 's/from-indigo-\\\\\\([0-9]*\\\\\\)/from-emerald-\\\\1/g' \\\\\n    -e 's/from-purple-\\\\\\([0-9]*\\\\\\)/from-emerald-\\\\1/g' \\\\\n    -e 's/to-blue-\\\\\\([0-9]*\\\\\\)/to-emerald-\\\\1/g' \\\\\n    -e 's/to-indigo-\\\\\\([0-9]*\\\\\\)/to-emerald-\\\\1/g' \\\\\n    -e 's/to-purple-\\\\\\([0-9]*\\\\\\)/to-emerald-\\\\1/g' \\\\\n    -e 's/hover:bg-blue-\\\\\\([0-9]*\\\\\\)/hover:bg-emerald-\\\\1/g' \\\\\n    -e 's/hover:bg-indigo-\\\\\\([0-9]*\\\\\\)/hover:bg-emerald-\\\\1/g' \\\\\n    -e 's/hover:bg-purple-\\\\\\([0-9]*\\\\\\)/hover:bg-emerald-\\\\1/g' \\\\\n    -e 's/hover:text-blue-\\\\\\([0-9]*\\\\\\)/hover:text-emerald-\\\\1/g' \\\\\n    -e 's/hover:text-indigo-\\\\\\([0-9]*\\\\\\)/hover:text-emerald-\\\\1/g' \\\\\n    -e 's/hover:text-purple-\\\\\\([0-9]*\\\\\\)/hover:text-emerald-\\\\1/g' \\\\\n    -e 's/focus:ring-blue-\\\\\\([0-9]*\\\\\\)/focus:ring-emerald-\\\\1/g' \\\\\n    -e 's/focus:ring-indigo-\\\\\\([0-9]*\\\\\\)/focus:ring-emerald-\\\\1/g' \\\\\n    -e 's/focus:ring-purple-\\\\\\([0-9]*\\\\\\)/focus:ring-emerald-\\\\1/g' \\\\\n    \"$file\"\n  echo \"Done: $file\"\ndone)",
+      "Bash(curl -s http://localhost:5000/api/auth/login -X POST -H \"Content-Type: application/json\" -d '{\"email\":\"admin@pos.com\",\"password\":\"admin123\"}' 2>/dev/null | python3 -m json.tool 2>/dev/null | head -30)",
+      "Bash(mysqldump -u root --password=\"\" abyte_pos > \"F:/AByte-POS/abyte_pos_backup.sql\" 2>&1; echo \"EXIT:$?\")",
+      "Bash(mysql -h serverless-us-east1.sysp0000.db2.skysql.com -P 4059 -u dbpgf25868363 -p2w46gewBwU-7rPkIJp4Gh9ng9 --ssl-ca=\"F:/AByte-POS/globalsignrootca.pem\" -e \"CREATE DATABASE IF NOT EXISTS abyte_pos;\" 2>&1; echo \"EXIT:$?\")",
+      "Bash(mysql -h serverless-us-east1.sysp0000.db2.skysql.com -P 4059 -u dbpgf25868363 -p2w46gewBwU-7rPkIJp4Gh9ng9 --ssl-ca=\"F:/AByte-POS/globalsignrootca.pem\" -e \"DROP DATABASE IF EXISTS abyte_pos; CREATE DATABASE abyte_pos CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\" 2>&1; echo \"EXIT:$?\")",
+      "Bash(git -C \"F:/AByte-POS\" remote -v 2>&1)"
     ]
   }
 }

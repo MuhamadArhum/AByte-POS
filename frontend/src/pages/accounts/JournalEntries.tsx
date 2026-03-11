@@ -96,13 +96,13 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Entry Date *</label>
               <input type="date" value={formData.entry_date}
                 onChange={(e) => setFormData({ ...formData, entry_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-violet-500" required />
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
               <input type="text" value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-violet-500"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 placeholder="Entry description..." />
             </div>
           </div>
@@ -123,7 +123,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
                   <tr key={index} className="border-t">
                     <td className="p-2">
                       <select value={line.account_id} onChange={(e) => updateLine(index, 'account_id', e.target.value)}
-                        className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:ring-2 focus:ring-violet-500" required>
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:ring-2 focus:ring-emerald-500" required>
                         <option value="">Select Account</option>
                         {accounts.map(a => (
                           <option key={a.account_id} value={a.account_id}>[{a.account_code}] {a.account_name}</option>
@@ -133,18 +133,18 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
                     <td className="p-2">
                       <input type="text" value={line.description}
                         onChange={(e) => updateLine(index, 'description', e.target.value)}
-                        className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:ring-2 focus:ring-emerald-500"
                         placeholder="Line description..." />
                     </td>
                     <td className="p-2">
                       <input type="number" step="0.01" min="0" value={line.debit}
                         onChange={(e) => updateLine(index, 'debit', e.target.value)}
-                        className="w-full px-2 py-1 border border-gray-200 rounded text-sm text-right focus:ring-2 focus:ring-violet-500" />
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-sm text-right focus:ring-2 focus:ring-emerald-500" />
                     </td>
                     <td className="p-2">
                       <input type="number" step="0.01" min="0" value={line.credit}
                         onChange={(e) => updateLine(index, 'credit', e.target.value)}
-                        className="w-full px-2 py-1 border border-gray-200 rounded text-sm text-right focus:ring-2 focus:ring-violet-500" />
+                        className="w-full px-2 py-1 border border-gray-200 rounded text-sm text-right focus:ring-2 focus:ring-emerald-500" />
                     </td>
                     <td className="p-2 text-center">
                       {formData.lines.length > 2 && (
@@ -171,7 +171,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
           </div>
 
           <button type="button" onClick={addLine}
-            className="text-violet-600 hover:bg-violet-50 px-4 py-2 rounded-lg transition mb-4">
+            className="text-emerald-600 hover:bg-emerald-50 px-4 py-2 rounded-lg transition mb-4">
             + Add Line
           </button>
 
@@ -187,7 +187,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
               Cancel
             </button>
             <button type="submit" disabled={loading || !isBalanced}
-              className="flex-1 px-6 py-3 bg-violet-600 text-white rounded-xl hover:bg-violet-700 transition disabled:opacity-50">
+              className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition disabled:opacity-50">
               {loading ? 'Creating...' : 'Create Entry'}
             </button>
           </div>
@@ -261,14 +261,14 @@ const JournalEntries = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <FileText className="text-violet-600" size={20} />
+          <FileText className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Journal Entries</h1>
             <p className="text-gray-600 text-sm mt-1">Record accounting transactions</p>
           </div>
         </div>
         <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-violet-600 text-white px-6 py-3 rounded-xl hover:bg-violet-700 transition shadow-lg">
+          className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg">
           <Plus size={20} /> New Entry
         </button>
       </div>
@@ -278,15 +278,15 @@ const JournalEntries = () => {
         <div className="flex flex-wrap items-center gap-4">
           <Filter size={20} className="text-gray-600" />
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-violet-500">
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500">
             <option value="all">All Status</option>
             <option value="draft">Draft</option>
             <option value="posted">Posted</option>
           </select>
           <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-violet-500" placeholder="From" />
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" placeholder="From" />
           <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-violet-500" placeholder="To" />
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" placeholder="To" />
         </div>
       </div>
 

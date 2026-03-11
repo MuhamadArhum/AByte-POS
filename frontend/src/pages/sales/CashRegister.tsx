@@ -276,7 +276,7 @@ const CashRegister = () => {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 className="text-gray-500 text-sm font-medium">Card Sales</h3>
-          <p className="text-3xl font-bold text-blue-600 mt-2">${cardSales.toFixed(2)}</p>
+          <p className="text-3xl font-bold text-emerald-600 mt-2">${cardSales.toFixed(2)}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 className="text-gray-500 text-sm font-medium">Expected Cash in Drawer</h3>

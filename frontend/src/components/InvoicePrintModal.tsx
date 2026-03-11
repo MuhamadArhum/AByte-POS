@@ -95,7 +95,7 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
               </div>
             )}
             <button onClick={handlePrint} disabled={loading || !!error}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 text-sm">
+              className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition disabled:bg-gray-400 text-sm">
               <Printer size={16} />
               Print A4
             </button>
@@ -109,7 +109,7 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div>
             </div>
           ) : error ? (
             <div className="text-center py-20 text-red-500">{error}</div>
@@ -154,7 +154,7 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
                     <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium uppercase ${invoice.status === 'paid' ? 'bg-green-100 text-green-700' :
                       invoice.status === 'overdue' ? 'bg-red-100 text-red-700' :
                         invoice.status === 'partial' ? 'bg-yellow-100 text-yellow-700' :
-                          invoice.status === 'sent' ? 'bg-blue-100 text-blue-700' :
+                          invoice.status === 'sent' ? 'bg-emerald-100 text-emerald-700' :
                             'bg-gray-100 text-gray-700'
                       }`}>
                       {invoice.status}

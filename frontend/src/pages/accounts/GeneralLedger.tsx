@@ -123,7 +123,7 @@ const GeneralLedger = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <Book className="text-indigo-600" size={20} />
+          <Book className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">General Ledger</h1>
             <p className="text-gray-600 text-sm mt-1">View all posted transactions</p>
@@ -144,7 +144,7 @@ const GeneralLedger = () => {
             <select
               value={accountFilter}
               onChange={(e) => setAccountFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-w-[200px]"
+              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-w-[200px]"
             >
               <option value="all">All Accounts</option>
               {accounts.map((acc) => (
@@ -161,7 +161,7 @@ const GeneralLedger = () => {
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             />
           </div>
 
@@ -171,14 +171,14 @@ const GeneralLedger = () => {
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             />
           </div>
 
           <button
             onClick={handleSearch}
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50"
           >
             <Search size={18} />
             Search
@@ -198,7 +198,7 @@ const GeneralLedger = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
           </div>
         ) : entries.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
@@ -209,27 +209,27 @@ const GeneralLedger = () => {
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-indigo-50 border-b border-indigo-100">
+                <thead className="bg-emerald-50 border-b border-emerald-100">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-emerald-700 uppercase tracking-wider">
                       Date
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-emerald-700 uppercase tracking-wider">
                       Entry #
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-emerald-700 uppercase tracking-wider">
                       Account
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-emerald-700 uppercase tracking-wider">
                       Description
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-indigo-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-right text-xs font-medium text-emerald-700 uppercase tracking-wider">
                       Debit
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-indigo-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-right text-xs font-medium text-emerald-700 uppercase tracking-wider">
                       Credit
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-indigo-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-right text-xs font-medium text-emerald-700 uppercase tracking-wider">
                       Balance
                     </th>
                   </tr>
@@ -256,7 +256,7 @@ const GeneralLedger = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
                         {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-indigo-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-emerald-600">
                         {formatCurrency(entry.balance)}
                       </td>
                     </tr>

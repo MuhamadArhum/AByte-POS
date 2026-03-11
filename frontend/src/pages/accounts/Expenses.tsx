@@ -195,8 +195,8 @@ const Expenses = () => {
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-              <Calendar size={24} className="text-blue-500" />
+            <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center">
+              <Calendar size={24} className="text-emerald-500" />
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-800">
@@ -324,7 +324,7 @@ const Expenses = () => {
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => openEdit(exp)}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                               title="Edit"
                             >
                               <Edit2 size={15} />

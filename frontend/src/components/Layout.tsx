@@ -59,7 +59,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
-  const notifRef   = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -103,7 +103,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       color: 'emerald',
       children: [
         { icon: ShoppingCart, label: 'POS', path: '/pos', moduleKey: 'sales.pos' },
-        { icon: Users, label: 'Customers', path: '/customers', moduleKey: 'sales.customers' },
         { icon: Wallet, label: 'Cash Register', path: '/cash-register', moduleKey: 'sales.register' },
         { icon: RotateCcw, label: 'Returns', path: '/returns', moduleKey: 'sales.returns' },
         { icon: FileText, label: 'Quotations', path: '/quotations', moduleKey: 'sales.quotations' },
@@ -116,6 +115,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: Target, label: 'Sales Targets', path: '/sales-targets', moduleKey: 'sales.targets' },
         { icon: FileCheck, label: 'Invoices', path: '/invoices', moduleKey: 'sales.invoices' },
         { icon: PieChart, label: 'Sales Reports', path: '/sales-reports', moduleKey: 'sales.reports' },
+        { icon: Users, label: 'Customers', path: '/customers', moduleKey: 'sales.customers' },
       ]
     },
     {
@@ -225,18 +225,16 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           {/* Parent Menu Item */}
           <button
             onClick={() => toggleMenu(menuKey)}
-            className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-              isParentActive
+            className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${isParentActive
                 ? 'bg-emerald-50 text-emerald-700 font-semibold'
                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            }`}
+              }`}
           >
             <div className="flex items-center gap-3">
               <Icon
                 size={20}
-                className={`flex-shrink-0 ${
-                  isParentActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-emerald-600'
-                }`}
+                className={`flex-shrink-0 ${isParentActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-emerald-600'
+                  }`}
               />
               <span className="text-sm font-medium">{item.label}</span>
             </div>
@@ -264,17 +262,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                     <Link
                       key={childIndex}
                       to={child.path!}
-                      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group ${
-                        isChildActive
+                      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group ${isChildActive
                           ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium shadow-md'
                           : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      }`}
+                        }`}
                     >
                       <ChildIcon
                         size={18}
-                        className={`flex-shrink-0 ${
-                          isChildActive ? 'text-white' : 'text-gray-400 group-hover:text-emerald-600'
-                        }`}
+                        className={`flex-shrink-0 ${isChildActive ? 'text-white' : 'text-gray-400 group-hover:text-emerald-600'
+                          }`}
                       />
                       <span className="text-sm">{child.label}</span>
                     </Link>
@@ -293,11 +289,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         <Link
           key={index}
           to={item.path}
-          className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group relative overflow-hidden ${
-            isActive
+          className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group relative overflow-hidden ${isActive
               ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold shadow-lg shadow-emerald-200 scale-105'
               : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 hover:scale-105'
-          } ${isCollapsed ? 'justify-center' : ''}`}
+            } ${isCollapsed ? 'justify-center' : ''}`}
           title={isCollapsed ? item.label : ''}
         >
           {isActive && !isCollapsed && (
@@ -310,11 +305,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
           <Icon
             size={22}
-            className={`flex-shrink-0 transition-transform duration-200 ${
-              isActive
+            className={`flex-shrink-0 transition-transform duration-200 ${isActive
                 ? 'text-white scale-110'
                 : 'text-gray-400 group-hover:text-emerald-600 group-hover:scale-110'
-            }`}
+              }`}
           />
           {!isCollapsed && (
             <span className="whitespace-nowrap overflow-hidden text-sm">
@@ -368,7 +362,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="p-2 rounded-xl bg-white text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-200 absolute -right-4 top-24 border-2 border-gray-200 shadow-lg z-30 hover:scale-110"
           >
-             {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
         </div>
 

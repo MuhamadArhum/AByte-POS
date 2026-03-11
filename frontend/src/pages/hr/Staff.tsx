@@ -123,7 +123,7 @@ const Staff = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <User className="text-cyan-600" size={20} />
+          <User className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Staff Management</h1>
             <p className="text-gray-600 text-sm mt-1">Manage your team members</p>
@@ -134,7 +134,7 @@ const Staff = () => {
             setStaffToEdit(null);
             setShowAddModal(true);
           }}
-          className="flex items-center gap-2 bg-cyan-600 text-white px-6 py-3 rounded-xl hover:bg-cyan-700 transition shadow-lg hover:shadow-xl"
+          className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg hover:shadow-xl"
         >
           <Plus size={20} />
           Add Staff Member
@@ -174,7 +174,7 @@ const Staff = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -185,7 +185,7 @@ const Staff = () => {
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             >
               <option value="all">All Status</option>
               <option value="1">Active</option>
@@ -198,7 +198,7 @@ const Staff = () => {
             <select
               value={departmentFilter}
               onChange={(e) => { setDepartmentFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             >
               <option value="all">All Departments</option>
               {departments.map(dept => (
@@ -209,7 +209,7 @@ const Staff = () => {
 
           <button
             onClick={handleSearch}
-            className="bg-cyan-600 text-white px-6 py-2 rounded-lg hover:bg-cyan-700 transition"
+            className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 transition"
           >
             Apply
           </button>
@@ -254,14 +254,14 @@ const Staff = () => {
                     <div className="flex items-center justify-center gap-2">
                       <button
                         onClick={() => handleViewDetails(member)}
-                        className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition"
+                        className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg transition"
                         title="View Details"
                       >
                         <Eye size={18} />
                       </button>
                       <button
                         onClick={() => handleEdit(member)}
-                        className="text-cyan-600 hover:bg-cyan-50 p-2 rounded-lg transition"
+                        className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg transition"
                         title="Edit"
                       >
                         <Edit size={18} />
@@ -270,7 +270,7 @@ const Staff = () => {
                         <>
                           <button
                             onClick={() => handlePaySalary(member)}
-                            className="text-purple-600 hover:bg-purple-50 p-2 rounded-lg transition"
+                            className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg transition"
                             title="Pay Salary"
                           >
                             <DollarSign size={18} />

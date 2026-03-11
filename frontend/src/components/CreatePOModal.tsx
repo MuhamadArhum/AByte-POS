@@ -180,10 +180,10 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white flex items-center justify-between">
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold">Create Purchase Order</h2>
-            <p className="text-blue-100 text-sm mt-1">Step {step} of 3</p>
+            <p className="text-emerald-100 text-sm mt-1">Step {step} of 3</p>
           </div>
           <button onClick={handleClose} className="text-white hover:bg-white/20 p-2 rounded-lg transition">
             <X size={24} />
@@ -193,7 +193,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
         {/* Progress Bar */}
         <div className="bg-gray-100 h-2">
           <div
-            className="bg-blue-600 h-full transition-all duration-300"
+            className="bg-emerald-600 h-full transition-all duration-300"
             style={{ width: `${(step / 3) * 100}%` }}
           />
         </div>
@@ -210,7 +210,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                 <select
                   value={selectedSupplier || ''}
                   onChange={(e) => setSelectedSupplier(Number(e.target.value))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 >
                   <option value="">-- Select Supplier --</option>
                   {suppliers.map(supplier => (
@@ -230,7 +230,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                     type="date"
                     value={orderDate}
                     onChange={(e) => setOrderDate(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
 
@@ -242,7 +242,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                     type="date"
                     value={expectedDate}
                     onChange={(e) => setExpectedDate(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -255,7 +255,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   placeholder="Any additional notes..."
                 />
               </div>
@@ -265,7 +265,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
           {/* Step 2: Add Items */}
           {step === 2 && (
             <div className="space-y-4">
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+              <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
                 <h3 className="font-semibold text-gray-800 mb-3">Add Products</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
@@ -274,7 +274,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                     <select
                       value={selectedProduct || ''}
                       onChange={(e) => setSelectedProduct(Number(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                     >
                       <option value="">-- Select Product --</option>
                       {products.map(product => (
@@ -292,7 +292,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                       min="1"
                       value={quantity}
                       onChange={(e) => setQuantity(Number(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
 
@@ -304,14 +304,14 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                       step="0.01"
                       value={unitCost}
                       onChange={(e) => setUnitCost(Number(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
                 </div>
 
                 <button
                   onClick={addItem}
-                  className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                  className="w-full bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700 transition flex items-center justify-center gap-2"
                 >
                   <Plus size={20} />
                   Add Item
@@ -354,7 +354,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                         <td colSpan={3} className="p-3 text-right font-bold text-gray-800">
                           Total Amount:
                         </td>
-                        <td className="p-3 text-right font-bold text-blue-600 text-lg">
+                        <td className="p-3 text-right font-bold text-emerald-600 text-lg">
                           ${calculateTotal().toFixed(2)}
                         </td>
                         <td></td>
@@ -470,7 +470,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
             {step < 3 ? (
               <button
                 onClick={handleNext}
-                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
               >
                 Next
                 <ChevronRight size={20} />

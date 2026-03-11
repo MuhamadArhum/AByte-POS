@@ -204,7 +204,7 @@ const Customers = () => {
                       <div className="flex gap-2">
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleEdit(customer); }}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                         >
                           <Edit size={16} />
                         </button>
@@ -252,7 +252,7 @@ const Customers = () => {
                     {historyTotalItems || purchaseHistory.length} Orders
                   </span>
                   <span className="flex items-center gap-1 bg-white px-3 py-1 rounded-full border border-gray-200">
-                    <Clock size={14} className="text-blue-500" />
+                    <Clock size={14} className="text-emerald-500" />
                     Joined {new Date(selectedCustomer.created_at).toLocaleDateString()}
                   </span>
                 </div>

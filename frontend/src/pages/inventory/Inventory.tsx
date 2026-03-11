@@ -175,7 +175,7 @@ const Inventory = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 rounded-xl"><Package size={24} className="text-blue-600" /></div>
+            <div className="p-3 bg-emerald-50 rounded-xl"><Package size={24} className="text-emerald-600" /></div>
             <div>
               <p className="text-2xl font-bold text-gray-800">{stats.total_products}</p>
               <p className="text-sm text-gray-500">Total Products</p>
@@ -292,11 +292,11 @@ const Inventory = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
-                          <button className="text-blue-600 hover:text-blue-800" title="Edit"
+                          <button className="text-emerald-600 hover:text-emerald-800" title="Edit"
                             onClick={() => { setEditProduct(product); setIsAddModalOpen(true); }}>
                             <Edit size={16} />
                           </button>
-                          <button className="text-purple-600 hover:text-purple-800" title="Barcode"
+                          <button className="text-emerald-600 hover:text-emerald-800" title="Barcode"
                             onClick={() => setBarcodeProduct(product)}>
                             <Barcode size={16} />
                           </button>

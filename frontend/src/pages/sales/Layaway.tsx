@@ -21,7 +21,7 @@ interface LayawayOrder {
 }
 
 const STATUS_BADGES: Record<string, { label: string; bg: string; text: string }> = {
-  active: { label: 'Active', bg: 'bg-blue-100', text: 'text-blue-700' },
+  active: { label: 'Active', bg: 'bg-emerald-100', text: 'text-emerald-700' },
   completed: { label: 'Completed', bg: 'bg-green-100', text: 'text-green-700' },
   cancelled: { label: 'Cancelled', bg: 'bg-red-100', text: 'text-red-700' },
   expired: { label: 'Expired', bg: 'bg-yellow-100', text: 'text-yellow-700' },
@@ -203,8 +203,8 @@ const Layaway = () => {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-center gap-3"><div className="p-3 bg-blue-50 rounded-xl"><Archive size={24} className="text-blue-600" /></div>
-          <div><p className="text-2xl font-bold text-blue-600">{stats.active_count}</p><p className="text-sm text-gray-500">Active</p></div></div>
+          <div className="flex items-center gap-3"><div className="p-3 bg-emerald-50 rounded-xl"><Archive size={24} className="text-emerald-600" /></div>
+          <div><p className="text-2xl font-bold text-emerald-600">{stats.active_count}</p><p className="text-sm text-gray-500">Active</p></div></div>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3"><div className="p-3 bg-amber-50 rounded-xl"><DollarSign size={24} className="text-amber-600" /></div>
@@ -267,7 +267,7 @@ const Layaway = () => {
                           <button
                             onClick={() => layawayThermalAvailable ? handleThermalPrintLayaway(o) : handlePrintRowLayaway(o)}
                             disabled={thermalPrintingId === o.layaway_id}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-60"
+                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-60"
                             title={layawayThermalAvailable ? 'Print Thermal Receipt' : 'Print Receipt (A4)'}
                           >
                             {thermalPrintingId === o.layaway_id ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}

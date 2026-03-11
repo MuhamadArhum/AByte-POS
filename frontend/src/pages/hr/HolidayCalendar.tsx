@@ -61,20 +61,20 @@ const HolidayModal = ({ isOpen, onClose, onSuccess, holiday }: any) => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Holiday Date *</label>
               <input type="date" value={formData.holiday_date}
                 onChange={(e) => setFormData({ ...formData, holiday_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500" required />
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Holiday Name *</label>
               <input type="text" value={formData.holiday_name}
                 onChange={(e) => setFormData({ ...formData, holiday_name: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 placeholder="e.g., New Year's Day" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
               <textarea value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500" rows={3} />
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" rows={3} />
             </div>
           </div>
           <div className="flex gap-3 mt-6">
@@ -83,7 +83,7 @@ const HolidayModal = ({ isOpen, onClose, onSuccess, holiday }: any) => {
               Cancel
             </button>
             <button type="submit" disabled={loading}
-              className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition disabled:opacity-50">
+              className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition disabled:opacity-50">
               {loading ? 'Saving...' : holiday ? 'Update' : 'Create'}
             </button>
           </div>
@@ -143,14 +143,14 @@ const HolidayCalendar = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <Calendar className="text-indigo-600" size={20} />
+          <Calendar className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Holiday Calendar</h1>
             <p className="text-gray-600 text-sm mt-1">Manage company holidays</p>
           </div>
         </div>
         <button onClick={handleAdd}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition shadow-lg">
+          className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg">
           <Plus size={20} /> Add Holiday
         </button>
       </div>
@@ -158,7 +158,7 @@ const HolidayCalendar = () => {
       {/* Summary */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
         <p className="text-gray-600 text-sm">Total Holidays {yearFilter && `in ${yearFilter}`}</p>
-        <p className="text-3xl font-bold text-indigo-600 mt-2">{holidays.length}</p>
+        <p className="text-3xl font-bold text-emerald-600 mt-2">{holidays.length}</p>
       </div>
 
       {/* Filter */}
@@ -166,7 +166,7 @@ const HolidayCalendar = () => {
         <div className="flex items-center gap-4">
           <Filter size={20} className="text-gray-600" />
           <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500">
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500">
             <option value="">All Years</option>
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
@@ -196,7 +196,7 @@ const HolidayCalendar = () => {
                   <td className="p-4 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <button onClick={() => handleEdit(h)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit">
+                        className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Edit">
                         <Edit size={16} />
                       </button>
                       <button onClick={() => handleDelete(h)}

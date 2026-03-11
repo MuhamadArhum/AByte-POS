@@ -123,7 +123,7 @@ const ProfitLoss = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <TrendingUp className="text-blue-600" size={20} />
+          <TrendingUp className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Profit & Loss Statement</h1>
             <p className="text-gray-600 text-sm mt-1">Income statement for the period</p>
@@ -140,7 +140,7 @@ const ProfitLoss = () => {
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             />
           </div>
 
@@ -150,14 +150,14 @@ const ProfitLoss = () => {
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             />
           </div>
 
           <button
             onClick={fetchProfitLoss}
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50"
           >
             <Calendar size={18} />
             {loading ? 'Loading...' : 'Generate'}
@@ -196,7 +196,7 @@ const ProfitLoss = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
           </div>
         ) : !data ? (
           <div className="text-center py-12 text-gray-500">
@@ -208,7 +208,7 @@ const ProfitLoss = () => {
           <div className="p-8">
             {/* Revenue Section */}
             <div className="mb-8">
-              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-blue-200">
+              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-emerald-200">
                 REVENUE
               </h2>
               {data.revenue.length === 0 ? (
@@ -228,9 +228,9 @@ const ProfitLoss = () => {
                   ))}
                 </div>
               )}
-              <div className="flex justify-between items-center py-3 mt-4 border-t-2 border-blue-100 bg-blue-50 px-4 rounded">
-                <span className="font-bold text-blue-900">Total Revenue</span>
-                <span className="font-bold text-blue-900 text-lg">
+              <div className="flex justify-between items-center py-3 mt-4 border-t-2 border-emerald-100 bg-emerald-50 px-4 rounded">
+                <span className="font-bold text-emerald-900">Total Revenue</span>
+                <span className="font-bold text-emerald-900 text-lg">
                   {formatCurrency(data.total_revenue)}
                 </span>
               </div>
@@ -238,7 +238,7 @@ const ProfitLoss = () => {
 
             {/* Expenses Section */}
             <div className="mb-8">
-              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-blue-200">
+              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-emerald-200">
                 EXPENSES
               </h2>
               {data.expenses.length === 0 ? (
@@ -258,9 +258,9 @@ const ProfitLoss = () => {
                   ))}
                 </div>
               )}
-              <div className="flex justify-between items-center py-3 mt-4 border-t-2 border-blue-100 bg-blue-50 px-4 rounded">
-                <span className="font-bold text-blue-900">Total Expenses</span>
-                <span className="font-bold text-blue-900 text-lg">
+              <div className="flex justify-between items-center py-3 mt-4 border-t-2 border-emerald-100 bg-emerald-50 px-4 rounded">
+                <span className="font-bold text-emerald-900">Total Expenses</span>
+                <span className="font-bold text-emerald-900 text-lg">
                   {formatCurrency(data.total_expenses)}
                 </span>
               </div>

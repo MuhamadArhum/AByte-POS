@@ -81,13 +81,13 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-6 text-white flex items-center justify-between">
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
             <FileText size={28} />
             <div>
               <h2 className="text-base font-semibold">Purchase Order Details</h2>
               {po && (
-                <p className="text-purple-100 text-sm mt-1">PO Number: {po.po_number}</p>
+                <p className="text-emerald-100 text-sm mt-1">PO Number: {po.po_number}</p>
               )}
             </div>
           </div>
@@ -100,7 +100,7 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
               <p className="text-gray-600 mt-4">Loading details...</p>
             </div>
           ) : po ? (
@@ -109,7 +109,7 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                   <div className="flex items-center gap-2 mb-3">
-                    <User className="text-purple-600" size={20} />
+                    <User className="text-emerald-600" size={20} />
                     <h3 className="font-semibold text-gray-800">Supplier Information</h3>
                   </div>
                   <p className="text-lg font-bold text-gray-900">{po.supplier_name}</p>
@@ -117,7 +117,7 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
 
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                   <div className="flex items-center gap-2 mb-3">
-                    <Package className="text-purple-600" size={20} />
+                    <Package className="text-emerald-600" size={20} />
                     <h3 className="font-semibold text-gray-800">Status</h3>
                   </div>
                   <span className={`inline-block px-4 py-2 rounded-full text-sm font-semibold capitalize ${getStatusColor(po.status)}`}>
@@ -127,7 +127,7 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
 
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                   <div className="flex items-center gap-2 mb-3">
-                    <Calendar className="text-purple-600" size={20} />
+                    <Calendar className="text-emerald-600" size={20} />
                     <h3 className="font-semibold text-gray-800">Dates</h3>
                   </div>
                   <div className="space-y-2 text-sm">
@@ -152,16 +152,16 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
 
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                   <div className="flex items-center gap-2 mb-3">
-                    <DollarSign className="text-purple-600" size={20} />
+                    <DollarSign className="text-emerald-600" size={20} />
                     <h3 className="font-semibold text-gray-800">Total Amount</h3>
                   </div>
-                  <p className="text-2xl font-bold text-purple-600">${Number(po.total_amount || 0).toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-emerald-600">${Number(po.total_amount || 0).toFixed(2)}</p>
                 </div>
               </div>
 
               {/* Notes */}
               {po.notes && (
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
+                <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4 mb-6">
                   <h3 className="font-semibold text-gray-800 mb-2">Notes</h3>
                   <p className="text-gray-700">{po.notes}</p>
                 </div>
@@ -190,7 +190,7 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
                           <p className="font-medium text-gray-800">{item.product_name}</p>
                         </td>
                         <td className="p-4 text-center">
-                          <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
+                          <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm font-semibold">
                             {item.quantity_ordered}
                           </span>
                         </td>
@@ -219,7 +219,7 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
                       <td colSpan={4} className="p-4 text-right font-bold text-gray-800 text-lg">
                         Grand Total:
                       </td>
-                      <td className="p-4 text-right font-bold text-purple-600 text-xl">
+                      <td className="p-4 text-right font-bold text-emerald-600 text-xl">
                         ${Number(po.total_amount || 0).toFixed(2)}
                       </td>
                     </tr>

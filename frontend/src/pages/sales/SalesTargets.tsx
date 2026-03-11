@@ -175,7 +175,7 @@ const TargetModal = ({
               <select
                 value={formData.user_id}
                 onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">Store-Wide (All Cashiers)</option>
                 {users.map((u) => (
@@ -194,7 +194,7 @@ const TargetModal = ({
                 onChange={(e) =>
                   setFormData({ ...formData, target_type: e.target.value as 'daily' | 'weekly' | 'monthly' })
                 }
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
@@ -211,7 +211,7 @@ const TargetModal = ({
                 min="0"
                 value={formData.target_amount}
                 onChange={(e) => setFormData({ ...formData, target_amount: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 placeholder="e.g., 50000"
                 required
               />
@@ -225,7 +225,7 @@ const TargetModal = ({
                 min="0"
                 value={formData.target_orders}
                 onChange={(e) => setFormData({ ...formData, target_orders: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 placeholder="e.g., 100"
               />
             </div>
@@ -238,7 +238,7 @@ const TargetModal = ({
                   type="date"
                   value={formData.period_start}
                   onChange={(e) => setFormData({ ...formData, period_start: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                   required
                 />
               </div>
@@ -248,7 +248,7 @@ const TargetModal = ({
                   type="date"
                   value={formData.period_end}
                   onChange={(e) => setFormData({ ...formData, period_end: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                   required
                 />
               </div>
@@ -262,7 +262,7 @@ const TargetModal = ({
                   type="button"
                   onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                    formData.is_active ? 'bg-indigo-600' : 'bg-gray-300'
+                    formData.is_active ? 'bg-emerald-600' : 'bg-gray-300'
                   }`}
                 >
                   <span
@@ -286,7 +286,7 @@ const TargetModal = ({
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition disabled:opacity-50"
+              className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition disabled:opacity-50"
             >
               {loading ? 'Saving...' : target ? 'Update Target' : 'Create Target'}
             </button>
@@ -322,9 +322,9 @@ const getAchievementBadgeClass = (pct: number): string => {
 };
 
 const getTypeBadgeClass = (type: string): string => {
-  if (type === 'daily') return 'bg-blue-100 text-blue-700';
-  if (type === 'weekly') return 'bg-purple-100 text-purple-700';
-  return 'bg-indigo-100 text-indigo-700';
+  if (type === 'daily') return 'bg-emerald-100 text-emerald-700';
+  if (type === 'weekly') return 'bg-emerald-100 text-emerald-700';
+  return 'bg-emerald-100 text-emerald-700';
 };
 
 // ---------- Main Page ----------
@@ -505,7 +505,7 @@ const SalesTargets = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <Target className="text-indigo-600" size={20} />
+          <Target className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Sales Targets</h1>
             <p className="text-gray-600 text-sm mt-1">Track cashier performance and manage sales goals</p>
@@ -521,7 +521,7 @@ const SalesTargets = () => {
           </button>
           <button
             onClick={handleCreate}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition shadow-lg"
+            className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg"
           >
             <Plus size={20} /> Create Target
           </button>
@@ -535,7 +535,7 @@ const SalesTargets = () => {
             onClick={() => setActiveTab('dashboard')}
             className={`flex items-center gap-2 px-6 py-4 font-medium transition border-b-2 ${
               activeTab === 'dashboard'
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-emerald-600 text-emerald-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -546,7 +546,7 @@ const SalesTargets = () => {
             onClick={() => setActiveTab('manage')}
             className={`flex items-center gap-2 px-6 py-4 font-medium transition border-b-2 ${
               activeTab === 'manage'
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-emerald-600 text-emerald-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -564,8 +564,8 @@ const SalesTargets = () => {
             {/* Active Targets */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 bg-indigo-100 rounded-lg">
-                  <Target size={20} className="text-indigo-600" />
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <Target size={20} className="text-emerald-600" />
                 </div>
                 <p className="text-gray-600 text-sm font-medium">Active Targets</p>
               </div>
@@ -575,8 +575,8 @@ const SalesTargets = () => {
             {/* Overall Achievement */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <TrendingUp size={20} className="text-blue-600" />
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <TrendingUp size={20} className="text-emerald-600" />
                 </div>
                 <p className="text-gray-600 text-sm font-medium">Overall Achievement</p>
               </div>
@@ -624,7 +624,7 @@ const SalesTargets = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 bg-gray-50 border-b">
               <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                <BarChart3 size={18} className="text-indigo-600" />
+                <BarChart3 size={18} className="text-emerald-600" />
                 Cashier Performance
               </h3>
             </div>
@@ -708,7 +708,7 @@ const SalesTargets = () => {
                   setFilterUserId(e.target.value);
                   setPagination((prev) => ({ ...prev, page: 1 }));
                 }}
-                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">All Users</option>
                 {users.map((u) => (
@@ -724,7 +724,7 @@ const SalesTargets = () => {
                   setFilterType(e.target.value);
                   setPagination((prev) => ({ ...prev, page: 1 }));
                 }}
-                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">All Types</option>
                 <option value="daily">Daily</option>
@@ -735,7 +735,7 @@ const SalesTargets = () => {
               <div className="ml-auto">
                 <button
                   onClick={handleCreate}
-                  className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 transition"
+                  className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2 rounded-lg hover:bg-emerald-700 transition"
                 >
                   <Plus size={18} /> Create Target
                 </button>
@@ -805,7 +805,7 @@ const SalesTargets = () => {
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => handleEdit(t)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                            className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
                             title="Edit"
                           >
                             <Edit2 size={16} />

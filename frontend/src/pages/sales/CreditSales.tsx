@@ -19,7 +19,7 @@ interface CreditSale {
 
 const STATUS_BADGES: Record<string, { label: string; bg: string; text: string }> = {
   pending: { label: 'Pending', bg: 'bg-yellow-100', text: 'text-yellow-700' },
-  partial: { label: 'Partial', bg: 'bg-blue-100', text: 'text-blue-700' },
+  partial: { label: 'Partial', bg: 'bg-emerald-100', text: 'text-emerald-700' },
   paid: { label: 'Paid', bg: 'bg-green-100', text: 'text-green-700' },
   overdue: { label: 'Overdue', bg: 'bg-red-100', text: 'text-red-700' },
 };
@@ -172,8 +172,8 @@ const CreditSales = () => {
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 rounded-xl"><Clock size={24} className="text-blue-600" /></div>
-            <div><p className="text-2xl font-bold text-blue-600">{stats.active_count}</p><p className="text-sm text-gray-500">Active Credit Sales</p></div>
+            <div className="p-3 bg-emerald-50 rounded-xl"><Clock size={24} className="text-emerald-600" /></div>
+            <div><p className="text-2xl font-bold text-emerald-600">{stats.active_count}</p><p className="text-sm text-gray-500">Active Credit Sales</p></div>
           </div>
         </div>
       </div>
@@ -234,7 +234,7 @@ const CreditSales = () => {
                           <button
                             onClick={() => creditThermalAvailable ? handleThermalPrintCS(cs) : handlePrintRow(cs)}
                             disabled={thermalPrintingId === cs.credit_sale_id}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-60"
+                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-60"
                             title={creditThermalAvailable ? 'Print Thermal Receipt' : 'Print Receipt (A4)'}
                           >
                             {thermalPrintingId === cs.credit_sale_id ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />}

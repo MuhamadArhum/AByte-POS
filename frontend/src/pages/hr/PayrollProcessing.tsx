@@ -115,7 +115,7 @@ const PayrollProcessing = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <DollarSign className="text-blue-600" size={20} />
+          <DollarSign className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Payroll Processing</h1>
             <p className="text-gray-600 text-sm mt-1">Bulk salary generation for staff</p>
@@ -128,8 +128,8 @@ const PayrollProcessing = () => {
         <div className="flex items-center justify-between">
           {['setup', 'preview', 'processing', 'complete'].map((s, idx) => (
             <div key={s} className="flex items-center">
-              <div className={`flex items-center gap-2 ${step === s ? 'text-blue-600' : idx < ['setup', 'preview', 'processing', 'complete'].indexOf(step) ? 'text-green-600' : 'text-gray-400'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${step === s ? 'bg-blue-100' : idx < ['setup', 'preview', 'processing', 'complete'].indexOf(step) ? 'bg-green-100' : 'bg-gray-100'}`}>
+              <div className={`flex items-center gap-2 ${step === s ? 'text-emerald-600' : idx < ['setup', 'preview', 'processing', 'complete'].indexOf(step) ? 'text-green-600' : 'text-gray-400'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${step === s ? 'bg-emerald-100' : idx < ['setup', 'preview', 'processing', 'complete'].indexOf(step) ? 'bg-green-100' : 'bg-gray-100'}`}>
                   {idx + 1}
                 </div>
                 <span className="font-medium capitalize">{s}</span>
@@ -148,22 +148,22 @@ const PayrollProcessing = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">From Date *</label>
               <input type="date" value={formData.from_date} onChange={(e) => setFormData({ ...formData, from_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">To Date *</label>
               <input type="date" value={formData.to_date} onChange={(e) => setFormData({ ...formData, to_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Date *</label>
               <input type="date" value={formData.payment_date} onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Department Filter</label>
               <select value={formData.department} onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500">
                 <option value="">All Departments</option>
                 {departments.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
@@ -171,7 +171,7 @@ const PayrollProcessing = () => {
           </div>
           <div className="flex justify-end mt-8">
             <button onClick={handlePreview} disabled={loading}
-              className="flex items-center gap-2 bg-blue-600 text-white px-8 py-3 rounded-xl hover:bg-blue-700 transition shadow-lg disabled:opacity-50">
+              className="flex items-center gap-2 bg-emerald-600 text-white px-8 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg disabled:opacity-50">
               <Calendar size={20} /> {loading ? 'Loading...' : 'Generate Preview'}
             </button>
           </div>
@@ -188,7 +188,7 @@ const PayrollProcessing = () => {
             </div>
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <p className="text-gray-600 text-sm">Total Base Salary</p>
-              <p className="text-3xl font-bold text-blue-600 mt-2">${totals.total_base.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-emerald-600 mt-2">${totals.total_base.toLocaleString()}</p>
             </div>
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <p className="text-gray-600 text-sm">Total Deductions</p>
@@ -228,7 +228,7 @@ const PayrollProcessing = () => {
                       <td className="p-4 text-right font-medium">${p.base_salary.toLocaleString()}</td>
                       <td className="p-4 text-right font-medium text-red-600">{p.deductions > 0 ? `-$${p.deductions.toLocaleString()}` : '-'}</td>
                       <td className="p-4 text-right font-medium text-green-600">{p.bonuses > 0 ? `+$${p.bonuses.toLocaleString()}` : '-'}</td>
-                      <td className="p-4 text-right font-bold text-blue-600">${p.net_amount.toLocaleString()}</td>
+                      <td className="p-4 text-right font-bold text-emerald-600">${p.net_amount.toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -251,7 +251,7 @@ const PayrollProcessing = () => {
       {/* Step 3: Processing */}
       {step === 'processing' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-          <div className="animate-spin w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="animate-spin w-16 h-16 border-4 border-emerald-600 border-t-transparent rounded-full mx-auto mb-4"></div>
           <h3 className="text-sm font-semibold text-gray-800 mb-2">Processing Payroll...</h3>
           <p className="text-gray-600">Please wait while we process salary payments.</p>
         </div>
@@ -268,7 +268,7 @@ const PayrollProcessing = () => {
               <p className="text-red-600"><span className="font-semibold">Errors:</span> {result.errors.length}</p>
             )}
           </div>
-          <button onClick={resetFlow} className="bg-blue-600 text-white px-8 py-3 rounded-xl hover:bg-blue-700 transition shadow-lg">
+          <button onClick={resetFlow} className="bg-emerald-600 text-white px-8 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg">
             Process New Payroll
           </button>
         </div>

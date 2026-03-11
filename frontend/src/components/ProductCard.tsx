@@ -19,7 +19,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCa
           <span className="text-2xl font-black text-emerald-600">{product.product_name.charAt(0)}</span>
           {/* @ts-ignore - has_variants exists on product after backend query */}
           {product.has_variants && (
-            <span className="absolute top-1 left-1 bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+            <span className="absolute top-1 left-1 bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
               Var
             </span>
           )}

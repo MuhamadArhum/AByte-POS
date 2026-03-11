@@ -409,7 +409,7 @@ const Stores = () => {
               <div className="px-5 py-3 bg-gray-50 flex justify-end gap-2">
                 <button
                   onClick={() => { setEditStore(store); setShowModal(true); }}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                   title="Edit Store"
                 >
                   <Pencil size={16} />

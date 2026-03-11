@@ -111,12 +111,12 @@ const Coupons = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3"><Ticket className="text-indigo-600" size={20} /> Coupons</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3"><Ticket className="text-emerald-600" size={20} /> Coupons</h1>
           <p className="text-gray-500 mt-1">Manage discount codes and promotions</p>
         </div>
         <div className="flex gap-3">
           <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition" disabled={coupons.length === 0}><Printer size={18} /> Print</button>
-          <button onClick={openCreate} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"><Plus size={20} /> Create Coupon</button>
+          <button onClick={openCreate} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl hover:bg-emerald-700 transition-colors"><Plus size={20} /> Create Coupon</button>
         </div>
       </div>
 
@@ -124,7 +124,7 @@ const Coupons = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-indigo-50 rounded-xl"><Ticket size={24} className="text-indigo-600" /></div>
+            <div className="p-3 bg-emerald-50 rounded-xl"><Ticket size={24} className="text-emerald-600" /></div>
             <div><p className="text-2xl font-bold text-gray-800">{stats.active_coupons}</p><p className="text-sm text-gray-500">Active Coupons</p></div>
           </div>
         </div>
@@ -147,9 +147,9 @@ const Coupons = () => {
         <div className="p-4 border-b border-gray-100 flex flex-wrap gap-4 items-center">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input type="text" placeholder="Search by code or description..." className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+            <input type="text" placeholder="Search by code or description..." className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
           </div>
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
             <option value="">All</option>
             <option value="active">Active</option>
             <option value="expired">Expired / Inactive</option>
@@ -158,7 +158,7 @@ const Coupons = () => {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center p-12"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div></div>
+          <div className="flex items-center justify-center p-12"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -176,7 +176,7 @@ const Coupons = () => {
               <tbody className="divide-y divide-gray-100">
                 {coupons.map((c) => (
                   <tr key={c.coupon_id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3"><span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded">{c.code}</span></td>
+                    <td className="px-4 py-3"><span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded">{c.code}</span></td>
                     <td className="px-4 py-3 text-gray-600 max-w-[200px] truncate">{c.description || '-'}</td>
                     <td className="px-4 py-3">
                       <span className="font-semibold">{c.discount_type === 'percentage' ? `${c.discount_value}%` : `$${c.discount_value}`}</span>
@@ -198,7 +198,7 @@ const Coupons = () => {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
-                        <button onClick={() => openEdit(c)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg"><Pencil size={16} /></button>
+                        <button onClick={() => openEdit(c)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"><Pencil size={16} /></button>
                         <button onClick={() => handleDelete(c.coupon_id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
                       </div>
                     </td>
@@ -225,53 +225,53 @@ const Coupons = () => {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Coupon Code</label>
-                <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} disabled={!!editCoupon} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono disabled:bg-gray-100" placeholder="e.g. SAVE20" />
+                <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} disabled={!!editCoupon} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none font-mono disabled:bg-gray-100" placeholder="e.g. SAVE20" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <input type="text" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Optional description" />
+                <input type="text" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Optional description" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Discount Type</label>
                   <div className="flex gap-2">
-                    <button onClick={() => setForm({ ...form, discount_type: 'percentage' })} className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${form.discount_type === 'percentage' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}><Percent size={14} className="inline mr-1" />Percentage</button>
-                    <button onClick={() => setForm({ ...form, discount_type: 'fixed' })} className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${form.discount_type === 'fixed' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}><DollarSign size={14} className="inline mr-1" />Fixed</button>
+                    <button onClick={() => setForm({ ...form, discount_type: 'percentage' })} className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${form.discount_type === 'percentage' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}><Percent size={14} className="inline mr-1" />Percentage</button>
+                    <button onClick={() => setForm({ ...form, discount_type: 'fixed' })} className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${form.discount_type === 'fixed' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}><DollarSign size={14} className="inline mr-1" />Fixed</button>
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Discount Value</label>
-                  <input type="number" value={form.discount_value} onChange={(e) => setForm({ ...form, discount_value: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" min="0" step="0.01" />
+                  <input type="number" value={form.discount_value} onChange={(e) => setForm({ ...form, discount_value: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" min="0" step="0.01" />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Min Purchase</label>
-                  <input type="number" value={form.min_purchase} onChange={(e) => setForm({ ...form, min_purchase: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" min="0" step="0.01" placeholder="0" />
+                  <input type="number" value={form.min_purchase} onChange={(e) => setForm({ ...form, min_purchase: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" min="0" step="0.01" placeholder="0" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Max Discount</label>
-                  <input type="number" value={form.max_discount} onChange={(e) => setForm({ ...form, max_discount: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" min="0" step="0.01" placeholder="No limit" />
+                  <input type="number" value={form.max_discount} onChange={(e) => setForm({ ...form, max_discount: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" min="0" step="0.01" placeholder="No limit" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Usage Limit</label>
-                  <input type="number" value={form.usage_limit} onChange={(e) => setForm({ ...form, usage_limit: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" min="1" placeholder="Unlimited" />
+                  <input type="number" value={form.usage_limit} onChange={(e) => setForm({ ...form, usage_limit: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" min="1" placeholder="Unlimited" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Valid From</label>
-                  <input type="date" value={form.valid_from} onChange={(e) => setForm({ ...form, valid_from: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+                  <input type="date" value={form.valid_from} onChange={(e) => setForm({ ...form, valid_from: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Valid Until</label>
-                  <input type="date" value={form.valid_until} onChange={(e) => setForm({ ...form, valid_until: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+                  <input type="date" value={form.valid_until} onChange={(e) => setForm({ ...form, valid_until: e.target.value })} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
                 </div>
               </div>
             </div>
             <div className="flex justify-end gap-3 p-6 border-t">
               <button onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleSubmit} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">{editCoupon ? 'Update' : 'Create'}</button>
+              <button onClick={handleSubmit} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">{editCoupon ? 'Update' : 'Create'}</button>
             </div>
           </div>
         </div>

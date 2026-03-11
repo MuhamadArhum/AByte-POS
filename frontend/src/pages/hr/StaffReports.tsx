@@ -134,7 +134,7 @@ const StaffReports = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <BarChart3 className="text-indigo-600" size={20} />
+          <BarChart3 className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Staff Reports</h1>
             <p className="text-gray-600 text-sm mt-1">Attendance & salary analytics</p>
@@ -156,7 +156,7 @@ const StaffReports = () => {
           onClick={() => setActiveTab('attendance')}
           className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition ${
             activeTab === 'attendance'
-              ? 'bg-indigo-600 text-white shadow-lg'
+              ? 'bg-emerald-600 text-white shadow-lg'
               : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
           }`}
         >
@@ -167,7 +167,7 @@ const StaffReports = () => {
           onClick={() => setActiveTab('salary')}
           className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition ${
             activeTab === 'salary'
-              ? 'bg-indigo-600 text-white shadow-lg'
+              ? 'bg-emerald-600 text-white shadow-lg'
               : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
           }`}
         >
@@ -187,13 +187,13 @@ const StaffReports = () => {
                 type="month"
                 value={attendanceMonth}
                 onChange={e => setAttendanceMonth(e.target.value)}
-                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
             </div>
             <button
               onClick={fetchAttendanceReport}
               disabled={attendanceLoading}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50"
             >
               {attendanceLoading ? 'Loading...' : 'Generate'}
             </button>
@@ -226,7 +226,7 @@ const StaffReports = () => {
               </div>
               <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                 <p className="text-sm text-gray-500">Avg Attendance</p>
-                <p className="text-2xl font-bold text-indigo-600">
+                <p className="text-2xl font-bold text-emerald-600">
                   {(attendanceData.reduce((s, r) => s + Number(r.attendance_percentage), 0) / attendanceData.length).toFixed(1)}%
                 </p>
               </div>
@@ -269,7 +269,7 @@ const StaffReports = () => {
                       <td className="p-4 text-center text-green-600 font-medium">{row.days_present}</td>
                       <td className="p-4 text-center text-red-600 font-medium">{row.days_absent}</td>
                       <td className="p-4 text-center text-amber-600 font-medium">{row.days_half_day}</td>
-                      <td className="p-4 text-center text-blue-600 font-medium">{row.days_leave}</td>
+                      <td className="p-4 text-center text-emerald-600 font-medium">{row.days_leave}</td>
                       <td className="p-4 text-center">
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                           Number(row.leave_balance) > 5 ? 'bg-green-100 text-green-700' :
@@ -311,7 +311,7 @@ const StaffReports = () => {
                 type="date"
                 value={salaryFromDate}
                 onChange={e => setSalaryFromDate(e.target.value)}
-                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
             </div>
             <div>
@@ -320,13 +320,13 @@ const StaffReports = () => {
                 type="date"
                 value={salaryToDate}
                 onChange={e => setSalaryToDate(e.target.value)}
-                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
             </div>
             <button
               onClick={fetchSalaryReport}
               disabled={salaryLoading}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50"
             >
               {salaryLoading ? 'Loading...' : 'Generate'}
             </button>
@@ -399,7 +399,7 @@ const StaffReports = () => {
                       <td className="p-4 text-right">${Number(row.total_base).toFixed(2)}</td>
                       <td className="p-4 text-right text-red-600">${Number(row.total_deductions).toFixed(2)}</td>
                       <td className="p-4 text-right text-green-600">${Number(row.total_bonuses).toFixed(2)}</td>
-                      <td className="p-4 text-right font-medium text-indigo-600">${Number(row.total_net_paid).toFixed(2)}</td>
+                      <td className="p-4 text-right font-medium text-emerald-600">${Number(row.total_net_paid).toFixed(2)}</td>
                       <td className="p-4 text-right">${Number(row.total_expected).toFixed(2)}</td>
                       <td className="p-4 text-right">
                         <span className={`font-medium ${Number(row.pending_amount) > 0 ? 'text-amber-600' : 'text-green-600'}`}>
@@ -416,7 +416,7 @@ const StaffReports = () => {
                     <td className="p-4 text-right">${salaryTotals.total_base.toFixed(2)}</td>
                     <td className="p-4 text-right text-red-600">${salaryTotals.total_deductions.toFixed(2)}</td>
                     <td className="p-4 text-right text-green-600">${salaryTotals.total_bonuses.toFixed(2)}</td>
-                    <td className="p-4 text-right text-indigo-600">${salaryTotals.total_net_paid.toFixed(2)}</td>
+                    <td className="p-4 text-right text-emerald-600">${salaryTotals.total_net_paid.toFixed(2)}</td>
                     <td className="p-4 text-right">${salaryTotals.total_expected.toFixed(2)}</td>
                     <td className="p-4 text-right text-amber-600">${salaryTotals.pending_amount.toFixed(2)}</td>
                   </tr>

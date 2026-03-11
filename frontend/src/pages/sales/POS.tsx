@@ -455,7 +455,7 @@ const POS = () => {
   // Register gate: if no open register, show open register screen
   if (!register) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-4">
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-50 p-4">
         <div className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-md text-center border border-emerald-100">
           <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/30">
             <DollarSign size={40} className="text-white" strokeWidth={2.5} />
@@ -530,15 +530,15 @@ const POS = () => {
             </button>
             <button
               onClick={() => navigate('/orders')}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors font-medium border border-indigo-200"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-200"
             >
               <FileText size={20} />
               Orders
-              <span className="text-xs bg-indigo-200 px-1.5 py-0.5 rounded">F5</span>
+              <span className="text-xs bg-emerald-200 px-1.5 py-0.5 rounded">F5</span>
             </button>
             <button
               onClick={() => setIsDailyReportOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium border border-blue-200"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-200"
             >
               <BarChart size={20} />
               Report
@@ -815,7 +815,7 @@ const POS = () => {
                 <div className="px-3 pb-2.5 flex flex-wrap gap-2">
                   {selectedCustomer.email && (
                     <div className="flex items-center gap-1 bg-white/70 px-2 py-1 rounded text-xs text-gray-600">
-                      <Mail size={10} className="text-purple-500" />{selectedCustomer.email}
+                      <Mail size={10} className="text-emerald-500" />{selectedCustomer.email}
                     </div>
                   )}
                   {selectedCustomer.tax_id && (
@@ -852,7 +852,7 @@ const POS = () => {
                   <div className="flex-1 min-w-0">
                     <h4 className="font-bold text-gray-800 text-sm leading-tight truncate">{item.product_name}</h4>
                     {item.variant_name && (
-                      <p className="text-xs text-purple-600 font-medium mt-0.5">{item.variant_name}</p>
+                      <p className="text-xs text-emerald-600 font-medium mt-0.5">{item.variant_name}</p>
                     )}
                   </div>
                   {/* Line total */}

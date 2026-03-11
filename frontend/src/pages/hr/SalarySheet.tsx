@@ -97,7 +97,7 @@ const SalarySheet = () => {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Total Net Salary</p>
-          <p className="text-3xl font-bold text-blue-600 mt-2">${totals.net.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-emerald-600 mt-2">${totals.net.toLocaleString()}</p>
         </div>
       </div>
 
@@ -144,7 +144,7 @@ const SalarySheet = () => {
                     <td className="p-4 text-gray-600">{s.position || '-'}</td>
                     <td className="p-4 text-right font-medium">${Number(s.salary).toLocaleString()}</td>
                     <td className="p-4 text-center">
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium capitalize">{s.salary_type}</span>
+                      <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium capitalize">{s.salary_type}</span>
                     </td>
                     <td className="p-4 text-right font-medium text-red-600">
                       {s.loan_deduction > 0 ? `-$${Number(s.loan_deduction).toLocaleString()}` : '-'}

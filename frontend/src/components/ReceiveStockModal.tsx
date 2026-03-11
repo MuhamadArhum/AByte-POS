@@ -127,8 +127,8 @@ const ReceiveStockModal = ({ isOpen, onClose, onSuccess, poId, poNumber }: Recei
             </div>
           ) : (
             <>
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
-                <p className="text-sm text-blue-800">
+              <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4 mb-6">
+                <p className="text-sm text-emerald-800">
                   <strong>Note:</strong> Enter the quantity received for each item. The inventory will be updated automatically.
                   You can receive partial quantities if needed.
                 </p>
@@ -151,7 +151,7 @@ const ReceiveStockModal = ({ isOpen, onClose, onSuccess, poId, poNumber }: Recei
                           <p className="font-medium text-gray-800">{item.product_name}</p>
                         </td>
                         <td className="p-4 text-center">
-                          <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
+                          <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm font-semibold">
                             {item.quantity_ordered}
                           </span>
                         </td>

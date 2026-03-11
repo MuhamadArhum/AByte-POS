@@ -51,7 +51,7 @@ const SalesReports = () => {
     setDateTo(to.toISOString().split('T')[0]);
   };
 
-  const METHOD_COLORS: Record<string, string> = { Cash: 'bg-green-500', Card: 'bg-blue-500', Online: 'bg-purple-500', Split: 'bg-orange-500' };
+  const METHOD_COLORS: Record<string, string> = { Cash: 'bg-green-500', Card: 'bg-emerald-500', Online: 'bg-emerald-500', Split: 'bg-orange-500' };
 
   const exportCSV = (data: any[], filename: string) => {
     if (!data.length) return;
@@ -97,11 +97,11 @@ const SalesReports = () => {
               <div><p className="text-2xl font-bold text-gray-800">${summary.total_sales.toFixed(2)}</p><p className="text-sm text-gray-500">Total Revenue</p></div></div>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <div className="flex items-center gap-3"><div className="p-3 bg-blue-50 rounded-xl"><ShoppingCart size={24} className="text-blue-600" /></div>
+              <div className="flex items-center gap-3"><div className="p-3 bg-emerald-50 rounded-xl"><ShoppingCart size={24} className="text-emerald-600" /></div>
               <div><p className="text-2xl font-bold text-gray-800">{summary.total_orders}</p><p className="text-sm text-gray-500">Total Orders</p></div></div>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <div className="flex items-center gap-3"><div className="p-3 bg-purple-50 rounded-xl"><BarChart3 size={24} className="text-purple-600" /></div>
+              <div className="flex items-center gap-3"><div className="p-3 bg-emerald-50 rounded-xl"><BarChart3 size={24} className="text-emerald-600" /></div>
               <div><p className="text-2xl font-bold text-gray-800">${summary.avg_order.toFixed(2)}</p><p className="text-sm text-gray-500">Avg Order Value</p></div></div>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
@@ -187,7 +187,7 @@ const SalesReports = () => {
               {topCustomers.length === 0 ? <p className="text-center text-gray-400 py-8">No data</p> : (
                 <div className="space-y-3">{topCustomers.map((c, idx) => (
                   <div key={c.customer_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">{idx + 1}</div>
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm">{idx + 1}</div>
                     <div className="flex-1"><p className="font-medium text-sm">{c.customer_name}</p><p className="text-xs text-gray-400">{c.order_count} orders</p></div>
                     <p className="font-bold text-sm">${Number(c.total_spent).toFixed(2)}</p>
                   </div>

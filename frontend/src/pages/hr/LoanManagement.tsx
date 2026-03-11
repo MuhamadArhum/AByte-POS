@@ -67,7 +67,7 @@ const LoanManagement = () => {
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
       active: 'bg-green-100 text-green-700',
-      completed: 'bg-blue-100 text-blue-700',
+      completed: 'bg-emerald-100 text-emerald-700',
       cancelled: 'bg-red-100 text-red-700'
     };
     return <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${map[status] || 'bg-gray-100 text-gray-700'}`}>{status}</span>;
@@ -83,13 +83,13 @@ const LoanManagement = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <CreditCard className="text-cyan-600" size={20} />
+          <CreditCard className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Loan Management</h1>
             <p className="text-gray-600 text-sm mt-1">Manage employee loans and repayments</p>
           </div>
         </div>
-        <button onClick={() => setShowIssueModal(true)} className="flex items-center gap-2 bg-cyan-600 text-white px-6 py-3 rounded-xl hover:bg-cyan-700 transition shadow-lg">
+        <button onClick={() => setShowIssueModal(true)} className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg">
           <Plus size={20} /> Issue Loan
         </button>
       </div>
@@ -102,7 +102,7 @@ const LoanManagement = () => {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Active Total</p>
-          <p className="text-3xl font-bold text-cyan-600 mt-2">${activeTotals.total.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-emerald-600 mt-2">${activeTotals.total.toLocaleString()}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Total Repaid</p>
@@ -119,14 +119,14 @@ const LoanManagement = () => {
         <div className="flex flex-wrap items-center gap-4">
           <Filter size={20} className="text-gray-600" />
           <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500">
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500">
             <option value="all">All Status</option>
             <option value="active">Active</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
           <select value={staffFilter} onChange={(e) => { setStaffFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500 min-w-[200px]">
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 min-w-[200px]">
             <option value="">All Staff</option>
             {staffList.map(s => <option key={s.staff_id} value={s.staff_id}>{s.employee_id ? `[${s.employee_id}] ` : ''}{s.full_name}</option>)}
           </select>
@@ -167,7 +167,7 @@ const LoanManagement = () => {
                     <td className="p-4 text-center">{statusBadge(loan.status)}</td>
                     <td className="p-4">
                       <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => toggleRepayments(loan.loan_id)} className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition" title="View Repayments">
+                        <button onClick={() => toggleRepayments(loan.loan_id)} className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg transition" title="View Repayments">
                           <Eye size={16} />
                         </button>
                         {loan.status === 'active' && (

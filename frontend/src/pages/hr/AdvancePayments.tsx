@@ -61,7 +61,7 @@ const AdvancePaymentModal = ({ isOpen, onClose, onSuccess }: AdvancePaymentModal
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Staff Member *</label>
               <select value={formData.staff_id} onChange={(e) => setFormData({ ...formData, staff_id: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" required>
                 <option value="">Select Staff</option>
                 {staffList.map(s => (
                   <option key={s.staff_id} value={s.staff_id}>
@@ -74,18 +74,18 @@ const AdvancePaymentModal = ({ isOpen, onClose, onSuccess }: AdvancePaymentModal
               <label className="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
               <input type="number" step="0.01" min="0.01" value={formData.amount}
                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500" required />
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Date *</label>
               <input type="date" value={formData.payment_date}
                 onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500" required />
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
               <select value={formData.payment_method} onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500">
                 <option value="cash">Cash</option>
                 <option value="bank_transfer">Bank Transfer</option>
                 <option value="cheque">Cheque</option>
@@ -94,7 +94,7 @@ const AdvancePaymentModal = ({ isOpen, onClose, onSuccess }: AdvancePaymentModal
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Reason</label>
               <textarea value={formData.reason} onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500" rows={3} />
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" rows={3} />
             </div>
           </div>
           <div className="flex gap-3 mt-6">
@@ -102,7 +102,7 @@ const AdvancePaymentModal = ({ isOpen, onClose, onSuccess }: AdvancePaymentModal
               Cancel
             </button>
             <button type="submit" disabled={loading}
-              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition disabled:opacity-50">
+              className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition disabled:opacity-50">
               {loading ? 'Recording...' : 'Record Payment'}
             </button>
           </div>
@@ -167,14 +167,14 @@ const AdvancePayments = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <DollarSign className="text-purple-600" size={20} />
+          <DollarSign className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Advance Payments</h1>
             <p className="text-gray-600 text-sm mt-1">Manage advance salary payments to staff</p>
           </div>
         </div>
         <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-xl hover:bg-purple-700 transition shadow-lg">
+          className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg">
           <Plus size={20} /> Record Advance
         </button>
       </div>
@@ -187,7 +187,7 @@ const AdvancePayments = () => {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Total Amount (Filtered)</p>
-          <p className="text-3xl font-bold text-purple-600 mt-2">${totalAdvances.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-emerald-600 mt-2">${totalAdvances.toLocaleString()}</p>
         </div>
       </div>
 
@@ -195,7 +195,7 @@ const AdvancePayments = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
         <div className="flex flex-wrap items-center gap-4">
           <select value={staffFilter} onChange={(e) => { setStaffFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 min-w-[200px]">
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 min-w-[200px]">
             <option value="">All Staff</option>
             {staffList.map(s => <option key={s.staff_id} value={s.staff_id}>{s.employee_id ? `[${s.employee_id}] ` : ''}{s.full_name}</option>)}
           </select>
@@ -230,9 +230,9 @@ const AdvancePayments = () => {
                     <div className="font-semibold text-gray-800">{adv.full_name}</div>
                     <div className="text-xs text-gray-500">{adv.employee_id || ''} {adv.department ? `- ${adv.department}` : ''}</div>
                   </td>
-                  <td className="p-4 text-right font-bold text-purple-600">${Number(adv.amount).toLocaleString()}</td>
+                  <td className="p-4 text-right font-bold text-emerald-600">${Number(adv.amount).toLocaleString()}</td>
                   <td className="p-4 text-center">
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium capitalize">
+                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium capitalize">
                       {(adv.payment_method || '').replace('_', ' ')}
                     </span>
                   </td>

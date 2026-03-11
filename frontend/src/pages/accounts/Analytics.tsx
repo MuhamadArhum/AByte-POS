@@ -85,7 +85,7 @@ const Analytics = () => {
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center gap-3 mb-2">
-            <TrendingUp className="text-blue-600" size={24} />
+            <TrendingUp className="text-emerald-600" size={24} />
             <h3 className="text-sm font-medium text-gray-600">Expenses</h3>
           </div>
           <p className="text-3xl font-bold text-gray-800">${Number(stats?.expenses?.total_expenses || 0).toFixed(2)}</p>
@@ -93,7 +93,7 @@ const Analytics = () => {
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center gap-3 mb-2">
-            <Package className="text-purple-600" size={24} />
+            <Package className="text-emerald-600" size={24} />
             <h3 className="text-sm font-medium text-gray-600">Profit</h3>
           </div>
           <p className="text-3xl font-bold text-gray-800">${Number(stats?.profit || 0).toFixed(2)}</p>

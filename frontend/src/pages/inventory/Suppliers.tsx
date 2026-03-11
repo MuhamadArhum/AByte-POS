@@ -200,7 +200,7 @@ const Suppliers = () => {
                     <div className="flex gap-2 justify-end">
                       <button
                         onClick={() => handleAddPayment(supplier)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                         title="Add Payment"
                       >
                         <DollarSign size={18} />

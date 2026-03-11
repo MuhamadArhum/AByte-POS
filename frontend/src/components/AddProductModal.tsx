@@ -236,7 +236,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
               {/* Category */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                  <Tag size={16} className="text-purple-600" />
+                  <Tag size={16} className="text-emerald-600" />
                   Category
                 </label>
                 <div className="relative">
@@ -244,7 +244,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
                   <select
                     value={categoryId}
                     onChange={(e) => setCategoryId(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none bg-white appearance-none transition-all shadow-sm"
+                    className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white appearance-none transition-all shadow-sm"
                   >
                     <option value="">Select Category</option>
                     {categories.map(cat => (
@@ -324,7 +324,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                    <Boxes size={16} className="text-blue-600" />
+                    <Boxes size={16} className="text-emerald-600" />
                     Initial Stock <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -335,7 +335,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
                       value={stock}
                       onChange={(e) => setStock(e.target.value)}
                       onBlur={() => setTouched({ ...touched, stock: true })}
-                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm ${
+                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm ${
                         touched.stock && !validateStock(stock) ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
                       }`}
                       placeholder="0"
@@ -371,7 +371,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
               {/* Barcode */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                  <Barcode size={16} className="text-indigo-600" />
+                  <Barcode size={16} className="text-emerald-600" />
                   Barcode
                 </label>
                 <div className="relative">
@@ -380,7 +380,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
                     type="text"
                     value={barcode}
                     onChange={(e) => setBarcode(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm bg-white"
+                    className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm bg-white"
                     placeholder="Scan or enter barcode"
                   />
                 </div>
@@ -389,7 +389,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
               {/* SKU */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                  <Tag size={16} className="text-cyan-600" />
+                  <Tag size={16} className="text-emerald-600" />
                   SKU (Stock Keeping Unit)
                 </label>
                 <div className="relative">
@@ -398,7 +398,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
                     type="text"
                     value={sku}
                     onChange={(e) => setSku(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all shadow-sm bg-white"
+                    className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm bg-white"
                     placeholder="e.g. PROD-001"
                   />
                 </div>
@@ -454,8 +454,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
           </div>
 
           {/* Info Box */}
-          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">
-            <p className="text-sm text-blue-800 flex items-start gap-2">
+          <div className="mt-6 p-4 bg-gradient-to-r from-emerald-50 to-emerald-50 border-2 border-emerald-200 rounded-xl">
+            <p className="text-sm text-emerald-800 flex items-start gap-2">
               <span className="text-lg">💡</span>
               <span>
                 <strong>Required fields:</strong> Product Name, Selling Price, and Initial Stock. All other fields are optional and can be added later.

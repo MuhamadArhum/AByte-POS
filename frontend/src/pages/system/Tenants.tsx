@@ -151,7 +151,7 @@ const Tenants = () => {
           <p className="text-gray-500 text-sm mt-1">Total Clients</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5 text-center">
-          <p className="text-3xl font-bold text-blue-600">{tenants.filter(t => t.is_active).length}</p>
+          <p className="text-3xl font-bold text-emerald-600">{tenants.filter(t => t.is_active).length}</p>
           <p className="text-gray-500 text-sm mt-1">Active</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5 text-center">
@@ -191,15 +191,15 @@ const Tenants = () => {
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-2 mb-4">
-              <div className="text-center p-2 bg-blue-50 rounded-lg">
-                <Users size={14} className="text-blue-500 mx-auto mb-1" />
-                <p className="text-sm font-bold text-blue-700">{tenant.stats?.users || 0}</p>
-                <p className="text-xs text-blue-400">Users</p>
+              <div className="text-center p-2 bg-emerald-50 rounded-lg">
+                <Users size={14} className="text-emerald-500 mx-auto mb-1" />
+                <p className="text-sm font-bold text-emerald-700">{tenant.stats?.users || 0}</p>
+                <p className="text-xs text-emerald-400">Users</p>
               </div>
-              <div className="text-center p-2 bg-purple-50 rounded-lg">
-                <Package size={14} className="text-purple-500 mx-auto mb-1" />
-                <p className="text-sm font-bold text-purple-700">{tenant.stats?.products || 0}</p>
-                <p className="text-xs text-purple-400">Products</p>
+              <div className="text-center p-2 bg-emerald-50 rounded-lg">
+                <Package size={14} className="text-emerald-500 mx-auto mb-1" />
+                <p className="text-sm font-bold text-emerald-700">{tenant.stats?.products || 0}</p>
+                <p className="text-xs text-emerald-400">Products</p>
               </div>
               <div className="text-center p-2 bg-emerald-50 rounded-lg">
                 <ShoppingCart size={14} className="text-emerald-500 mx-auto mb-1" />
@@ -211,7 +211,7 @@ const Tenants = () => {
             {/* Actions */}
             <div className="flex gap-2">
               <button onClick={() => openEdit(tenant)}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg font-medium transition">
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-sm text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg font-medium transition">
                 <Edit size={14} /> Edit
               </button>
               <button onClick={() => openResetPassword(tenant)}

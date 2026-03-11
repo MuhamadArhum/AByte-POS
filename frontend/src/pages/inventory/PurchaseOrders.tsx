@@ -89,12 +89,12 @@ const PurchaseOrders = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <FileText className="text-blue-600" size={20} />
+          <FileText className="text-emerald-600" size={20} />
           <h1 className="text-xl font-semibold tracking-tight text-gray-900">Purchase Orders</h1>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition shadow-lg hover:shadow-xl"
+          className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg hover:shadow-xl"
         >
           <Plus size={20} />
           Create Purchase Order
@@ -114,7 +114,7 @@ const PurchaseOrders = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -125,7 +125,7 @@ const PurchaseOrders = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             >
               <option value="all">All Status</option>
               <option value="draft">Draft</option>
@@ -137,7 +137,7 @@ const PurchaseOrders = () => {
 
           <button
             onClick={handleSearch}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+            className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 transition"
           >
             Apply
           </button>
@@ -161,7 +161,7 @@ const PurchaseOrders = () => {
             {orders.length > 0 ? (
               orders.map((po: any) => (
                 <tr key={po.po_id} className="border-b hover:bg-gray-50 transition">
-                  <td className="p-4 font-semibold text-blue-600">{po.po_number}</td>
+                  <td className="p-4 font-semibold text-emerald-600">{po.po_number}</td>
                   <td className="p-4">{po.supplier_name}</td>
                   <td className="p-4">{new Date(po.order_date).toLocaleDateString()}</td>
                   <td className="p-4 text-right font-semibold">${Number(po.total_amount || 0).toFixed(2)}</td>
@@ -174,7 +174,7 @@ const PurchaseOrders = () => {
                     <div className="flex items-center justify-center gap-2">
                       <button
                         onClick={() => handleViewDetails(po)}
-                        className="text-purple-600 hover:bg-purple-50 p-2 rounded-lg transition"
+                        className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg transition"
                         title="View Details"
                       >
                         <Eye size={18} />

@@ -878,7 +878,7 @@ const Settings = () => {
                 <div className="space-y-3">
                   {printers.map(printer => {
                     const testResult = printerTestResults[printer.printer_id];
-                    const purposeColors: Record<string, string> = { receipt: 'bg-emerald-100 text-emerald-700', invoice: 'bg-blue-100 text-blue-700', quotation: 'bg-purple-100 text-purple-700', return_receipt: 'bg-orange-100 text-orange-700', credit_sale: 'bg-rose-100 text-rose-700', layaway_receipt: 'bg-indigo-100 text-indigo-700' };
+                    const purposeColors: Record<string, string> = { receipt: 'bg-emerald-100 text-emerald-700', invoice: 'bg-emerald-100 text-emerald-700', quotation: 'bg-emerald-100 text-emerald-700', return_receipt: 'bg-orange-100 text-orange-700', credit_sale: 'bg-rose-100 text-rose-700', layaway_receipt: 'bg-emerald-100 text-emerald-700' };
                     const purposeLabels: Record<string, string> = { receipt: 'POS Receipt', invoice: 'Invoice', quotation: 'Quotation', return_receipt: 'Return', credit_sale: 'Credit Sale', layaway_receipt: 'Layaway' };
                     const typeColors: Record<string, string> = { network: 'bg-sky-100 text-sky-700', usb: 'bg-orange-100 text-orange-700' };
                     return (
@@ -910,7 +910,7 @@ const Settings = () => {
                             {testingPrinterId === printer.printer_id ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
                           </button>
                           <button onClick={() => openPrinterModal(printer)} title="Edit Printer"
-                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
+                            className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition">
                             <Edit size={16} />
                           </button>
                           <button onClick={() => handleDeletePrinter(printer.printer_id)} title="Delete Printer"
@@ -942,8 +942,8 @@ const Settings = () => {
                 {['Admin', 'Manager', 'Cashier'].map(role => {
                   const count = users.filter(u => u.role === role).length;
                   const colors: Record<string, string> = {
-                    Admin: 'bg-purple-100 text-purple-700',
-                    Manager: 'bg-blue-100 text-blue-700',
+                    Admin: 'bg-emerald-100 text-emerald-700',
+                    Manager: 'bg-emerald-100 text-emerald-700',
                     Cashier: 'bg-gray-100 text-gray-700'
                   };
                   return (
@@ -981,8 +981,8 @@ const Settings = () => {
                         <td className="px-6 py-4 text-gray-500 text-sm font-mono">{user.username}</td>
                         <td className="px-6 py-4 text-gray-600">{user.email}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${user.role === 'Admin' ? 'bg-purple-100 text-purple-700'
-                              : user.role === 'Manager' ? 'bg-blue-100 text-blue-700'
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${user.role === 'Admin' ? 'bg-emerald-100 text-emerald-700'
+                              : user.role === 'Manager' ? 'bg-emerald-100 text-emerald-700'
                                 : 'bg-gray-100 text-gray-700'
                             }`}>
                             {user.role}
@@ -994,7 +994,7 @@ const Settings = () => {
                         <td className="px-6 py-4">
                           <div className="flex gap-2">
                             <button onClick={() => openUserModal(user)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit">
+                              className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Edit">
                               <Edit size={16} />
                             </button>
                             {user.user_id !== currentUser?.user_id && (
@@ -1233,9 +1233,9 @@ const Settings = () => {
                 <h2 className="text-base font-semibold text-gray-800 mb-4">System Information</h2>
                 {systemInfo ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                    <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
                       <div className="flex items-center gap-2 mb-2">
-                        <Users size={18} className="text-blue-600" />
+                        <Users size={18} className="text-emerald-600" />
                         <span className="text-sm font-medium text-gray-600">Users</span>
                       </div>
                       <p className="text-2xl font-bold text-gray-800">{systemInfo.users}</p>
@@ -1247,9 +1247,9 @@ const Settings = () => {
                       </div>
                       <p className="text-2xl font-bold text-gray-800">{systemInfo.products}</p>
                     </div>
-                    <div className="p-4 bg-purple-50 rounded-xl border border-purple-200">
+                    <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
                       <div className="flex items-center gap-2 mb-2">
-                        <ShoppingCart size={18} className="text-purple-600" />
+                        <ShoppingCart size={18} className="text-emerald-600" />
                         <span className="text-sm font-medium text-gray-600">Orders</span>
                       </div>
                       <p className="text-2xl font-bold text-gray-800">{systemInfo.orders}</p>

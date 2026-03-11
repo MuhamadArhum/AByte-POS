@@ -229,7 +229,7 @@ const QuotationPrintModal = ({ quotationId, onClose }: QuotationPrintModalProps)
             <button
               onClick={handlePrint}
               disabled={loading || !!error}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 text-sm"
+              className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition disabled:bg-gray-400 text-sm"
             >
               <Printer size={16} />
               Print A4
@@ -244,7 +244,7 @@ const QuotationPrintModal = ({ quotationId, onClose }: QuotationPrintModalProps)
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div>
             </div>
           ) : error ? (
             <div className="text-center py-20 text-red-500">{error}</div>

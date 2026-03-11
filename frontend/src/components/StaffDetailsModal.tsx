@@ -137,8 +137,8 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
       case 'present': return 'bg-green-100 text-green-700';
       case 'absent': return 'bg-red-100 text-red-700';
       case 'half_day': return 'bg-yellow-100 text-yellow-700';
-      case 'leave': return 'bg-blue-100 text-blue-700';
-      case 'holiday': return 'bg-purple-100 text-purple-700';
+      case 'leave': return 'bg-emerald-100 text-emerald-700';
+      case 'holiday': return 'bg-emerald-100 text-emerald-700';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
@@ -171,12 +171,12 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 p-6 text-white flex items-center justify-between">
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
             <User size={28} />
             <div>
               <h2 className="text-base font-semibold">Staff Details</h2>
-              {staff && <p className="text-cyan-100 text-sm mt-1">{staff.full_name} - {staff.position}</p>}
+              {staff && <p className="text-emerald-100 text-sm mt-1">{staff.full_name} - {staff.position}</p>}
             </div>
           </div>
           <button onClick={handleClose} className="text-white hover:bg-white/20 p-2 rounded-lg transition">
@@ -192,7 +192,7 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 py-4 px-4 text-center font-medium transition text-sm ${
-                  activeTab === tab.id ? 'bg-white text-cyan-600 border-b-2 border-cyan-600' : 'text-gray-600 hover:bg-gray-100'
+                  activeTab === tab.id ? 'bg-white text-emerald-600 border-b-2 border-emerald-600' : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 <tab.icon className="inline mr-1.5" size={16} />
@@ -206,7 +206,7 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600 mx-auto"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
               <p className="text-gray-600 mt-4">Loading details...</p>
             </div>
           ) : (
@@ -288,9 +288,9 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
                       <p className="text-sm text-yellow-600 mb-1">Half Day</p>
                       <p className="text-2xl font-bold text-yellow-700">{stats.halfDay}</p>
                     </div>
-                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                      <p className="text-sm text-blue-600 mb-1">Leave</p>
-                      <p className="text-2xl font-bold text-blue-700">{stats.leave}</p>
+                    <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-100">
+                      <p className="text-sm text-emerald-600 mb-1">Leave</p>
+                      <p className="text-2xl font-bold text-emerald-700">{stats.leave}</p>
                     </div>
                   </div>
 
@@ -371,11 +371,11 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
                               <td className="p-4 text-right">${Number(payment.amount).toFixed(2)}</td>
                               <td className="p-4 text-right text-red-600">{payment.deductions > 0 ? `-$${Number(payment.deductions).toFixed(2)}` : '-'}</td>
                               <td className="p-4 text-right text-green-600">{payment.bonuses > 0 ? `+$${Number(payment.bonuses).toFixed(2)}` : '-'}</td>
-                              <td className="p-4 text-right font-bold text-cyan-600">${Number(payment.net_amount).toFixed(2)}</td>
+                              <td className="p-4 text-right font-bold text-emerald-600">${Number(payment.net_amount).toFixed(2)}</td>
                               {isAdmin && (
                                 <td className="p-4 text-center">
                                   <div className="flex items-center justify-center gap-1">
-                                    <button onClick={() => { setSlipPayment({...payment, staff_id: staffId, full_name: staff?.full_name}); setShowSalarySlip(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Print Slip">
+                                    <button onClick={() => { setSlipPayment({...payment, staff_id: staffId, full_name: staff?.full_name}); setShowSalarySlip(true); }} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Print Slip">
                                       <Printer size={16} />
                                     </button>
                                     <button onClick={() => { setSelectedPayment(payment); setShowEditPayment(true); }} className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition" title="Edit">
@@ -429,7 +429,7 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
                               <td className="p-4 text-center">
                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${
                                   loan.status === 'active' ? 'bg-green-100 text-green-700' :
-                                  loan.status === 'completed' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
+                                  loan.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                                 }`}>{loan.status}</span>
                               </td>
                               <td className="p-4 text-sm text-gray-600">{loan.reason || '-'}</td>
@@ -517,7 +517,7 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
                         </div>
                         <div className="bg-white border border-gray-200 rounded-xl p-5 text-center">
                           <p className="text-sm text-gray-500 mb-2">Total Hours</p>
-                          <p className="text-3xl font-bold text-indigo-600">{metrics.totalHours.toFixed(1)}h</p>
+                          <p className="text-3xl font-bold text-emerald-600">{metrics.totalHours.toFixed(1)}h</p>
                           <p className="text-xs text-gray-400 mt-1">
                             Avg {metrics.attendedDays > 0 ? (metrics.totalHours / metrics.attendedDays).toFixed(1) : 0}h/day
                           </p>

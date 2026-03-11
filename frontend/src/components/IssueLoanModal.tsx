@@ -75,12 +75,12 @@ const IssueLoanModal = ({ isOpen, onClose, onSuccess }: Props) => {
   if (!isOpen) return null;
 
   const inputClass = (field: string) =>
-    `w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${formErrors[field] ? 'border-red-500' : 'border-gray-200'}`;
+    `w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${formErrors[field] ? 'border-red-500' : 'border-gray-200'}`;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full">
-        <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 p-6 text-white flex items-center justify-between rounded-t-2xl">
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white flex items-center justify-between rounded-t-2xl">
           <div className="flex items-center gap-3">
             <DollarSign size={28} />
             <h2 className="text-base font-semibold">Issue New Loan</h2>
@@ -119,12 +119,12 @@ const IssueLoanModal = ({ isOpen, onClose, onSuccess }: Props) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Reason</label>
-            <textarea name="reason" value={formData.reason} onChange={handleChange} rows={2} className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-cyan-500" placeholder="Reason for loan..." />
+            <textarea name="reason" value={formData.reason} onChange={handleChange} rows={2} className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" placeholder="Reason for loan..." />
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition">Cancel</button>
-            <button type="submit" disabled={loading} className="px-6 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition disabled:opacity-50">
+            <button type="submit" disabled={loading} className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50">
               {loading ? 'Issuing...' : 'Issue Loan'}
             </button>
           </div>

@@ -219,7 +219,7 @@ const GiftCards = () => {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
-            <Gift className="text-purple-600" size={20} /> Gift Cards
+            <Gift className="text-emerald-600" size={20} /> Gift Cards
           </h1>
           <p className="text-gray-500 mt-1">Issue, manage, and track gift cards</p>
         </div>
@@ -230,7 +230,7 @@ const GiftCards = () => {
           <button onClick={openCheckBalanceModal} className="flex items-center gap-2 bg-white text-gray-700 px-4 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors">
             <Search size={20} /> Check Balance
           </button>
-          <button onClick={openIssueModal} className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2.5 rounded-xl hover:bg-purple-700 transition-colors">
+          <button onClick={openIssueModal} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl hover:bg-emerald-700 transition-colors">
             <Plus size={20} /> Issue Card
           </button>
         </div>
@@ -240,7 +240,7 @@ const GiftCards = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-purple-50 rounded-xl"><CreditCard size={24} className="text-purple-600" /></div>
+            <div className="p-3 bg-emerald-50 rounded-xl"><CreditCard size={24} className="text-emerald-600" /></div>
             <div>
               <p className="text-2xl font-bold text-gray-800">{stats.active_count}</p>
               <p className="text-sm text-gray-500">Active Cards</p>
@@ -258,9 +258,9 @@ const GiftCards = () => {
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 rounded-xl"><Gift size={24} className="text-blue-600" /></div>
+            <div className="p-3 bg-emerald-50 rounded-xl"><Gift size={24} className="text-emerald-600" /></div>
             <div>
-              <p className="text-2xl font-bold text-blue-600">{stats.total_issued}</p>
+              <p className="text-2xl font-bold text-emerald-600">{stats.total_issued}</p>
               <p className="text-sm text-gray-500">Total Issued</p>
             </div>
           </div>
@@ -284,7 +284,7 @@ const GiftCards = () => {
             <input
               type="text"
               placeholder="Search by card number or customer..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
@@ -292,7 +292,7 @@ const GiftCards = () => {
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
           >
             <option value="">All Status</option>
             <option value="active">Active</option>
@@ -304,7 +304,7 @@ const GiftCards = () => {
 
         {loading ? (
           <div className="flex items-center justify-center p-12">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -327,7 +327,7 @@ const GiftCards = () => {
                   return (
                     <tr key={card.card_id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <span className="font-mono font-bold text-purple-700 bg-purple-50 px-2 py-1 rounded">{card.card_number}</span>
+                        <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded">{card.card_number}</span>
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-green-600">${Number(card.current_balance).toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-gray-600">${Number(card.initial_balance).toFixed(2)}</td>
@@ -343,7 +343,7 @@ const GiftCards = () => {
                         <div className="flex gap-1">
                           <button
                             onClick={() => openDetailModal(card)}
-                            className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg"
+                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"
                             title="View Details"
                           >
                             <Eye size={16} />
@@ -408,9 +408,9 @@ const GiftCards = () => {
                     <Gift size={40} className="mx-auto mb-2 text-green-600" />
                     <p className="text-sm text-green-600 font-medium">Gift Card Issued Successfully!</p>
                   </div>
-                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
                     <p className="text-sm text-gray-500 mb-1">Card Number</p>
-                    <p className="text-2xl font-mono font-bold text-purple-700">{issuedCard.card_number}</p>
+                    <p className="text-2xl font-mono font-bold text-emerald-700">{issuedCard.card_number}</p>
                   </div>
                   <div className="bg-gray-50 rounded-xl p-4">
                     <p className="text-sm text-gray-500 mb-1">Balance</p>
@@ -425,7 +425,7 @@ const GiftCards = () => {
                       type="number"
                       value={issueAmount}
                       onChange={(e) => setIssueAmount(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
                       min="0.01"
                       step="0.01"
                       placeholder="0.00"
@@ -437,7 +437,7 @@ const GiftCards = () => {
                       type="number"
                       value={issueCustomerId}
                       onChange={(e) => setIssueCustomerId(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
                       min="1"
                       placeholder="Leave empty for anonymous"
                     />
@@ -448,7 +448,7 @@ const GiftCards = () => {
                       type="date"
                       value={issueExpiryDate}
                       onChange={(e) => setIssueExpiryDate(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                   </div>
                 </>
@@ -459,7 +459,7 @@ const GiftCards = () => {
                 {issuedCard ? 'Close' : 'Cancel'}
               </button>
               {!issuedCard && (
-                <button onClick={handleIssueCard} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                <button onClick={handleIssueCard} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
                   Issue Card
                 </button>
               )}
@@ -484,20 +484,20 @@ const GiftCards = () => {
                     type="text"
                     value={checkCardNumber}
                     onChange={(e) => setCheckCardNumber(e.target.value)}
-                    className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none font-mono"
+                    className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
                     placeholder="Enter card number"
                     onKeyDown={(e) => { if (e.key === 'Enter') handleCheckBalance(); }}
                   />
-                  <button onClick={handleCheckBalance} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                  <button onClick={handleCheckBalance} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
                     <Search size={18} />
                   </button>
                 </div>
               </div>
               {checkedCard && (
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <div className="bg-purple-50 p-4 text-center">
+                  <div className="bg-emerald-50 p-4 text-center">
                     <p className="text-sm text-gray-500 mb-1">Current Balance</p>
-                    <p className="text-3xl font-bold text-purple-700">${Number(checkedCard.current_balance).toFixed(2)}</p>
+                    <p className="text-3xl font-bold text-emerald-700">${Number(checkedCard.current_balance).toFixed(2)}</p>
                   </div>
                   <div className="p-4 space-y-2">
                     <div className="flex justify-between text-sm">
@@ -537,9 +537,9 @@ const GiftCards = () => {
               <button onClick={() => { setShowLoadModal(false); setLoadCard(null); }} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
-                <p className="text-sm text-purple-600">Current Balance</p>
-                <p className="text-2xl font-bold text-purple-700">${Number(loadCard.current_balance).toFixed(2)}</p>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
+                <p className="text-sm text-emerald-600">Current Balance</p>
+                <p className="text-2xl font-bold text-emerald-700">${Number(loadCard.current_balance).toFixed(2)}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Amount to Load</label>
@@ -547,7 +547,7 @@ const GiftCards = () => {
                   type="number"
                   value={loadAmount}
                   onChange={(e) => setLoadAmount(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
                   min="0.01"
                   step="0.01"
                   placeholder="0.00"
@@ -572,15 +572,15 @@ const GiftCards = () => {
             </div>
             {detailLoading ? (
               <div className="flex items-center justify-center p-12">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600"></div>
               </div>
             ) : detailCard ? (
               <div className="p-6 space-y-6">
                 {/* Card info */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center col-span-2">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center col-span-2">
                     <p className="text-sm text-gray-500 mb-1">Card Number</p>
-                    <p className="text-2xl font-mono font-bold text-purple-700">{detailCard.card_number}</p>
+                    <p className="text-2xl font-mono font-bold text-emerald-700">{detailCard.card_number}</p>
                   </div>
                   <div className="bg-gray-50 rounded-xl p-4">
                     <p className="text-sm text-gray-500">Current Balance</p>
@@ -633,7 +633,7 @@ const GiftCards = () => {
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                                   txn.type === 'load' ? 'bg-green-100 text-green-700' :
                                   txn.type === 'redeem' ? 'bg-orange-100 text-orange-700' :
-                                  txn.type === 'issue' ? 'bg-blue-100 text-blue-700' :
+                                  txn.type === 'issue' ? 'bg-emerald-100 text-emerald-700' :
                                   'bg-gray-100 text-gray-700'
                                 }`}>
                                   {txn.type.charAt(0).toUpperCase() + txn.type.slice(1)}

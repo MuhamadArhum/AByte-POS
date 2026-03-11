@@ -117,10 +117,10 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-2xl w-full max-w-7xl h-[92vh] flex flex-col overflow-hidden border border-gray-200">
         {/* Header with Tabs */}
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-50 via-white to-purple-50">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-emerald-50 via-white to-emerald-50">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="bg-indigo-600 p-2.5 rounded-xl shadow-lg">
+              <div className="bg-emerald-600 p-2.5 rounded-xl shadow-lg">
                 <FileText size={28} className="text-white" />
               </div>
               <div>
@@ -242,7 +242,7 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-500 flex items-center gap-1.5">
-                          <User size={16} className="text-indigo-600" />
+                          <User size={16} className="text-emerald-600" />
                           Customer
                         </span>
                         <span className="font-medium text-gray-800">
@@ -262,7 +262,7 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
                     <div className="flex gap-2 mt-4">
                       <button
                         onClick={() => handlePrintOrder(sale.sale_id)}
-                        className="p-2.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 hover:scale-110 transition-all duration-200 border border-blue-200"
+                        className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 hover:scale-110 transition-all duration-200 border border-emerald-200"
                         title="Print Order"
                       >
                         <Printer size={18} />
@@ -354,7 +354,7 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {doneSales.map(sale => (
-                          <tr key={sale.sale_id} className="hover:bg-gradient-to-r hover:from-emerald-50/30 hover:to-blue-50/30 transition-all duration-150">
+                          <tr key={sale.sale_id} className="hover:bg-gradient-to-r hover:from-emerald-50/30 hover:to-emerald-50/30 transition-all duration-150">
                             <td className="px-6 py-4">
                               {sale.invoice_no ? (
                                 <span className="font-bold text-emerald-700">{sale.invoice_no}</span>
@@ -395,7 +395,7 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
                               <div className="flex items-center justify-end gap-2">
                                 <button
                                   onClick={() => handlePrintOrder(sale.sale_id)}
-                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 border border-transparent hover:border-blue-200"
+                                  className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200 border border-transparent hover:border-emerald-200"
                                   title="Print Receipt"
                                 >
                                   <Printer size={18} />

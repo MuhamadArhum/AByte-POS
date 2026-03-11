@@ -58,17 +58,17 @@ const LoanRepaymentModal = ({ isOpen, onClose, onSuccess, loan }: Props) => {
   if (!isOpen || !loan) return null;
 
   const inputClass = (field: string) =>
-    `w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${formErrors[field] ? 'border-red-500' : 'border-gray-200'}`;
+    `w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${formErrors[field] ? 'border-red-500' : 'border-gray-200'}`;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
-        <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-6 text-white flex items-center justify-between rounded-t-2xl">
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white flex items-center justify-between rounded-t-2xl">
           <div className="flex items-center gap-3">
             <DollarSign size={24} />
             <div>
               <h2 className="text-sm font-semibold">Record Repayment</h2>
-              <p className="text-purple-200 text-sm">{loan.full_name} - Remaining: ${Number(loan.remaining_balance).toLocaleString()}</p>
+              <p className="text-emerald-200 text-sm">{loan.full_name} - Remaining: ${Number(loan.remaining_balance).toLocaleString()}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-white hover:bg-white/20 p-2 rounded-lg transition"><X size={24} /></button>
@@ -89,7 +89,7 @@ const LoanRepaymentModal = ({ isOpen, onClose, onSuccess, loan }: Props) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
-            <select name="payment_method" value={formData.payment_method} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500">
+            <select name="payment_method" value={formData.payment_method} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500">
               <option value="cash">Cash</option>
               <option value="bank_transfer">Bank Transfer</option>
               <option value="salary_deduction">Salary Deduction</option>
@@ -98,12 +98,12 @@ const LoanRepaymentModal = ({ isOpen, onClose, onSuccess, loan }: Props) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-            <textarea name="notes" value={formData.notes} onChange={handleChange} rows={2} className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="Optional notes..." />
+            <textarea name="notes" value={formData.notes} onChange={handleChange} rows={2} className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" placeholder="Optional notes..." />
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition">Cancel</button>
-            <button type="submit" disabled={loading} className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50">
+            <button type="submit" disabled={loading} className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50">
               {loading ? 'Recording...' : 'Record Repayment'}
             </button>
           </div>

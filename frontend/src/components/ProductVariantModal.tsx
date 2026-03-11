@@ -99,7 +99,7 @@ const ProductVariantModal: React.FC<ProductVariantModalProps> = ({
         <div className="p-6">
           {loading && (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
             </div>
           )}
 
@@ -133,7 +133,7 @@ const ProductVariantModal: React.FC<ProductVariantModalProps> = ({
                       ${
                         isOutOfStock
                           ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
-                          : 'border-gray-300 hover:border-blue-500 hover:shadow-lg cursor-pointer'
+                          : 'border-gray-300 hover:border-emerald-500 hover:shadow-lg cursor-pointer'
                       }
                     `}
                   >
@@ -148,7 +148,7 @@ const ProductVariantModal: React.FC<ProductVariantModalProps> = ({
                         {variant.combinations.map((combo, idx) => (
                           <span
                             key={idx}
-                            className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded"
+                            className="inline-block bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded"
                           >
                             {combo.type_name}: {combo.value_name}
                           </span>

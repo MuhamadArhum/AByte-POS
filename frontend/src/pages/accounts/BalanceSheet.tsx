@@ -122,7 +122,7 @@ const BalanceSheet = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <FileBarChart className="text-purple-600" size={20} />
+          <FileBarChart className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Balance Sheet</h1>
             <p className="text-gray-600 text-sm mt-1">Financial position as of date</p>
@@ -139,14 +139,14 @@ const BalanceSheet = () => {
               type="date"
               value={asOfDate}
               onChange={(e) => setAsOfDate(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             />
           </div>
 
           <button
             onClick={fetchBalanceSheet}
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50"
           >
             <Calendar size={18} />
             {loading ? 'Loading...' : 'Generate'}
@@ -183,11 +183,11 @@ const BalanceSheet = () => {
 
       {/* Balance Status */}
       {data && (
-        <div className={`mb-6 p-4 rounded-xl border-2 ${isBalanced ? 'bg-purple-50 border-purple-200' : 'bg-red-50 border-red-200'}`}>
+        <div className={`mb-6 p-4 rounded-xl border-2 ${isBalanced ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
           <div className="flex items-center gap-3">
-            <FileBarChart className={isBalanced ? 'text-purple-600' : 'text-red-600'} size={24} />
+            <FileBarChart className={isBalanced ? 'text-emerald-600' : 'text-red-600'} size={24} />
             <div>
-              <p className={`font-semibold ${isBalanced ? 'text-purple-900' : 'text-red-900'}`}>
+              <p className={`font-semibold ${isBalanced ? 'text-emerald-900' : 'text-red-900'}`}>
                 {isBalanced ? 'Balance Sheet is Balanced' : 'Balance Sheet is Out of Balance'}
               </p>
               <p className="text-sm text-gray-700 mt-1">
@@ -207,7 +207,7 @@ const BalanceSheet = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
           </div>
         ) : !data ? (
           <div className="text-center py-12 text-gray-500">
@@ -219,7 +219,7 @@ const BalanceSheet = () => {
           <div className="p-8">
             {/* Assets Section */}
             <div className="mb-8">
-              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-purple-200">
+              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-emerald-200">
                 ASSETS
               </h2>
               {data.assets.length === 0 ? (
@@ -239,9 +239,9 @@ const BalanceSheet = () => {
                   ))}
                 </div>
               )}
-              <div className="flex justify-between items-center py-3 mt-4 border-t-2 border-purple-100 bg-purple-50 px-4 rounded">
-                <span className="font-bold text-purple-900">Total Assets</span>
-                <span className="font-bold text-purple-900 text-lg">
+              <div className="flex justify-between items-center py-3 mt-4 border-t-2 border-emerald-100 bg-emerald-50 px-4 rounded">
+                <span className="font-bold text-emerald-900">Total Assets</span>
+                <span className="font-bold text-emerald-900 text-lg">
                   {formatCurrency(data.total_assets)}
                 </span>
               </div>
@@ -249,7 +249,7 @@ const BalanceSheet = () => {
 
             {/* Liabilities Section */}
             <div className="mb-8">
-              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-purple-200">
+              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-emerald-200">
                 LIABILITIES
               </h2>
               {data.liabilities.length === 0 ? (
@@ -269,9 +269,9 @@ const BalanceSheet = () => {
                   ))}
                 </div>
               )}
-              <div className="flex justify-between items-center py-3 mt-4 border-t-2 border-purple-100 bg-purple-50 px-4 rounded">
-                <span className="font-bold text-purple-900">Total Liabilities</span>
-                <span className="font-bold text-purple-900 text-lg">
+              <div className="flex justify-between items-center py-3 mt-4 border-t-2 border-emerald-100 bg-emerald-50 px-4 rounded">
+                <span className="font-bold text-emerald-900">Total Liabilities</span>
+                <span className="font-bold text-emerald-900 text-lg">
                   {formatCurrency(data.total_liabilities)}
                 </span>
               </div>
@@ -279,7 +279,7 @@ const BalanceSheet = () => {
 
             {/* Equity Section */}
             <div className="mb-8">
-              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-purple-200">
+              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-emerald-200">
                 EQUITY
               </h2>
               {data.equity.length === 0 ? (
@@ -299,20 +299,20 @@ const BalanceSheet = () => {
                   ))}
                 </div>
               )}
-              <div className="flex justify-between items-center py-3 mt-4 border-t-2 border-purple-100 bg-purple-50 px-4 rounded">
-                <span className="font-bold text-purple-900">Total Equity</span>
-                <span className="font-bold text-purple-900 text-lg">
+              <div className="flex justify-between items-center py-3 mt-4 border-t-2 border-emerald-100 bg-emerald-50 px-4 rounded">
+                <span className="font-bold text-emerald-900">Total Equity</span>
+                <span className="font-bold text-emerald-900 text-lg">
                   {formatCurrency(data.total_equity)}
                 </span>
               </div>
             </div>
 
             {/* Total Liabilities + Equity */}
-            <div className="flex justify-between items-center py-4 mt-6 border-t-4 border-purple-300 bg-purple-100 px-4 rounded-lg">
-              <span className="font-bold text-xl text-purple-900">
+            <div className="flex justify-between items-center py-4 mt-6 border-t-4 border-emerald-300 bg-emerald-100 px-4 rounded-lg">
+              <span className="font-bold text-xl text-emerald-900">
                 Total Liabilities + Equity
               </span>
-              <span className="font-bold text-2xl text-purple-900">
+              <span className="font-bold text-2xl text-emerald-900">
                 {formatCurrency(data.total_liabilities_equity)}
               </span>
             </div>

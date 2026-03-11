@@ -126,8 +126,8 @@ const Attendance = () => {
       case 'present': return 'bg-green-100 text-green-700';
       case 'absent': return 'bg-red-100 text-red-700';
       case 'half_day': return 'bg-yellow-100 text-yellow-700';
-      case 'leave': return 'bg-blue-100 text-blue-700';
-      case 'holiday': return 'bg-purple-100 text-purple-700';
+      case 'leave': return 'bg-emerald-100 text-emerald-700';
+      case 'holiday': return 'bg-emerald-100 text-emerald-700';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
@@ -139,7 +139,7 @@ const Attendance = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <Calendar className="text-indigo-600" size={20} />
+          <Calendar className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Attendance Management</h1>
             <p className="text-gray-600 text-sm mt-1">Track staff attendance records</p>
@@ -195,10 +195,10 @@ const Attendance = () => {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-2">
-            <Calendar className="text-blue-600" size={20} />
+            <Calendar className="text-emerald-600" size={20} />
             <p className="text-gray-600 text-sm">On Leave</p>
           </div>
-          <p className="text-3xl font-bold text-blue-600">{summary.leave}</p>
+          <p className="text-3xl font-bold text-emerald-600">{summary.leave}</p>
         </div>
       </div>
 
@@ -207,22 +207,22 @@ const Attendance = () => {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Staff Member</label>
-            <select value={filters.staff_id} onChange={(e) => handleFilterChange('staff_id', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <select value={filters.staff_id} onChange={(e) => handleFilterChange('staff_id', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
               <option value="">All Staff</option>
               {staff.map(member => (<option key={member.staff_id} value={member.staff_id}>{member.full_name}</option>))}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-            <input type="date" value={filters.start_date} onChange={(e) => handleFilterChange('start_date', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+            <input type="date" value={filters.start_date} onChange={(e) => handleFilterChange('start_date', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-            <input type="date" value={filters.end_date} onChange={(e) => handleFilterChange('end_date', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+            <input type="date" value={filters.end_date} onChange={(e) => handleFilterChange('end_date', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+            <select value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
               <option value="all">All Status</option>
               <option value="present">Present</option>
               <option value="absent">Absent</option>
@@ -232,7 +232,7 @@ const Attendance = () => {
             </select>
           </div>
           <div className="flex items-end">
-            <button onClick={() => { setPagination(prev => ({ ...prev, page: 1 })); fetchAttendance(); }} className="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+            <button onClick={() => { setPagination(prev => ({ ...prev, page: 1 })); fetchAttendance(); }} className="w-full bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition">
               Apply Filters
             </button>
           </div>

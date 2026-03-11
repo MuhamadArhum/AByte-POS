@@ -165,11 +165,11 @@ const LeaveRequests = () => {
 
   const leaveTypeBadge = (type: string) => {
     const map: Record<string, string> = {
-      annual: 'bg-blue-100 text-blue-700',
+      annual: 'bg-emerald-100 text-emerald-700',
       sick: 'bg-orange-100 text-orange-700',
       emergency: 'bg-red-100 text-red-700',
       unpaid: 'bg-gray-100 text-gray-700',
-      other: 'bg-purple-100 text-purple-700'
+      other: 'bg-emerald-100 text-emerald-700'
     };
     return <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${map[type] || 'bg-gray-100 text-gray-700'}`}>{type.replace('_', ' ')}</span>;
   };

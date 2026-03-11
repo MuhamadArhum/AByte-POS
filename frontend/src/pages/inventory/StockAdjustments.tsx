@@ -29,10 +29,10 @@ interface ProductOption {
 const TYPE_BADGES: Record<string, string> = {
   addition: 'bg-green-100 text-green-700',
   subtraction: 'bg-red-100 text-red-700',
-  correction: 'bg-blue-100 text-blue-700',
+  correction: 'bg-emerald-100 text-emerald-700',
   damage: 'bg-orange-100 text-orange-700',
   theft: 'bg-red-100 text-red-800',
-  return: 'bg-purple-100 text-purple-700',
+  return: 'bg-emerald-100 text-emerald-700',
   opening_stock: 'bg-gray-100 text-gray-700',
   expired: 'bg-yellow-100 text-yellow-700',
 };
@@ -451,7 +451,7 @@ const StockAdjustments = () => {
 
               {/* Live Preview */}
               {selectedProduct && formType && formQty && afterQty !== null && (
-                <div className={`p-3 rounded-lg border text-sm ${afterQty < 0 ? 'bg-red-50 border-red-200 text-red-700' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+                <div className={`p-3 rounded-lg border text-sm ${afterQty < 0 ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
                   <div className="flex justify-between">
                     <span>Before: <strong>{selectedProduct.stock_quantity ?? selectedProduct.available_stock ?? 0}</strong></span>
                     <span>After: <strong>{afterQty}</strong></span>

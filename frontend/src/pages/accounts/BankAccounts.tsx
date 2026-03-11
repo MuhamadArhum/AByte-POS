@@ -81,7 +81,7 @@ const BankAccountModal = ({ isOpen, onClose, onSuccess, bankAccount }: any) => {
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Linked Account *</label>
               <select value={formData.account_id} onChange={(e) => setFormData({ ...formData, account_id: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500" required disabled={!!bankAccount}>
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" required disabled={!!bankAccount}>
                 <option value="">Select Account</option>
                 {accounts.filter(a => a.account_name.toLowerCase().includes('bank')).map(a => (
                   <option key={a.account_id} value={a.account_id}>{a.account_code} - {a.account_name}</option>
@@ -92,35 +92,35 @@ const BankAccountModal = ({ isOpen, onClose, onSuccess, bankAccount }: any) => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Bank Name *</label>
               <input type="text" value={formData.bank_name}
                 onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 placeholder="e.g., HBL, MCB" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Account Number *</label>
               <input type="text" value={formData.account_number}
                 onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 placeholder="e.g., 1234567890" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Account Holder</label>
               <input type="text" value={formData.account_holder}
                 onChange={(e) => setFormData({ ...formData, account_holder: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 placeholder="e.g., John Doe" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Branch</label>
               <input type="text" value={formData.branch}
                 onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 placeholder="e.g., Main Branch" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">IFSC/Swift Code</label>
               <input type="text" value={formData.ifsc_code}
                 onChange={(e) => setFormData({ ...formData, ifsc_code: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 placeholder="e.g., HBBL0012345" />
             </div>
             {!bankAccount && (
@@ -128,7 +128,7 @@ const BankAccountModal = ({ isOpen, onClose, onSuccess, bankAccount }: any) => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Opening Balance</label>
                 <input type="number" step="0.01" value={formData.opening_balance}
                   onChange={(e) => setFormData({ ...formData, opening_balance: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
                   placeholder="0.00" />
               </div>
             )}
@@ -140,7 +140,7 @@ const BankAccountModal = ({ isOpen, onClose, onSuccess, bankAccount }: any) => {
               Cancel
             </button>
             <button type="submit" disabled={loading}
-              className="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 font-medium transition disabled:bg-gray-400">
+              className="flex-1 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 font-medium transition disabled:bg-gray-400">
               {loading ? 'Saving...' : bankAccount ? 'Update' : 'Create'}
             </button>
           </div>
@@ -186,14 +186,14 @@ const BankAccounts = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <Building2 className="text-indigo-600" size={20} />
+          <Building2 className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Bank Accounts</h1>
             <p className="text-gray-600 text-sm mt-1">Manage your bank accounts</p>
           </div>
         </div>
         <button onClick={() => { setSelectedAccount(null); setShowModal(true); }}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition shadow-lg">
+          className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg">
           <Plus size={20} /> Add Bank Account
         </button>
       </div>
@@ -206,7 +206,7 @@ const BankAccounts = () => {
           <h3 className="text-xl font-semibold text-gray-700 mb-2">No Bank Accounts</h3>
           <p className="text-gray-500 mb-6">Get started by adding your first bank account</p>
           <button onClick={() => setShowModal(true)}
-            className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition">
+            className="inline-flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition">
             <Plus size={20} /> Add Bank Account
           </button>
         </div>
@@ -246,7 +246,7 @@ const BankAccounts = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
                         <button onClick={() => { setSelectedAccount(account); setShowModal(true); }}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition">
+                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition">
                           <Edit size={18} />
                         </button>
                         <button onClick={() => handleDelete(account.bank_account_id)}

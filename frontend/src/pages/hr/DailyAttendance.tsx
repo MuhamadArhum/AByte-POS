@@ -95,8 +95,8 @@ const DailyAttendance = () => {
       present: { bg: 'bg-green-100 text-green-700', icon: <CheckCircle size={14} className="inline mr-1" /> },
       absent: { bg: 'bg-red-100 text-red-700', icon: <XCircle size={14} className="inline mr-1" /> },
       half_day: { bg: 'bg-yellow-100 text-yellow-700', icon: <AlertCircle size={14} className="inline mr-1" /> },
-      leave: { bg: 'bg-blue-100 text-blue-700', icon: <MinusCircle size={14} className="inline mr-1" /> },
-      holiday: { bg: 'bg-purple-100 text-purple-700', icon: <CheckCircle size={14} className="inline mr-1" /> },
+      leave: { bg: 'bg-emerald-100 text-emerald-700', icon: <MinusCircle size={14} className="inline mr-1" /> },
+      holiday: { bg: 'bg-emerald-100 text-emerald-700', icon: <CheckCircle size={14} className="inline mr-1" /> },
     };
     const s = map[status] || { bg: 'bg-gray-100 text-gray-700', icon: null };
     return <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.bg}`}>{s.icon}{status.replace('_', ' ')}</span>;
@@ -145,8 +145,8 @@ const DailyAttendance = () => {
           { label: 'Present', value: summary.present, color: 'text-green-600' },
           { label: 'Absent', value: summary.absent, color: 'text-red-600' },
           { label: 'Half Day', value: summary.half_day, color: 'text-yellow-600' },
-          { label: 'Leave', value: summary.leave, color: 'text-blue-600' },
-          { label: 'Holiday', value: summary.holiday, color: 'text-purple-600' },
+          { label: 'Leave', value: summary.leave, color: 'text-emerald-600' },
+          { label: 'Holiday', value: summary.holiday, color: 'text-emerald-600' },
           { label: 'Unmarked', value: summary.unmarked, color: 'text-gray-500' },
         ].map(card => (
           <div key={card.label} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
@@ -213,7 +213,7 @@ const DailyAttendance = () => {
                           <button onClick={() => quickMark(row.staff_id, 'absent')} disabled={isMarking}
                             className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium hover:bg-red-200 transition disabled:opacity-50" title="Absent">A</button>
                           <button onClick={() => quickMark(row.staff_id, 'leave')} disabled={isMarking}
-                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200 transition disabled:opacity-50" title="Leave">L</button>
+                            className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-medium hover:bg-emerald-200 transition disabled:opacity-50" title="Leave">L</button>
                           <button onClick={() => quickMark(row.staff_id, 'half_day')} disabled={isMarking}
                             className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium hover:bg-yellow-200 transition disabled:opacity-50" title="Half Day">H</button>
                         </div>

@@ -335,15 +335,6 @@ CREATE TABLE IF NOT EXISTS backups (
     FOREIGN KEY (created_by) REFERENCES users(user_id)
 );
 
--- Chat Messages (AI assistant)
-CREATE TABLE IF NOT EXISTS chat_messages (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    user_id INT NOT NULL,
-    role ENUM('user', 'assistant') NOT NULL,
-    content TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-);
 
 -- Expenses
 CREATE TABLE IF NOT EXISTS expenses (
@@ -857,14 +848,6 @@ CREATE TABLE IF NOT EXISTS sale_bundles (
     INDEX idx_sale_bundles_sale_id (sale_id)
 );
 
--- Payments (split payment support)
-CREATE TABLE IF NOT EXISTS payments (
-    payment_id INT PRIMARY KEY AUTO_INCREMENT,
-    sale_id INT NOT NULL,
-    method VARCHAR(50) NOT NULL,
-    amount DECIMAL(10, 2) NOT NULL,
-    FOREIGN KEY (sale_id) REFERENCES sales(sale_id)
-);
 
 -- Return Details
 CREATE TABLE IF NOT EXISTS return_details (

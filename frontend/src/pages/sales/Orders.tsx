@@ -407,7 +407,7 @@ const Orders = () => {
                 <ArrowLeft size={24} />
               </button>
               <div className="flex items-center gap-3">
-                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2.5 rounded-xl shadow-lg">
+                <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-2.5 rounded-xl shadow-lg">
                   <FileText size={28} className="text-white" />
                 </div>
                 <div>
@@ -533,7 +533,7 @@ const Orders = () => {
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-500 flex items-center gap-1.5">
-                          <User size={16} className="text-indigo-600" />
+                          <User size={16} className="text-emerald-600" />
                           Customer
                         </span>
                         <span className="font-medium text-gray-800">
@@ -554,7 +554,7 @@ const Orders = () => {
                       {/* Edit button */}
                       <button
                         onClick={() => handleEditPending(sale)}
-                        className="p-2.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 hover:scale-110 transition-all duration-200 border border-purple-200"
+                        className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 hover:scale-110 transition-all duration-200 border border-emerald-200"
                         title="Edit Order"
                       >
                         <Edit2 size={18} />
@@ -562,7 +562,7 @@ const Orders = () => {
                       {/* Bill Preview / Print button */}
                       <button
                         onClick={() => setPreviewSaleId(sale.sale_id)}
-                        className="p-2.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 hover:scale-110 transition-all duration-200 border border-blue-200"
+                        className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 hover:scale-110 transition-all duration-200 border border-emerald-200"
                         title="Preview & Print"
                       >
                         <Printer size={18} />
@@ -700,7 +700,7 @@ const Orders = () => {
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {doneSales.map(sale => (
-                          <tr key={sale.sale_id} className="hover:bg-gradient-to-r hover:from-emerald-50/30 hover:to-blue-50/30 transition-all duration-150">
+                          <tr key={sale.sale_id} className="hover:bg-gradient-to-r hover:from-emerald-50/30 hover:to-emerald-50/30 transition-all duration-150">
                             <td className="px-6 py-4">
                               {sale.invoice_no ? (
                                 <span className="font-bold text-emerald-700">{sale.invoice_no}</span>
@@ -751,7 +751,7 @@ const Orders = () => {
                                 {/* Eye: Bill Preview */}
                                 <button
                                   onClick={() => setPreviewSaleId(sale.sale_id)}
-                                  className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all duration-200 border border-transparent hover:border-indigo-200"
+                                  className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200 border border-transparent hover:border-emerald-200"
                                   title="View Bill"
                                 >
                                   <Eye size={18} />
@@ -759,7 +759,7 @@ const Orders = () => {
                                 {/* Print */}
                                 <button
                                   onClick={() => setPreviewSaleId(sale.sale_id)}
-                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 border border-transparent hover:border-blue-200"
+                                  className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200 border border-transparent hover:border-emerald-200"
                                   title="Print Receipt"
                                 >
                                   <Printer size={18} />

@@ -61,8 +61,8 @@ const RULE_TYPE_LABELS: Record<string, string> = {
 };
 
 const RULE_TYPE_BADGE_CLASSES: Record<string, string> = {
-  buy_x_get_y: 'bg-purple-100 text-purple-700',
-  quantity_discount: 'bg-blue-100 text-blue-700',
+  buy_x_get_y: 'bg-emerald-100 text-emerald-700',
+  quantity_discount: 'bg-emerald-100 text-emerald-700',
   time_based: 'bg-orange-100 text-orange-700',
   category_discount: 'bg-green-100 text-green-700',
 };
@@ -252,7 +252,7 @@ const RuleModal = ({
                 onClick={() => updateField('rule_type', 'buy_x_get_y')}
                 className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all text-sm font-medium ${
                   formData.rule_type === 'buy_x_get_y'
-                    ? 'border-purple-500 bg-purple-50 text-purple-700'
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                     : 'border-gray-200 text-gray-500 hover:border-gray-300'
                 }`}
               >
@@ -264,7 +264,7 @@ const RuleModal = ({
                 onClick={() => updateField('rule_type', 'quantity_discount')}
                 className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all text-sm font-medium ${
                   formData.rule_type === 'quantity_discount'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                     : 'border-gray-200 text-gray-500 hover:border-gray-300'
                 }`}
               >
@@ -738,8 +738,8 @@ const PriceRules = () => {
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-50 rounded-lg">
-              <Layers size={20} className="text-blue-600" />
+            <div className="p-2.5 bg-emerald-50 rounded-lg">
+              <Layers size={20} className="text-emerald-600" />
             </div>
             <div>
               <p className="text-sm text-gray-500">Total Rules</p>
@@ -760,8 +760,8 @@ const PriceRules = () => {
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-purple-50 rounded-lg">
-              <Tag size={20} className="text-purple-600" />
+            <div className="p-2.5 bg-emerald-50 rounded-lg">
+              <Tag size={20} className="text-emerald-600" />
             </div>
             <div>
               <p className="text-sm text-gray-500">Savings This Month</p>
@@ -885,7 +885,7 @@ const PriceRules = () => {
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => handleOpenEdit(rule)}
-                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                               title="Edit"
                             >
                               <Edit2 size={16} />
