@@ -54,7 +54,9 @@
       "Bash(mysqldump -u root --password=\"\" abyte_pos > \"F:/AByte-POS/abyte_pos_backup.sql\" 2>&1; echo \"EXIT:$?\")",
       "Bash(mysql -h serverless-us-east1.sysp0000.db2.skysql.com -P 4059 -u dbpgf25868363 -p2w46gewBwU-7rPkIJp4Gh9ng9 --ssl-ca=\"F:/AByte-POS/globalsignrootca.pem\" -e \"CREATE DATABASE IF NOT EXISTS abyte_pos;\" 2>&1; echo \"EXIT:$?\")",
       "Bash(mysql -h serverless-us-east1.sysp0000.db2.skysql.com -P 4059 -u dbpgf25868363 -p2w46gewBwU-7rPkIJp4Gh9ng9 --ssl-ca=\"F:/AByte-POS/globalsignrootca.pem\" -e \"DROP DATABASE IF EXISTS abyte_pos; CREATE DATABASE abyte_pos CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\" 2>&1; echo \"EXIT:$?\")",
-      "Bash(git -C \"F:/AByte-POS\" remote -v 2>&1)"
+      "Bash(git -C \"F:/AByte-POS\" remote -v 2>&1)",
+      "Bash(git -C \"F:/AByte-POS\" log --oneline -3 && git -C \"F:/AByte-POS\" status --short)",
+      "Bash(git -C \"F:/AByte-POS\" show --name-only 55e1ca6 | head -20)"
     ]
   }
 }
