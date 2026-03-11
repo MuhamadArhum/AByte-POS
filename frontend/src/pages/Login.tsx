@@ -6,20 +6,20 @@ import { Lock, Mail, Loader2, Eye, EyeOff, ShoppingCart, BarChart3, Users, Packa
 import { motion } from 'framer-motion';
 
 const features = [
-  { icon: ShoppingCart, label: 'Point of Sale',     desc: 'Fast & intuitive POS system' },
-  { icon: BarChart3,    label: 'Sales Analytics',   desc: 'Real-time reports & insights' },
-  { icon: Package,      label: 'Inventory Control', desc: 'Stock tracking & alerts' },
-  { icon: Users,        label: 'HR Management',     desc: 'Staff, attendance & payroll' },
+  { icon: ShoppingCart, label: 'Point of Sale', desc: 'Fast & intuitive POS system' },
+  { icon: BarChart3, label: 'Sales Analytics', desc: 'Real-time reports & insights' },
+  { icon: Package, label: 'Inventory Control', desc: 'Stock tracking & alerts' },
+  { icon: Users, label: 'HR Management', desc: 'Staff, attendance & payroll' },
 ];
 
 const Login = () => {
-  const [email,        setEmail]        = useState('admin@pos.com');
-  const [password,     setPassword]     = useState('Admin@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error,        setError]        = useState('');
-  const [loading,      setLoading]      = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
