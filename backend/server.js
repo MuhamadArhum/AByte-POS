@@ -13,6 +13,7 @@ const express = require('express');
 const cors    = require('cors');
 const helmet  = require('helmet');
 const morgan  = require('morgan');
+const path    = require('path');
 require('dotenv').config();
 
 // --- Import Route Files ---
@@ -133,6 +134,16 @@ app.use('/api/staff',               staffRoutes);
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', ts: new Date().toISOString() });
+});
+
+// ── Serve React Frontend ──────────────────────────────────────
+// Must be AFTER all /api routes so API calls are not intercepted.
+const frontendDist = path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendDist));
+
+// Catch-all: any non-API route returns index.html (SPA routing)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
 // ── Global Error Handler ─────────────────────────────────────
