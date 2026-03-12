@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Edit, Trash2, Package, Tag, ChevronDown, ChevronUp, X, Layers, DollarSign, Hash, BarChart2, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Package, Tag, X, Layers, DollarSign, Hash, BarChart2, AlertTriangle } from 'lucide-react';
 import api from '../../utils/api';
 
 interface VariantType {
@@ -31,7 +31,7 @@ const ProductVariants = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [variantTypes, setVariantTypes] = useState<VariantType[]>([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [, setLoadingProducts] = useState(true);
   const [loadingVariants, setLoadingVariants] = useState(false);
   const [productSearch, setProductSearch] = useState('');
   const [showProductDrop, setShowProductDrop] = useState(false);

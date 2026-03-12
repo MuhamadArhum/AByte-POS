@@ -88,9 +88,6 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      
       let startDate: string;
       let daysBack: number;
       
@@ -106,8 +103,6 @@ const Dashboard = () => {
       }
       
       startDate = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const monthStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
       const [dashRes, inventoryRes, customersRes, recentOrdersRes] = await Promise.all([
         api.get(`/reports/dashboard?chart_start=${startDate}`),

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ClipboardCheck, Search, RefreshCw, CheckCircle, XCircle, AlertTriangle, Package, Download, Plus, Minus, Save, BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ClipboardCheck, Search, RefreshCw, CheckCircle, XCircle, AlertTriangle, Package, Download, Plus, Minus, Save, BarChart2 } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 

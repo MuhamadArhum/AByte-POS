@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, Package, Tag, Calendar, ToggleLeft, ToggleRight, X, Search, ChevronDown, ChevronUp, Percent, DollarSign, Gift } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, Calendar, ToggleLeft, ToggleRight, X, Search, ChevronDown, ChevronUp, Percent, DollarSign, Gift } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
 

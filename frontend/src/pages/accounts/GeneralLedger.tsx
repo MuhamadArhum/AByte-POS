@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Book, Search, ChevronLeft, ChevronRight, RefreshCw, Printer } from 'lucide-react';
+import { Book, Search, RefreshCw, Printer } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';

@@ -19,7 +19,6 @@ import {
   RotateCcw,
   ScrollText,
   Database,
-  UserCog,
   DollarSign,
   Store,
   TrendingUp,
