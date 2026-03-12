@@ -205,8 +205,8 @@ const JournalEntries = () => {
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
   const [showModal, setShowModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [fromDate, setFromDate] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]; });
+  const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   useEffect(() => { fetchEntries(); }, [pagination.page, statusFilter, fromDate, toDate]);
 

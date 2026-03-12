@@ -48,8 +48,8 @@ const StockAdjustments = () => {
   // Filters
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]; });
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [types, setTypes] = useState<string[]>([]);
 
   // Stats

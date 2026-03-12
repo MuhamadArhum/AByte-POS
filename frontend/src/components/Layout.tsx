@@ -350,7 +350,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               </div>
               <div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">AByte</span>
-                <p className="text-xs text-gray-500 font-medium">Point of Sale</p>
+                <p className="text-xs text-gray-500 font-medium">ERP</p>
               </div>
             </motion.div>
           )}
@@ -427,7 +427,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               <Menu size={24} />
             </button>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">AByte POS</h1>
+              <h1 className="text-xl font-semibold text-gray-900">AByte ERP</h1>
               <p className="text-sm text-gray-500">Complete Business Management</p>
             </div>
           </div>
