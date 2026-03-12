@@ -122,17 +122,25 @@ exports.getById = async (req, res) => {
         [product.product_id]
       );
 
-      // Get combinations for each variant
-      for (let variant of variants) {
-        const combinations = await query(
+      // Get combinations for all variants in a single batch query (avoids N+1)
+      if (variants.length > 0) {
+        const variantIds = variants.map(v => v.variant_id);
+        const allCombinations = await query(
           `SELECT vc.*, vv.value_name, vt.variant_name as type_name
            FROM variant_combinations vc
            JOIN variant_values vv ON vc.variant_value_id = vv.variant_value_id
            JOIN variant_types vt ON vv.variant_type_id = vt.variant_type_id
-           WHERE vc.variant_id = ?`,
-          [variant.variant_id]
+           WHERE vc.variant_id IN (${variantIds.map(() => '?').join(',')})`,
+          variantIds
         );
-        variant.combinations = combinations;
+        const combsByVariantId = {};
+        for (const combo of allCombinations) {
+          if (!combsByVariantId[combo.variant_id]) combsByVariantId[combo.variant_id] = [];
+          combsByVariantId[combo.variant_id].push(combo);
+        }
+        for (const variant of variants) {
+          variant.combinations = combsByVariantId[variant.variant_id] || [];
+        }
       }
 
       product.variants = variants;

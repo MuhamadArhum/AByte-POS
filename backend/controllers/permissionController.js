@@ -1,13 +1,18 @@
 // permissionController.js - RBAC permission management
 const { query, getConnection } = require('../config/database');
 
-// GET /api/permissions  → { Manager: [...], Cashier: [...] }
+// GET /api/permissions  → { Manager: [...], Cashier: [...], CustomRole: [...] }
 exports.getAllPermissions = async (req, res) => {
   try {
+    // Get all non-Admin roles from roles table
+    const roleRows = await query("SELECT role_name FROM roles WHERE role_name != 'Admin'");
+    // Pre-seed result with empty arrays for every role (even roles with no permissions yet)
+    const result = {};
+    for (const r of roleRows) result[r.role_name] = [];
+
     const rows = await query(
       'SELECT role_name, module_key FROM role_permissions WHERE is_allowed = 1 ORDER BY role_name, module_key'
     );
-    const result = { Manager: [], Cashier: [] };
     for (const row of rows) {
       if (result[row.role_name] !== undefined) {
         result[row.role_name].push(row.module_key);
@@ -24,8 +29,9 @@ exports.getAllPermissions = async (req, res) => {
 exports.getPermissionsByRole = async (req, res) => {
   try {
     const { role } = req.params;
-    if (!['Manager', 'Cashier'].includes(role)) {
-      return res.status(400).json({ message: 'Invalid role. Must be Manager or Cashier.' });
+    const roleRows = await query("SELECT role_name FROM roles WHERE role_name = ? AND role_name != 'Admin'", [role]);
+    if (roleRows.length === 0) {
+      return res.status(400).json({ message: 'Invalid role.' });
     }
     const rows = await query(
       'SELECT module_key FROM role_permissions WHERE role_name = ? AND is_allowed = 1',
@@ -43,8 +49,9 @@ exports.updatePermissions = async (req, res) => {
   const { role } = req.params;
   const { permissions } = req.body;
 
-  if (!['Manager', 'Cashier'].includes(role)) {
-    return res.status(400).json({ message: 'Invalid role. Must be Manager or Cashier.' });
+  const roleRows = await query("SELECT role_name FROM roles WHERE role_name = ? AND role_name != 'Admin'", [role]);
+  if (roleRows.length === 0) {
+    return res.status(400).json({ message: 'Invalid role.' });
   }
   if (!Array.isArray(permissions)) {
     return res.status(400).json({ message: 'permissions must be an array of module keys.' });

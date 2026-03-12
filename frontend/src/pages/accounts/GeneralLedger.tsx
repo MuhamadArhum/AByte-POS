@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Book, Search, ChevronLeft, ChevronRight, RefreshCw, Printer } from 'lucide-react';
+import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 import { printReport, buildTable } from '../../utils/reportPrinter';
@@ -266,31 +267,14 @@ const GeneralLedger = () => {
             </div>
 
             {/* Pagination */}
-            {pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-100">
-                <div className="text-sm text-gray-600">
-                  Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total entries)
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}
-                    disabled={pagination.page === 1}
-                    className="flex items-center gap-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft size={16} />
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}
-                    disabled={pagination.page === pagination.totalPages}
-                    className="flex items-center gap-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-            )}
+            <Pagination
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={(page) => setPagination({ ...pagination, page })}
+              totalItems={pagination.total}
+              itemsPerPage={pagination.limit}
+            onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
+            />
           </>
         )}
       </div>

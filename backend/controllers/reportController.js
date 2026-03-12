@@ -21,7 +21,7 @@ exports.dailyReport = async (req, res) => {
          COALESCE(SUM(total_amount), 0) as total_sales,
          COALESCE(SUM(discount), 0) as total_discount,
          COALESCE(SUM(net_amount), 0) as total_revenue
-       FROM sales WHERE DATE(sale_date) = CURDATE()`
+       FROM sales WHERE sale_date >= CURDATE() AND sale_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY)`
     );
     res.json(summary[0]);  // Return single object (not array)
   } catch (err) {
@@ -54,7 +54,7 @@ exports.dateRangeReport = async (req, res) => {
          COALESCE(SUM(discount), 0) as total_discount,
          COALESCE(SUM(net_amount), 0) as total_revenue,
          COALESCE(AVG(net_amount), 0) as avg_transaction
-       FROM sales WHERE DATE(sale_date) BETWEEN ? AND ?`,
+       FROM sales WHERE sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)`,
       [start_date, end_date]
     );
 
@@ -64,7 +64,7 @@ exports.dateRangeReport = async (req, res) => {
          DATE(sale_date) as date,
          COUNT(*) as transactions,
          SUM(net_amount) as revenue
-       FROM sales WHERE DATE(sale_date) BETWEEN ? AND ?
+       FROM sales WHERE sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)
        GROUP BY DATE(sale_date) ORDER BY date`,
       [start_date, end_date]
     );
@@ -97,7 +97,7 @@ exports.productReport = async (req, res) => {
 
     // Optional date range filter
     if (start_date && end_date) {
-      sql += ' WHERE DATE(s.sale_date) BETWEEN ? AND ?';
+      sql += ' WHERE s.sale_date >= ? AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY)';
       params.push(start_date, end_date);
     }
 
@@ -150,6 +150,60 @@ exports.inventoryReport = async (req, res) => {
       out_of_stock: outOfStock,             // Products with stock 0
       total_inventory_value: totalValue,    // Total Rs value of all stock
       total_products: all.length,           // Count of products
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Dashboard Summary ---
+// Returns today, yesterday, week, month revenue + order counts in a single DB query.
+// Replaces 4 separate date-range API calls from the Dashboard page.
+// GET /api/reports/dashboard?chart_start=YYYY-MM-DD
+exports.dashboardSummary = async (req, res) => {
+  try {
+    const { chart_start } = req.query;
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const weekStart = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+    const monthStart = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+
+    const [s] = await query(`
+      SELECT
+        COALESCE(SUM(CASE WHEN sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY) THEN net_amount ELSE 0 END), 0) as today_revenue,
+        COALESCE(SUM(CASE WHEN sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY) THEN 1 ELSE 0 END), 0) as today_orders,
+        COALESCE(SUM(CASE WHEN sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY) THEN net_amount ELSE 0 END), 0) as yesterday_revenue,
+        COALESCE(SUM(CASE WHEN sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY) THEN 1 ELSE 0 END), 0) as yesterday_orders,
+        COALESCE(SUM(CASE WHEN sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY) THEN net_amount ELSE 0 END), 0) as week_revenue,
+        COALESCE(SUM(CASE WHEN sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY) THEN net_amount ELSE 0 END), 0) as month_revenue
+      FROM sales
+      WHERE status IN ('completed', 'refunded') AND sale_date >= ?
+    `, [
+      today, today,
+      today, today,
+      yesterday, yesterday,
+      yesterday, yesterday,
+      weekStart, today,
+      monthStart, today,
+      monthStart
+    ]);
+
+    const chartRows = chart_start ? await query(`
+      SELECT DATE(sale_date) as date, COUNT(*) as orders, COALESCE(SUM(net_amount), 0) as revenue
+      FROM sales
+      WHERE status IN ('completed', 'refunded') AND sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)
+      GROUP BY DATE(sale_date) ORDER BY date
+    `, [chart_start, today]) : [];
+
+    res.json({
+      today_revenue: Number(s.today_revenue),
+      today_orders: Number(s.today_orders),
+      yesterday_revenue: Number(s.yesterday_revenue),
+      yesterday_orders: Number(s.yesterday_orders),
+      week_revenue: Number(s.week_revenue),
+      month_revenue: Number(s.month_revenue),
+      chart: chartRows
     });
   } catch (err) {
     console.error(err);

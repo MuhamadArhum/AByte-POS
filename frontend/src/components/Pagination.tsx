@@ -10,7 +10,7 @@ interface PaginationProps {
   onItemsPerPageChange?: (limit: number) => void;
 }
 
-const PRESET_LIMITS = [10, 25, 50, 100];
+const PRESET_LIMITS = [10, 20, 25, 50, 100];
 
 const Pagination: React.FC<PaginationProps> = ({
   currentPage,

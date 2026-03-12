@@ -10,6 +10,7 @@ const MANAGER_MODULES = [
   'inventory', 'inventory.products', 'inventory.categories', 'inventory.purchases',
   'inventory.transfers', 'inventory.adjustments', 'inventory.alerts',
   'inventory.suppliers', 'inventory.reports',
+  'inventory.bundles', 'inventory.variants', 'inventory.stockcount',
   'hr', 'hr.staff', 'hr.attendance', 'hr.daily-attendance',
   'hr.salary-sheet', 'hr.payroll', 'hr.advances', 'hr.loans', 'hr.increments',
   'hr.ledger', 'hr.holidays', 'hr.leaves', 'hr.reports',

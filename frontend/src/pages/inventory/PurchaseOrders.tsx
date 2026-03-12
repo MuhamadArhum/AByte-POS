@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Package, Eye, FileText, Search, Filter } from 'lucide-react';
+import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import CreatePOModal from '../../components/CreatePOModal';
 import ReceiveStockModal from '../../components/ReceiveStockModal';
@@ -203,29 +204,14 @@ const PurchaseOrders = () => {
         </table>
 
         {/* Pagination */}
-        {pagination.totalPages > 1 && (
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-            <div className="text-sm text-gray-600">
-              Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total orders)
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}
-                disabled={pagination.page === 1}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}
-                disabled={pagination.page === pagination.totalPages}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={(page) => setPagination({ ...pagination, page })}
+          totalItems={pagination.total}
+          itemsPerPage={pagination.limit}
+        onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
+        />
       </div>
 
       {/* Modals */}

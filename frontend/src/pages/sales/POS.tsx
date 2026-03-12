@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, ShoppingCart, Trash2, Minus, Plus, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Mail, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
+import Pagination from '../../components/Pagination';
 import { useCart, Product } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import ProductCard from '../../components/ProductCard';
@@ -35,7 +36,7 @@ const POS = () => {
   const [productPage, setProductPage] = useState(1);
   const [productTotalPages, setProductTotalPages] = useState(1);
   const [productTotalItems, setProductTotalItems] = useState(0);
-  const productLimit = 20;
+  const [productLimit, setProductLimit] = useState(20);
 
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -160,6 +161,17 @@ const POS = () => {
       alert(error.response?.data?.message || 'Failed to open register');
     } finally {
       setOpeningRegister(false);
+    }
+  };
+
+  const handleForceReset = async () => {
+    if (!confirm('Force-close any stuck open register? This is for Admin use only when a register is stuck.')) return;
+    try {
+      const res = await api.post('/register/force-reset');
+      alert(res.data.message);
+      checkRegister();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to force-reset register');
     }
   };
 
@@ -357,6 +369,33 @@ const POS = () => {
     ).slice(0, 8);
   }, [customers, customerSearch]);
 
+  const handleSaveEdit = async () => {
+    if (!editingSaleId || cart.length === 0) return;
+    try {
+      await api.put(`/sales/${editingSaleId}/items`, {
+        items: cart.map(item => ({
+          product_id: item.product_id,
+          variant_id: item.variant_id || null,
+          variant_name: item.variant_name || null,
+          quantity: item.quantity,
+          unit_price: item.price,
+        })),
+        total_amount: total,
+        tax_percent: taxRate,
+        additional_charges_percent: additionalRate,
+        customer_id: selectedCustomer?.customer_id || 1,
+      });
+      clearCart();
+      setEditingSaleId(null);
+      setEditingTokenNo(null);
+      const walkin = customers.find(c => c.customer_id === 1);
+      setSelectedCustomer(walkin || null);
+      alert('Order updated successfully');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to save order');
+    }
+  };
+
   const handleHoldOrder = async () => {
     if (cart.length === 0) return;
 
@@ -443,7 +482,7 @@ const POS = () => {
   // Register loading screen
   if (registerLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-emerald-50 to-teal-50">
+      <div className="flex items-center justify-center h-full bg-gradient-to-br from-emerald-50 to-teal-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-600 border-t-transparent mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Loading Register...</p>
@@ -455,7 +494,7 @@ const POS = () => {
   // Register gate: if no open register, show open register screen
   if (!register) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-50 p-4">
+      <div className="flex items-center justify-center h-full bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-50 p-4">
         <div className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-md text-center border border-emerald-100">
           <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/30">
             <DollarSign size={40} className="text-white" strokeWidth={2.5} />
@@ -499,13 +538,27 @@ const POS = () => {
           <p className="mt-6 text-sm text-gray-500">
             Logged in as <span className="font-semibold text-gray-700">{user?.name}</span>
           </p>
+
+          {(user?.role_name === 'Admin' || user?.role_name === 'Manager') && (
+            <div className="mt-6 pt-5 border-t border-gray-100">
+              <p className="text-xs text-gray-400 mb-2">Admin / Manager Tools</p>
+              <button
+                onClick={handleForceReset}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl font-medium text-sm transition-colors"
+              >
+                <Lock size={15} />
+                Force Reset Stuck Register
+              </button>
+              <p className="text-xs text-gray-400 mt-2 text-center">Use this if a register is stuck as "open" after a crash</p>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-full bg-gray-50 overflow-hidden">
       {/* Left Side: Product Grid */}
       <div className="flex-1 flex flex-col h-full">
         {/* Header / Search */}
@@ -648,44 +701,14 @@ const POS = () => {
                 )}
               </div>
               {/* Pagination */}
-              {productTotalPages > 1 && (
-                <div className="mt-4 flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm">
-                  <span className="text-xs text-gray-500">
-                    Page {productPage} of {productTotalPages} &nbsp;·&nbsp; {productTotalItems} products
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setProductPage(p => Math.max(1, p - 1))}
-                      disabled={productPage === 1}
-                      className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-                    {Array.from({ length: Math.min(5, productTotalPages) }, (_, i) => {
-                      const start = Math.max(1, Math.min(productPage - 2, productTotalPages - 4));
-                      const pg = start + i;
-                      return pg <= productTotalPages ? (
-                        <button
-                          key={pg}
-                          onClick={() => setProductPage(pg)}
-                          className={`w-7 h-7 rounded-lg text-xs font-bold transition-colors ${
-                            pg === productPage ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-                          }`}
-                        >
-                          {pg}
-                        </button>
-                      ) : null;
-                    })}
-                    <button
-                      onClick={() => setProductPage(p => Math.min(productTotalPages, p + 1))}
-                      disabled={productPage === productTotalPages}
-                      className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
-                </div>
-              )}
+              <Pagination
+                currentPage={productPage}
+                totalPages={productTotalPages}
+                onPageChange={setProductPage}
+                totalItems={productTotalItems}
+                itemsPerPage={productLimit}
+                onItemsPerPageChange={(limit) => { setProductLimit(limit); setProductPage(1); }}
+              />
             </>
           )}
         </div>
@@ -727,11 +750,19 @@ const POS = () => {
 
         {/* ── Editing Banner ── */}
         {editingSaleId && (
-          <div className="bg-amber-500/20 border-b border-amber-500/30 px-5 py-2 flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
-            <p className="text-amber-300 text-xs font-semibold">
-              Editing Token #{editingTokenNo || editingSaleId} — Pay Now to complete this order
-            </p>
+          <div className="bg-blue-600/20 border-b border-blue-500/30 px-4 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></div>
+              <p className="text-blue-300 text-xs font-semibold">
+                Editing Order {editingTokenNo ? `Token ${editingTokenNo}` : `#${editingSaleId}`} — Save or Complete below
+              </p>
+            </div>
+            <button
+              onClick={() => { clearCart(); setEditingSaleId(null); setEditingTokenNo(null); }}
+              className="text-blue-400 hover:text-blue-200 text-xs font-medium"
+            >
+              Cancel
+            </button>
           </div>
         )}
 
@@ -968,11 +999,11 @@ const POS = () => {
             <span className="text-2xl font-black text-emerald-400">Rs. {total.toFixed(2)}</span>
           </div>
 
-          {/* Hold Token Banner */}
+          {/* Punch/Dispatch Token Banner */}
           {holdToken && (
             <div className="mx-3 mb-1 px-4 py-2.5 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between">
               <div>
-                <p className="text-xs text-amber-600 font-medium">Order Held</p>
+                <p className="text-xs text-amber-600 font-medium">Order Dispatched</p>
                 <p className="text-xl font-black text-amber-700">Token: {holdToken}</p>
               </div>
               <button onClick={() => setHoldToken(null)} className="text-amber-400 hover:text-amber-600">
@@ -982,37 +1013,57 @@ const POS = () => {
           )}
 
           {/* Action Buttons */}
-          <div className="p-3 grid grid-cols-2 gap-2">
-            <button
-              onClick={handleHoldOrder}
-              disabled={cart.length === 0}
-              className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
-            >
-              <Archive size={18} />
-              Hold
-              <span className="text-amber-200 text-xs font-normal">F8</span>
-            </button>
-            <button
-              onClick={() => {
-                if (editingSaleId) {
-                  // Cart-based edit mode: use cart total (not DB items)
-                  setSelectedPendingSale({ sale_id: editingSaleId, token_no: editingTokenNo, isCartEdit: true });
-                } else {
-                  setSelectedPendingSale(null);
-                }
-                setIsCheckoutOpen(true);
-              }}
-              disabled={cart.length === 0}
-              className={`flex items-center justify-center gap-2 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none ${
-                editingSaleId
-                  ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30'
-                  : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
-              }`}
-            >
-              <DollarSign size={18} />
-              {editingSaleId ? 'Complete Order' : 'Pay Now'}
-              <span className="text-white/60 text-xs font-normal">F9</span>
-            </button>
+          <div className="p-3 space-y-2">
+            {editingSaleId ? (
+              /* Edit mode: Save Changes + Complete Order */
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={cart.length === 0}
+                  className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold text-sm shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Archive size={17} />
+                  Save Changes
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedPendingSale({ sale_id: editingSaleId, token_no: editingTokenNo, isCartEdit: true });
+                    setIsCheckoutOpen(true);
+                  }}
+                  disabled={cart.length === 0}
+                  className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <DollarSign size={17} />
+                  Complete
+                  <span className="text-white/60 text-xs font-normal">F9</span>
+                </button>
+              </div>
+            ) : (
+              /* Normal mode: Punch/Dispatch + Pay Now */
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={handleHoldOrder}
+                  disabled={cart.length === 0}
+                  className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Archive size={17} />
+                  Punch/Dispatch
+                  <span className="text-amber-200 text-xs font-normal">F8</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedPendingSale(null);
+                    setIsCheckoutOpen(true);
+                  }}
+                  disabled={cart.length === 0}
+                  className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <DollarSign size={17} />
+                  Pay Now
+                  <span className="text-white/60 text-xs font-normal">F9</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1036,7 +1087,7 @@ const POS = () => {
                 { key: 'F2', desc: 'Focus barcode scanner' },
                 { key: 'F3', desc: 'Focus name search' },
                 { key: 'F5', desc: 'View orders' },
-                { key: 'F8', desc: 'Hold order' },
+                { key: 'F8', desc: 'Punch/Dispatch order' },
                 { key: 'F9', desc: 'Pay now / Checkout' },
                 { key: 'ESC', desc: 'Close modals' },
               ].map(({ key, desc }) => (

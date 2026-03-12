@@ -60,7 +60,19 @@
       "Bash(git -C \"F:/AByte-POS\" status render.yaml && git -C \"F:/AByte-POS\" ls-files render.yaml)",
       "Bash(git -C \"F:/AByte-POS\" log --oneline origin/main -3)",
       "Bash(git -C \"F:/AByte-POS\" show --name-only 366bafa | head -10)",
-      "Bash(git -C \"F:/AByte-POS\" show origin/main:render.yaml 2>&1)"
+      "Bash(git -C \"F:/AByte-POS\" show origin/main:render.yaml 2>&1)",
+      "Bash(cd \"f:/AByte-POS/backend\" && node -e \"\nconst { query } = require\\('./config/database'\\);\nasync function check\\(\\) {\n  const open = await query\\(\\\\\"SELECT COUNT\\(*\\) as cnt FROM cash_registers WHERE status = 'open'\\\\\"\\);\n  console.log\\('Still open:', open[0].cnt\\);\n  process.exit\\(0\\);\n}\ncheck\\(\\);\n\" 2>&1 | tail -3)",
+      "Bash(cd \"f:/AByte-POS/backend\" && node -e \"\nconst { query } = require\\('./config/database'\\);\nasync function fix\\(\\) {\n  const r = await query\\(\\\\\"UPDATE cash_registers SET status = 'closed', closed_at = NOW\\(\\), close_note = 'Auto-fixed stuck register' WHERE status = 'open'\\\\\"\\);\n  console.log\\('Fixed remaining:', r.affectedRows\\);\n  const check = await query\\(\\\\\"SELECT COUNT\\(*\\) as cnt FROM cash_registers WHERE status = 'open'\\\\\"\\);\n  console.log\\('Open now:', check[0].cnt\\);\n  process.exit\\(0\\);\n}\nfix\\(\\);\n\" 2>&1 | tail -4)",
+      "Bash(/tmp/check_indexes.sql:*)",
+      "Read(//tmp/**)",
+      "Bash(cd \"f:/AByte-POS\" && node -e \"require\\('./backend/controllers/reportController'\\)\" && echo \"OK\")",
+      "Bash(cd \"f:/AByte-POS\" && node -e \"require\\('./backend/controllers/productController'\\)\" && echo \"OK\")",
+      "Bash(cd \"f:/AByte-POS\" && node -e \"require\\('./backend/controllers/accountingController'\\)\" && echo \"OK\")",
+      "Bash(cd \"f:/AByte-POS\" && node -e \"require\\('./backend/config/database'\\)\" && echo \"OK\")",
+      "Bash(grep -n \"Pagination\\\\|pagination\\\\|currentPage\\\\|totalPages\\\\|Previous\\\\|Next\\\\|prev\\\\b\\\\|next\\\\b\" \"f:/AByte-POS/frontend/src/pages/accounts/JournalEntries.tsx\" | head -30\ngrep -n \"Pagination\\\\|pagination\\\\|currentPage\\\\|totalPages\\\\|Previous\\\\|Next\\\\|prev\\\\b\\\\|next\\\\b\" \"f:/AByte-POS/frontend/src/pages/accounts/GeneralLedger.tsx\" | head -30)",
+      "Bash(grep -rn \"Previous\\\\|Next\\\\|ChevronLeft\\\\|ChevronRight\" \"f:/AByte-POS/frontend/src/pages/sales/SalesReports.tsx\" 2>/dev/null | head -20\ngrep -rn \"Previous\\\\|Next\\\\|ChevronLeft\\\\|ChevronRight\" \"f:/AByte-POS/frontend/src/pages/accounts/ChartOfAccounts.tsx\" | head -20)",
+      "Bash(grep -rn \"onItemsPerPageChange\" \"f:/AByte-POS/frontend/src/pages\" | wc -l\ngrep -l \"import Pagination\" \"f:/AByte-POS/frontend/src/pages\"/**/*.tsx 2>/dev/null | wc -l)",
+      "Bash(cd \"f:/AByte-POS\" && node -e \"\nrequire\\('dotenv'\\).config\\(\\);\nconst mariadb = require\\('mariadb'\\);\nconst pool = mariadb.createPool\\({\n  host: process.env.DB_HOST || 'localhost',\n  user: process.env.DB_USER || 'root',\n  password: process.env.DB_PASSWORD || '',\n  database: process.env.DB_NAME || 'abyte_pos',\n  connectionLimit: 2,\n}\\);\npool.getConnection\\(\\).then\\(conn => {\n  return conn.query\\(\n    \\\\`INSERT IGNORE INTO role_permissions \\(role_name, module_key, is_allowed\\) VALUES \\('Admin', 'system.users', 1\\)\\\\`\n  \\).then\\(\\(\\) => { console.log\\('Done'\\); conn.release\\(\\); pool.end\\(\\); }\\);\n}\\).catch\\(e => { console.error\\(e.message\\); process.exit\\(1\\); }\\);\n\")"
     ]
   }
 }

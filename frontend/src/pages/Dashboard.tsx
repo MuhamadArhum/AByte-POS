@@ -109,62 +109,48 @@ const Dashboard = () => {
       const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       const monthStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      const [
-        todayRes,
-        yesterdayRes,
-        dateRangeRes,
-        weekRes,
-        monthRes,
-        inventoryRes,
-        customersRes,
-        recentOrdersRes
-      ] = await Promise.all([
-        api.get('/reports/daily'),
-        api.get(`/reports/date-range?start_date=${yesterday}&end_date=${yesterday}`),
-        api.get(`/reports/date-range?start_date=${startDate}&end_date=${today}`),
-        api.get(`/reports/date-range?start_date=${weekStart}&end_date=${today}`),
-        api.get(`/reports/date-range?start_date=${monthStart}&end_date=${today}`),
-        api.get('/reports/inventory'),
+      const [dashRes, inventoryRes, customersRes, recentOrdersRes] = await Promise.all([
+        api.get(`/reports/dashboard?chart_start=${startDate}`),
+        api.get('/inventory-reports/summary'),
         api.get('/customers?page=1&limit=1'),
         api.get('/sales?page=1&limit=5')
       ]);
 
-      // Calculate stats
-      const todayData = todayRes.data;
-      const yesterdayData = yesterdayRes.data.daily?.[0] || { revenue: 0, transactions: 0 };
-      const todayRevenue = parseFloat(todayData.total_revenue || 0);
-      const todayOrders = parseInt(todayData.total_transactions || 0);
-      const yesterdayRevenue = parseFloat(yesterdayData.revenue || 0);
-      const yesterdayOrders = parseInt(yesterdayData.transactions || 0);
+      // Calculate stats from merged dashboard response
+      const d = dashRes.data;
+      const todayRevenue = d.today_revenue || 0;
+      const todayOrders = d.today_orders || 0;
+      const yesterdayRevenue = d.yesterday_revenue || 0;
+      const yesterdayOrders = d.yesterday_orders || 0;
 
-      const revenueGrowth = yesterdayRevenue > 0 
-        ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue * 100) 
+      const revenueGrowth = yesterdayRevenue > 0
+        ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue * 100)
         : 0;
-      const ordersGrowth = yesterdayOrders > 0 
-        ? ((todayOrders - yesterdayOrders) / yesterdayOrders * 100) 
+      const ordersGrowth = yesterdayOrders > 0
+        ? ((todayOrders - yesterdayOrders) / yesterdayOrders * 100)
         : 0;
 
       setStats({
         totalSales: todayRevenue,
         orderCount: todayOrders,
-        lowStockCount: (inventoryRes.data.low_stock?.length || 0) + (inventoryRes.data.out_of_stock?.length || 0),
+        lowStockCount: (inventoryRes.data.low_stock_count || 0) + (inventoryRes.data.out_of_stock_count || 0),
         customerCount: customersRes.data.pagination?.total || customersRes.data.data?.length || 0,
-        todayRevenue: todayRevenue,
-        weekRevenue: parseFloat(weekRes.data.summary?.total_revenue || 0),
-        monthRevenue: parseFloat(monthRes.data.summary?.total_revenue || 0),
+        todayRevenue,
+        weekRevenue: d.week_revenue || 0,
+        monthRevenue: d.month_revenue || 0,
         revenueGrowth,
         ordersGrowth
       });
 
       // Chart Data
-      const dailyBreakdown = dateRangeRes.data.daily || [];
-      const salesData = dailyBreakdown.map((d: any) => ({
-        name: chartPeriod === 'year' 
-          ? new Date(d.date).toLocaleDateString('en-US', { month: 'short' })
-          : new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        sales: parseFloat(d.revenue || 0),
-        orders: parseInt(d.transactions || 0),
-        date: d.date
+      const dailyBreakdown = d.chart || [];
+      const salesData = dailyBreakdown.map((row: any) => ({
+        name: chartPeriod === 'year'
+          ? new Date(row.date).toLocaleDateString('en-US', { month: 'short' })
+          : new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        sales: parseFloat(row.revenue || 0),
+        orders: parseInt(row.orders || row.transactions || 0),
+        date: row.date
       }));
 
       setChartData(salesData);

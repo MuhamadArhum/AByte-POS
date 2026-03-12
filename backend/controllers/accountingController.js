@@ -270,17 +270,28 @@ exports.postJournalEntry = async (req, res) => {
     // Get all lines
     const lines = await conn.query('SELECT * FROM journal_entry_lines WHERE entry_id = ?', [id]);
 
-    // Update account balances
-    for (const line of lines) {
-      const [account] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [line.account_id]);
-      const debitIncrease = ['asset', 'expense'].includes(account.account_type);
+    // Update account balances in a single batch query (avoids N+1)
+    const accountIds = [...new Set(lines.map(l => l.account_id))];
+    const accountRows = await conn.query(
+      `SELECT account_id, account_type FROM accounts WHERE account_id IN (${accountIds.map(() => '?').join(',')})`,
+      accountIds
+    );
+    const accountTypeMap = {};
+    for (const acc of accountRows) accountTypeMap[acc.account_id] = acc.account_type;
 
+    const caseWhenParts = lines.map(() => 'WHEN ? THEN current_balance + ?').join(' ');
+    const caseParams = [];
+    for (const line of lines) {
+      const debitIncrease = ['asset', 'expense'].includes(accountTypeMap[line.account_id]);
       const change = debitIncrease
         ? (Number(line.debit) - Number(line.credit))
         : (Number(line.credit) - Number(line.debit));
-
-      await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [change, line.account_id]);
+      caseParams.push(line.account_id, change);
     }
+    await conn.query(
+      `UPDATE accounts SET current_balance = CASE account_id ${caseWhenParts} END WHERE account_id IN (${accountIds.map(() => '?').join(',')})`,
+      [...caseParams, ...accountIds]
+    );
 
     // Mark entry as posted
     await conn.query('UPDATE journal_entries SET status = ?, posted_at = CURRENT_TIMESTAMP WHERE entry_id = ?', ['posted', id]);

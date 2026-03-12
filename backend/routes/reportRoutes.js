@@ -23,6 +23,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 router.use(authenticate);
 router.use(authorize('Admin', 'Manager'));
 
+router.get('/dashboard', reportController.dashboardSummary);  // Combined dashboard stats (1 query)
 router.get('/daily', reportController.dailyReport);           // Today's sales summary
 router.get('/date-range', reportController.dateRangeReport);  // Date range sales report
 router.get('/product', reportController.productReport);       // Product performance report

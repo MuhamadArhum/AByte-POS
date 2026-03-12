@@ -155,12 +155,56 @@ exports.remove = async (req, res) => {
 };
 
 // --- Get All Roles ---
-// Returns the list of available roles (Admin, Manager, Cashier).
-// Used in the user creation form to populate the role dropdown.
 exports.getRoles = async (req, res) => {
   try {
-    const rows = await query('SELECT * FROM roles');
+    const rows = await query('SELECT * FROM roles ORDER BY role_id');
     res.json({ data: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Create Role ---
+exports.createRole = async (req, res) => {
+  try {
+    const { role_name } = req.body;
+    if (!role_name || !role_name.trim()) {
+      return res.status(400).json({ message: 'Role name is required' });
+    }
+    const name = role_name.trim();
+    const existing = await query('SELECT role_id FROM roles WHERE role_name = ?', [name]);
+    if (existing.length > 0) {
+      return res.status(400).json({ message: 'Role already exists' });
+    }
+    const result = await query('INSERT INTO roles (role_name) VALUES (?)', [name]);
+    await logAction(req.user.user_id, req.user.name, 'ROLE_CREATED', 'roles', result.insertId, { role_name: name }, req.ip);
+    res.status(201).json({ message: 'Role created', role_id: result.insertId, role_name: name });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Delete Role ---
+exports.deleteRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [role] = await query('SELECT * FROM roles WHERE role_id = ?', [id]);
+    if (!role) return res.status(404).json({ message: 'Role not found' });
+
+    const PROTECTED = ['Admin', 'Manager', 'Cashier'];
+    if (PROTECTED.includes(role.role_name)) {
+      return res.status(400).json({ message: `Cannot delete built-in role "${role.role_name}"` });
+    }
+    const usersWithRole = await query('SELECT user_id FROM users WHERE role_id = ? LIMIT 1', [id]);
+    if (usersWithRole.length > 0) {
+      return res.status(400).json({ message: 'Cannot delete role that is assigned to users' });
+    }
+    await query('DELETE FROM role_permissions WHERE role_name = ?', [role.role_name]);
+    await query('DELETE FROM roles WHERE role_id = ?', [id]);
+    await logAction(req.user.user_id, req.user.name, 'ROLE_DELETED', 'roles', parseInt(id), { role_name: role.role_name }, req.ip);
+    res.json({ message: 'Role deleted' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

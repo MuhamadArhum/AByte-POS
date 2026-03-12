@@ -27,6 +27,9 @@ import StockAdjustments from './pages/inventory/StockAdjustments';
 import StockAlerts from './pages/inventory/StockAlerts';
 import Suppliers from './pages/inventory/Suppliers';
 import InventoryReports from './pages/inventory/InventoryReports';
+import Bundles from './pages/inventory/Bundles';
+import ProductVariants from './pages/inventory/ProductVariants';
+import StockCount from './pages/inventory/StockCount';
 
 // HR Module
 import Customers from './pages/hr/Customers';
@@ -134,6 +137,9 @@ function App() {
                       <Route path="/stock-alerts" element={<PermissionGuard moduleKey="inventory.alerts"><StockAlerts /></PermissionGuard>} />
                       <Route path="/suppliers" element={<PermissionGuard moduleKey="inventory.suppliers"><Suppliers /></PermissionGuard>} />
                       <Route path="/inventory-reports" element={<PermissionGuard moduleKey="inventory.reports"><InventoryReports /></PermissionGuard>} />
+                      <Route path="/bundles" element={<PermissionGuard moduleKey="inventory.bundles"><Bundles /></PermissionGuard>} />
+                      <Route path="/product-variants" element={<PermissionGuard moduleKey="inventory.variants"><ProductVariants /></PermissionGuard>} />
+                      <Route path="/stock-count" element={<PermissionGuard moduleKey="inventory.stockcount"><StockCount /></PermissionGuard>} />
 
                       {/* HR */}
                       <Route path="/staff" element={<PermissionGuard moduleKey="hr.staff"><Staff /></PermissionGuard>} />

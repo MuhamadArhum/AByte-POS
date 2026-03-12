@@ -19,6 +19,7 @@ import {
   RotateCcw,
   ScrollText,
   Database,
+  UserCog,
   DollarSign,
   Store,
   TrendingUp,
@@ -36,7 +37,9 @@ import {
   Percent,
   Target,
   FileCheck,
-  Tag
+  Tag,
+  Layers,
+  ClipboardCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -132,6 +135,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: Bell, label: 'Stock Alerts', path: '/stock-alerts', moduleKey: 'inventory.alerts' },
         { icon: Users, label: 'Suppliers', path: '/suppliers', moduleKey: 'inventory.suppliers' },
         { icon: BarChart3, label: 'Inventory Reports', path: '/inventory-reports', moduleKey: 'inventory.reports' },
+        { icon: Tag, label: 'Bundles & Kits', path: '/bundles', moduleKey: 'inventory.bundles' },
+        { icon: Layers, label: 'Product Variants', path: '/product-variants', moduleKey: 'inventory.variants' },
+        { icon: ClipboardCheck, label: 'Stock Count', path: '/stock-count', moduleKey: 'inventory.stockcount' },
       ]
     },
     {
@@ -546,7 +552,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto flex flex-col">
           {children}
         </main>
       </div>

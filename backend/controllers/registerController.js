@@ -175,6 +175,44 @@ exports.addCashMovement = async (req, res) => {
   }
 };
 
+// Force-close any stuck open register (Admin/Manager only)
+exports.forceReset = async (req, res) => {
+  let conn;
+  try {
+    conn = await getConnection();
+    await conn.beginTransaction();
+
+    const open = await conn.query("SELECT * FROM cash_registers WHERE status = 'open'");
+
+    if (open.length === 0) {
+      await conn.rollback();
+      return res.json({ message: 'No open registers found. Nothing to reset.', reset_count: 0 });
+    }
+
+    await conn.query(
+      `UPDATE cash_registers
+       SET status = 'closed', closed_by = ?, closing_balance = opening_balance,
+           expected_balance = opening_balance, difference = 0,
+           closed_at = NOW(), close_note = 'Force-reset by admin'
+       WHERE status = 'open'`,
+      [req.user.user_id]
+    );
+
+    await conn.commit();
+
+    await logAction(req.user.user_id, req.user.name, 'REGISTER_FORCE_RESET', 'cash_register', null,
+      { reset_count: open.length, register_ids: open.map(r => r.register_id) }, req.ip);
+
+    res.json({ message: `${open.length} stuck register(s) force-closed successfully.`, reset_count: open.length });
+  } catch (error) {
+    if (conn) await conn.rollback();
+    console.error('Force reset error:', error);
+    res.status(500).json({ message: 'Failed to force-reset register' });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
 exports.getHistory = async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;

@@ -453,6 +453,84 @@ exports.completeSale = async (req, res) => {
   }
 };
 
+// --- Update Items of a Pending Sale (Edit mode) ---
+exports.updateSaleItems = async (req, res) => {
+  let conn;
+  try {
+    const { id } = req.params;
+    const { items, total_amount, tax_percent, additional_charges_percent, customer_id } = req.body;
+
+    if (!items || items.length === 0) {
+      return res.status(400).json({ message: 'At least one item is required' });
+    }
+
+    conn = await getConnection();
+    await conn.beginTransaction();
+
+    // Must be a pending sale
+    const sale = await conn.query('SELECT * FROM sales WHERE sale_id = ? AND status = "pending"', [id]);
+    if (sale.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Pending sale not found' });
+    }
+
+    // 1. Restore old stock from existing items
+    const oldItems = await conn.query('SELECT product_id, variant_id, quantity FROM sale_details WHERE sale_id = ?', [id]);
+    for (const item of oldItems) {
+      if (item.variant_id) {
+        await conn.query('UPDATE variant_inventory SET available_stock = available_stock + ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
+        await conn.query('UPDATE product_variants SET stock_quantity = stock_quantity + ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
+      } else {
+        await conn.query('UPDATE inventory SET available_stock = available_stock + ? WHERE product_id = ?', [item.quantity, item.product_id]);
+        await conn.query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?', [item.quantity, item.product_id]);
+      }
+    }
+
+    // 2. Delete old sale_details
+    await conn.query('DELETE FROM sale_details WHERE sale_id = ?', [id]);
+
+    // 3. Insert new items and deduct stock
+    for (const item of items) {
+      const unitPrice = round2(parseFloat(item.unit_price));
+      const totalPrice = round2(unitPrice * item.quantity);
+      await conn.query(
+        'INSERT INTO sale_details (sale_id, product_id, variant_id, variant_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [id, item.product_id, item.variant_id || null, item.variant_name || null, item.quantity, unitPrice, totalPrice]
+      );
+      if (item.variant_id) {
+        await conn.query('UPDATE variant_inventory SET available_stock = available_stock - ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
+        await conn.query('UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
+      } else {
+        await conn.query('UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?', [item.quantity, item.product_id]);
+        await conn.query('UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?', [item.quantity, item.product_id]);
+      }
+    }
+
+    // 4. Update sale header
+    const updates = ['total_amount = ?'];
+    const values = [round2(parseFloat(total_amount))];
+    if (tax_percent !== undefined) { updates.push('tax_percent = ?'); values.push(tax_percent); }
+    if (additional_charges_percent !== undefined) { updates.push('additional_charges_percent = ?'); values.push(additional_charges_percent); }
+    if (customer_id !== undefined) { updates.push('customer_id = ?'); values.push(customer_id); }
+    values.push(id);
+
+    await conn.query(`UPDATE sales SET ${updates.join(', ')} WHERE sale_id = ?`, values);
+
+    await conn.commit();
+
+    await logAction(req.user.user_id, req.user.name, 'SALE_UPDATED', 'sale', id, { item_count: items.length, total_amount }, req.ip);
+
+    const updated = await query('SELECT * FROM sales WHERE sale_id = ?', [id]);
+    res.json({ message: 'Sale updated successfully', sale: updated[0] });
+  } catch (error) {
+    if (conn) await conn.rollback();
+    console.error('Update sale items error:', error);
+    res.status(500).json({ message: 'Failed to update sale' });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
 // --- Delete/Void Sale ---
 exports.deleteSale = async (req, res) => {
   let conn;
@@ -510,9 +588,9 @@ exports.getToday = async (req, res) => {
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
-      WHERE DATE(s.sale_date) = ? AND (s.status = 'completed' OR s.status = 'refunded')
+      WHERE s.sale_date >= ? AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY) AND (s.status = 'completed' OR s.status = 'refunded')
       ORDER BY s.sale_date DESC
-    `, [today]);
+    `, [today, today]);
     res.json(sales);
   } catch (error) {
     console.error('Get today sales error:', error);
@@ -544,8 +622,8 @@ exports.getAll = async (req, res) => {
       }
     }
 
-    if (date_from) { sql += ' AND DATE(s.sale_date) >= ?'; params.push(date_from); }
-    if (date_to)   { sql += ' AND DATE(s.sale_date) <= ?'; params.push(date_to); }
+    if (date_from) { sql += ' AND s.sale_date >= ?'; params.push(date_from); }
+    if (date_to)   { sql += ' AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY)'; params.push(date_to); }
 
     if (search) {
       sql += ' AND (s.sale_id LIKE ? OR c.customer_name LIKE ? OR s.invoice_no LIKE ? OR s.token_no LIKE ?)';
@@ -575,8 +653,8 @@ exports.getAll = async (req, res) => {
         }
       }
 
-      if (date_from) { countSql += ' AND DATE(s.sale_date) >= ?'; countParams.push(date_from); }
-      if (date_to)   { countSql += ' AND DATE(s.sale_date) <= ?'; countParams.push(date_to); }
+      if (date_from) { countSql += ' AND s.sale_date >= ?'; countParams.push(date_from); }
+      if (date_to)   { countSql += ' AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY)'; countParams.push(date_to); }
 
       if (search) {
         countSql += ' AND (s.sale_id LIKE ? OR c.customer_name LIKE ? OR s.invoice_no LIKE ? OR s.token_no LIKE ?)';

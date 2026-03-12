@@ -376,10 +376,22 @@ const Orders = () => {
     }
   };
 
-  const handlePayPending = (sale: any) => {
+  const handleDeletePending = async (sale: any) => {
+    if (!confirm(`Delete Order #${sale.sale_id}${sale.token_no ? ` (Token ${sale.token_no})` : ''}? Stock will be restored.`)) return;
+    try {
+      await api.delete(`/sales/${sale.sale_id}`);
+      fetchPending();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete order');
+    }
+  };
+
+  // Paid: load items into cart in POS AND pre-open checkout modal
+  const handlePaidPending = (sale: any) => {
     navigate('/pos', { state: { pendingSale: sale } });
   };
 
+  // Edit: load items into cart in POS for modification (no checkout auto-open)
   const handleEditPending = (sale: any) => {
     navigate('/pos', { state: { editOrder: sale } });
   };
@@ -550,29 +562,43 @@ const Orders = () => {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 mt-4">
-                      {/* Edit button */}
+                    <div className="space-y-2 mt-4">
+                      {/* Top row: icon buttons */}
+                      <div className="flex gap-2">
+                        {/* Edit */}
+                        <button
+                          onClick={() => handleEditPending(sale)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all border border-blue-200 font-medium text-sm"
+                          title="Edit items in cart"
+                        >
+                          <Edit2 size={15} />
+                          Edit
+                        </button>
+                        {/* Print */}
+                        <button
+                          onClick={() => setPreviewSaleId(sale.sale_id)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-all border border-gray-200 font-medium text-sm"
+                          title="Preview & Print"
+                        >
+                          <Printer size={15} />
+                          Print
+                        </button>
+                        {/* Delete */}
+                        <button
+                          onClick={() => handleDeletePending(sale)}
+                          className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-all border border-red-200"
+                          title="Delete order"
+                        >
+                          <X size={15} />
+                        </button>
+                      </div>
+                      {/* Paid button — full width */}
                       <button
-                        onClick={() => handleEditPending(sale)}
-                        className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 hover:scale-110 transition-all duration-200 border border-emerald-200"
-                        title="Edit Order"
+                        onClick={() => handlePaidPending(sale)}
+                        className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 text-white py-2.5 rounded-lg font-bold hover:from-emerald-700 hover:to-emerald-800 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                       >
-                        <Edit2 size={18} />
-                      </button>
-                      {/* Bill Preview / Print button */}
-                      <button
-                        onClick={() => setPreviewSaleId(sale.sale_id)}
-                        className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 hover:scale-110 transition-all duration-200 border border-emerald-200"
-                        title="Preview & Print"
-                      >
-                        <Printer size={18} />
-                      </button>
-                      <button
-                        onClick={() => handlePayPending(sale)}
-                        className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white py-2.5 rounded-lg font-semibold hover:from-emerald-700 hover:to-emerald-800 transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-                      >
-                        <CreditCard size={18} />
-                        Pay & Complete
+                        <CreditCard size={17} />
+                        Paid
                       </button>
                     </div>
                   </div>

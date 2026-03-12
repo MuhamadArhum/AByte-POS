@@ -75,11 +75,19 @@ const Settings = () => {
   const [showViewCompletedPw, setShowViewCompletedPw] = useState(false);
   const [showRefundPw, setShowRefundPw] = useState(false);
 
+  // Roles
+  interface Role { role_id: number; role_name: string; }
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [roleError, setRoleError] = useState('');
+  const [roleSaving, setRoleSaving] = useState(false);
+
   // Users
   const [users, setUsers] = useState<User[]>([]);
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [userForm, setUserForm] = useState({ username: '', name: '', email: '', password: '', role_id: 3 });
+  const [userForm, setUserForm] = useState({ username: '', name: '', email: '', password: '', role_id: 0 });
   const [showUserPassword, setShowUserPassword] = useState(false);
 
   // Password
@@ -117,6 +125,7 @@ const Settings = () => {
     fetchSettings();
     if (currentUser?.role_name === 'Admin') {
       fetchUsers();
+      fetchRoles();
       fetchPrinters();
     }
   }, [currentUser]);
@@ -147,6 +156,15 @@ const Settings = () => {
       setUsers(res.data.data || []);
     } catch (err) {
       console.error('Failed to load users', err);
+    }
+  };
+
+  const fetchRoles = async () => {
+    try {
+      const res = await api.get('/users/roles');
+      setRoles(res.data.data || []);
+    } catch (err) {
+      console.error('Failed to load roles', err);
     }
   };
 
@@ -252,7 +270,8 @@ const Settings = () => {
       }
       setShowUserModal(false);
       setEditingUser(null);
-      setUserForm({ username: '', name: '', email: '', password: '', role_id: 3 });
+      const defaultRoleId = roles.find(r => r.role_name === 'Cashier')?.role_id || roles.find(r => r.role_name !== 'Admin')?.role_id || 0;
+      setUserForm({ username: '', name: '', email: '', password: '', role_id: defaultRoleId });
       setShowUserPassword(false);
       fetchUsers();
     } catch (err: any) {
@@ -270,6 +289,34 @@ const Settings = () => {
       fetchUsers();
     } catch (err) {
       toast.error('Failed to delete user');
+    }
+  };
+
+  const handleCreateRole = async () => {
+    setRoleError('');
+    if (!newRoleName.trim()) return setRoleError('Role name is required');
+    setRoleSaving(true);
+    try {
+      await api.post('/users/roles', { role_name: newRoleName.trim() });
+      toast.success(`Role "${newRoleName.trim()}" created`);
+      setShowRoleModal(false);
+      setNewRoleName('');
+      fetchRoles();
+    } catch (err: any) {
+      setRoleError(err.response?.data?.message || 'Failed to create role');
+    } finally {
+      setRoleSaving(false);
+    }
+  };
+
+  const handleDeleteRole = async (roleId: number, roleName: string) => {
+    if (!confirm(`Delete role "${roleName}"? This cannot be undone.`)) return;
+    try {
+      await api.delete(`/users/roles/${roleId}`);
+      toast.success(`Role "${roleName}" deleted`);
+      fetchRoles();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to delete role');
     }
   };
 
@@ -299,12 +346,13 @@ const Settings = () => {
   };
 
   const openUserModal = (user?: User) => {
+    const defaultRoleId = roles.find(r => r.role_name === 'Cashier')?.role_id || roles.find(r => r.role_name !== 'Admin')?.role_id || 0;
     if (user) {
       setEditingUser(user);
       setUserForm({ username: user.username, name: user.name, email: user.email, password: '', role_id: user.role_id });
     } else {
       setEditingUser(null);
-      setUserForm({ username: '', name: '', email: '', password: '', role_id: 3 });
+      setUserForm({ username: '', name: '', email: '', password: '', role_id: defaultRoleId });
     }
     setShowUserModal(true);
   };
@@ -316,11 +364,9 @@ const Settings = () => {
   };
 
   // ===== ACCESS CONTROL STATE =====
-  type RoleKey = 'Manager' | 'Cashier';
-  type RolePerms = { Manager: Set<string>; Cashier: Set<string> };
-  const [perms, setPerms] = useState<RolePerms>({ Manager: new Set(), Cashier: new Set() });
+  const [perms, setPerms] = useState<Record<string, Set<string>>>({});
   const [permLoading, setPermLoading] = useState(false);
-  const [permSaving, setPermSaving] = useState<{ Manager: boolean; Cashier: boolean }>({ Manager: false, Cashier: false });
+  const [permSaving, setPermSaving] = useState<Record<string, boolean>>({});
 
   if (loading) {
     return (
@@ -414,11 +460,12 @@ const Settings = () => {
     setPermLoading(true);
     try {
       const res = await api.get('/permissions');
-      const data = res.data as { Manager: string[]; Cashier: string[] };
-      setPerms({
-        Manager: new Set(data.Manager),
-        Cashier: new Set(data.Cashier),
-      });
+      const data = res.data as Record<string, string[]>;
+      const mapped: Record<string, Set<string>> = {};
+      for (const [role, keys] of Object.entries(data)) {
+        mapped[role] = new Set(keys);
+      }
+      setPerms(mapped);
     } catch (err) {
       console.error('Failed to load permissions', err);
       toast.error('Failed to load permissions');
@@ -427,10 +474,10 @@ const Settings = () => {
     }
   };
 
-  const savePermissions = async (role: RoleKey) => {
+  const savePermissions = async (role: string) => {
     setPermSaving(prev => ({ ...prev, [role]: true }));
     try {
-      await api.put(`/permissions/${role}`, { permissions: Array.from(perms[role]) });
+      await api.put(`/permissions/${role}`, { permissions: Array.from(perms[role] || []) });
       toast.success(`${role} permissions saved`);
     } catch (err) {
       console.error('Failed to save permissions', err);
@@ -440,9 +487,9 @@ const Settings = () => {
     }
   };
 
-  const togglePerm = (role: RoleKey, key: string, isParent: boolean, childKeys: string[]) => {
+  const togglePerm = (role: string, key: string, isParent: boolean, childKeys: string[]) => {
     setPerms(prev => {
-      const next = new Set(prev[role]);
+      const next = new Set(prev[role] || []);
       if (isParent) {
         if (next.has(key)) {
           // Parent OFF → remove parent + all children
@@ -938,21 +985,44 @@ const Settings = () => {
               </div>
 
               {/* Stats Cards */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                {['Admin', 'Manager', 'Cashier'].map(role => {
-                  const count = users.filter(u => u.role === role).length;
-                  const colors: Record<string, string> = {
-                    Admin: 'bg-emerald-100 text-emerald-700',
-                    Manager: 'bg-emerald-100 text-emerald-700',
-                    Cashier: 'bg-gray-100 text-gray-700'
-                  };
+              <div className="flex flex-wrap gap-3 mb-6">
+                {roles.map((r, i) => {
+                  const count = users.filter(u => u.role === r.role_name).length;
+                  const palette = ['bg-red-100 text-red-700','bg-blue-100 text-blue-700','bg-emerald-100 text-emerald-700','bg-purple-100 text-purple-700','bg-amber-100 text-amber-700'];
                   return (
-                    <div key={role} className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${colors[role]}`}>{role}</span>
+                    <div key={r.role_id} className="flex-1 min-w-28 p-4 bg-gray-50 rounded-xl border border-gray-200 text-center">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${palette[i % palette.length]}`}>{r.role_name}</span>
                       <p className="text-2xl font-bold text-gray-800 mt-2">{count}</p>
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Manage Roles */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Shield size={14} /> Roles</h3>
+                  <button onClick={() => { setNewRoleName(''); setRoleError(''); setShowRoleModal(true); }}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 transition">
+                    <Plus size={13} /> New Role
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {roles.map(r => {
+                    const BUILT_IN = ['Admin', 'Manager', 'Cashier'];
+                    return (
+                      <span key={r.role_id} className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-gray-200 rounded-full text-sm text-gray-700">
+                        {r.role_name}
+                        {!BUILT_IN.includes(r.role_name) && (
+                          <button onClick={() => handleDeleteRole(r.role_id, r.role_name)}
+                            className="text-red-400 hover:text-red-600 transition ml-0.5" title="Delete role">
+                            <X size={12} />
+                          </button>
+                        )}
+                      </span>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="overflow-x-auto rounded-lg border border-gray-200">
@@ -1311,7 +1381,7 @@ const Settings = () => {
               <div>
                 <h2 className="text-base font-semibold text-gray-800 mb-1">Access Control</h2>
                 <p className="text-sm text-gray-500 mb-6">
-                  Configure which modules Manager and Cashier roles can access. Admin always has full access.
+                  Configure module access for each role. Admin always has full access.
                 </p>
               </div>
 
@@ -1320,97 +1390,96 @@ const Settings = () => {
                   <Loader2 className="animate-spin text-emerald-600 mr-3" size={24} />
                   <span className="text-gray-600">Loading permissions...</span>
                 </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border border-gray-200 rounded-xl overflow-hidden">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="text-left px-6 py-4 text-sm font-semibold text-gray-700 w-1/2">Module</th>
-                        <th className="text-center px-6 py-4 text-sm font-semibold text-gray-700">Manager</th>
-                        <th className="text-center px-6 py-4 text-sm font-semibold text-gray-700">Cashier</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {MODULE_TREE.map(parent => {
-                        const childKeys = parent.children.map(c => c.key);
-                        return (
-                          <React.Fragment key={parent.key}>
-                            {/* Parent row */}
-                            <tr className="bg-gray-50/70">
-                              <td className="px-6 py-3">
-                                <span className="text-sm font-bold text-gray-800 uppercase tracking-wide">{parent.label}</span>
-                              </td>
-                              {(['Manager', 'Cashier'] as RoleKey[]).map(role => (
-                                <td key={role} className="px-6 py-3 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => togglePerm(role, parent.key, true, childKeys)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${
-                                      perms[role].has(parent.key) ? 'bg-emerald-500' : 'bg-gray-300'
-                                    }`}
-                                  >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                                      perms[role].has(parent.key) ? 'translate-x-6' : 'translate-x-1'
-                                    }`} />
-                                  </button>
+              ) : (() => {
+                const nonAdminRoles = roles.filter(r => r.role_name !== 'Admin');
+                return (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border border-gray-200 rounded-xl overflow-hidden">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="text-left px-6 py-4 text-sm font-semibold text-gray-700 w-1/2">Module</th>
+                          {nonAdminRoles.map(r => (
+                            <th key={r.role_id} className="text-center px-4 py-4 text-sm font-semibold text-gray-700 whitespace-nowrap">{r.role_name}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {MODULE_TREE.map(parent => {
+                          const childKeys = parent.children.map(c => c.key);
+                          return (
+                            <React.Fragment key={parent.key}>
+                              <tr className="bg-gray-50/70">
+                                <td className="px-6 py-3">
+                                  <span className="text-sm font-bold text-gray-800 uppercase tracking-wide">{parent.label}</span>
                                 </td>
-                              ))}
-                            </tr>
-                            {/* Child rows */}
-                            {parent.children.map(child => (
-                              <tr key={child.key} className="hover:bg-gray-50/50">
-                                <td className="pl-12 pr-6 py-2.5">
-                                  <span className="text-sm text-gray-600">{child.label}</span>
-                                </td>
-                                {(['Manager', 'Cashier'] as RoleKey[]).map(role => {
-                                  const parentEnabled = perms[role].has(parent.key);
-                                  const childEnabled = perms[role].has(child.key);
-                                  return (
-                                    <td key={role} className="px-6 py-2.5 text-center">
-                                      <button
-                                        type="button"
-                                        onClick={() => parentEnabled ? togglePerm(role, child.key, false, childKeys) : undefined}
-                                        disabled={!parentEnabled}
-                                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 focus:outline-none ${
-                                          !parentEnabled
-                                            ? 'bg-gray-200 opacity-50 cursor-not-allowed'
-                                            : childEnabled
-                                              ? 'bg-emerald-500'
-                                              : 'bg-gray-300'
-                                        }`}
-                                      >
-                                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                                          childEnabled && parentEnabled ? 'translate-x-4' : 'translate-x-1'
-                                        }`} />
-                                      </button>
-                                    </td>
-                                  );
-                                })}
+                                {nonAdminRoles.map(r => (
+                                  <td key={r.role_id} className="px-4 py-3 text-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => togglePerm(r.role_name, parent.key, true, childKeys)}
+                                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${
+                                        (perms[r.role_name] || new Set()).has(parent.key) ? 'bg-emerald-500' : 'bg-gray-300'
+                                      }`}
+                                    >
+                                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                                        (perms[r.role_name] || new Set()).has(parent.key) ? 'translate-x-6' : 'translate-x-1'
+                                      }`} />
+                                    </button>
+                                  </td>
+                                ))}
                               </tr>
-                            ))}
-                          </React.Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              {parent.children.map(child => (
+                                <tr key={child.key} className="hover:bg-gray-50/50">
+                                  <td className="pl-12 pr-6 py-2.5">
+                                    <span className="text-sm text-gray-600">{child.label}</span>
+                                  </td>
+                                  {nonAdminRoles.map(r => {
+                                    const rolePerms = perms[r.role_name] || new Set();
+                                    const parentEnabled = rolePerms.has(parent.key);
+                                    const childEnabled = rolePerms.has(child.key);
+                                    return (
+                                      <td key={r.role_id} className="px-4 py-2.5 text-center">
+                                        <button
+                                          type="button"
+                                          onClick={() => parentEnabled ? togglePerm(r.role_name, child.key, false, childKeys) : undefined}
+                                          disabled={!parentEnabled}
+                                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 focus:outline-none ${
+                                            !parentEnabled ? 'bg-gray-200 opacity-50 cursor-not-allowed'
+                                              : childEnabled ? 'bg-emerald-500' : 'bg-gray-300'
+                                          }`}
+                                        >
+                                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                                            childEnabled && parentEnabled ? 'translate-x-4' : 'translate-x-1'
+                                          }`} />
+                                        </button>
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </React.Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </table>
 
-                  {/* Save buttons */}
-                  <div className="flex items-center justify-end gap-4 mt-6 pt-6 border-t border-gray-200">
-                    {(['Manager', 'Cashier'] as RoleKey[]).map(role => (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => savePermissions(role)}
-                        disabled={permSaving[role]}
-                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 font-semibold shadow-lg transition-all"
-                      >
-                        {permSaving[role] ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-                        Save {role} Permissions
-                      </button>
-                    ))}
+                    <div className="flex flex-wrap items-center justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
+                      {nonAdminRoles.map(r => (
+                        <button
+                          key={r.role_id}
+                          type="button"
+                          onClick={() => savePermissions(r.role_name)}
+                          disabled={!!permSaving[r.role_name]}
+                          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 font-semibold shadow transition-all"
+                        >
+                          {permSaving[r.role_name] ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                          Save {r.role_name}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
 
@@ -1477,9 +1546,9 @@ const Settings = () => {
                 <select value={userForm.role_id}
                   onChange={e => setUserForm({ ...userForm, role_id: parseInt(e.target.value) })}
                   className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
-                  <option value={3}>Cashier</option>
-                  <option value={2}>Manager</option>
-                  <option value={1}>Admin</option>
+                  {roles.map(r => (
+                    <option key={r.role_id} value={r.role_id}>{r.role_name}</option>
+                  ))}
                 </select>
               </div>
               <div className="flex gap-3 pt-4">
@@ -1493,6 +1562,44 @@ const Settings = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* New Role Modal */}
+      {showRoleModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2"><Shield size={16} /> Create New Role</h3>
+              <button onClick={() => setShowRoleModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              {roleError && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{roleError}</div>}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Role Name <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={newRoleName}
+                  onChange={e => setNewRoleName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCreateRole()}
+                  placeholder="e.g. Supervisor, Accountant"
+                  autoFocus
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                />
+                <p className="text-xs text-gray-400 mt-1">Built-in roles (Admin, Manager, Cashier) cannot be deleted.</p>
+              </div>
+            </div>
+            <div className="flex gap-3 p-5 border-t border-gray-100">
+              <button onClick={() => setShowRoleModal(false)}
+                className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold transition">
+                Cancel
+              </button>
+              <button onClick={handleCreateRole} disabled={roleSaving}
+                className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-semibold transition disabled:opacity-50">
+                {roleSaving ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Create Role'}
+              </button>
+            </div>
           </div>
         </div>
       )}
