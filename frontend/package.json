@@ -15,6 +15,7 @@
     "framer-motion": "^12.31.0",
     "jsbarcode": "^3.12.3",
     "lucide-react": "^0.475.0",
+    "qz-tray": "^2.2.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.1.5",

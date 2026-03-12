@@ -769,44 +769,93 @@ export function isThermalPrinterAvailable(settings: any): boolean {
   return settings?.printer_type === 'network' || settings?.printer_type === 'usb';
 }
 
-// Send receipt to backend thermal printer endpoint
+// Send receipt to thermal printer.
+// Strategy:
+//   - localhost  → backend API (direct TCP from local server to printer)
+//   - deployed   → QZ Tray (local agent on cashier PC) → network printer
+//   - fallback   → browser window.print() dialog
 export async function printToThermalPrinter(
   sale: ReceiptSale,
   settings: ReceiptSettings | null,
   cashierName: string,
   customerName?: string
 ): Promise<boolean> {
+  const isLocalhost = window.location.hostname === 'localhost' ||
+                      window.location.hostname === '127.0.0.1';
+
+  const totalAmount = parseNumber(sale.total_amount);
+  const discount    = parseNumber(sale.discount);
+  const taxAmount   = parseNumber(sale.tax_amount);
+  const taxPercent  = parseNumber(sale.tax_percent);
+  const chargesAmount = parseNumber(sale.additional_charges_amount);
+  const amountPaid  = parseNumber(sale.amount_paid);
+
   const receiptData = {
-    storeName: settings?.store_name || 'AByte POS',
-    storeAddress: settings?.address || '',
-    storePhone: settings?.phone || '',
-    storeEmail: settings?.email || '',
-    saleId: sale.sale_id,
-    date: sale.sale_date ? new Date(sale.sale_date).toLocaleString() : new Date().toLocaleString(),
-    cashierName: cashierName,
-    customerName: customerName || '',
+    storeName:      settings?.store_name || 'AByte POS',
+    storeAddress:   settings?.address || '',
+    storePhone:     settings?.phone || '',
+    storeEmail:     settings?.email || '',
+    saleId:         sale.sale_id,
+    invoiceNo:      sale.invoice_no,
+    tokenNo:        sale.token_no,
+    date:           sale.sale_date ? new Date(sale.sale_date).toLocaleString() : new Date().toLocaleString(),
+    cashierName,
+    customerName:   customerName || '',
     currencySymbol: settings?.currency_symbol || 'Rs.',
     items: (sale.items || []).map(item => ({
-      name: item.product_name,
+      name:     item.product_name,
       quantity: item.quantity,
-      price: parseNumber(item.unit_price),
+      price:    parseNumber(item.unit_price),
     })),
-    discount: parseNumber(sale.discount),
-    taxAmount: parseNumber(sale.tax_amount),
-    totalAmount: parseNumber(sale.total_amount),
-    amountPaid: parseNumber(sale.amount_paid),
-    changeDue: Math.max(0, parseNumber(sale.amount_paid) - parseNumber(sale.total_amount)),
+    subtotal:     totalAmount - taxAmount - chargesAmount + discount,
+    discount,
+    taxAmount,
+    taxPercent,
+    chargesAmount,
+    totalAmount,
+    amountPaid,
+    changeDue:    Math.max(0, amountPaid - totalAmount),
     paymentMethod: sale.payment_method,
-    footer: settings?.receipt_footer || 'Thank you for shopping!',
+    footer:       settings?.receipt_footer || 'Thank you for shopping!',
   };
 
-  try {
-    await api.post('/settings/print-receipt', { receiptData });
-    return true;
-  } catch (err: any) {
-    console.error('Thermal print error:', err);
-    // Fallback to browser print
-    printReceipt(sale, settings, cashierName, customerName);
-    return false;
+  // ── 1. Localhost: use backend API (server on same LAN as printer) ──
+  if (isLocalhost) {
+    try {
+      await api.post('/settings/print-receipt', { receiptData });
+      return true;
+    } catch (err) {
+      console.warn('Backend print failed, falling back to browser print:', err);
+      printReceipt(sale, settings, cashierName, customerName);
+      return false;
+    }
   }
+
+  // ── 2. Deployed: try QZ Tray (local agent on cashier PC) ────────────
+  try {
+    const { isQZAvailable, printViaQZ } = await import('./qzPrinter');
+    const qzReady = await isQZAvailable();
+    if (qzReady) {
+      // Get printer IP/port from settings (stored as printer_ip / printer_port in DB)
+      const printerIp   = (settings as any)?.printer_ip;
+      const printerPort = (settings as any)?.printer_port || 9100;
+      if (printerIp) {
+        await printViaQZ(printerIp, printerPort, receiptData);
+        return true;
+      }
+      // Printer IP not configured — try named printer as fallback
+      const { printViaQZByName } = await import('./qzPrinter');
+      const printerName = (settings as any)?.printer_name;
+      if (printerName) {
+        await printViaQZByName(printerName, receiptData);
+        return true;
+      }
+    }
+  } catch (err) {
+    console.warn('QZ Tray print failed:', err);
+  }
+
+  // ── 3. Final fallback: browser print dialog ──────────────────────────
+  printReceipt(sale, settings, cashierName, customerName);
+  return false;
 }

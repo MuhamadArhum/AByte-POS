@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast';
+import { isQZAvailable } from '../../utils/qzPrinter';
 
 interface User {
   user_id: number;
@@ -120,6 +121,8 @@ const Settings = () => {
   const [printerSaving, setPrinterSaving] = useState(false);
   const [testingPrinterId, setTestingPrinterId] = useState<number | null>(null);
   const [printerTestResults, setPrinterTestResults] = useState<Record<number, { success: boolean; message: string }>>({});
+  const [qzStatus, setQzStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
+  const isDeployed = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 
   useEffect(() => {
     fetchSettings();
@@ -129,6 +132,13 @@ const Settings = () => {
       fetchPrinters();
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    if (activeTab === 'printer') {
+      setQzStatus('checking');
+      isQZAvailable().then(ok => setQzStatus(ok ? 'available' : 'unavailable'));
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (activeTab === 'system' && currentUser?.role_name === 'Admin' && !systemInfo) {
@@ -870,6 +880,57 @@ const Settings = () => {
           {/* ========== PRINTER TAB ========== */}
           {activeTab === 'printer' && currentUser?.role_name === 'Admin' && (
             <div className="space-y-6">
+
+              {/* ── QZ Tray Status Banner (deployed only) ── */}
+              {isDeployed && (
+                <div className={`rounded-xl border p-4 flex items-start gap-3 ${
+                  qzStatus === 'available'   ? 'bg-emerald-50 border-emerald-200' :
+                  qzStatus === 'unavailable' ? 'bg-amber-50 border-amber-200' :
+                                               'bg-gray-50 border-gray-200'
+                }`}>
+                  {qzStatus === 'checking' && <Loader2 size={18} className="animate-spin text-gray-400 mt-0.5 shrink-0" />}
+                  {qzStatus === 'available' && <CheckCircle size={18} className="text-emerald-600 mt-0.5 shrink-0" />}
+                  {qzStatus === 'unavailable' && <AlertTriangle size={18} className="text-amber-600 mt-0.5 shrink-0" />}
+                  <div className="flex-1">
+                    {qzStatus === 'checking' && (
+                      <p className="text-sm text-gray-600 font-medium">Checking QZ Tray status...</p>
+                    )}
+                    {qzStatus === 'available' && (
+                      <>
+                        <p className="text-sm font-semibold text-emerald-800">QZ Tray is running</p>
+                        <p className="text-xs text-emerald-700 mt-0.5">Network printer will be accessed directly from your browser. No backend needed.</p>
+                      </>
+                    )}
+                    {qzStatus === 'unavailable' && (
+                      <>
+                        <p className="text-sm font-semibold text-amber-800">QZ Tray not detected on this PC</p>
+                        <p className="text-xs text-amber-700 mt-1">
+                          Since this app is deployed on cloud, it cannot reach your local network printer directly.
+                          Install <strong>QZ Tray</strong> on each cashier PC to enable automatic thermal printing.
+                          Without it, printing will use the browser's print dialog instead.
+                        </p>
+                        <div className="flex items-center gap-3 mt-2">
+                          <a
+                            href="https://qz.io/download/"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition"
+                          >
+                            Download QZ Tray
+                          </a>
+                          <button
+                            onClick={() => { setQzStatus('checking'); isQZAvailable().then(ok => setQzStatus(ok ? 'available' : 'unavailable')); }}
+                            className="text-xs text-amber-700 underline hover:no-underline"
+                          >
+                            Re-check
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-base font-semibold text-gray-800">Printer Management</h2>
