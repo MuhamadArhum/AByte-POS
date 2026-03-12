@@ -85,7 +85,9 @@ CREATE TABLE IF NOT EXISTS customers (
     tax_id VARCHAR(50),
     loyalty_points INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE INDEX idx_customer_phone (phone_number)
+    UNIQUE INDEX idx_customer_phone (phone_number),
+    INDEX idx_customer_name (customer_name),
+    FULLTEXT INDEX idx_customer_search (customer_name)
 );
 
 INSERT IGNORE INTO customers (customer_id, customer_name, phone_number) VALUES (1, 'Walk-in Customer', NULL);
@@ -101,7 +103,10 @@ CREATE TABLE IF NOT EXISTS products (
     barcode VARCHAR(100) UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (category_id) REFERENCES categories(category_id)
+    FOREIGN KEY (category_id) REFERENCES categories(category_id),
+    INDEX idx_product_name (product_name),
+    INDEX idx_product_category (category_id),
+    FULLTEXT INDEX idx_product_search (product_name)
 );
 
 -- Suppliers
@@ -345,7 +350,9 @@ CREATE TABLE IF NOT EXISTS expenses (
     expense_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     description TEXT,
     user_id INT,
-    FOREIGN KEY (user_id) REFERENCES users(user_id)
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    INDEX idx_expense_date (expense_date),
+    INDEX idx_expense_category (category)
 );
 
 -- Audit Logs
@@ -618,7 +625,11 @@ CREATE TABLE IF NOT EXISTS sales (
     token_no VARCHAR(20) NULL,
     invoice_no VARCHAR(20) NULL,
     FOREIGN KEY (user_id) REFERENCES users(user_id),
-    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    INDEX idx_sale_date (sale_date),
+    INDEX idx_sale_status (status),
+    INDEX idx_sale_payment_method (payment_method),
+    INDEX idx_sale_date_status (sale_date, status)
 );
 
 -- Cash Registers
@@ -781,7 +792,9 @@ CREATE TABLE IF NOT EXISTS returns (
     reason TEXT,
     user_id INT,
     FOREIGN KEY (sale_id) REFERENCES sales(sale_id),
-    FOREIGN KEY (user_id) REFERENCES users(user_id)
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    INDEX idx_return_date (return_date),
+    INDEX idx_return_sale (sale_id)
 );
 
 -- ============================================================
@@ -845,7 +858,8 @@ CREATE TABLE IF NOT EXISTS sale_bundles (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sale_id) REFERENCES sales(sale_id) ON DELETE CASCADE,
     FOREIGN KEY (bundle_id) REFERENCES product_bundles(bundle_id),
-    INDEX idx_sale_bundles_sale_id (sale_id)
+    INDEX idx_sale_bundles_sale_id (sale_id),
+    INDEX idx_sale_bundles_bundle_id (bundle_id)
 );
 
 
