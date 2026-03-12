@@ -19,6 +19,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [warming, setWarming] = useState(false);
+  const [pinging, setPinging] = useState(true);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -28,6 +29,7 @@ const Login = () => {
     api.get('/ping').finally(() => {
       clearTimeout(timer);
       setWarming(false);
+      setPinging(false);
     });
     return () => clearTimeout(timer);
   }, []);
@@ -190,11 +192,11 @@ const Login = () => {
             </motion.div>
           )}
 
-          {/* Server warming indicator */}
-          {warming && (
-            <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl p-3 mb-4 text-xs flex items-center gap-2">
+          {/* Server connecting indicator */}
+          {pinging && (
+            <div className={`border rounded-xl p-3 mb-4 text-xs flex items-center gap-2 ${warming ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
               <Loader2 size={14} className="animate-spin flex-shrink-0" />
-              Connecting to server, please wait...
+              {warming ? 'Server is waking up, please wait...' : 'Connecting to server...'}
             </div>
           )}
 
@@ -252,13 +254,18 @@ const Login = () => {
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.985 }}
               type="submit"
-              disabled={loading}
+              disabled={loading || pinging}
               className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed mt-2 text-sm tracking-wide"
             >
               {loading ? (
                 <>
                   <Loader2 className="animate-spin" size={18} />
                   Signing in...
+                </>
+              ) : pinging ? (
+                <>
+                  <Loader2 className="animate-spin" size={18} />
+                  Connecting...
                 </>
               ) : (
                 'Sign In to Dashboard'
