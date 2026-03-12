@@ -142,7 +142,7 @@ const frontendDist = path.join(__dirname, '../frontend/dist');
 app.use(express.static(frontendDist));
 
 // Catch-all: any non-API route returns index.html (SPA routing)
-app.get('*', (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
