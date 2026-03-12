@@ -18,8 +18,19 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [warming, setWarming] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  // Ping the backend on mount so Render free tier wakes up before user submits
+  React.useEffect(() => {
+    const timer = setTimeout(() => setWarming(true), 3000);
+    api.get('/ping').finally(() => {
+      clearTimeout(timer);
+      setWarming(false);
+    });
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,6 +188,14 @@ const Login = () => {
               </div>
               {error}
             </motion.div>
+          )}
+
+          {/* Server warming indicator */}
+          {warming && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl p-3 mb-4 text-xs flex items-center gap-2">
+              <Loader2 size={14} className="animate-spin flex-shrink-0" />
+              Connecting to server, please wait...
+            </div>
           )}
 
           {/* Form */}

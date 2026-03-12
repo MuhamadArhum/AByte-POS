@@ -73,6 +73,9 @@ app.use((req, res, next) => {
 
 // ── API Routes ───────────────────────────────────────────────
 
+// Health check — public, no auth (used to wake up Render free tier)
+app.get('/api/ping', (_req, res) => res.json({ ok: true }));
+
 // Auth (no tenant guard needed — login resolves tenant itself)
 app.use('/api/auth',    authRoutes);
 

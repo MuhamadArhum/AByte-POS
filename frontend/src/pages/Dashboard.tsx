@@ -104,11 +104,12 @@ const Dashboard = () => {
       
       startDate = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      const [dashRes, inventoryRes, customersRes, recentOrdersRes] = await Promise.all([
+      const [dashRes, inventoryRes, customersRes, recentOrdersRes, productReportRes] = await Promise.all([
         api.get(`/reports/dashboard?chart_start=${startDate}`),
         api.get('/inventory-reports/summary'),
         api.get('/customers?page=1&limit=1'),
-        api.get('/sales?page=1&limit=5')
+        api.get('/sales?page=1&limit=5'),
+        api.get('/reports/product').catch(() => ({ data: { data: [] } }))
       ]);
 
       // Calculate stats from merged dashboard response
@@ -160,17 +161,14 @@ const Dashboard = () => {
         status: s.status
       })));
 
-      // Top Products from product report
-      try {
-        const productReportRes = await api.get('/reports/product');
-        const productSales = productReportRes.data.data || productReportRes.data || [];
-        setTopProducts(productSales.slice(0, 5).map((p: any) => ({
-          product_id: p.product_id || 0,
-          product_name: p.product_name,
-          quantity_sold: p.total_quantity || 0,
-          revenue: p.total_revenue || 0
-        })));
-      } catch { setTopProducts([]); }
+      // Top Products
+      const productSales = productReportRes.data.data || productReportRes.data || [];
+      setTopProducts(productSales.slice(0, 5).map((p: any) => ({
+        product_id: p.product_id || 0,
+        product_name: p.product_name,
+        quantity_sold: p.total_quantity || 0,
+        revenue: p.total_revenue || 0
+      })));
 
     } catch (error) {
       console.error("Failed to fetch dashboard data", error);
