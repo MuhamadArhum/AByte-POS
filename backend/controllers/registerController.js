@@ -95,6 +95,16 @@ exports.closeRegister = async (req, res) => {
       return res.status(404).json({ message: 'No open register found' });
     }
 
+    // Block close if there are running (pending) orders
+    const pendingCheck = await conn.query("SELECT COUNT(*) as cnt FROM sales WHERE status = 'pending'");
+    const pendingCount = Number(pendingCheck[0].cnt);
+    if (pendingCount > 0) {
+      await conn.rollback();
+      return res.status(400).json({
+        message: `Cannot close register: ${pendingCount} pending order(s) must be completed or deleted first.`
+      });
+    }
+
     const reg = register[0];
     // Use currency rounding for expected/difference calculations
     const expected = round2(parseFloat(reg.opening_balance) + parseFloat(reg.cash_sales_total) + parseFloat(reg.total_cash_in) - parseFloat(reg.total_cash_out));

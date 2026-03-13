@@ -173,9 +173,14 @@ exports.createSale = async (req, res) => {
       return res.status(400).json({ message: `Discount cannot exceed ${maxDiscountPercent}% of subtotal for your role` });
     }
 
-    // Step 3: Generate token_no (hold) or invoice_no (completed sale)
+    // Step 3: Always generate invoice_no; also generate token_no for pending orders
     let token_no = null;
-    let invoice_no = null;
+    const invResult = await conn.query(
+      `SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_no, 5) AS UNSIGNED)), 0) + 1 as next_inv
+       FROM sales WHERE invoice_no IS NOT NULL`
+    );
+    const invoice_no = `INV-${String(invResult[0].next_inv).padStart(5, '0')}`;
+
     if (status === 'pending') {
       // Token resets per shift — count tokens since current shift opened
       const shiftRows = await conn.query(
@@ -188,12 +193,6 @@ exports.createSale = async (req, res) => {
         [shiftStart]
       );
       token_no = `#${tokenResult[0].next_token}`;
-    } else {
-      const invResult = await conn.query(
-        `SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_no, 5) AS UNSIGNED)), 0) + 1 as next_inv
-         FROM sales WHERE invoice_no IS NOT NULL`
-      );
-      invoice_no = `INV-${String(invResult[0].next_inv).padStart(5, '0')}`;
     }
 
     // Step 4: Insert the sale header record
@@ -201,12 +200,13 @@ exports.createSale = async (req, res) => {
 
     const saleResult = await conn.query(
       `INSERT INTO sales (
-        total_amount, discount, bundle_discount, bundle_count, net_amount, user_id, customer_id,
+        sub_total, total_amount, discount, bundle_discount, bundle_count, net_amount, user_id, customer_id,
         payment_method, amount_paid, status,
         tax_percent, tax_amount, additional_charges_percent, additional_charges_amount, note,
         coupon_id, coupon_discount, loyalty_points_redeemed, token_no, invoice_no
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        subtotal,
         total_amount,
         discountAmt,
         bundleDiscountAmt,
@@ -377,8 +377,21 @@ exports.getPending = async (req, res) => {
   try {
     const { page, limit } = req.query;
 
+    // Always compute summary for all pending orders
+    const summaryResult = await query(
+      "SELECT COUNT(*) as order_count, COALESCE(SUM(total_amount), 0) as total_amount FROM sales WHERE status = 'pending'"
+    );
+    const summary = {
+      order_count: Number(summaryResult[0].order_count),
+      total_amount: parseFloat(summaryResult[0].total_amount)
+    };
+
     let sql = `
-      SELECT s.*, c.customer_name, u.name as cashier_name
+      SELECT s.*,
+        CASE WHEN s.sub_total > 0 THEN s.sub_total
+             ELSE (SELECT COALESCE(SUM(sd.total_price), 0) FROM sale_details sd WHERE sd.sale_id = s.sale_id)
+        END as sub_total,
+        c.customer_name, u.name as cashier_name
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
@@ -388,9 +401,7 @@ exports.getPending = async (req, res) => {
 
     if (page && limit) {
       const pg = parsePagination(page, limit);
-
-      const countResult = await query("SELECT COUNT(*) as total FROM sales WHERE status = 'pending'");
-      const total = Number(countResult[0].total);
+      const total = summary.order_count;
 
       sql += ' ORDER BY s.sale_date DESC LIMIT ? OFFSET ?';
       params.push(pg.limit, pg.offset);
@@ -398,13 +409,14 @@ exports.getPending = async (req, res) => {
       const rows = await query(sql, params);
       return res.json({
         data: rows,
-        pagination: { total, page: pg.page, limit: pg.limit, totalPages: Math.ceil(total / pg.limit) }
+        pagination: { total, page: pg.page, limit: pg.limit, totalPages: Math.ceil(total / pg.limit) },
+        summary
       });
     }
 
     sql += ' ORDER BY s.sale_date DESC';
     const sales = await query(sql, params);
-    res.json(sales);
+    res.json({ data: sales, summary });
   } catch (error) {
     console.error('Get pending sales error:', error);
     res.status(500).json({ message: 'Failed to fetch pending sales' });
@@ -423,20 +435,15 @@ exports.completeSale = async (req, res) => {
       return res.status(404).json({ message: 'Pending sale not found' });
     }
 
-    // Generate invoice_no for this completed sale
-    const invResult = await query(
-      `SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_no, 5) AS UNSIGNED)), 0) + 1 as next_inv
-       FROM sales WHERE invoice_no IS NOT NULL`
-    );
-    const invoice_no = `INV-${String(invResult[0].next_inv).padStart(5, '0')}`;
+    // invoice_no was already assigned when the order was created — no need to regenerate
+    const invoice_no = sale[0].invoice_no;
 
-    // Update sale status to completed with invoice_no, discount, total_amount, note
+    // Update sale status to completed, payment info, discount, total_amount, note
     await query(
-      'UPDATE sales SET status = "completed", payment_method = ?, amount_paid = ?, invoice_no = ?, discount = ?, total_amount = ?, note = ? WHERE sale_id = ?',
+      'UPDATE sales SET status = "completed", payment_method = ?, amount_paid = ?, discount = ?, total_amount = ?, note = ? WHERE sale_id = ?',
       [
         payment_method || 'cash',
         amount_paid || sale[0].total_amount,
-        invoice_no,
         discount !== undefined && discount !== null ? discount : sale[0].discount,
         total_amount !== undefined && total_amount !== null ? total_amount : sale[0].total_amount,
         note !== undefined && note !== null ? note : (sale[0].note || null),
@@ -507,8 +514,9 @@ exports.updateSaleItems = async (req, res) => {
     }
 
     // 4. Update sale header
-    const updates = ['total_amount = ?'];
-    const values = [round2(parseFloat(total_amount))];
+    const newSubTotal = round2(items.reduce((sum, item) => sum + round2(parseFloat(item.unit_price) * item.quantity), 0));
+    const updates = ['total_amount = ?', 'sub_total = ?'];
+    const values = [round2(parseFloat(total_amount)), newSubTotal];
     if (tax_percent !== undefined) { updates.push('tax_percent = ?'); values.push(tax_percent); }
     if (additional_charges_percent !== undefined) { updates.push('additional_charges_percent = ?'); values.push(additional_charges_percent); }
     if (customer_id !== undefined) { updates.push('customer_id = ?'); values.push(customer_id); }
@@ -603,7 +611,11 @@ exports.getAll = async (req, res) => {
   try {
     const { page, limit, search, status, date_from, date_to } = req.query;
     let sql = `
-      SELECT s.*, c.customer_name, u.name as cashier_name
+      SELECT s.*,
+        CASE WHEN s.sub_total > 0 THEN s.sub_total
+             ELSE (SELECT COALESCE(SUM(sd.total_price), 0) FROM sale_details sd WHERE sd.sale_id = s.sale_id)
+        END as sub_total,
+        c.customer_name, u.name as cashier_name
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
@@ -633,9 +645,9 @@ exports.getAll = async (req, res) => {
     if (page && limit) {
       const pg = parsePagination(page, limit);
 
-      // Count query for pagination
+      // Count + summary query for pagination
       let countSql = `
-        SELECT COUNT(*) as total
+        SELECT COUNT(*) as total, COALESCE(SUM(s.total_amount), 0) as total_amount
         FROM sales s
         LEFT JOIN customers c ON s.customer_id = c.customer_id
         WHERE 1=1
@@ -663,6 +675,10 @@ exports.getAll = async (req, res) => {
 
       const countResult = await query(countSql, countParams);
       const total = Number(countResult[0].total);
+      const summary = {
+        order_count: total,
+        total_amount: parseFloat(countResult[0].total_amount)
+      };
 
       sql += ' ORDER BY s.sale_date DESC LIMIT ? OFFSET ?';
       params.push(pg.limit, pg.offset);
@@ -670,7 +686,8 @@ exports.getAll = async (req, res) => {
       const rows = await query(sql, params);
       return res.json({
         data: rows,
-        pagination: { total, page: pg.page, limit: pg.limit, totalPages: Math.ceil(total / pg.limit) }
+        pagination: { total, page: pg.page, limit: pg.limit, totalPages: Math.ceil(total / pg.limit) },
+        summary
       });
     }
 

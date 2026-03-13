@@ -270,6 +270,7 @@ const Orders = () => {
   const [pendingItemsPerPage, setPendingItemsPerPage] = useState(12);
   const [pendingTotalItems, setPendingTotalItems] = useState(0);
   const [pendingTotalPages, setPendingTotalPages] = useState(0);
+  const [pendingSummary, setPendingSummary] = useState<{ order_count: number; total_amount: number } | null>(null);
 
   // Done tab state
   const [doneSales, setDoneSales] = useState<any[]>([]);
@@ -278,6 +279,7 @@ const Orders = () => {
   const [doneItemsPerPage, setDoneItemsPerPage] = useState(15);
   const [doneTotalItems, setDoneTotalItems] = useState(0);
   const [doneTotalPages, setDoneTotalPages] = useState(0);
+  const [doneSummary, setDoneSummary] = useState<{ order_count: number; total_amount: number } | null>(null);
   const [doneSearch, setDoneSearch] = useState('');
   const todayStr = new Date().toISOString().split('T')[0];
   const [doneDateFrom, setDoneDateFrom] = useState(todayStr);
@@ -307,13 +309,12 @@ const Orders = () => {
       const res = await api.get('/sales/pending', {
         params: { page: pendingPage, limit: pendingItemsPerPage }
       });
+      setPendingSales(res.data.data || res.data);
       if (res.data.pagination) {
-        setPendingSales(res.data.data);
         setPendingTotalItems(res.data.pagination.total);
         setPendingTotalPages(res.data.pagination.totalPages);
-      } else {
-        setPendingSales(res.data);
       }
+      if (res.data.summary) setPendingSummary(res.data.summary);
     } catch (error) {
       console.error('Failed to fetch pending sales', error);
     } finally {
@@ -334,13 +335,12 @@ const Orders = () => {
           date_to: doneDateTo,
         }
       });
+      setDoneSales(res.data.data || res.data);
       if (res.data.pagination) {
-        setDoneSales(res.data.data);
         setDoneTotalItems(res.data.pagination.total);
         setDoneTotalPages(res.data.pagination.totalPages);
-      } else {
-        setDoneSales(res.data);
       }
+      if (res.data.summary) setDoneSummary(res.data.summary);
     } catch (error) {
       console.error('Failed to fetch done sales', error);
     } finally {
@@ -511,11 +511,12 @@ const Orders = () => {
                     {/* Header */}
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        {sale.token_no ? (
+                        {sale.token_no && (
                           <p className="text-2xl font-black text-amber-600">Token {sale.token_no}</p>
-                        ) : (
-                          <p className="font-bold text-lg text-gray-800">Order #{sale.sale_id}</p>
                         )}
+                        <p className="text-xs font-bold text-emerald-700 mt-0.5">
+                          {sale.invoice_no || `#${sale.sale_id}`}
+                        </p>
                         <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
                           <Calendar size={12} />
                           {new Date(sale.sale_date).toLocaleString('en-US', {
@@ -621,6 +622,19 @@ const Orders = () => {
                   />
                 </div>
               )}
+
+              {/* Pending Summary Bar */}
+              {pendingSummary && (
+                <div className="mt-4 bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-200 rounded-xl px-6 py-3 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-orange-700 flex items-center gap-2">
+                    <Package size={16} />
+                    Total Pending Orders: <strong>{pendingSummary.order_count}</strong>
+                  </span>
+                  <span className="text-base font-bold text-orange-800">
+                    Total Amount: Rs. {pendingSummary.total_amount.toFixed(2)}
+                  </span>
+                </div>
+              )}
             </>
           )
         ) : (
@@ -689,61 +703,86 @@ const Orders = () => {
                     <table className="w-full text-left border-collapse">
                       <thead className="bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 text-sm uppercase tracking-wider">
                         <tr>
-                          <th className="px-6 py-4 font-bold border-b-2 border-gray-200">
+                          <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
                             <div className="flex items-center gap-2">
                               <Package size={16} />
-                              Invoice / Order
+                              Invoice No
                             </div>
                           </th>
-                          <th className="px-6 py-4 font-bold border-b-2 border-gray-200">Token No</th>
-                          <th className="px-6 py-4 font-bold border-b-2 border-gray-200">
+                          <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
                             <div className="flex items-center gap-2">
                               <Calendar size={16} />
                               Date & Time
                             </div>
                           </th>
-                          <th className="px-6 py-4 font-bold border-b-2 border-gray-200">
+                          <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
                             <div className="flex items-center gap-2">
                               <User size={16} />
                               Customer
                             </div>
                           </th>
-                          <th className="px-6 py-4 font-bold border-b-2 border-gray-200">
-                            <div className="flex items-center gap-2">
+                          <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Sub Total</th>
+                          <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Tax</th>
+                          <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Service</th>
+                          <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">
+                            <div className="flex items-center justify-end gap-2">
                               <DollarSign size={16} />
-                              Amount
+                              Grand Total
                             </div>
                           </th>
-                          <th className="px-6 py-4 font-bold border-b-2 border-gray-200">
+                          <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
                             <div className="flex items-center gap-2">
                               <CreditCard size={16} />
                               Payment
                             </div>
                           </th>
-                          <th className="px-6 py-4 font-bold border-b-2 border-gray-200">Status</th>
-                          <th className="px-6 py-4 font-bold border-b-2 border-gray-200 text-right">Actions</th>
+                          <th className="px-4 py-4 font-bold border-b-2 border-gray-200">Status</th>
+                          <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Actions</th>
                         </tr>
                       </thead>
+                      {doneSummary && (
+                        <tfoot className="bg-gradient-to-r from-emerald-50 to-emerald-100 border-t-2 border-emerald-300">
+                          <tr>
+                            <td className="px-4 py-3 font-bold text-emerald-800 text-sm" colSpan={3}>
+                              Total: {doneSummary.order_count} orders
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold text-gray-700 text-sm">
+                              Rs. {doneSales.reduce((s, r) => s + parseFloat(r.sub_total || 0), 0).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold text-blue-700 text-sm">
+                              Rs. {doneSales.reduce((s, r) => s + parseFloat(r.tax_amount || 0), 0).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold text-purple-700 text-sm">
+                              Rs. {doneSales.reduce((s, r) => s + parseFloat(r.additional_charges_amount || 0), 0).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold text-emerald-800 text-base">
+                              Rs. {doneSummary.total_amount.toFixed(2)}
+                            </td>
+                            <td colSpan={3}></td>
+                          </tr>
+                        </tfoot>
+                      )}
                       <tbody className="divide-y divide-gray-100">
-                        {doneSales.map(sale => (
+                        {doneSales.map(sale => {
+                          const subTotal = parseFloat(sale.sub_total || 0);
+                          const taxAmt = parseFloat(sale.tax_amount || 0);
+                          const serviceAmt = parseFloat(sale.additional_charges_amount || 0);
+                          const grandTotal = parseFloat(sale.total_amount || 0);
+                          return (
                           <tr key={sale.sale_id} className="hover:bg-gradient-to-r hover:from-emerald-50/30 hover:to-emerald-50/30 transition-all duration-150">
-                            <td className="px-6 py-4">
-                              {sale.invoice_no ? (
-                                <span className="font-bold text-emerald-700">{sale.invoice_no}</span>
-                              ) : (
-                                <span className="font-bold text-gray-900">#{sale.sale_id}</span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 text-gray-600 text-sm">
-                              {sale.token_no ? (
-                                <span className="px-2 py-1 bg-amber-50 border border-amber-200 rounded-lg font-bold text-amber-700 text-xs">
-                                  {sale.token_no}
+                            <td className="px-4 py-4">
+                              <div>
+                                <span className="font-bold text-emerald-700">
+                                  {sale.invoice_no || `#${sale.sale_id}`}
                                 </span>
-                              ) : (
-                                <span className="text-gray-300">—</span>
-                              )}
+                                {sale.token_no && (
+                                  <span className="ml-2 px-1.5 py-0.5 bg-amber-50 border border-amber-200 rounded text-amber-700 text-xs font-bold">
+                                    {sale.token_no}
+                                  </span>
+                                )}
+                              </div>
                             </td>
-                            <td className="px-6 py-4 text-gray-600 text-sm">
+                            <td className="px-4 py-4 text-gray-600 text-sm">
                               {new Date(sale.sale_date).toLocaleString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
@@ -752,18 +791,27 @@ const Orders = () => {
                                 minute: '2-digit'
                               })}
                             </td>
-                            <td className="px-6 py-4 text-gray-700 font-medium">
+                            <td className="px-4 py-4 text-gray-700 font-medium">
                               {sale.customer_name || 'Walk-in Customer'}
                             </td>
-                            <td className="px-6 py-4 font-bold text-lg text-emerald-600">
-                              Rs. {parseFloat(sale.total_amount).toFixed(2)}
+                            <td className="px-4 py-4 text-right text-gray-700">
+                              Rs. {subTotal.toFixed(2)}
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 py-4 text-right text-blue-600">
+                              {taxAmt > 0 ? `Rs. ${taxAmt.toFixed(2)}` : <span className="text-gray-300">—</span>}
+                            </td>
+                            <td className="px-4 py-4 text-right text-purple-600">
+                              {serviceAmt > 0 ? `Rs. ${serviceAmt.toFixed(2)}` : <span className="text-gray-300">—</span>}
+                            </td>
+                            <td className="px-4 py-4 text-right font-bold text-lg text-emerald-600">
+                              Rs. {grandTotal.toFixed(2)}
+                            </td>
+                            <td className="px-4 py-4">
                               <span className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 text-xs rounded-full font-bold capitalize border border-emerald-200 shadow-sm">
                                 {sale.payment_method}
                               </span>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 py-4">
                               <span className={`px-3 py-1.5 text-xs rounded-full font-bold capitalize border shadow-sm ${
                                 sale.status === 'refunded'
                                   ? 'bg-gradient-to-r from-red-50 to-red-100 text-red-700 border-red-200'
@@ -772,9 +820,8 @@ const Orders = () => {
                                 {sale.status}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-right">
+                            <td className="px-4 py-4 text-right">
                               <div className="flex items-center justify-end gap-2">
-                                {/* Eye: Bill Preview */}
                                 <button
                                   onClick={() => setPreviewSaleId(sale.sale_id)}
                                   className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200 border border-transparent hover:border-emerald-200"
@@ -782,7 +829,6 @@ const Orders = () => {
                                 >
                                   <Eye size={18} />
                                 </button>
-                                {/* Print */}
                                 <button
                                   onClick={() => setPreviewSaleId(sale.sale_id)}
                                   className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200 border border-transparent hover:border-emerald-200"
@@ -790,7 +836,6 @@ const Orders = () => {
                                 >
                                   <Printer size={18} />
                                 </button>
-                                {/* Refund */}
                                 <button
                                   onClick={() => handleRefundClick(sale.sale_id)}
                                   disabled={sale.status === 'refunded'}
@@ -806,7 +851,8 @@ const Orders = () => {
                               </div>
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
