@@ -328,6 +328,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
             </div>
           )}
 
+
           {paymentMethod === 'credit' ? (
             <p className="text-gray-500 mb-8">
               Amount Due: <span className="font-bold text-orange-600">Rs. {finalTotal.toFixed(2)}</span>

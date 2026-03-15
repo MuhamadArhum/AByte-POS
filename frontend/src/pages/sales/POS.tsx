@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, ShoppingCart, Trash2, Minus, Plus, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Mail, Building2 } from 'lucide-react';
+import { Search, ShoppingCart, Trash2, Minus, Plus, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Mail, Building2, Truck, MapPin } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import { useCart, Product } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
@@ -71,6 +71,21 @@ const POS = () => {
 
   // Hold order token display
   const [holdToken, setHoldToken] = useState<string | null>(null);
+  const [deliveryConfirm, setDeliveryConfirm] = useState<string | null>(null);
+
+  // Order type: on_spot or delivery
+  type OrderType = 'on_spot' | 'delivery';
+  const [orderType, setOrderType] = useState<OrderType>('on_spot');
+  const [deliveryInfo, setDeliveryInfo] = useState({
+    delivery_address: '', delivery_city: '', delivery_phone: '',
+    rider_name: '', rider_phone: '', delivery_charges: '',
+    estimated_delivery: '', notes: '',
+  });
+  const resetDelivery = () => {
+    setOrderType('on_spot');
+    setDeliveryInfo({ delivery_address: '', delivery_city: '', delivery_phone: '', rider_name: '', rider_phone: '', delivery_charges: '', estimated_delivery: '', notes: '' });
+  };
+  const delivCharges = orderType === 'delivery' ? (parseFloat(deliveryInfo.delivery_charges) || 0) : 0;
 
   // Check register on mount
   useEffect(() => {
@@ -388,6 +403,7 @@ const POS = () => {
       clearCart();
       setEditingSaleId(null);
       setEditingTokenNo(null);
+      resetDelivery();
       const walkin = customers.find(c => c.customer_id === 1);
       setSelectedCustomer(walkin || null);
       alert('Order updated successfully');
@@ -420,12 +436,70 @@ const POS = () => {
 
       const res = await api.post('/sales', payload);
       clearCart();
+      resetDelivery();
       const token = res.data?.token_no || null;
       setHoldToken(token);
       setTimeout(() => setHoldToken(null), 5000);
     } catch (error) {
       console.error('Failed to hold order', error);
       alert('Failed to hold order');
+    }
+  };
+
+  const handleSendToDelivery = async () => {
+    if (cart.length === 0) return;
+    if (!deliveryInfo.delivery_address.trim()) {
+      alert('Please enter a delivery address');
+      return;
+    }
+    if (!selectedCustomer || selectedCustomer.customer_id === 1) {
+      alert('Please select a customer for delivery orders');
+      return;
+    }
+    try {
+      const saleRes = await api.post('/sales', {
+        items: cart.map(item => ({
+          product_id: item.product_id,
+          product_name: item.product_name,
+          quantity: item.quantity,
+          unit_price: item.price,
+          variant_id: item.variant_id || null,
+          variant_name: item.variant_name || null,
+        })),
+        customer_id: selectedCustomer.customer_id,
+        discount: 0,
+        total_amount: total,
+        payment_method: 'cash',
+        amount_paid: 0,
+        user_id: user?.user_id,
+        status: 'pending',
+        tax_percent: taxRate,
+        additional_charges_percent: additionalRate,
+      });
+
+      const saleId = saleRes.data.sale_id;
+
+      const delRes = await api.post('/deliveries', {
+        sale_id: saleId,
+        customer_id: selectedCustomer.customer_id,
+        delivery_address: deliveryInfo.delivery_address,
+        delivery_city: deliveryInfo.delivery_city,
+        delivery_phone: deliveryInfo.delivery_phone || selectedCustomer.phone_number || '',
+        rider_name: deliveryInfo.rider_name,
+        rider_phone: deliveryInfo.rider_phone,
+        delivery_charges: parseFloat(deliveryInfo.delivery_charges) || 0,
+        estimated_delivery: deliveryInfo.estimated_delivery || null,
+        notes: deliveryInfo.notes,
+      });
+
+      clearCart();
+      resetDelivery();
+      const walkin = customers.find(c => c.customer_id === 1);
+      setSelectedCustomer(walkin || null);
+      setDeliveryConfirm(delRes.data.delivery_number);
+      setTimeout(() => setDeliveryConfirm(null), 6000);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to create delivery order');
     }
   };
 
@@ -737,7 +811,7 @@ const POS = () => {
           <div className="flex items-center gap-2">
             {cart.length > 0 && (
               <button
-                onClick={() => { clearCart(); setEditingSaleId(null); setEditingTokenNo(null); }}
+                onClick={() => { clearCart(); setEditingSaleId(null); setEditingTokenNo(null); resetDelivery(); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-xs font-semibold transition-colors"
                 title="Clear Cart"
               >
@@ -758,7 +832,7 @@ const POS = () => {
               </p>
             </div>
             <button
-              onClick={() => { clearCart(); setEditingSaleId(null); setEditingTokenNo(null); }}
+              onClick={() => { clearCart(); setEditingSaleId(null); setEditingTokenNo(null); resetDelivery(); }}
               className="text-blue-400 hover:text-blue-200 text-xs font-medium"
             >
               Cancel
@@ -859,6 +933,76 @@ const POS = () => {
             </div>
           )}
         </div>
+
+        {/* ── Order Type Toggle ── */}
+        <div className="bg-white border-b border-gray-200 px-4 py-2.5 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Order Type</span>
+            <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+              <button
+                onClick={() => setOrderType('on_spot')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  orderType === 'on_spot' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <ShoppingBag size={12} /> On Spot
+              </button>
+              <button
+                onClick={() => setOrderType('delivery')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  orderType === 'delivery' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Truck size={12} /> Delivery
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Delivery Info Panel ── */}
+        {orderType === 'delivery' && (
+          <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-3 flex-shrink-0 space-y-2">
+            <p className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+              <MapPin size={12} /> Delivery Details
+            </p>
+            <textarea
+              className="w-full px-3 py-2 text-xs border border-emerald-200 bg-white rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
+              rows={2}
+              placeholder="Delivery address *"
+              value={deliveryInfo.delivery_address}
+              onChange={e => setDeliveryInfo(d => ({ ...d, delivery_address: e.target.value }))}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                className="px-3 py-1.5 text-xs border border-emerald-200 bg-white rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                placeholder="City"
+                value={deliveryInfo.delivery_city}
+                onChange={e => setDeliveryInfo(d => ({ ...d, delivery_city: e.target.value }))}
+              />
+              <input
+                className="px-3 py-1.5 text-xs border border-emerald-200 bg-white rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                placeholder="Contact phone"
+                value={deliveryInfo.delivery_phone}
+                onChange={e => setDeliveryInfo(d => ({ ...d, delivery_phone: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                className="px-3 py-1.5 text-xs border border-emerald-200 bg-white rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                placeholder="Rider name (optional)"
+                value={deliveryInfo.rider_name}
+                onChange={e => setDeliveryInfo(d => ({ ...d, rider_name: e.target.value }))}
+              />
+              <input
+                className="px-3 py-1.5 text-xs border border-emerald-200 bg-white rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                type="number"
+                placeholder="Delivery charges"
+                value={deliveryInfo.delivery_charges}
+                onChange={e => setDeliveryInfo(d => ({ ...d, delivery_charges: e.target.value }))}
+              />
+            </div>
+          </div>
+        )}
 
         {/* ── Cart Items ── */}
         <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
@@ -1012,6 +1156,19 @@ const POS = () => {
             </div>
           )}
 
+          {/* Delivery Confirm Banner */}
+          {deliveryConfirm && (
+            <div className="mx-3 mb-1 px-4 py-2.5 bg-emerald-50 border border-emerald-400 rounded-xl flex items-center justify-between">
+              <div>
+                <p className="text-xs text-emerald-600 font-medium flex items-center gap-1"><Truck size={11} /> Delivery Order Created</p>
+                <p className="text-lg font-black text-emerald-700">{deliveryConfirm}</p>
+              </div>
+              <button onClick={() => setDeliveryConfirm(null)} className="text-emerald-400 hover:text-emerald-600">
+                <X size={16} />
+              </button>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="p-3 space-y-2">
             {editingSaleId ? (
@@ -1038,8 +1195,18 @@ const POS = () => {
                   <span className="text-white/60 text-xs font-normal">F9</span>
                 </button>
               </div>
+            ) : orderType === 'delivery' ? (
+              /* Delivery mode: single Send to Delivery button */
+              <button
+                onClick={handleSendToDelivery}
+                disabled={cart.length === 0}
+                className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Truck size={17} />
+                Send to Delivery
+              </button>
             ) : (
-              /* Normal mode: Punch/Dispatch + Pay Now */
+              /* On Spot mode: Punch/Dispatch + Pay Now */
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={handleHoldOrder}
@@ -1115,6 +1282,7 @@ const POS = () => {
           setSelectedPendingSale(null);
           setEditingSaleId(null);
           setEditingTokenNo(null);
+          resetDelivery();
           const walkin = customers.find(c => c.customer_id === 1);
           setSelectedCustomer(walkin || null);
         }}

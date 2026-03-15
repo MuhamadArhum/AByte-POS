@@ -4,9 +4,8 @@ const { query, getConnection } = require('../config/database');
 const MANAGER_MODULES = [
   'dashboard',
   'sales', 'sales.pos', 'sales.orders', 'sales.customers', 'sales.register', 'sales.returns',
-  'sales.quotations', 'sales.credit', 'sales.layaway', 'sales.coupons',
-  'sales.loyalty', 'sales.giftcards', 'sales.pricerules', 'sales.targets',
-  'sales.invoices', 'sales.reports',
+  'sales.quotations', 'sales.credit', 'sales.pricerules', 'sales.targets', 'sales.deliveries',
+  'sales.reports',
   'inventory', 'inventory.products', 'inventory.categories', 'inventory.purchases',
   'inventory.transfers', 'inventory.adjustments', 'inventory.alerts',
   'inventory.suppliers', 'inventory.reports',
@@ -18,7 +17,7 @@ const MANAGER_MODULES = [
   'accounts.trial-balance', 'accounts.profit-loss', 'accounts.balance-sheet',
   'accounts.bank-accounts', 'accounts.payment-vouchers', 'accounts.receipt-vouchers',
   'accounts.expenses', 'accounts.analytics', 'accounts.reports',
-  'system', 'system.stores', 'system.audit',
+  'system', 'system.stores', 'system.audit', 'system.ai_widget',
   // system.backup and system.settings excluded for Manager
 ];
 

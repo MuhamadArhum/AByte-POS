@@ -43,15 +43,11 @@ const stockAdjustmentRoutes = require('./routes/stockAdjustmentRoutes');
 const stockTransferRoutes   = require('./routes/stockTransferRoutes');
 const inventoryReportRoutes = require('./routes/inventoryReportRoutes');
 const salesReportRoutes     = require('./routes/salesReportRoutes');
-const couponRoutes          = require('./routes/couponRoutes');
-const loyaltyRoutes         = require('./routes/loyaltyRoutes');
 const creditSaleRoutes      = require('./routes/creditSaleRoutes');
-const layawayRoutes         = require('./routes/layawayRoutes');
 const quotationRoutes       = require('./routes/quotationRoutes');
-const giftCardRoutes        = require('./routes/giftCardRoutes');
 const priceRuleRoutes       = require('./routes/priceRuleRoutes');
 const salesTargetRoutes     = require('./routes/salesTargetRoutes');
-const invoiceRoutes         = require('./routes/invoiceRoutes');
+const deliveryRoutes        = require('./routes/deliveryRoutes');
 const permissionRoutes      = require('./routes/permissionRoutes');
 const tenantRoutes          = require('./routes/tenantRoutes');
 
@@ -98,15 +94,11 @@ app.use('/api/analytics',       analyticsRoutes);
 app.use('/api/sales',           salesRoutes);
 app.use('/api/register',        registerRoutes);
 app.use('/api/returns',         returnRoutes);
-app.use('/api/coupons',         couponRoutes);
-app.use('/api/loyalty',         loyaltyRoutes);
 app.use('/api/credit-sales',    creditSaleRoutes);
-app.use('/api/layaway',         layawayRoutes);
 app.use('/api/quotations',      quotationRoutes);
-app.use('/api/gift-cards',      giftCardRoutes);
 app.use('/api/price-rules',     priceRuleRoutes);
 app.use('/api/sales-targets',   salesTargetRoutes);
-app.use('/api/invoices',        invoiceRoutes);
+app.use('/api/deliveries',      deliveryRoutes);
 
 // Inventory module (basic+)
 app.use('/api/products',            productRoutes);

@@ -15,7 +15,7 @@ import Quotations from './pages/sales/Quotations';
 import CreditSales from './pages/sales/CreditSales';
 import PriceRules from './pages/sales/PriceRules';
 import SalesTargets from './pages/sales/SalesTargets';
-import Invoices from './pages/sales/Invoices';
+import Deliveries from './pages/sales/Deliveries';
 import SalesReports from './pages/sales/SalesReports';
 
 // Inventory Module
@@ -69,11 +69,6 @@ import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
 
-// Sales Extra
-import Layaway from './pages/sales/Layaway';
-import Coupons from './pages/sales/Coupons';
-import Loyalty from './pages/sales/LoyaltyProgram';
-import GiftCards from './pages/sales/GiftCards';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -119,13 +114,9 @@ function App() {
                       <Route path="/returns" element={<PermissionGuard moduleKey="sales.returns"><Returns /></PermissionGuard>} />
                       <Route path="/quotations" element={<PermissionGuard moduleKey="sales.quotations"><Quotations /></PermissionGuard>} />
                       <Route path="/credit-sales" element={<PermissionGuard moduleKey="sales.credit"><CreditSales /></PermissionGuard>} />
-                      <Route path="/layaway" element={<PermissionGuard moduleKey="sales.layaway"><Layaway /></PermissionGuard>} />
-                      <Route path="/coupons" element={<PermissionGuard moduleKey="sales.coupons"><Coupons /></PermissionGuard>} />
-                      <Route path="/loyalty" element={<PermissionGuard moduleKey="sales.loyalty"><Loyalty /></PermissionGuard>} />
-                      <Route path="/gift-cards" element={<PermissionGuard moduleKey="sales.giftcards"><GiftCards /></PermissionGuard>} />
                       <Route path="/price-rules" element={<PermissionGuard moduleKey="sales.pricerules"><PriceRules /></PermissionGuard>} />
                       <Route path="/sales-targets" element={<PermissionGuard moduleKey="sales.targets"><SalesTargets /></PermissionGuard>} />
-                      <Route path="/invoices" element={<PermissionGuard moduleKey="sales.invoices"><Invoices /></PermissionGuard>} />
+                      <Route path="/deliveries" element={<PermissionGuard moduleKey="sales.deliveries"><Deliveries /></PermissionGuard>} />
                       <Route path="/sales-reports" element={<PermissionGuard moduleKey="sales.reports"><SalesReports /></PermissionGuard>} />
 
                       {/* Inventory */}

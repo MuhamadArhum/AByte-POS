@@ -35,10 +35,10 @@ import {
   PieChart,
   Percent,
   Target,
-  FileCheck,
   Tag,
   Layers,
-  ClipboardCheck
+  ClipboardCheck,
+  Truck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -109,13 +109,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: RotateCcw, label: 'Returns', path: '/returns', moduleKey: 'sales.returns' },
         { icon: FileText, label: 'Quotations', path: '/quotations', moduleKey: 'sales.quotations' },
         { icon: BookOpen, label: 'Credit Sales', path: '/credit-sales', moduleKey: 'sales.credit' },
-        { icon: Wallet, label: 'Layaway', path: '/layaway', moduleKey: 'sales.layaway' },
-        { icon: Tag, label: 'Coupons', path: '/coupons', moduleKey: 'sales.coupons' },
-        { icon: CreditCard, label: 'Loyalty', path: '/loyalty', moduleKey: 'sales.loyalty' },
-        { icon: Receipt, label: 'Gift Cards', path: '/gift-cards', moduleKey: 'sales.giftcards' },
         { icon: Percent, label: 'Price Rules', path: '/price-rules', moduleKey: 'sales.pricerules' },
         { icon: Target, label: 'Sales Targets', path: '/sales-targets', moduleKey: 'sales.targets' },
-        { icon: FileCheck, label: 'Invoices', path: '/invoices', moduleKey: 'sales.invoices' },
+        { icon: Truck, label: 'Deliveries', path: '/deliveries', moduleKey: 'sales.deliveries' },
         { icon: PieChart, label: 'Sales Reports', path: '/sales-reports', moduleKey: 'sales.reports' },
         { icon: Users, label: 'Customers', path: '/customers', moduleKey: 'sales.customers' },
       ]
