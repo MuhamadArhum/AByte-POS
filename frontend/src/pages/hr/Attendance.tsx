@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Plus, Calendar, TrendingUp, Users, CheckCircle, XCircle, Edit, Trash2, Download } from 'lucide-react';
+import DateRangeFilter from '../../components/DateRangeFilter';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 import { useAuth } from '../../context/AuthContext';
 import MarkAttendanceModal from '../../components/MarkAttendanceModal';
 import EditAttendanceModal from '../../components/EditAttendanceModal';
+import { localToday, localMonthStart } from '../../utils/dateUtils';
 
 const calculateHours = (check_in: string | null, check_out: string | null) => {
   if (!check_in || !check_out) return null;
@@ -49,8 +51,8 @@ const Attendance = () => {
 
   const [filters, setFilters] = useState({
     staff_id: '',
-    start_date: '',
-    end_date: new Date().toISOString().split('T')[0],
+    start_date: localMonthStart(),
+    end_date: localToday(),
     status: 'all'
   });
   const [staff, setStaff] = useState<any[]>([]);
@@ -204,40 +206,35 @@ const Attendance = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Staff Member</label>
-            <select value={filters.staff_id} onChange={(e) => handleFilterChange('staff_id', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-              <option value="">All Staff</option>
-              {staff.map(member => (<option key={member.staff_id} value={member.staff_id}>{member.full_name}</option>))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-            <input type="date" value={filters.start_date} onChange={(e) => handleFilterChange('start_date', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-            <input type="date" value={filters.end_date} onChange={(e) => handleFilterChange('end_date', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-              <option value="all">All Status</option>
-              <option value="present">Present</option>
-              <option value="absent">Absent</option>
-              <option value="half_day">Half Day</option>
-              <option value="leave">On Leave</option>
-              <option value="holiday">Holiday</option>
-            </select>
-          </div>
-          <div className="flex items-end">
-            <button onClick={() => { setPagination(prev => ({ ...prev, page: 1 })); fetchAttendance(); }} className="w-full bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition">
-              Apply Filters
-            </button>
-          </div>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap items-center gap-4">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Staff Member</label>
+          <select value={filters.staff_id} onChange={(e) => handleFilterChange('staff_id', e.target.value)} className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+            <option value="">All Staff</option>
+            {staff.map(member => (<option key={member.staff_id} value={member.staff_id}>{member.full_name}</option>))}
+          </select>
         </div>
+        <DateRangeFilter
+          standalone={false}
+          dateFrom={filters.start_date}
+          dateTo={filters.end_date}
+          onFromChange={(d) => handleFilterChange('start_date', d)}
+          onToChange={(d) => handleFilterChange('end_date', d)}
+        />
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
+          <select value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+            <option value="all">All Status</option>
+            <option value="present">Present</option>
+            <option value="absent">Absent</option>
+            <option value="half_day">Half Day</option>
+            <option value="leave">On Leave</option>
+            <option value="holiday">Holiday</option>
+          </select>
+        </div>
+        <button onClick={() => { setPagination(prev => ({ ...prev, page: 1 })); fetchAttendance(); }} className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 transition">
+          Apply
+        </button>
       </div>
 
       {/* Attendance Table */}

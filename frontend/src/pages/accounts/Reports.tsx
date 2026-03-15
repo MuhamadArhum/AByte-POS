@@ -1,29 +1,19 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { Calendar } from 'lucide-react';
+import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
-
-const todayStr = new Date().toISOString().split('T')[0];
+import { localToday } from '../../utils/dateUtils';
+import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 const Reports = () => {
   const [salesData, setSalesData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateFrom, setDateFrom] = useState(todayStr);
-  const [dateTo, setDateTo] = useState(todayStr);
+  const [dateFrom, setDateFrom] = useState(localToday());
+  const [dateTo, setDateTo] = useState(localToday());
 
   useEffect(() => {
-    fetchSalesData(todayStr, todayStr);
+    fetchSalesData(localToday(), localToday());
   }, []);
-
-  const setPreset = (preset: string) => {
-    const d = new Date();
-    let from = todayStr, to = todayStr;
-    if (preset === 'week') from = new Date(d.getTime() - 6 * 86400000).toISOString().split('T')[0];
-    else if (preset === 'month') from = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
-    setDateFrom(from);
-    setDateTo(to);
-    fetchSalesData(from, to);
-  };
 
   const fetchSalesData = async (from = dateFrom, to = dateTo) => {
     setLoading(true);
@@ -58,24 +48,7 @@ const Reports = () => {
         </div>
       </div>
 
-      {/* Date Filter */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap items-center gap-4">
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-          {[{label:'Today',key:'today'},{label:'This Week',key:'week'},{label:'This Month',key:'month'}].map(p => (
-            <button key={p.key} onClick={() => setPreset(p.key)}
-              className="px-3 py-1.5 rounded-md text-sm font-medium hover:bg-white hover:shadow transition-all">
-              {p.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <Calendar size={18} className="text-gray-400" />
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="px-3 py-1.5 border rounded-lg text-sm" />
-          <span className="text-gray-400">to</span>
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="px-3 py-1.5 border rounded-lg text-sm" />
-        </div>
-        <button onClick={() => fetchSalesData()} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">Apply</button>
-      </div>
+      <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} onApply={() => fetchSalesData()} />
 
       {loading ? (
         <div className="flex items-center justify-center p-12">
@@ -124,4 +97,5 @@ const Reports = () => {
   );
 };
 
-export default Reports;
+const ReportsWithGate = () => <ReportPasswordGate><Reports /></ReportPasswordGate>;
+export default ReportsWithGate;

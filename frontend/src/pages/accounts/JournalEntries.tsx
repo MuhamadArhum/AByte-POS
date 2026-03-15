@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
-import { FileText, Plus, Send, Trash2, Filter } from 'lucide-react';
+import { FileText, Plus, Send, Trash2 } from 'lucide-react';
+import DateRangeFilter from '../../components/DateRangeFilter';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { localToday, localMonthStart } from '../../utils/dateUtils';
+import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [formData, setFormData] = useState({
-    entry_date: new Date().toISOString().split('T')[0],
+    entry_date: localToday(),
     description: '',
     lines: [
       { account_id: '', description: '', debit: '0', credit: '0' },
@@ -71,7 +74,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
       onSuccess();
       onClose();
       setFormData({
-        entry_date: new Date().toISOString().split('T')[0],
+        entry_date: localToday(),
         description: '',
         lines: [
           { account_id: '', description: '', debit: '0', credit: '0' },
@@ -205,8 +208,8 @@ const JournalEntries = () => {
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
   const [showModal, setShowModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
-  const [fromDate, setFromDate] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]; });
-  const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [fromDate, setFromDate] = useState(localMonthStart);
+  const [toDate, setToDate] = useState(localToday);
 
   useEffect(() => { fetchEntries(); }, [pagination.page, statusFilter, fromDate, toDate]);
 
@@ -275,20 +278,14 @@ const JournalEntries = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-4">
-          <Filter size={20} className="text-gray-600" />
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500">
-            <option value="all">All Status</option>
-            <option value="draft">Draft</option>
-            <option value="posted">Posted</option>
-          </select>
-          <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" placeholder="From" />
-          <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" placeholder="To" />
-        </div>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap items-center gap-4">
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500">
+          <option value="all">All Status</option>
+          <option value="draft">Draft</option>
+          <option value="posted">Posted</option>
+        </select>
+        <DateRangeFilter standalone={false} dateFrom={fromDate} dateTo={toDate} onFromChange={setFromDate} onToChange={setToDate} />
       </div>
 
       {/* Table */}
@@ -356,4 +353,5 @@ const JournalEntries = () => {
   );
 };
 
-export default JournalEntries;
+const JournalEntriesWithGate = () => <ReportPasswordGate><JournalEntries /></ReportPasswordGate>;
+export default JournalEntriesWithGate;

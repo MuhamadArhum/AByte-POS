@@ -37,7 +37,7 @@ exports.updateSettings = async (req, res) => {
       receipt_show_store_name, receipt_show_address, receipt_show_phone, receipt_show_tax,
       receipt_paper_width,
       printer_type, printer_ip, printer_port, printer_name, printer_paper_width,
-      view_completed_orders_password, refund_password
+      view_completed_orders_password, refund_password, reports_password
     } = req.body;
 
     // Build dynamic SET clause to handle optional columns gracefully
@@ -77,9 +77,9 @@ exports.updateSettings = async (req, res) => {
     try {
       await query(
         `UPDATE store_settings SET
-          view_completed_orders_password=?, refund_password=?
+          view_completed_orders_password=?, refund_password=?, reports_password=?
         WHERE setting_id=1`,
-        [view_completed_orders_password || null, refund_password || null]
+        [view_completed_orders_password || null, refund_password || null, reports_password || null]
       );
     } catch (pwErr) {
       // Columns don't exist yet — run migrate_pos_security.js to add them

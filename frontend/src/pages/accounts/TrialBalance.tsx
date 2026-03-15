@@ -3,6 +3,8 @@ import { Scale, Calendar, Download, RefreshCw, Printer } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 import { printReport, buildTable } from '../../utils/reportPrinter';
+import { localToday } from '../../utils/dateUtils';
+import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 interface TrialBalanceRow {
   account_code: string;
@@ -35,7 +37,7 @@ const TrialBalance = () => {
   const toast = useToast();
   const [data, setData] = useState<TrialBalanceRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [asOfDate, setAsOfDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [asOfDate, setAsOfDate] = useState(localToday);
 
   const fetchTrialBalance = async () => {
     if (!asOfDate) {
@@ -60,7 +62,7 @@ const TrialBalance = () => {
   };
 
   const handleReset = () => {
-    setAsOfDate(new Date().toISOString().split('T')[0]);
+    setAsOfDate(localToday());
     setData([]);
   };
 
@@ -249,4 +251,5 @@ const TrialBalance = () => {
   );
 };
 
-export default TrialBalance;
+const TrialBalanceWithGate = () => <ReportPasswordGate><TrialBalance /></ReportPasswordGate>;
+export default TrialBalanceWithGate;

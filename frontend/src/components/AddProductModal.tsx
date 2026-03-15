@@ -89,7 +89,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
   const fetchCategories = async () => {
     try {
       const res = await api.get('/products/categories');
-      setCategories(res.data);
+      setCategories(res.data.data || []);
     } catch (error) {
       console.error('Failed to fetch categories', error);
     }

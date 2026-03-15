@@ -7,15 +7,17 @@ interface RegisterCloseModalProps {
   onClose: () => void;
   onSuccess: () => void;
   expectedCash: number;
+  shiftExpenses?: number;
   register: any;
 }
 
-const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSuccess, 
-  expectedCash, 
-  register 
+const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  expectedCash,
+  shiftExpenses = 0,
+  register
 }) => {
   const [closingBalance, setClosingBalance] = useState('');
   const [closeNote, setCloseNote] = useState('');
@@ -161,25 +163,14 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                 </span>
               </div>
 
-              {/* Cash In */}
-              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
-                <span className="text-green-700 font-medium flex items-center gap-2">
-                  <TrendingUp size={16} className="text-green-600" />
-                  Cash In (Deposits)
-                </span>
-                <span className="font-bold text-green-700">
-                  +${parseFloat(register.total_cash_in || 0).toFixed(2)}
-                </span>
-              </div>
-
-              {/* Cash Out */}
+              {/* Expenses */}
               <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-200">
                 <span className="text-red-700 font-medium flex items-center gap-2">
                   <TrendingDown size={16} className="text-red-600" />
-                  Cash Out (Withdrawals)
+                  Expenses (This Shift)
                 </span>
                 <span className="font-bold text-red-700">
-                  -${parseFloat(register.total_cash_out || 0).toFixed(2)}
+                  -${shiftExpenses.toFixed(2)}
                 </span>
               </div>
 
@@ -187,7 +178,10 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
               <div className="flex justify-between items-center p-4 bg-gradient-to-r from-emerald-100 to-emerald-100 rounded-lg border-2 border-emerald-300 shadow-md">
                 <span className="font-bold text-emerald-800 flex items-center gap-2">
                   <Calculator size={18} className="text-emerald-600" />
-                  Expected Cash in Drawer
+                  <span>
+                    Expected Cash in Drawer
+                    <span className="block text-xs font-normal text-emerald-600">Opening + Sales − Expenses</span>
+                  </span>
                 </span>
                 <span className="font-bold text-2xl text-emerald-900">
                   ${expectedCash.toFixed(2)}

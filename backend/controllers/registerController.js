@@ -38,7 +38,13 @@ exports.getCurrentRegister = async (req, res) => {
       [register[0].register_id]
     );
 
-    res.json({ ...register[0], movements });
+    const expensesResult = await query(
+      'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE expense_date >= ?',
+      [register[0].opened_at]
+    );
+    const shift_expenses = parseFloat(expensesResult[0].total);
+
+    res.json({ ...register[0], movements, shift_expenses });
   } catch (error) {
     console.error('Get current register error:', error);
     res.status(500).json({ message: 'Failed to fetch register' });
@@ -106,8 +112,16 @@ exports.closeRegister = async (req, res) => {
     }
 
     const reg = register[0];
-    // Use currency rounding for expected/difference calculations
-    const expected = round2(parseFloat(reg.opening_balance) + parseFloat(reg.cash_sales_total) + parseFloat(reg.total_cash_in) - parseFloat(reg.total_cash_out));
+
+    // Get total expenses during this shift
+    const expensesResult = await conn.query(
+      'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE expense_date >= ?',
+      [reg.opened_at]
+    );
+    const totalExpenses = round2(parseFloat(expensesResult[0].total));
+
+    // Expected = Opening Balance + Cash Sales - Expenses
+    const expected = round2(parseFloat(reg.opening_balance) + parseFloat(reg.cash_sales_total) - totalExpenses);
     const difference = round2(parseFloat(closing_balance) - expected);
 
     await conn.query(

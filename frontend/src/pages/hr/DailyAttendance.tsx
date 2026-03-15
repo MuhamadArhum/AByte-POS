@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, MinusCircle, Download, UserCheck } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { localToday } from '../../utils/dateUtils';
+import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 const DailyAttendance = () => {
   const toast = useToast();
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(localToday());
   const [data, setData] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>({ total: 0, present: 0, absent: 0, half_day: 0, leave: 0, holiday: 0, unmarked: 0 });
   const [loading, setLoading] = useState(false);
@@ -234,4 +236,5 @@ const DailyAttendance = () => {
   );
 };
 
-export default DailyAttendance;
+const DailyAttendanceWithGate = () => <ReportPasswordGate><DailyAttendance /></ReportPasswordGate>;
+export default DailyAttendanceWithGate;

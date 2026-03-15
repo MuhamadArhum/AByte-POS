@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { TrendingUp, Calendar, Download, RefreshCw, Printer } from 'lucide-react';
+import { TrendingUp, Download, RefreshCw, Printer } from 'lucide-react';
+import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 import { printReport, buildTable } from '../../utils/reportPrinter';
+import { localToday, localMonthStart } from '../../utils/dateUtils';
+import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 interface ProfitLossSection {
   account_code: string;
@@ -41,11 +44,8 @@ const ProfitLoss = () => {
   const toast = useToast();
   const [data, setData] = useState<ProfitLossData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [fromDate, setFromDate] = useState(() => {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
-  });
-  const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [fromDate, setFromDate] = useState(localMonthStart);
+  const [toDate, setToDate] = useState(localToday);
 
   const fetchProfitLoss = async () => {
     if (!fromDate || !toDate) {
@@ -74,9 +74,8 @@ const ProfitLoss = () => {
   };
 
   const handleReset = () => {
-    const d = new Date();
-    setFromDate(new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0]);
-    setToDate(new Date().toISOString().split('T')[0]);
+    setFromDate(localMonthStart());
+    setToDate(localToday());
     setData(null);
   };
 
@@ -132,64 +131,21 @@ const ProfitLoss = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
-        <div className="flex flex-wrap gap-4 items-end">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            />
-          </div>
-
-          <button
-            onClick={fetchProfitLoss}
-            disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50"
-          >
-            <Calendar size={18} />
-            {loading ? 'Loading...' : 'Generate'}
-          </button>
-
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
-          >
-            <RefreshCw size={16} />
-            Reset
-          </button>
-
-          {data && (
-            <>
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition ml-auto"
-            >
-              <Printer size={16} />
-              Print
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap items-center gap-4">
+        <DateRangeFilter standalone={false} dateFrom={fromDate} dateTo={toDate} onFromChange={setFromDate} onToChange={setToDate} onApply={fetchProfitLoss} applyLabel={loading ? 'Loading...' : 'Generate'} />
+        <button onClick={handleReset} className="flex items-center gap-2 px-4 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition">
+          <RefreshCw size={15} /> Reset
+        </button>
+        {data && (
+          <>
+            <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition ml-auto">
+              <Printer size={15} /> Print
             </button>
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
-            >
-              <Download size={16} />
-              Export CSV
+            <button onClick={handleExport} className="flex items-center gap-2 px-4 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition">
+              <Download size={15} /> Export CSV
             </button>
-            </>
-          )}
-        </div>
+          </>
+        )}
       </div>
 
       {/* Report */}
@@ -282,4 +238,5 @@ const ProfitLoss = () => {
   );
 };
 
-export default ProfitLoss;
+const ProfitLossWithGate = () => <ReportPasswordGate><ProfitLoss /></ReportPasswordGate>;
+export default ProfitLossWithGate;

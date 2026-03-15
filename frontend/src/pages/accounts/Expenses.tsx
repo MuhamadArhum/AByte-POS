@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Plus, Search, Edit2, Trash2, X, Filter, Calendar, TrendingDown } from 'lucide-react';
+import { DollarSign, Plus, Search, Edit2, Trash2, X, Filter, TrendingDown, Calendar } from 'lucide-react';
+import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
 import { useAuth } from '../../context/AuthContext';
+import { localToday, localMonthStart } from '../../utils/dateUtils';
 
 interface Expense {
   expense_id: number;
@@ -19,12 +21,9 @@ interface Summary {
   grand_total: number;
 }
 
-const today = new Date().toISOString().split('T')[0];
-const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-
 const CATEGORIES = ['Rent', 'Utilities', 'Salaries', 'Supplies', 'Marketing', 'Maintenance', 'Transport', 'Other'];
 
-const emptyForm = { title: '', amount: '', category: '', expense_date: today, description: '' };
+const emptyForm = { title: '', amount: '', category: '', expense_date: localToday(), description: '' };
 
 const Expenses = () => {
   const { user } = useAuth();
@@ -41,8 +40,8 @@ const Expenses = () => {
   // Filters
   const [search, setSearch]       = useState('');
   const [category, setCategory]   = useState('');
-  const [dateFrom, setDateFrom]   = useState(monthStart);
-  const [dateTo, setDateTo]       = useState(today);
+  const [dateFrom, setDateFrom]   = useState(localMonthStart());
+  const [dateTo, setDateTo]       = useState(localToday());
 
   // Modal
   const [showModal, setShowModal] = useState(false);
@@ -138,14 +137,6 @@ const Expenses = () => {
     }
   };
 
-  const setPreset = (preset: string) => {
-    const d = new Date();
-    let from = today;
-    if (preset === 'week')  from = new Date(d.getTime() - 6 * 86400000).toISOString().split('T')[0];
-    else if (preset === 'month') from = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
-    setDateFrom(from);
-    setDateTo(today);
-  };
 
   return (
     <div className="p-6 space-y-6">
@@ -213,27 +204,7 @@ const Expenses = () => {
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
         <div className="flex flex-wrap items-center gap-3">
-          {/* Preset Buttons */}
-          <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-            {[{ label: 'Today', key: 'today' }, { label: 'This Week', key: 'week' }, { label: 'This Month', key: 'month' }].map(p => (
-              <button
-                key={p.key}
-                onClick={() => setPreset(p.key)}
-                className="px-3 py-1.5 rounded-md text-sm font-medium hover:bg-white hover:shadow transition-all text-gray-700"
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Date Range */}
-          <div className="flex items-center gap-2">
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30" />
-            <span className="text-gray-400 text-sm">to</span>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30" />
-          </div>
+          <DateRangeFilter standalone={false} dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} />
 
           {/* Category Filter */}
           <select

@@ -1,7 +1,10 @@
 import { useState, useEffect, Fragment } from 'react';
 import { ScrollText, Clock, User, ChevronDown, ChevronRight, Download } from 'lucide-react';
+import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
+import { localToday, localMonthStart } from '../../utils/dateUtils';
+import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 interface AuditEntry {
   log_id: number;
@@ -162,8 +165,8 @@ const AuditLog = () => {
   const [loading, setLoading] = useState(true);
   const [actions, setActions] = useState<string[]>([]);
   const [selectedAction, setSelectedAction] = useState('');
-  const [dateStart, setDateStart] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]; });
-  const [dateEnd, setDateEnd] = useState(() => new Date().toISOString().split('T')[0]);
+  const [dateStart, setDateStart] = useState(localMonthStart());
+  const [dateEnd, setDateEnd] = useState(localToday());
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(30);
   const [totalPages, setTotalPages] = useState(1);
@@ -248,44 +251,31 @@ const AuditLog = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
-        <div className="flex flex-wrap gap-4 items-end">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Action Type</label>
-            <select
-              value={selectedAction}
-              onChange={(e) => { setSelectedAction(e.target.value); setPage(1); }}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-            >
-              <option value="">All Actions</option>
-              {actions.map(a => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">From Date</label>
-            <input
-              type="date"
-              value={dateStart}
-              onChange={(e) => { setDateStart(e.target.value); setPage(1); }}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">To Date</label>
-            <input
-              type="date"
-              value={dateEnd}
-              onChange={(e) => { setDateEnd(e.target.value); setPage(1); }}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-            />
-          </div>
-          <button
-            onClick={() => { setSelectedAction(''); setDateStart(''); setDateEnd(''); setPage(1); }}
-            className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors"
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap items-center gap-4">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Action Type</label>
+          <select
+            value={selectedAction}
+            onChange={(e) => { setSelectedAction(e.target.value); setPage(1); }}
+            className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
           >
-            Clear Filters
-          </button>
+            <option value="">All Actions</option>
+            {actions.map(a => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
+          </select>
         </div>
+        <DateRangeFilter
+          standalone={false}
+          dateFrom={dateStart}
+          dateTo={dateEnd}
+          onFromChange={(d) => { setDateStart(d); setPage(1); }}
+          onToChange={(d) => { setDateEnd(d); setPage(1); }}
+        />
+        <button
+          onClick={() => { setSelectedAction(''); setDateStart(localMonthStart()); setDateEnd(localToday()); setPage(1); }}
+          className="px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors"
+        >
+          Reset
+        </button>
       </div>
 
       {/* Log Table */}
@@ -387,4 +377,5 @@ const AuditLog = () => {
   );
 };
 
-export default AuditLog;
+const AuditLogWithGate = () => <ReportPasswordGate><AuditLog /></ReportPasswordGate>;
+export default AuditLogWithGate;

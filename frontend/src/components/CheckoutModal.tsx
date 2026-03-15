@@ -219,7 +219,9 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
           amount_paid: finalAmountPaid,
           discount: discountValue,
           total_amount: finalTotal,
-          note: noteStr
+          note: noteStr,
+          tax_percent: pendingTaxRate,
+          additional_charges_percent: pendingAdditionalRate
         });
         const fullSaleRes = await api.get(`/sales/${pendingSale.sale_id}`);
         setSuccessSale(fullSaleRes.data);

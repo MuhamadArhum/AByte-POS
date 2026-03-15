@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Search, Download, Calendar, DollarSign, CreditCard, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { BookOpen, Search, Download, DollarSign, CreditCard, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { localToday, localMonthStart } from '../../utils/dateUtils';
+import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 const EmployeeLedger = () => {
   const toast = useToast();
   const [staff, setStaff] = useState<any[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState('');
-  const [fromDate, setFromDate] = useState(new Date().toISOString().split('T')[0]);
-  const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
+  const [fromDate, setFromDate] = useState(localMonthStart());
+  const [toDate, setToDate] = useState(localToday());
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
 
@@ -128,42 +131,25 @@ const EmployeeLedger = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-        <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex-1 min-w-[220px]">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Search size={16} className="inline mr-1" /> Staff Member
-            </label>
-            <select
-              value={selectedStaffId}
-              onChange={(e) => setSelectedStaffId(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            >
-              <option value="">-- Select Employee --</option>
-              {staff.map(s => (
-                <option key={s.staff_id} value={s.staff_id}>
-                  {s.employee_id ? `[${s.employee_id}] ` : ''}{s.full_name} - {s.department || s.position}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="min-w-[160px]">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Calendar size={16} className="inline mr-1" /> From Date
-            </label>
-            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" />
-          </div>
-          <div className="min-w-[160px]">
-            <label className="block text-sm font-medium text-gray-700 mb-2">To Date</label>
-            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" />
-          </div>
-          <button onClick={fetchLedger} disabled={loading}
-            className="bg-emerald-600 text-white px-8 py-2.5 rounded-lg hover:bg-emerald-700 transition disabled:opacity-50">
-            {loading ? 'Loading...' : 'Generate'}
-          </button>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap items-center gap-4">
+        <div className="flex-1 min-w-[220px]">
+          <label className="block text-xs font-medium text-gray-500 mb-1">
+            <Search size={14} className="inline mr-1" /> Staff Member
+          </label>
+          <select
+            value={selectedStaffId}
+            onChange={(e) => setSelectedStaffId(e.target.value)}
+            className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+          >
+            <option value="">-- Select Employee --</option>
+            {staff.map(s => (
+              <option key={s.staff_id} value={s.staff_id}>
+                {s.employee_id ? `[${s.employee_id}] ` : ''}{s.full_name} - {s.department || s.position}
+              </option>
+            ))}
+          </select>
         </div>
+        <DateRangeFilter standalone={false} dateFrom={fromDate} dateTo={toDate} onFromChange={setFromDate} onToChange={setToDate} onApply={fetchLedger} applyLabel={loading ? 'Loading...' : 'Generate'} />
       </div>
 
       {/* Content */}
@@ -314,4 +300,5 @@ const EmployeeLedger = () => {
   );
 };
 
-export default EmployeeLedger;
+const EmployeeLedgerWithGate = () => <ReportPasswordGate><EmployeeLedger /></ReportPasswordGate>;
+export default EmployeeLedgerWithGate;

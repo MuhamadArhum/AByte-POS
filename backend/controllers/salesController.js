@@ -387,11 +387,7 @@ exports.getPending = async (req, res) => {
     };
 
     let sql = `
-      SELECT s.*,
-        CASE WHEN s.sub_total > 0 THEN s.sub_total
-             ELSE (SELECT COALESCE(SUM(sd.total_price), 0) FROM sale_details sd WHERE sd.sale_id = s.sale_id)
-        END as sub_total,
-        c.customer_name, u.name as cashier_name
+      SELECT s.*, c.customer_name, u.name as cashier_name
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
@@ -427,7 +423,7 @@ exports.getPending = async (req, res) => {
 exports.completeSale = async (req, res) => {
   try {
     const { id } = req.params;
-    const { payment_method, amount_paid, discount, total_amount, note } = req.body;
+    const { payment_method, amount_paid, discount, total_amount, note, tax_percent, additional_charges_percent } = req.body;
 
     // Check if sale exists and is pending
     const sale = await query('SELECT * FROM sales WHERE sale_id = ? AND status = "pending"', [id]);
@@ -438,15 +434,37 @@ exports.completeSale = async (req, res) => {
     // invoice_no was already assigned when the order was created — no need to regenerate
     const invoice_no = sale[0].invoice_no;
 
-    // Update sale status to completed, payment info, discount, total_amount, note
+    // Recalculate tax/charges amounts if rates were changed at checkout
+    const subTotal = parseFloat(sale[0].sub_total) || 0;
+    const finalTaxPercent = tax_percent !== undefined && tax_percent !== null ? parseFloat(tax_percent) : parseFloat(sale[0].tax_percent);
+    const finalAdditionalPercent = additional_charges_percent !== undefined && additional_charges_percent !== null ? parseFloat(additional_charges_percent) : parseFloat(sale[0].additional_charges_percent);
+    const finalTaxAmount = round2(subTotal * finalTaxPercent / 100);
+    const finalAdditionalAmount = round2(subTotal * finalAdditionalPercent / 100);
+
+    // Update sale: status, payment info, AND corrected tax/charges
     await query(
-      'UPDATE sales SET status = "completed", payment_method = ?, amount_paid = ?, discount = ?, total_amount = ?, note = ? WHERE sale_id = ?',
+      `UPDATE sales SET
+        status = "completed",
+        payment_method = ?,
+        amount_paid = ?,
+        discount = ?,
+        total_amount = ?,
+        note = ?,
+        tax_percent = ?,
+        tax_amount = ?,
+        additional_charges_percent = ?,
+        additional_charges_amount = ?
+       WHERE sale_id = ?`,
       [
         payment_method || 'cash',
         amount_paid || sale[0].total_amount,
         discount !== undefined && discount !== null ? discount : sale[0].discount,
         total_amount !== undefined && total_amount !== null ? total_amount : sale[0].total_amount,
         note !== undefined && note !== null ? note : (sale[0].note || null),
+        finalTaxPercent,
+        finalTaxAmount,
+        finalAdditionalPercent,
+        finalAdditionalAmount,
         id
       ]
     );
@@ -611,11 +629,7 @@ exports.getAll = async (req, res) => {
   try {
     const { page, limit, search, status, date_from, date_to } = req.query;
     let sql = `
-      SELECT s.*,
-        CASE WHEN s.sub_total > 0 THEN s.sub_total
-             ELSE (SELECT COALESCE(SUM(sd.total_price), 0) FROM sale_details sd WHERE sd.sale_id = s.sale_id)
-        END as sub_total,
-        c.customer_name, u.name as cashier_name
+      SELECT s.*, c.customer_name, u.name as cashier_name
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id

@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { BarChart3, Calendar, Download, Users, DollarSign, TrendingUp, Printer } from 'lucide-react';
+import { BarChart3, Download, Users, DollarSign, TrendingUp, Printer, Calendar } from 'lucide-react';
+import DateRangeFilter from '../../components/DateRangeFilter';
 import { printReport, buildTable } from '../../utils/reportPrinter';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { localToday, localMonthStart, localMonthStr } from '../../utils/dateUtils';
+import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 interface AttendanceReportRow {
   staff_id: number;
@@ -52,13 +55,13 @@ const StaffReports = () => {
   const [activeTab, setActiveTab] = useState<'attendance' | 'salary'>('attendance');
 
   // Attendance report state
-  const [attendanceMonth, setAttendanceMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [attendanceMonth, setAttendanceMonth] = useState(localMonthStr());
   const [attendanceData, setAttendanceData] = useState<AttendanceReportRow[]>([]);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
 
   // Salary report state
-  const [salaryFromDate, setSalaryFromDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [salaryToDate, setSalaryToDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [salaryFromDate, setSalaryFromDate] = useState(localMonthStart());
+  const [salaryToDate, setSalaryToDate] = useState(localToday());
   const [salaryData, setSalaryData] = useState<SalaryReportRow[]>([]);
   const [salaryLoading, setSalaryLoading] = useState(false);
 
@@ -304,32 +307,8 @@ const StaffReports = () => {
       {activeTab === 'salary' && (
         <div className="space-y-6">
           {/* Filters */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-wrap gap-4 items-end">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
-              <input
-                type="date"
-                value={salaryFromDate}
-                onChange={e => setSalaryFromDate(e.target.value)}
-                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
-              <input
-                type="date"
-                value={salaryToDate}
-                onChange={e => setSalaryToDate(e.target.value)}
-                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              />
-            </div>
-            <button
-              onClick={fetchSalaryReport}
-              disabled={salaryLoading}
-              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50"
-            >
-              {salaryLoading ? 'Loading...' : 'Generate'}
-            </button>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-wrap gap-4 items-center">
+            <DateRangeFilter standalone={false} dateFrom={salaryFromDate} dateTo={salaryToDate} onFromChange={setSalaryFromDate} onToChange={setSalaryToDate} onApply={fetchSalaryReport} applyLabel={salaryLoading ? 'Loading...' : 'Generate'} />
             {salaryData.length > 0 && (
               <button
                 onClick={() => exportToCSV(salaryData, `salary-report-${salaryFromDate}-to-${salaryToDate}`, [
@@ -438,4 +417,5 @@ const StaffReports = () => {
   );
 };
 
-export default StaffReports;
+const StaffReportsWithGate = () => <ReportPasswordGate><StaffReports /></ReportPasswordGate>;
+export default StaffReportsWithGate;

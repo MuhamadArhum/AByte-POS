@@ -3,6 +3,8 @@ import { FileBarChart, Calendar, Download, RefreshCw, Printer } from 'lucide-rea
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 import { printReport, buildTable } from '../../utils/reportPrinter';
+import { localToday } from '../../utils/dateUtils';
+import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 interface BalanceSheetSection {
   account_code: string;
@@ -43,7 +45,7 @@ const BalanceSheet = () => {
   const toast = useToast();
   const [data, setData] = useState<BalanceSheetData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [asOfDate, setAsOfDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [asOfDate, setAsOfDate] = useState(localToday);
 
   const fetchBalanceSheet = async () => {
     if (!asOfDate) {
@@ -68,7 +70,7 @@ const BalanceSheet = () => {
   };
 
   const handleReset = () => {
-    setAsOfDate(new Date().toISOString().split('T')[0]);
+    setAsOfDate(localToday());
     setData(null);
   };
 
@@ -323,4 +325,5 @@ const BalanceSheet = () => {
   );
 };
 
-export default BalanceSheet;
+const BalanceSheetWithGate = () => <ReportPasswordGate><BalanceSheet /></ReportPasswordGate>;
+export default BalanceSheetWithGate;

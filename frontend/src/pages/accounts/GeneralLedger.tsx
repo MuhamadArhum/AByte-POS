@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Book, Search, RefreshCw, Printer } from 'lucide-react';
+import { Book, RefreshCw, Printer } from 'lucide-react';
+import DateRangeFilter from '../../components/DateRangeFilter';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 import { printReport, buildTable } from '../../utils/reportPrinter';
+import { localToday, localMonthStart } from '../../utils/dateUtils';
+import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 interface LedgerEntry {
   entry_id: number;
@@ -26,11 +29,8 @@ const GeneralLedger = () => {
   // Filters
   const [accountFilter, setAccountFilter] = useState('all');
   const [accounts, setAccounts] = useState<any[]>([]);
-  const [fromDate, setFromDate] = useState(() => {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
-  });
-  const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [fromDate, setFromDate] = useState(localMonthStart);
+  const [toDate, setToDate] = useState(localToday);
 
   useEffect(() => {
     fetchAccounts();
@@ -90,9 +90,8 @@ const GeneralLedger = () => {
   };
 
   const handleReset = () => {
-    const d = new Date();
-    setFromDate(new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0]);
-    setToDate(new Date().toISOString().split('T')[0]);
+    setFromDate(localMonthStart());
+    setToDate(localToday());
     setAccountFilter('all');
     setPagination({ ...pagination, page: 1 });
   };
@@ -138,61 +137,30 @@ const GeneralLedger = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
-        <div className="flex flex-wrap gap-4 items-end">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Account</label>
-            <select
-              value={accountFilter}
-              onChange={(e) => setAccountFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-w-[200px]"
-            >
-              <option value="all">All Accounts</option>
-              {accounts.map((acc) => (
-                <option key={acc.account_id} value={acc.account_id}>
-                  {acc.account_code} - {acc.account_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            />
-          </div>
-
-          <button
-            onClick={handleSearch}
-            disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50"
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap items-center gap-4">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Account</label>
+          <select
+            value={accountFilter}
+            onChange={(e) => setAccountFilter(e.target.value)}
+            className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-w-[200px]"
           >
-            <Search size={18} />
-            Search
-          </button>
-
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
-          >
-            <RefreshCw size={16} />
-            Reset
-          </button>
+            <option value="all">All Accounts</option>
+            {accounts.map((acc) => (
+              <option key={acc.account_id} value={acc.account_id}>
+                {acc.account_code} - {acc.account_name}
+              </option>
+            ))}
+          </select>
         </div>
+        <DateRangeFilter standalone={false} dateFrom={fromDate} dateTo={toDate} onFromChange={setFromDate} onToChange={setToDate} onApply={handleSearch} />
+        <button
+          onClick={handleReset}
+          className="flex items-center gap-2 px-4 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition"
+        >
+          <RefreshCw size={15} />
+          Reset
+        </button>
       </div>
 
       {/* Table */}
@@ -282,4 +250,5 @@ const GeneralLedger = () => {
   );
 };
 
-export default GeneralLedger;
+const GeneralLedgerWithGate = () => <ReportPasswordGate><GeneralLedger /></ReportPasswordGate>;
+export default GeneralLedgerWithGate;

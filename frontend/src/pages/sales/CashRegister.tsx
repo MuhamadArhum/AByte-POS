@@ -27,6 +27,7 @@ interface Register {
   card_sales_total: string;
   total_cash_in: string;
   total_cash_out: string;
+  shift_expenses?: number;
   difference?: string;
   status: 'open' | 'closed';
   opened_at: string;
@@ -227,10 +228,12 @@ const CashRegister = () => {
   // Register is open - show dashboard
   const cashSales = parseFloat(register.cash_sales_total);
   const cardSales = parseFloat(register.card_sales_total);
-  const cashIn = parseFloat(register.total_cash_in);
-  const cashOut = parseFloat(register.total_cash_out);
   const opening = parseFloat(register.opening_balance);
-  const expectedCash = opening + cashSales + cashIn - cashOut;
+  const shiftExpenses = register.shift_expenses || 0;
+  // Expected = Opening Balance + Cash Sales - Expenses
+  const expectedCash = opening + cashSales - shiftExpenses;
+  const cashIn = parseFloat(register.total_cash_in || '0');
+  const cashOut = parseFloat(register.total_cash_out || '0');
 
   return (
     <div className="p-8">
@@ -351,6 +354,7 @@ const CashRegister = () => {
         onClose={() => setShowCloseModal(false)}
         onSuccess={() => { setShowCloseModal(false); fetchRegister(); }}
         expectedCash={expectedCash}
+        shiftExpenses={shiftExpenses}
         register={register}
       />
     </div>
