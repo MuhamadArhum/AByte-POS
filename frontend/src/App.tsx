@@ -16,6 +16,7 @@ import CreditSales from './pages/sales/CreditSales';
 import PriceRules from './pages/sales/PriceRules';
 import SalesTargets from './pages/sales/SalesTargets';
 import Deliveries from './pages/sales/Deliveries';
+import WalkInOrders from './pages/sales/WalkInOrders';
 import SalesReports from './pages/sales/SalesReports';
 
 // Inventory Module
@@ -107,6 +108,7 @@ function App() {
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/pos" element={<POS />} />
                       <Route path="/orders" element={<Orders />} />
+                      <Route path="/walk-in-orders" element={<WalkInOrders />} />
                       <Route path="/cash-register" element={<CashRegister />} />
                       <Route path="/customers" element={<PermissionGuard moduleKey="sales.customers"><Customers /></PermissionGuard>} />
 

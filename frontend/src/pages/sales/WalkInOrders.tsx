@@ -1,0 +1,392 @@
+import { useState, useEffect, useCallback } from 'react';
+import {
+  ShoppingBag, Clock, CheckCircle, DollarSign, User, Calendar, CreditCard,
+  Package, RefreshCw, Edit2, X, Hash, Printer, Archive
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import api from '../../utils/api';
+import { printReceipt } from '../../utils/receiptPrinter';
+import Pagination from '../../components/Pagination';
+import CompletedOrdersView from '../../components/CompletedOrdersView';
+
+// ─── Bill Preview Modal (active orders) ─────────────────────────────────────
+const ActiveBillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: () => void }) => {
+  const [sale, setSale] = useState<any>(null);
+  const [settings, setSettings] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([api.get(`/sales/${saleId}`), api.get('/settings')])
+      .then(([s, st]) => { setSale(s.data); setSettings(st.data); })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [saleId]);
+
+  if (loading) return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl p-8 text-center shadow-2xl">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-3"></div>
+        <p className="text-gray-500">Loading receipt...</p>
+      </div>
+    </div>
+  );
+  if (!sale) return null;
+
+  const items: any[] = sale.items || [];
+  const cs = settings?.currency_symbol || 'Rs.';
+  const subtotal = items.reduce((s: number, i: any) => s + parseFloat(i.unit_price) * parseFloat(i.quantity), 0);
+  const grandTotal = parseFloat(sale.total_amount || 0);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between shrink-0">
+          <div>
+            <h2 className="text-base font-semibold text-gray-800">Bill Preview</h2>
+            {sale.token_no && <p className="text-sm text-emerald-600 font-bold">{sale.token_no}</p>}
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={22} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            {[
+              ['Order', sale.invoice_no || `#${sale.sale_id}`],
+              ['Customer', sale.customer_name || 'Walk-in'],
+            ].map(([label, value]) => (
+              <div key={label} className="bg-gray-50 rounded-lg p-3">
+                <p className="text-gray-400 text-xs mb-0.5">{label}</p>
+                <p className="font-semibold text-gray-700 text-sm">{value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-gray-600 font-semibold">Item</th>
+                  <th className="px-3 py-2 text-center text-gray-600 font-semibold">Qty</th>
+                  <th className="px-3 py-2 text-right text-gray-600 font-semibold">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {items.map((item: any, idx: number) => (
+                  <tr key={idx} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-gray-800 font-medium">{item.product_name}</td>
+                    <td className="px-3 py-2 text-center text-gray-600">{item.quantity}</td>
+                    <td className="px-3 py-2 text-right font-semibold text-gray-800">{cs} {(parseFloat(item.unit_price) * parseFloat(item.quantity)).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="space-y-2 bg-gray-50 rounded-xl p-4">
+            <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>{cs} {subtotal.toFixed(2)}</span></div>
+            <div className="flex justify-between text-base font-bold text-gray-900 border-t border-gray-200 pt-2 mt-2">
+              <span>Grand Total</span><span className="text-emerald-600">{cs} {grandTotal.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center gap-3 shrink-0">
+          <button onClick={onClose} className="px-4 py-2 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-100 font-medium text-sm transition-colors">Close</button>
+          <button
+            onClick={() => { printReceipt(sale, settings, sale.cashier_name || 'Staff', sale.customer_name); onClose(); }}
+            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-md"
+          >
+            <Printer size={16} /> Print
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Stat Card ──────────────────────────────────────────────────────────────
+const StatCard = ({ icon: Icon, label, value, color }: { icon: any; label: string; value: string | number; color: string }) => (
+  <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 flex items-center gap-4 shadow-sm">
+    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+      <Icon size={22} className="text-white" />
+    </div>
+    <div>
+      <p className="text-xs text-gray-500 font-medium">{label}</p>
+      <p className="text-xl font-bold text-gray-800 leading-tight">{value}</p>
+    </div>
+  </div>
+);
+
+// ─── Main Component ─────────────────────────────────────────────────────────
+const WalkInOrders = () => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
+  const [cs, setCs] = useState('Rs.');
+
+  // Active (pending) tab
+  const [activeSales, setActiveSales] = useState<any[]>([]);
+  const [activeLoading, setActiveLoading] = useState(false);
+  const [activePage, setActivePage] = useState(1);
+  const [activePerPage, setActivePerPage] = useState(12);
+  const [activeTotalItems, setActiveTotalItems] = useState(0);
+  const [activeTotalPages, setActiveTotalPages] = useState(0);
+  const [activeSummary, setActiveSummary] = useState<{ order_count: number; total_amount: number } | null>(null);
+
+  // Modals (active tab only)
+  const [previewSaleId, setPreviewSaleId] = useState<number | null>(null);
+
+  useEffect(() => {
+    api.get('/settings').then(res => {
+      setCs(res.data.currency_symbol || 'Rs.');
+    }).catch(() => {});
+  }, []);
+
+  const fetchActive = useCallback(async () => {
+    setActiveLoading(true);
+    try {
+      const res = await api.get('/sales/pending', { params: { page: activePage, limit: activePerPage } });
+      setActiveSales(res.data.data || res.data);
+      if (res.data.pagination) {
+        setActiveTotalItems(res.data.pagination.total);
+        setActiveTotalPages(res.data.pagination.totalPages);
+      }
+      if (res.data.summary) setActiveSummary(res.data.summary);
+    } catch (err) {
+      console.error('Failed to fetch active orders', err);
+    } finally {
+      setActiveLoading(false);
+    }
+  }, [activePage, activePerPage]);
+
+  useEffect(() => { if (activeTab === 'active') fetchActive(); }, [activeTab, fetchActive]);
+
+  const handleDeleteActive = async (sale: any) => {
+    if (!confirm(`Delete Order${sale.token_no ? ` Token ${sale.token_no}` : ` #${sale.sale_id}`}? Stock will be restored.`)) return;
+    try {
+      await api.delete(`/sales/${sale.sale_id}`);
+      fetchActive();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete order');
+    }
+  };
+
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+
+      {/* ── Header ────────────────────────────────────────────────── */}
+      <div className="bg-white border-b-2 border-gray-200 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-[1920px] mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-2.5 rounded-xl shadow-lg">
+                <ShoppingBag size={26} className="text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold tracking-tight text-gray-900">Walk-In Orders</h1>
+                <p className="text-sm text-gray-500">On-spot customer orders management</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/pos')}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm"
+              >
+                <ShoppingBag size={16} /> New Sale
+              </button>
+              <button
+                onClick={() => { if (activeTab === 'active') fetchActive(); }}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
+              >
+                <RefreshCw size={16} /> Refresh
+              </button>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={() => { setActiveTab('active'); setActivePage(1); }}
+              className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 text-sm ${
+                activeTab === 'active'
+                  ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-200'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
+              }`}
+            >
+              <Clock size={18} /> Active Orders
+              {activeTotalItems > 0 && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  activeTab === 'active' ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-700'
+                }`}>
+                  {activeTotalItems}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 text-sm ${
+                activeTab === 'history'
+                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-200'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
+              }`}
+            >
+              <CheckCircle size={18} />
+              Order History
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Body ──────────────────────────────────────────────────── */}
+      <div className="max-w-[1920px] mx-auto px-6 py-6">
+
+        {/* Stats row */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <StatCard icon={Clock} label="Active Orders" value={activeTotalItems} color="bg-emerald-500" />
+          <StatCard icon={DollarSign} label="Active Value" value={activeSummary ? `${cs} ${activeSummary.total_amount.toFixed(0)}` : `${cs} 0`} color="bg-emerald-600" />
+        </div>
+
+        {/* ── ACTIVE TAB ────────────────────────────────────────── */}
+        {activeTab === 'active' && (
+          activeLoading ? (
+            <div className="flex items-center justify-center h-[55vh]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-14 w-14 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-4"></div>
+                <p className="text-gray-500 font-medium">Loading active orders...</p>
+              </div>
+            </div>
+          ) : activeSales.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-[55vh] text-gray-400">
+              <div className="bg-emerald-50 p-8 rounded-full mb-4 border-2 border-emerald-100">
+                <Archive size={56} className="text-emerald-300" />
+              </div>
+              <p className="text-xl font-semibold text-gray-500">No Active Orders</p>
+              <p className="text-sm text-gray-400 mt-1">All orders have been completed</p>
+              <button
+                onClick={() => navigate('/pos')}
+                className="mt-5 flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+              >
+                <ShoppingBag size={16} /> Create New Sale
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+                {activeSales.map(sale => (
+                  <div
+                    key={sale.sale_id}
+                    className="bg-white border-2 border-gray-200 rounded-xl p-5 hover:shadow-xl hover:border-emerald-300 transition-all duration-200 hover:-translate-y-1 flex flex-col"
+                  >
+                    {/* Card Header */}
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        {sale.token_no && (
+                          <p className="text-2xl font-black text-emerald-600 leading-tight">Token {sale.token_no}</p>
+                        )}
+                        <p className="text-xs font-bold text-emerald-700 mt-0.5 flex items-center gap-1">
+                          <Hash size={11} />{sale.invoice_no || `Order #${sale.sale_id}`}
+                        </p>
+                        <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
+                          <Calendar size={11} />
+                          {new Date(sale.sale_date).toLocaleString('en-US', {
+                            month: 'short', day: 'numeric',
+                            hour: '2-digit', minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                      <span className="bg-emerald-100 text-emerald-700 text-xs px-2.5 py-1 rounded-full font-bold border border-emerald-200 shrink-0">
+                        Active
+                      </span>
+                    </div>
+
+                    {/* Card Body */}
+                    <div className="py-3 border-t border-b border-gray-100 space-y-2 flex-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-500 flex items-center gap-1.5"><User size={14} className="text-emerald-500" /> Customer</span>
+                        <span className="font-semibold text-gray-800 truncate max-w-[120px]">{sale.customer_name || 'Walk-in'}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-500 flex items-center gap-1.5"><DollarSign size={14} className="text-emerald-500" /> Total</span>
+                        <span className="font-bold text-lg text-emerald-600">{cs} {parseFloat(sale.total_amount).toFixed(2)}</span>
+                      </div>
+                      {sale.note && (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 mt-1">
+                          <p className="text-xs text-gray-600 italic truncate">📝 {sale.note}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Card Actions */}
+                    <div className="space-y-2 mt-4">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => navigate('/pos', { state: { editOrder: sale } })}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all border border-blue-200 font-medium text-sm"
+                          title="Edit items"
+                        >
+                          <Edit2 size={14} /> Edit
+                        </button>
+                        <button
+                          onClick={() => setPreviewSaleId(sale.sale_id)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-all border border-gray-200 font-medium text-sm"
+                          title="Preview & Print"
+                        >
+                          <Printer size={14} /> Print
+                        </button>
+                        <button
+                          onClick={() => handleDeleteActive(sale)}
+                          className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-all border border-red-200"
+                          title="Delete order"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => navigate('/pos', { state: { pendingSale: sale } })}
+                        className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-2.5 rounded-lg font-bold hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-md flex items-center justify-center gap-2 text-sm"
+                      >
+                        <CreditCard size={16} /> Checkout
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {activeTotalPages > 1 && (
+                <div className="mt-6 bg-white rounded-xl p-4 border border-gray-200">
+                  <Pagination
+                    currentPage={activePage}
+                    totalPages={activeTotalPages}
+                    onPageChange={setActivePage}
+                    totalItems={activeTotalItems}
+                    itemsPerPage={activePerPage}
+                    onItemsPerPageChange={(v) => { setActivePerPage(v); setActivePage(1); }}
+                  />
+                </div>
+              )}
+
+              {activeSummary && (
+                <div className="mt-4 bg-gradient-to-r from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-xl px-6 py-3 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-emerald-700 flex items-center gap-2">
+                    <Package size={16} /> Total Active: <strong>{activeSummary.order_count}</strong>
+                  </span>
+                  <span className="text-base font-bold text-emerald-800">
+                    Pending Amount: {cs} {activeSummary.total_amount.toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </>
+          )
+        )}
+
+        {/* ── HISTORY TAB ───────────────────────────────────────── */}
+        {activeTab === 'history' && (
+          <CompletedOrdersView title="Order History" />
+        )}
+      </div>
+
+      {/* ── Modals (active tab) ─────────────────────────────── */}
+      {previewSaleId !== null && (
+        <ActiveBillPreviewModal saleId={previewSaleId} onClose={() => setPreviewSaleId(null)} />
+      )}
+    </div>
+  );
+};
+
+export default WalkInOrders;

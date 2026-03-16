@@ -1,0 +1,557 @@
+/**
+ * CompletedOrdersView — shared component used in:
+ *  - Orders.tsx        (page content, no close button)
+ *  - WalkInOrders.tsx  (history tab content)
+ *  - POS.tsx           (full-screen overlay, onClose + showTypeFilter)
+ */
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Search, Package, Calendar, User, DollarSign, CreditCard,
+  Eye, Printer, RotateCcw, Archive, X, Lock, EyeOff, RefreshCw
+} from 'lucide-react';
+import DateRangeFilter from './DateRangeFilter';
+import Pagination from './Pagination';
+import api from '../utils/api';
+import { printReceipt } from '../utils/receiptPrinter';
+import { localToday, localMonthStart } from '../utils/dateUtils';
+
+// ─── Bill Preview Modal ─────────────────────────────────────────────────────
+const BillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: () => void }) => {
+  const [sale, setSale] = useState<any>(null);
+  const [settings, setSettings] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([api.get(`/sales/${saleId}`), api.get('/settings')])
+      .then(([s, st]) => { setSale(s.data); setSettings(st.data); })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [saleId]);
+
+  if (loading) return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60]">
+      <div className="bg-white rounded-2xl p-8 text-center shadow-2xl">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-3"></div>
+        <p className="text-gray-500">Loading receipt...</p>
+      </div>
+    </div>
+  );
+  if (!sale) return null;
+
+  const cs = settings?.currency_symbol || 'Rs.';
+  const items: any[] = sale.items || [];
+  const subtotal = items.reduce((s: number, i: any) => s + parseFloat(i.unit_price) * parseFloat(i.quantity), 0);
+  const taxPercent   = parseFloat(sale.tax_percent || 0);
+  const additionalPercent = parseFloat(sale.additional_charges_percent || 0);
+  const discount     = parseFloat(sale.discount || 0);
+  const grandTotal   = parseFloat(sale.total_amount || 0);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between shrink-0">
+          <div>
+            <h2 className="text-base font-semibold text-gray-800">Bill Preview</h2>
+            {sale.token_no && <p className="text-sm text-amber-600 font-bold">{sale.token_no}</p>}
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={22} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            {[
+              ['Order',    sale.invoice_no || `#${sale.sale_id}`],
+              ['Date',     new Date(sale.sale_date).toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' })],
+              ['Customer', sale.customer_name || 'Walk-in'],
+              ['Cashier',  sale.cashier_name  || 'Staff'],
+            ].map(([label, value]) => (
+              <div key={label} className="bg-gray-50 rounded-lg p-3">
+                <p className="text-gray-400 text-xs mb-0.5">{label}</p>
+                <p className="font-semibold text-gray-700 text-sm">{value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-gray-600 font-semibold">Item</th>
+                  <th className="px-3 py-2 text-center text-gray-600 font-semibold">Qty</th>
+                  <th className="px-3 py-2 text-right text-gray-600 font-semibold">Price</th>
+                  <th className="px-3 py-2 text-right text-gray-600 font-semibold">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {items.map((item: any, idx: number) => (
+                  <tr key={idx} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-gray-800 font-medium">{item.product_name}</td>
+                    <td className="px-3 py-2 text-center text-gray-600">{item.quantity}</td>
+                    <td className="px-3 py-2 text-right text-gray-600">{cs} {parseFloat(item.unit_price).toFixed(2)}</td>
+                    <td className="px-3 py-2 text-right font-semibold text-gray-800">{cs} {(parseFloat(item.unit_price) * parseFloat(item.quantity)).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="space-y-2 bg-gray-50 rounded-xl p-4">
+            <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>{cs} {subtotal.toFixed(2)}</span></div>
+            {discount > 0 && <div className="flex justify-between text-sm text-red-600"><span>Discount</span><span>- {cs} {discount.toFixed(2)}</span></div>}
+            {taxPercent > 0 && <div className="flex justify-between text-sm text-gray-600"><span>Tax ({taxPercent}%)</span><span>{cs} {(subtotal * taxPercent / 100).toFixed(2)}</span></div>}
+            {additionalPercent > 0 && <div className="flex justify-between text-sm text-gray-600"><span>Additional ({additionalPercent}%)</span><span>{cs} {(subtotal * additionalPercent / 100).toFixed(2)}</span></div>}
+            <div className="flex justify-between text-base font-bold text-gray-900 border-t border-gray-200 pt-2 mt-2">
+              <span>Grand Total</span><span className="text-emerald-600">{cs} {grandTotal.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center gap-3 shrink-0">
+          <div className="flex-1 text-xs text-gray-400">Press <kbd className="bg-white border border-gray-200 px-1.5 py-0.5 rounded font-mono font-bold">Ctrl+P</kbd> to print</div>
+          <button onClick={onClose} className="px-4 py-2 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-100 font-medium text-sm transition-colors">Close</button>
+          <button
+            onClick={() => { printReceipt(sale, settings, sale.cashier_name || 'Staff', sale.customer_name); onClose(); }}
+            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-md"
+          >
+            <Printer size={16} /> Print
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Password Gate Modal ────────────────────────────────────────────────────
+const PasswordModal = ({ title, correctPassword, onSuccess, onClose }: {
+  title: string; correctPassword: string; onSuccess: () => void; onClose: () => void;
+}) => {
+  const [input, setInput]       = useState('');
+  const [show, setShow]         = useState(false);
+  const [error, setError]       = useState('');
+  const verify = () => { if (input === correctPassword) onSuccess(); else { setError('Incorrect password.'); setInput(''); } };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center"><Lock size={20} className="text-amber-600" /></div>
+          <div><h3 className="font-semibold text-gray-800">{title}</h3><p className="text-xs text-gray-500">Enter password to continue</p></div>
+        </div>
+        <div className="relative mb-3">
+          <input type={show ? 'text' : 'password'} value={input} autoFocus
+            onChange={e => { setInput(e.target.value); setError(''); }}
+            onKeyDown={e => { if (e.key === 'Enter') verify(); }}
+            placeholder="Enter password..."
+            className="w-full pl-4 pr-10 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all"
+          />
+          <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            {show ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
+        {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 font-medium transition-colors">Cancel</button>
+          <button onClick={verify} className="flex-1 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-semibold transition-colors">Unlock</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Token badge helper ─────────────────────────────────────────────────────
+const TokenBadge = ({ token }: { token: string }) => {
+  const isDelivery = token.startsWith('DL-');
+  return (
+    <span className={`ml-1.5 px-1.5 py-0.5 rounded text-xs font-bold border ${
+      isDelivery
+        ? 'bg-blue-50 text-blue-700 border-blue-200'
+        : 'bg-amber-50 text-amber-700 border-amber-200'
+    }`}>{token}</span>
+  );
+};
+
+// ─── Main component ─────────────────────────────────────────────────────────
+interface CompletedOrdersViewProps {
+  /** When provided, wraps the view in a full-screen overlay with a close button */
+  onClose?: () => void;
+  /** Show Walk-in / Delivery / All category filter (used from POS) */
+  showTypeFilter?: boolean;
+  /** Optional page title shown in overlay header */
+  title?: string;
+}
+
+const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
+  onClose,
+  showTypeFilter = false,
+  title = 'Completed Orders',
+}) => {
+  const isOverlay = Boolean(onClose);
+
+  // Filters
+  const [typeFilter, setTypeFilter] = useState<'all' | 'walkin' | 'delivery'>('all');
+  const [search,     setSearch]     = useState('');
+  const [dateFrom,   setDateFrom]   = useState(localMonthStart);
+  const [dateTo,     setDateTo]     = useState(localToday);
+
+  // Data
+  const [sales,         setSales]         = useState<any[]>([]);
+  const [loading,       setLoading]       = useState(false);
+  const [page,          setPage]          = useState(1);
+  const [perPage,       setPerPage]       = useState(15);
+  const [totalItems,    setTotalItems]    = useState(0);
+  const [totalPages,    setTotalPages]    = useState(0);
+  const [summary,       setSummary]       = useState<{ order_count: number; total_amount: number } | null>(null);
+  const [cs,            setCs]            = useState('Rs.');
+
+  // Modals
+  const [previewId,     setPreviewId]     = useState<number | null>(null);
+  const [unlocked,      setUnlocked]      = useState(false);
+  const [pwModal,       setPwModal]       = useState<{ type: 'unlock' | 'refund'; refundId?: number } | null>(null);
+  const [passwords,     setPasswords]     = useState({ view_completed: '', refund: '' });
+
+  useEffect(() => {
+    api.get('/settings').then(res => {
+      setCs(res.data.currency_symbol || 'Rs.');
+      setPasswords({ view_completed: res.data.view_completed_orders_password || '', refund: res.data.refund_password || '' });
+      // If password-protected, show unlock prompt when opening in overlay mode
+      if (isOverlay && res.data.view_completed_orders_password) {
+        setPwModal({ type: 'unlock' });
+      }
+    }).catch(() => {});
+  }, [isOverlay]);
+
+  const fetchSales = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params: any = {
+        page, limit: perPage,
+        status: 'completed,refunded',
+        date_from: dateFrom,
+        date_to: dateTo,
+      };
+      if (search.trim())               params.search     = search.trim();
+      if (showTypeFilter && typeFilter !== 'all') params.order_type = typeFilter;
+      const res = await api.get('/sales', { params });
+      setSales(res.data.data || res.data);
+      if (res.data.pagination) {
+        setTotalItems(res.data.pagination.total);
+        setTotalPages(res.data.pagination.totalPages);
+      }
+      if (res.data.summary) setSummary(res.data.summary);
+    } catch { /* silent */ }
+    finally { setLoading(false); }
+  }, [page, perPage, search, dateFrom, dateTo, typeFilter, showTypeFilter]);
+
+  useEffect(() => {
+    if (!passwords.view_completed || unlocked || !isOverlay) fetchSales();
+  }, [fetchSales, unlocked, passwords.view_completed, isOverlay]);
+
+  // Reset page on filter change
+  useEffect(() => { setPage(1); }, [search, dateFrom, dateTo, typeFilter]);
+
+  const handleRefund = async (saleId: number) => {
+    if (!confirm(`Refund Order #${saleId}? Stock will be restored.`)) return;
+    try { await api.post(`/sales/${saleId}/refund`); fetchSales(); }
+    catch { alert('Failed to refund order'); }
+  };
+
+  const handleRefundClick = (saleId: number) => {
+    if (passwords.refund) setPwModal({ type: 'refund', refundId: saleId });
+    else handleRefund(saleId);
+  };
+
+  // ── Render content ─────────────────────────────────────────────────────────
+  const content = (
+    <div className={isOverlay ? 'flex flex-col h-full' : 'space-y-5'}>
+
+      {/* Overlay header */}
+      {isOverlay && (
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center">
+              <Package size={18} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-gray-800">{title}</h2>
+              <p className="text-xs text-gray-500">{totalItems} orders found</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={fetchSales} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors" title="Refresh">
+              <RefreshCw size={16} />
+            </button>
+            <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Filters bar */}
+      <div className={`flex flex-wrap items-center gap-3 ${isOverlay ? 'px-6 py-3 border-b border-gray-100 bg-white shrink-0' : ''}`}>
+        {/* Type filter tabs (POS only) */}
+        {showTypeFilter && (
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+            {([
+              ['all',      'All Orders'],
+              ['walkin',   'Walk-In (WI)'],
+              ['delivery', 'Delivery (DL)'],
+            ] as const).map(([tab, label]) => (
+              <button
+                key={tab}
+                onClick={() => setTypeFilter(tab)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  typeFilter === tab
+                    ? tab === 'delivery'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : tab === 'walkin'
+                      ? 'bg-orange-500 text-white shadow-sm'
+                      : 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Date range */}
+        <DateRangeFilter
+          standalone={false}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onFromChange={d => setDateFrom(d)}
+          onToChange={d => setDateTo(d)}
+        />
+
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input
+            type="text"
+            placeholder="Invoice No, Customer, Order ID..."
+            className="w-full pl-11 pr-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm text-sm"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Table area */}
+      <div className={isOverlay ? 'flex-1 overflow-auto px-6 py-4' : ''}>
+        {loading ? (
+          <div className="flex items-center justify-center h-[50vh]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-4"></div>
+              <p className="text-gray-500 font-medium">Loading orders...</p>
+            </div>
+          </div>
+        ) : sales.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-[50vh] text-gray-400">
+            <div className="bg-gray-100 p-8 rounded-full mb-4"><Archive size={64} className="opacity-30" /></div>
+            <p className="text-xl font-semibold text-gray-500">No Completed Orders Found</p>
+            <p className="text-sm text-gray-400 mt-2">Try adjusting the date range or search</p>
+          </div>
+        ) : (
+          <>
+            <div className="bg-white border-2 border-gray-200 rounded-xl shadow-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 text-sm uppercase tracking-wider">
+                    <tr>
+                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
+                        <div className="flex items-center gap-2"><Package size={16} /> Invoice No</div>
+                      </th>
+                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
+                        <div className="flex items-center gap-2"><Calendar size={16} /> Date &amp; Time</div>
+                      </th>
+                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
+                        <div className="flex items-center gap-2"><User size={16} /> Customer</div>
+                      </th>
+                      {showTypeFilter && (
+                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200">Type</th>
+                      )}
+                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Sub Total</th>
+                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Tax</th>
+                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Service</th>
+                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">
+                        <div className="flex items-center justify-end gap-2"><DollarSign size={16} /> Grand Total</div>
+                      </th>
+                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
+                        <div className="flex items-center gap-2"><CreditCard size={16} /> Payment</div>
+                      </th>
+                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200">Status</th>
+                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Actions</th>
+                    </tr>
+                  </thead>
+
+                  {/* Summary footer */}
+                  {summary && (
+                    <tfoot className="bg-gradient-to-r from-emerald-50 to-emerald-100 border-t-2 border-emerald-300">
+                      <tr>
+                        <td className="px-4 py-3 font-bold text-emerald-800 text-sm" colSpan={showTypeFilter ? 4 : 3}>
+                          Total: {summary.order_count} orders
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-700 text-sm">
+                          {cs} {sales.reduce((s, r) => s + parseFloat(r.sub_total || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-blue-700 text-sm">
+                          {cs} {sales.reduce((s, r) => s + parseFloat(r.tax_amount || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-purple-700 text-sm">
+                          {cs} {sales.reduce((s, r) => s + parseFloat(r.additional_charges_amount || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-emerald-800 text-base">
+                          {cs} {summary.total_amount.toFixed(2)}
+                        </td>
+                        <td colSpan={3}></td>
+                      </tr>
+                    </tfoot>
+                  )}
+
+                  <tbody className="divide-y divide-gray-100">
+                    {sales.map(sale => {
+                      const isDelivery = sale.token_no?.startsWith('DL-');
+                      return (
+                        <tr key={sale.sale_id} className="hover:bg-gradient-to-r hover:from-emerald-50/30 hover:to-emerald-50/30 transition-all duration-150">
+                          <td className="px-4 py-4">
+                            <span className="font-bold text-emerald-700">
+                              {sale.invoice_no || `#${sale.sale_id}`}
+                            </span>
+                            {sale.token_no && <TokenBadge token={sale.token_no} />}
+                          </td>
+                          <td className="px-4 py-4 text-gray-600 text-sm">
+                            {new Date(sale.sale_date).toLocaleString('en-US', {
+                              month: 'short', day: 'numeric', year: 'numeric',
+                              hour: '2-digit', minute: '2-digit'
+                            })}
+                          </td>
+                          <td className="px-4 py-4 text-gray-700 font-medium">
+                            {sale.customer_name || 'Walk-in Customer'}
+                          </td>
+                          {showTypeFilter && (
+                            <td className="px-4 py-4">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
+                                isDelivery
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                  : 'bg-orange-50 text-orange-700 border-orange-200'
+                              }`}>
+                                {isDelivery ? 'Delivery' : 'Walk-in'}
+                              </span>
+                            </td>
+                          )}
+                          <td className="px-4 py-4 text-right text-gray-700">
+                            {cs} {parseFloat(sale.sub_total || 0).toFixed(2)}
+                          </td>
+                          <td className="px-4 py-4 text-right text-blue-600">
+                            {parseFloat(sale.tax_amount || 0) > 0
+                              ? `${cs} ${parseFloat(sale.tax_amount).toFixed(2)}`
+                              : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="px-4 py-4 text-right text-purple-600">
+                            {parseFloat(sale.additional_charges_amount || 0) > 0
+                              ? `${cs} ${parseFloat(sale.additional_charges_amount).toFixed(2)}`
+                              : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="px-4 py-4 text-right font-bold text-lg text-emerald-600">
+                            {cs} {parseFloat(sale.total_amount || 0).toFixed(2)}
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 text-xs rounded-full font-bold capitalize border border-emerald-200 shadow-sm">
+                              {sale.payment_method}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className={`px-3 py-1.5 text-xs rounded-full font-bold capitalize border shadow-sm ${
+                              sale.status === 'refunded'
+                                ? 'bg-gradient-to-r from-red-50 to-red-100 text-red-700 border-red-200'
+                                : 'bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 border-emerald-200'
+                            }`}>
+                              {sale.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => setPreviewId(sale.sale_id)}
+                                className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-transparent hover:border-emerald-200"
+                                title="View Bill"
+                              >
+                                <Eye size={18} />
+                              </button>
+                              <button
+                                onClick={() => setPreviewId(sale.sale_id)}
+                                className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-transparent hover:border-emerald-200"
+                                title="Print Receipt"
+                              >
+                                <Printer size={18} />
+                              </button>
+                              <button
+                                onClick={() => handleRefundClick(sale.sale_id)}
+                                disabled={sale.status === 'refunded'}
+                                className={`p-2 transition-all rounded-lg border ${
+                                  sale.status === 'refunded'
+                                    ? 'text-gray-300 cursor-not-allowed border-transparent'
+                                    : 'text-red-600 hover:bg-red-50 border-transparent hover:border-red-200'
+                                }`}
+                                title={sale.status === 'refunded' ? 'Already Refunded' : 'Refund Order'}
+                              >
+                                <RotateCcw size={18} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 0 && (
+              <div className={`bg-white rounded-xl p-4 border border-gray-200 ${isOverlay ? 'mt-4' : 'mt-6'}`}>
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  totalItems={totalItems}
+                  itemsPerPage={perPage}
+                  onItemsPerPageChange={v => { setPerPage(v); setPage(1); }}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Modals */}
+      {previewId !== null && <BillPreviewModal saleId={previewId} onClose={() => setPreviewId(null)} />}
+
+      {pwModal && (
+        <PasswordModal
+          title={pwModal.type === 'unlock' ? 'Completed Orders' : 'Refund Authorization'}
+          correctPassword={pwModal.type === 'unlock' ? passwords.view_completed : passwords.refund}
+          onSuccess={() => {
+            if (pwModal.type === 'unlock') { setUnlocked(true); fetchSales(); }
+            else if (pwModal.refundId)     { handleRefund(pwModal.refundId); }
+            setPwModal(null);
+          }}
+          onClose={() => { if (pwModal.type === 'unlock' && onClose) onClose(); else setPwModal(null); }}
+        />
+      )}
+    </div>
+  );
+
+  // ── Full-screen overlay wrapper (for POS) ─────────────────────────────────
+  if (isOverlay) {
+    return (
+      <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-0">
+        <div className="bg-white w-full h-full flex flex-col overflow-hidden">
+          {content}
+        </div>
+      </div>
+    );
+  }
+
+  return content;
+};
+
+export default CompletedOrdersView;

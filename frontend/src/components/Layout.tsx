@@ -38,7 +38,8 @@ import {
   Tag,
   Layers,
   ClipboardCheck,
-  Truck
+  Truck,
+  ShoppingBag
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -105,13 +106,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       color: 'emerald',
       children: [
         { icon: ShoppingCart, label: 'POS', path: '/pos', moduleKey: 'sales.pos' },
+        { icon: ShoppingBag, label: 'Walk-In Orders', path: '/walk-in-orders', moduleKey: 'sales.pos' },
+        { icon: Truck, label: 'Deliveries', path: '/deliveries', moduleKey: 'sales.deliveries' },
         { icon: Wallet, label: 'Cash Register', path: '/cash-register', moduleKey: 'sales.register' },
         { icon: RotateCcw, label: 'Returns', path: '/returns', moduleKey: 'sales.returns' },
         { icon: FileText, label: 'Quotations', path: '/quotations', moduleKey: 'sales.quotations' },
         { icon: BookOpen, label: 'Credit Sales', path: '/credit-sales', moduleKey: 'sales.credit' },
         { icon: Percent, label: 'Price Rules', path: '/price-rules', moduleKey: 'sales.pricerules' },
         { icon: Target, label: 'Sales Targets', path: '/sales-targets', moduleKey: 'sales.targets' },
-        { icon: Truck, label: 'Deliveries', path: '/deliveries', moduleKey: 'sales.deliveries' },
         { icon: PieChart, label: 'Sales Reports', path: '/sales-reports', moduleKey: 'sales.reports' },
         { icon: Users, label: 'Customers', path: '/customers', moduleKey: 'sales.customers' },
       ]

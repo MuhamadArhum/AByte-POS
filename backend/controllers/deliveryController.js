@@ -8,25 +8,16 @@ const parsePagination = (q) => {
   return { page, limit, offset };
 };
 
-// Generate delivery number: DEL-YYYYMMDD-XXXX
+// Generate delivery number: DL-01, DL-02 … (global sequential)
 async function generateDeliveryNumber() {
-  const today = new Date();
-  const dateStr = today.getFullYear().toString() +
-    String(today.getMonth() + 1).padStart(2, '0') +
-    String(today.getDate()).padStart(2, '0');
-
   const rows = await query(
-    `SELECT delivery_number FROM deliveries
-     WHERE delivery_number LIKE ? ORDER BY delivery_id DESC LIMIT 1`,
-    [`DEL-${dateStr}-%`]
+    `SELECT delivery_number FROM deliveries WHERE delivery_number LIKE 'DL-%' ORDER BY delivery_id DESC LIMIT 1`
   );
-
   let seq = 1;
   if (rows.length > 0) {
-    const last = rows[0].delivery_number.split('-')[2];
-    seq = parseInt(last) + 1;
+    seq = (parseInt(rows[0].delivery_number.replace('DL-', '')) || 0) + 1;
   }
-  return `DEL-${dateStr}-${String(seq).padStart(4, '0')}`;
+  return `DL-${String(seq).padStart(2, '0')}`;
 }
 
 // GET /api/deliveries/stats
@@ -79,8 +70,14 @@ exports.getAll = async (req, res) => {
       params.push(s, s, s, s);
     }
     if (status) {
-      conditions.push('d.status = ?');
-      params.push(status);
+      const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+      if (statuses.length === 1) {
+        conditions.push('d.status = ?');
+        params.push(statuses[0]);
+      } else if (statuses.length > 1) {
+        conditions.push(`d.status IN (${statuses.map(() => '?').join(',')})`);
+        params.push(...statuses);
+      }
     }
     if (date_from) {
       conditions.push('DATE(d.created_at) >= ?');
@@ -101,11 +98,16 @@ exports.getAll = async (req, res) => {
       query(`
         SELECT d.*,
                c.customer_name,
-               c.phone_number  AS customer_phone,
-               u.name          AS created_by_name,
-               s.sale_id       AS linked_sale_id,
-               s.status        AS sale_status,
-               s.total_amount  AS sale_total_amount
+               c.phone_number            AS customer_phone,
+               u.name                    AS created_by_name,
+               s.sale_id                 AS linked_sale_id,
+               s.status                  AS sale_status,
+               s.invoice_no              AS sale_invoice_no,
+               s.total_amount            AS sale_total_amount,
+               s.sub_total               AS sale_sub_total,
+               s.tax_amount              AS sale_tax_amount,
+               s.additional_charges_amount AS sale_service_amount,
+               s.payment_method          AS sale_payment_method
         FROM deliveries d
         JOIN customers c ON d.customer_id = c.customer_id
         LEFT JOIN users u ON d.created_by = u.user_id

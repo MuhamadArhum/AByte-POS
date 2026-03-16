@@ -35,7 +35,8 @@ import {
   Play,
   Tag,
   RotateCcw,
-  CreditCard
+  CreditCard,
+  Truck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast';
@@ -60,7 +61,7 @@ const Settings = () => {
   const [settings, setSettings] = useState<any>({
     store_name: '', address: '', phone: '', email: '', website: '',
     receipt_header: '', receipt_footer: '', receipt_logo: '',
-    tax_rate: 0, currency_symbol: 'Rs.',
+    tax_rate: 0, currency_symbol: 'Rs.', default_delivery_charges: 0,
     low_stock_threshold: 10, default_payment_method: 'cash', auto_print_receipt: false,
     barcode_prefix: '', invoice_prefix: 'INV-', date_format: 'DD/MM/YYYY', timezone: 'Asia/Karachi',
     business_hours_open: '09:00', business_hours_close: '21:00',
@@ -828,6 +829,17 @@ const Settings = () => {
                     onChange={e => setSettings({ ...settings, max_cashier_discount: parseFloat(e.target.value) || 0 })}
                     className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
                   <p className="text-xs text-gray-500 mt-1">Maximum discount cashiers can apply (Admin/Manager have no limit)</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Default Delivery Charges (Rs.)</label>
+                  <div className="relative">
+                    <Truck className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input type="number" step="1" min="0" value={settings.default_delivery_charges}
+                      onChange={e => setSettings({ ...settings, default_delivery_charges: parseFloat(e.target.value) || 0 })}
+                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                      placeholder="0" />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Pre-filled in cart when Delivery mode is selected</p>
                 </div>
               </div>
 

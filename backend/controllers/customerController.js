@@ -27,12 +27,15 @@ const parsePagination = (page, limit) => {
 exports.getAll = async (req, res) => {
   try {
     const { search } = req.query;  // Optional search keyword from URL ?search=...
-    let sql = 'SELECT * FROM customers';
+    // JOIN with customer_addresses to get default address (fallback for older records)
+    let sql = `SELECT c.*, COALESCE(c.address, ca.address_text) AS address
+               FROM customers c
+               LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1`;
     const params = [];
 
     // If a search keyword is provided, filter by name or phone (partial match)
     if (search) {
-      sql += ' WHERE customer_name LIKE ? OR phone_number LIKE ?';
+      sql += ' WHERE c.customer_name LIKE ? OR c.phone_number LIKE ?';
       params.push(`%${search}%`, `%${search}%`);
     }
 
@@ -42,11 +45,11 @@ exports.getAll = async (req, res) => {
       const pg = parsePagination(page, limit);
 
       const countSql = 'SELECT COUNT(*) as total FROM customers' + (search ? ' WHERE customer_name LIKE ? OR phone_number LIKE ?' : '');
-      const countParams = [...params];
+      const countParams = search ? [`%${search}%`, `%${search}%`] : [];
       const countResult = await query(countSql, countParams);
       const total = Number(countResult[0].total);
 
-      sql += ' ORDER BY customer_name LIMIT ? OFFSET ?';
+      sql += ' ORDER BY c.customer_name LIMIT ? OFFSET ?';
       params.push(pg.limit, pg.offset);
 
       const rows = await query(sql, params);
@@ -56,7 +59,7 @@ exports.getAll = async (req, res) => {
       });
     }
 
-    sql += ' ORDER BY customer_name';  // Alphabetical order
+    sql += ' ORDER BY c.customer_name';
     const rows = await query(sql, params);
     res.json({ data: rows });
   } catch (err) {
@@ -80,18 +83,20 @@ exports.create = async (req, res) => {
     const companyVal = company && company.trim() ? company.trim() : null;
     const taxIdVal = tax_id && tax_id.trim() ? tax_id.trim() : null;
 
+    const addrVal = address && address.trim() ? address.trim() : null;
+
     const result = await query(
-      'INSERT INTO customers (customer_name, phone_number, email, company, tax_id) VALUES (?, ?, ?, ?, ?)',
-      [customer_name, phone, emailVal, companyVal, taxIdVal]
+      'INSERT INTO customers (customer_name, phone_number, email, company, tax_id, address) VALUES (?, ?, ?, ?, ?, ?)',
+      [customer_name, phone, emailVal, companyVal, taxIdVal, addrVal]
     );
 
     const customerId = Number(result.insertId);
 
-    // Save address if provided
-    if (address && address.trim()) {
+    // Also save address to customer_addresses for multi-address support
+    if (addrVal) {
       await query(
         'INSERT INTO customer_addresses (customer_id, address_text, is_default) VALUES (?, ?, 1)',
-        [customerId, address.trim()]
+        [customerId, addrVal]
       );
     }
 
@@ -121,8 +126,14 @@ exports.create = async (req, res) => {
 // Used when clicking on a customer to view their details.
 exports.getById = async (req, res) => {
   try {
-    // Fetch the customer record
-    const rows = await query('SELECT * FROM customers WHERE customer_id = ?', [req.params.id]);
+    // Fetch the customer record (with default address fallback from customer_addresses)
+    const rows = await query(
+      `SELECT c.*, COALESCE(c.address, ca.address_text) AS address
+       FROM customers c
+       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1
+       WHERE c.customer_id = ?`,
+      [req.params.id]
+    );
     if (rows.length === 0) return res.status(404).json({ message: 'Customer not found' });
 
     // Pagination for purchases
@@ -188,21 +199,23 @@ exports.update = async (req, res) => {
     const companyVal = company && company.trim() ? company.trim() : null;
     const taxIdVal = tax_id && tax_id.trim() ? tax_id.trim() : null;
 
+    const addrVal = address && address.trim() ? address.trim() : null;
+
     await query(
-      'UPDATE customers SET customer_name = ?, phone_number = ?, email = ?, company = ?, tax_id = ? WHERE customer_id = ?',
-      [customer_name, phone, emailVal, companyVal, taxIdVal, id]
+      'UPDATE customers SET customer_name = ?, phone_number = ?, email = ?, company = ?, tax_id = ?, address = ? WHERE customer_id = ?',
+      [customer_name, phone, emailVal, companyVal, taxIdVal, addrVal, id]
     );
 
-    // Upsert default address if provided
-    if (address && address.trim()) {
+    // Also upsert in customer_addresses for multi-address support
+    if (addrVal) {
       const existing = await query(
         'SELECT address_id FROM customer_addresses WHERE customer_id = ? AND is_default = 1',
         [id]
       );
       if (existing.length > 0) {
-        await query('UPDATE customer_addresses SET address_text = ? WHERE address_id = ?', [address.trim(), existing[0].address_id]);
+        await query('UPDATE customer_addresses SET address_text = ? WHERE address_id = ?', [addrVal, existing[0].address_id]);
       } else {
-        await query('INSERT INTO customer_addresses (customer_id, address_text, is_default) VALUES (?, ?, 1)', [id, address.trim()]);
+        await query('INSERT INTO customer_addresses (customer_id, address_text, is_default) VALUES (?, ?, 1)', [id, addrVal]);
       }
     }
 

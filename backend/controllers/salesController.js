@@ -38,10 +38,6 @@ exports.createSale = async (req, res) => {
       additional_charges_percent = 0,
       note,
       applied_bundles = [], // Array of { bundle_id, bundle_name, discount_amount }
-      // New: Coupon, Loyalty, Credit
-      coupon_code,
-      coupon_discount: frontendCouponDiscount,
-      loyalty_redeem_points,
       is_credit,
       credit_due_date
     } = req.body;
@@ -100,64 +96,8 @@ exports.createSale = async (req, res) => {
     const taxAmt = round2(subtotal * (parseFloat(tax_percent) / 100));
     const additionalAmt = round2(subtotal * (parseFloat(additional_charges_percent) / 100));
 
-    // Step 2b: Validate and apply coupon
-    let couponId = null;
-    let couponDiscountAmt = 0;
-    if (coupon_code) {
-      const coupons = await conn.query(
-        `SELECT * FROM coupons WHERE code = ? AND is_active = 1 AND valid_from <= CURDATE() AND valid_until >= CURDATE()`,
-        [coupon_code]
-      );
-      if (coupons.length === 0) {
-        await conn.rollback();
-        return res.status(400).json({ message: 'Invalid or expired coupon code' });
-      }
-      const coupon = coupons[0];
-      // Check usage limit
-      if (coupon.max_uses) {
-        const usageCount = await conn.query('SELECT COUNT(*) as cnt FROM coupon_redemptions WHERE coupon_id = ?', [coupon.coupon_id]);
-        if (Number(usageCount[0].cnt) >= coupon.max_uses) {
-          await conn.rollback();
-          return res.status(400).json({ message: 'Coupon usage limit reached' });
-        }
-      }
-      // Check min purchase
-      if (coupon.min_purchase && subtotal < parseFloat(coupon.min_purchase)) {
-        await conn.rollback();
-        return res.status(400).json({ message: `Minimum purchase of $${coupon.min_purchase} required for this coupon` });
-      }
-      // Calculate discount
-      if (coupon.discount_type === 'percentage') {
-        couponDiscountAmt = round2(subtotal * (parseFloat(coupon.discount_value) / 100));
-      } else {
-        couponDiscountAmt = round2(Math.min(parseFloat(coupon.discount_value), subtotal));
-      }
-      couponId = coupon.coupon_id;
-    }
-
-    // Step 2c: Validate loyalty points redemption
-    let loyaltyRedeemAmt = 0;
-    let actualPointsRedeemed = 0;
-    if (loyalty_redeem_points && loyalty_redeem_points > 0 && customer_id && customer_id !== 1) {
-      const custRows = await conn.query('SELECT loyalty_points FROM customers WHERE customer_id = ? FOR UPDATE', [customer_id]);
-      if (custRows.length > 0) {
-        const availablePoints = parseInt(custRows[0].loyalty_points) || 0;
-        // Load loyalty config
-        const configRows = await conn.query('SELECT * FROM loyalty_config WHERE config_id = 1');
-        if (configRows.length > 0 && configRows[0].is_active) {
-          const config = configRows[0];
-          actualPointsRedeemed = Math.min(parseInt(loyalty_redeem_points), availablePoints);
-          if (actualPointsRedeemed >= (parseInt(config.min_redeem_points) || 0)) {
-            loyaltyRedeemAmt = round2(actualPointsRedeemed * parseFloat(config.amount_per_point));
-          } else {
-            actualPointsRedeemed = 0;
-          }
-        }
-      }
-    }
-
-    // Total Amount = Subtotal + Tax + Additional - Discount - Bundle - Coupon - Loyalty
-    const total_amount = round2(Math.max(0, subtotal + taxAmt + additionalAmt - discountAmt - bundleDiscountAmt - couponDiscountAmt - loyaltyRedeemAmt));
+    // Total Amount = Subtotal + Tax + Additional - Discount - Bundle
+    const total_amount = round2(Math.max(0, subtotal + taxAmt + additionalAmt - discountAmt - bundleDiscountAmt));
 
     // Validate discount
     const maxAllowedTotal = subtotal + taxAmt + additionalAmt;
@@ -182,17 +122,17 @@ exports.createSale = async (req, res) => {
     const invoice_no = `INV-${String(invResult[0].next_inv).padStart(5, '0')}`;
 
     if (status === 'pending') {
-      // Token resets per shift — count tokens since current shift opened
+      // Walk-in token: WI-01, WI-02 … resets per shift
       const shiftRows = await conn.query(
         `SELECT opened_at FROM cash_registers WHERE status = 'open' ORDER BY register_id DESC LIMIT 1`
       );
       const shiftStart = shiftRows.length > 0 ? shiftRows[0].opened_at : new Date().toISOString().slice(0, 10);
       const tokenResult = await conn.query(
-        `SELECT COALESCE(MAX(CAST(SUBSTRING(token_no, 2) AS UNSIGNED)), 0) + 1 as next_token
-         FROM sales WHERE token_no IS NOT NULL AND sale_date >= ?`,
+        `SELECT COALESCE(MAX(CAST(REPLACE(token_no, 'WI-', '') AS UNSIGNED)), 0) + 1 as next_token
+         FROM sales WHERE token_no LIKE 'WI-%' AND sale_date >= ?`,
         [shiftStart]
       );
-      token_no = `#${tokenResult[0].next_token}`;
+      token_no = `WI-${String(tokenResult[0].next_token).padStart(2, '0')}`;
     }
 
     // Step 4: Insert the sale header record
@@ -203,8 +143,8 @@ exports.createSale = async (req, res) => {
         sub_total, total_amount, discount, bundle_discount, bundle_count, net_amount, user_id, customer_id,
         payment_method, amount_paid, status,
         tax_percent, tax_amount, additional_charges_percent, additional_charges_amount, note,
-        coupon_id, coupon_discount, loyalty_points_redeemed, token_no, invoice_no
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        token_no, invoice_no
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         subtotal,
         total_amount,
@@ -222,9 +162,6 @@ exports.createSale = async (req, res) => {
         additional_charges_percent,
         additionalAmt,
         note || null,
-        couponId,
-        couponDiscountAmt > 0 ? couponDiscountAmt : null,
-        actualPointsRedeemed > 0 ? actualPointsRedeemed : null,
         token_no,
         invoice_no
       ]
@@ -270,56 +207,7 @@ exports.createSale = async (req, res) => {
       }
     }
 
-    // Step 6: Record coupon redemption
-    if (couponId) {
-      await conn.query(
-        'INSERT INTO coupon_redemptions (coupon_id, sale_id, customer_id, discount_amount) VALUES (?, ?, ?, ?)',
-        [couponId, sale_id, customer_id || 1, couponDiscountAmt]
-      );
-    }
-
-    // Step 7: Handle loyalty points - deduct redeemed points
-    if (actualPointsRedeemed > 0) {
-      await conn.query(
-        'UPDATE customers SET loyalty_points = loyalty_points - ? WHERE customer_id = ?',
-        [actualPointsRedeemed, customer_id]
-      );
-      await conn.query(
-        `INSERT INTO loyalty_transactions (customer_id, points, transaction_type, reference_type, reference_id, description)
-         VALUES (?, ?, 'redeemed', 'sale', ?, ?)`,
-        [customer_id, actualPointsRedeemed, sale_id, `Redeemed ${actualPointsRedeemed} points on sale #${sale_id}`]
-      );
-    }
-
-    // Step 7b: Earn loyalty points (for non-walk-in customers, on completed sales)
-    let loyaltyPointsEarned = 0;
-    if (status === 'completed' && customer_id && customer_id !== 1) {
-      const configRows = await conn.query('SELECT * FROM loyalty_config WHERE config_id = 1');
-      if (configRows.length > 0 && configRows[0].is_active) {
-        const config = configRows[0];
-        const pointsPerAmount = parseFloat(config.points_per_amount) || 0;
-        if (pointsPerAmount > 0) {
-          loyaltyPointsEarned = Math.floor(total_amount / pointsPerAmount);
-          if (loyaltyPointsEarned > 0) {
-            await conn.query(
-              'UPDATE customers SET loyalty_points = loyalty_points + ? WHERE customer_id = ?',
-              [loyaltyPointsEarned, customer_id]
-            );
-            await conn.query(
-              `INSERT INTO loyalty_transactions (customer_id, points, transaction_type, reference_type, reference_id, description)
-               VALUES (?, ?, 'earned', 'sale', ?, ?)`,
-              [customer_id, loyaltyPointsEarned, sale_id, `Earned ${loyaltyPointsEarned} points on sale #${sale_id}`]
-            );
-            await conn.query(
-              'UPDATE sales SET loyalty_points_earned = ? WHERE sale_id = ?',
-              [loyaltyPointsEarned, sale_id]
-            );
-          }
-        }
-      }
-    }
-
-    // Step 8: Create credit sale record if credit payment
+    // Step 6: Create credit sale record if credit payment
     if (is_credit) {
       await conn.query(
         `INSERT INTO credit_sales (sale_id, customer_id, total_amount, paid_amount, remaining_amount, due_date, status)
@@ -355,13 +243,10 @@ exports.createSale = async (req, res) => {
 
     await logAction(req.user.user_id, req.user.name, 'SALE_CREATED', 'sale', sale_id, {
       total_amount, status, items_count: items.length,
-      coupon_code: coupon_code || null,
-      is_credit: is_credit || false,
-      loyalty_points_earned: loyaltyPointsEarned,
-      loyalty_points_redeemed: actualPointsRedeemed
+      is_credit: is_credit || false
     }, req.ip);
 
-    res.status(201).json({ ...newSale[0], items: saleDetails, loyalty_points_earned: loyaltyPointsEarned });
+    res.status(201).json({ ...newSale[0], items: saleDetails });
 
   } catch (error) {
     if (conn) await conn.rollback();  // Rollback on error
@@ -627,7 +512,7 @@ exports.getToday = async (req, res) => {
 // --- Get All Sales ---
 exports.getAll = async (req, res) => {
   try {
-    const { page, limit, search, status, date_from, date_to } = req.query;
+    const { page, limit, search, status, date_from, date_to, order_type } = req.query;
     let sql = `
       SELECT s.*, c.customer_name, u.name as cashier_name
       FROM sales s
@@ -636,6 +521,13 @@ exports.getAll = async (req, res) => {
       WHERE 1=1
     `;
     const params = [];
+
+    // Filter by order type: walkin = no linked delivery, delivery = has linked delivery
+    if (order_type === 'delivery') {
+      sql += ' AND EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)';
+    } else if (order_type === 'walkin') {
+      sql += ' AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)';
+    }
 
     if (status) {
       if (status.includes(',')) {
@@ -667,6 +559,12 @@ exports.getAll = async (req, res) => {
         WHERE 1=1
       `;
       const countParams = [];
+
+      if (order_type === 'delivery') {
+        countSql += ' AND EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)';
+      } else if (order_type === 'walkin') {
+        countSql += ' AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)';
+      }
 
       if (status) {
         if (status.includes(',')) {

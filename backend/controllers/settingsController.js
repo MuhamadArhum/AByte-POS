@@ -37,7 +37,8 @@ exports.updateSettings = async (req, res) => {
       receipt_show_store_name, receipt_show_address, receipt_show_phone, receipt_show_tax,
       receipt_paper_width,
       printer_type, printer_ip, printer_port, printer_name, printer_paper_width,
-      view_completed_orders_password, refund_password, reports_password
+      view_completed_orders_password, refund_password, reports_password,
+      default_delivery_charges
     } = req.body;
 
     // Build dynamic SET clause to handle optional columns gracefully
@@ -82,8 +83,17 @@ exports.updateSettings = async (req, res) => {
         [view_completed_orders_password || null, refund_password || null, reports_password || null]
       );
     } catch (pwErr) {
-      // Columns don't exist yet — run migrate_pos_security.js to add them
       console.warn('POS security password columns not found. Run migrate_pos_security.js');
+    }
+
+    // Update default delivery charges (column may not exist on older DBs)
+    try {
+      await query(
+        `UPDATE store_settings SET default_delivery_charges=? WHERE setting_id=1`,
+        [parseFloat(default_delivery_charges) || 0]
+      );
+    } catch (dcErr) {
+      console.warn('default_delivery_charges column not found. Run migrate_delivery_charges_setting.js');
     }
 
     await logAction(req.user.user_id, req.user.name, 'SETTINGS_UPDATED', 'settings', 1, { store_name }, req.ip);
