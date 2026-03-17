@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { FileText, Plus, Search, X, Send, Check, XCircle, ShoppingCart, Trash2, Eye, Printer } from 'lucide-react';
+import { FileText, Plus, Search, X, Send, Check, XCircle, ShoppingCart, Trash2, Eye, Printer, Pencil } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
 import QuotationPrintModal from '../../components/QuotationPrintModal';
@@ -7,6 +7,7 @@ import QuotationPrintModal from '../../components/QuotationPrintModal';
 interface Quotation {
   quotation_id: number;
   quotation_number: string;
+  customer_id?: number;
   customer_name: string;
   total_amount: number;
   status: string;
@@ -54,6 +55,16 @@ const Quotations = () => {
   const [formDiscount, setFormDiscount] = useState('0');
   const [formValidUntil, setFormValidUntil] = useState('');
   const [formNotes, setFormNotes] = useState('');
+
+  // Edit form
+  const [editingQt, setEditingQt] = useState<Quotation | null>(null);
+  const [editFormCustomer, setEditFormCustomer] = useState('');
+  const [editFormItems, setEditFormItems] = useState<{ product_id: number; product_name: string; quantity: number; unit_price: number }[]>([]);
+  const [editFormTax, setEditFormTax] = useState('0');
+  const [editFormDiscount, setEditFormDiscount] = useState('0');
+  const [editFormValidUntil, setEditFormValidUntil] = useState('');
+  const [editFormNotes, setEditFormNotes] = useState('');
+  const [editProductSearch, setEditProductSearch] = useState('');
 
   const fetchQuotations = useCallback(async () => {
     setLoading(true);
@@ -125,6 +136,64 @@ const Quotations = () => {
     if (!window.confirm('Delete this draft quotation?')) return;
     try { await api.delete(`/quotations/${id}`); fetchQuotations(); fetchStats(); }
     catch (err: any) { alert(err.response?.data?.message || 'Failed'); }
+  };
+
+  const openEdit = async (qt: Quotation) => {
+    try {
+      const [detailRes, cRes, pRes] = await Promise.all([
+        api.get(`/quotations/${qt.quotation_id}`),
+        api.get('/customers?limit=100'),
+        api.get('/products?limit=200'),
+      ]);
+      const detail = detailRes.data;
+      setCustomers(cRes.data.data || []);
+      setAllProducts(pRes.data.data || []);
+      setEditingQt(detail);
+      setEditFormCustomer(detail.customer_id?.toString() || '');
+      setEditFormItems((detail.items || []).map((i: any) => ({
+        product_id: i.product_id,
+        product_name: i.product_name,
+        quantity: Number(i.quantity),
+        unit_price: Number(i.unit_price),
+      })));
+      setEditFormTax(detail.tax_amount?.toString() || '0');
+      setEditFormDiscount(detail.discount?.toString() || '0');
+      setEditFormValidUntil(detail.valid_until ? new Date(detail.valid_until).toISOString().split('T')[0] : '');
+      setEditFormNotes(detail.notes || '');
+      setEditProductSearch('');
+    } catch (err: any) {
+      console.error(err);
+      alert('Failed to load quotation: ' + (err.message || 'Unknown error'));
+    }
+  };
+
+  const addEditProduct = (p: any) => {
+    if (editFormItems.find(i => i.product_id === p.product_id)) return;
+    setEditFormItems([...editFormItems, { product_id: p.product_id, product_name: p.product_name, quantity: 1, unit_price: parseFloat(p.price) }]);
+    setEditProductSearch('');
+  };
+
+  const updateEditItem = (idx: number, field: string, value: number) => {
+    const updated = [...editFormItems];
+    (updated[idx] as any)[field] = value;
+    setEditFormItems(updated);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingQt || editFormItems.length === 0) return alert('Add at least one item');
+    try {
+      await api.put(`/quotations/${editingQt.quotation_id}`, {
+        customer_id: parseInt(editFormCustomer) || 1,
+        items: editFormItems.map(i => ({ product_id: i.product_id, quantity: i.quantity, unit_price: i.unit_price })),
+        tax_amount: parseFloat(editFormTax) || 0,
+        discount: parseFloat(editFormDiscount) || 0,
+        valid_until: editFormValidUntil || null,
+        notes: editFormNotes || null,
+      });
+      setEditingQt(null);
+      fetchQuotations();
+      fetchStats();
+    } catch (err: any) { alert(err.response?.data?.message || 'Failed to update'); }
   };
 
   const viewDetail = async (id: number) => {
@@ -206,6 +275,7 @@ const Quotations = () => {
                         <div className="flex gap-1">
                           <button onClick={() => viewDetail(q.quotation_id)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg" title="View"><Eye size={16} /></button>
                           <button onClick={() => setPrintQuotationId(q.quotation_id)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Print"><Printer size={16} /></button>
+                          {(q.status === 'draft' || q.status === 'sent') && <button onClick={() => openEdit(q)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="Edit"><Pencil size={16} /></button>}
                           {q.status === 'draft' && <button onClick={() => handleStatusChange(q.quotation_id, 'sent')} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Send"><Send size={16} /></button>}
                           {q.status === 'sent' && <>
                             <button onClick={() => handleStatusChange(q.quotation_id, 'accepted')} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg" title="Accept"><Check size={16} /></button>
@@ -317,6 +387,78 @@ const Quotations = () => {
             <div className="flex justify-end gap-3 p-6 border-t">
               <button onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 border rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleCreate} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Create Quotation</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingQt && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h2 className="text-base font-semibold flex items-center gap-2"><Pencil size={16} className="text-indigo-600" /> Edit Quotation</h2>
+                <p className="text-sm text-gray-500 font-mono">{editingQt.quotation_number}</p>
+              </div>
+              <button onClick={() => setEditingQt(null)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                  <select value={editFormCustomer} onChange={(e) => setEditFormCustomer(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <option value="">Select Customer</option>
+                    {customers.map((c: any) => <option key={c.customer_id} value={c.customer_id}>{c.customer_name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Valid Until</label>
+                  <input type="date" value={editFormValidUntil} onChange={(e) => setEditFormValidUntil(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Add Products</label>
+                <input type="text" placeholder="Search products..." value={editProductSearch} onChange={(e) => setEditProductSearch(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+                {editProductSearch && (
+                  <div className="border rounded-lg mt-1 max-h-32 overflow-y-auto bg-white shadow-lg">
+                    {allProducts.filter(p => p.product_name.toLowerCase().includes(editProductSearch.toLowerCase())).slice(0, 10).map((p: any) => (
+                      <button key={p.product_id} onClick={() => addEditProduct(p)} className="w-full text-left px-3 py-2 hover:bg-indigo-50 text-sm flex justify-between"><span>{p.product_name}</span><span className="text-gray-400">Rs. {Number(p.price).toFixed(2)}</span></button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {editFormItems.length > 0 && (
+                <table className="w-full text-sm border rounded-lg overflow-hidden">
+                  <thead className="bg-gray-50"><tr><th className="px-3 py-2 text-left">Product</th><th className="px-3 py-2 text-right w-24">Qty</th><th className="px-3 py-2 text-right w-32">Price</th><th className="px-3 py-2 text-right w-28">Total</th><th className="px-3 py-2 w-10"></th></tr></thead>
+                  <tbody className="divide-y">
+                    {editFormItems.map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="px-3 py-2">{item.product_name}</td>
+                        <td className="px-3 py-2"><input type="number" min="1" value={item.quantity} onChange={(e) => updateEditItem(idx, 'quantity', parseInt(e.target.value) || 1)} className="w-full px-2 py-1 border rounded text-right" /></td>
+                        <td className="px-3 py-2"><input type="number" min="0" step="0.01" value={item.unit_price} onChange={(e) => updateEditItem(idx, 'unit_price', parseFloat(e.target.value) || 0)} className="w-full px-2 py-1 border rounded text-right" /></td>
+                        <td className="px-3 py-2 text-right font-medium">Rs. {(item.quantity * item.unit_price).toFixed(2)}</td>
+                        <td className="px-3 py-2"><button onClick={() => setEditFormItems(editFormItems.filter((_, i) => i !== idx))} className="text-red-500 hover:bg-red-50 rounded p-1"><Trash2 size={14} /></button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              <div className="grid grid-cols-3 gap-4">
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Tax Amount</label><input type="number" min="0" step="0.01" value={editFormTax} onChange={(e) => setEditFormTax(e.target.value)} className="w-full px-3 py-2 border rounded-lg" /></div>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Discount</label><input type="number" min="0" step="0.01" value={editFormDiscount} onChange={(e) => setEditFormDiscount(e.target.value)} className="w-full px-3 py-2 border rounded-lg" /></div>
+                <div className="flex items-end">
+                  <div className="w-full bg-indigo-50 border border-indigo-200 rounded-lg p-2 text-center">
+                    <p className="text-xs text-indigo-600">Total</p>
+                    <p className="text-lg font-bold text-indigo-800">Rs. {(editFormItems.reduce((s, i) => s + i.quantity * i.unit_price, 0) + (parseFloat(editFormTax) || 0) - (parseFloat(editFormDiscount) || 0)).toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Notes</label><textarea value={editFormNotes} onChange={(e) => setEditFormNotes(e.target.value)} rows={2} className="w-full px-3 py-2 border rounded-lg" placeholder="Optional notes" /></div>
+            </div>
+            <div className="flex justify-end gap-3 p-6 border-t">
+              <button onClick={() => setEditingQt(null)} className="px-4 py-2 text-gray-700 border rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleUpdate} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"><Pencil size={15} /> Update Quotation</button>
             </div>
           </div>
         </div>

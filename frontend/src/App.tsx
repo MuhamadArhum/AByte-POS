@@ -52,6 +52,7 @@ import ChartOfAccounts from './pages/accounts/ChartOfAccounts';
 import JournalEntries from './pages/accounts/JournalEntries';
 import GeneralLedger from './pages/accounts/GeneralLedger';
 import TrialBalance from './pages/accounts/TrialBalance';
+import TrialBalance6Col from './pages/accounts/TrialBalance6Col';
 import ProfitLoss from './pages/accounts/ProfitLoss';
 import BalanceSheet from './pages/accounts/BalanceSheet';
 import BankAccounts from './pages/accounts/BankAccounts';
@@ -153,6 +154,7 @@ function App() {
                       <Route path="/journal-entries" element={<PermissionGuard moduleKey="accounts.journal"><JournalEntries /></PermissionGuard>} />
                       <Route path="/general-ledger" element={<PermissionGuard moduleKey="accounts.ledger"><GeneralLedger /></PermissionGuard>} />
                       <Route path="/trial-balance" element={<PermissionGuard moduleKey="accounts.trial-balance"><TrialBalance /></PermissionGuard>} />
+                      <Route path="/trial-balance-6col" element={<PermissionGuard moduleKey="accounts.trial-balance-6col"><TrialBalance6Col /></PermissionGuard>} />
                       <Route path="/profit-loss" element={<PermissionGuard moduleKey="accounts.profit-loss"><ProfitLoss /></PermissionGuard>} />
                       <Route path="/balance-sheet" element={<PermissionGuard moduleKey="accounts.balance-sheet"><BalanceSheet /></PermissionGuard>} />
                       <Route path="/bank-accounts" element={<PermissionGuard moduleKey="accounts.bank-accounts"><BankAccounts /></PermissionGuard>} />

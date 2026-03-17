@@ -75,6 +75,13 @@ const POS = () => {
   const [holdToken, setHoldToken] = useState<string | null>(null);
   const [deliveryConfirm, setDeliveryConfirm] = useState<string | null>(null);
 
+  // Quotation modal
+  const [showQuotationModal, setShowQuotationModal] = useState(false);
+  const [quotationSaving, setQuotationSaving] = useState(false);
+  const [quotationSuccess, setQuotationSuccess] = useState<string | null>(null);
+  const [qtValidUntil, setQtValidUntil] = useState('');
+  const [qtNotes, setQtNotes] = useState('');
+
   // Completed orders modal (Orders button in header)
   const [showSalesModal, setShowSalesModal] = useState(false);
   const [storeSettings, setStoreSettings] = useState<any>(null);
@@ -555,6 +562,38 @@ const POS = () => {
       setTimeout(() => setDeliveryConfirm(null), 6000);
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to create delivery order');
+    }
+  };
+
+  const handleSaveAsQuotation = async () => {
+    if (cart.length === 0) return;
+    setQuotationSaving(true);
+    try {
+      const items = cart.map(item => ({
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.price,
+        variant_id: (item as any).variant_id || undefined,
+      }));
+      const res = await api.post('/quotations', {
+        customer_id: selectedCustomer?.customer_id || 1,
+        items,
+        tax_amount: taxAmount,
+        discount: bundleDiscount,
+        valid_until: qtValidUntil || null,
+        notes: qtNotes || null,
+      });
+      setShowQuotationModal(false);
+      setQtValidUntil('');
+      setQtNotes('');
+      clearCart();
+      resetDelivery();
+      setQuotationSuccess(res.data.quotation_number);
+      setTimeout(() => setQuotationSuccess(null), 6000);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to save quotation');
+    } finally {
+      setQuotationSaving(false);
     }
   };
 
@@ -1246,6 +1285,18 @@ const POS = () => {
               </button>
             </div>
           )}
+          {quotationSuccess && (
+            <div className="mx-3 mt-2 px-4 py-2.5 bg-indigo-50 border border-indigo-300 rounded-xl flex items-center justify-between">
+              <div>
+                <p className="text-xs text-indigo-600 font-medium flex items-center gap-1"><FileText size={11} /> Quotation Saved</p>
+                <p className="text-lg font-black text-indigo-700">{quotationSuccess}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => navigate('/quotations')} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded-lg hover:bg-indigo-700 font-medium">View</button>
+                <button onClick={() => setQuotationSuccess(null)} className="text-indigo-400 hover:text-indigo-600"><X size={16} /></button>
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="p-3 space-y-2">
@@ -1275,21 +1326,32 @@ const POS = () => {
                 <Truck size={16} /> Send to Delivery
               </button>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={handleHoldOrder}
-                  disabled={cart.length === 0}
-                  className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <Archive size={16} /> Punch/Hold <span className="text-amber-200 text-xs">F8</span>
-                </button>
-                <button
-                  onClick={() => { setSelectedPendingSale(null); setIsCheckoutOpen(true); }}
-                  disabled={cart.length === 0}
-                  className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <DollarSign size={16} /> Pay Now <span className="text-white/60 text-xs">F9</span>
-                </button>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handleHoldOrder}
+                    disabled={cart.length === 0}
+                    className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Archive size={16} /> Punch/Hold <span className="text-amber-200 text-xs">F8</span>
+                  </button>
+                  <button
+                    onClick={() => { setSelectedPendingSale(null); setIsCheckoutOpen(true); }}
+                    disabled={cart.length === 0}
+                    className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <DollarSign size={16} /> Pay Now <span className="text-white/60 text-xs">F9</span>
+                  </button>
+                </div>
+                {(user?.role_name === 'Admin' || user?.role_name === 'Manager') && (
+                  <button
+                    onClick={() => { setQtValidUntil(''); setQtNotes(''); setShowQuotationModal(true); }}
+                    disabled={cart.length === 0}
+                    className="w-full flex items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <FileText size={16} /> Save as Quotation
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1396,6 +1458,79 @@ const POS = () => {
           title="Sales History"
           onClose={() => setShowSalesModal(false)}
         />
+      )}
+
+      {/* ── Save as Quotation Modal ────────────────────────────── */}
+      {showQuotationModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-5 border-b">
+              <h2 className="text-base font-semibold flex items-center gap-2">
+                <FileText size={18} className="text-indigo-600" /> Save as Quotation
+              </h2>
+              <button onClick={() => setShowQuotationModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Cart Summary */}
+              <div className="bg-gray-50 rounded-xl p-3">
+                <p className="text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide">Cart Items ({cart.length})</p>
+                <div className="space-y-1 max-h-36 overflow-y-auto">
+                  {cart.map(item => (
+                    <div key={item.product_id} className="flex justify-between text-sm text-gray-700">
+                      <span className="truncate flex-1">{item.product_name} × {item.quantity}</span>
+                      <span className="font-medium ml-2">Rs. {(item.price * item.quantity).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between text-sm font-bold text-gray-800">
+                  <span>Total</span>
+                  <span>Rs. {(total + delivCharges).toFixed(2)}</span>
+                </div>
+              </div>
+              {/* Customer */}
+              <div className="flex items-center gap-2 text-sm text-gray-600 bg-blue-50 rounded-lg px-3 py-2">
+                <User size={14} className="text-blue-500" />
+                <span>Customer: <span className="font-medium text-gray-800">{selectedCustomer?.customer_name || 'Walk-in Customer'}</span></span>
+              </div>
+              {/* Valid Until */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Valid Until <span className="text-gray-400 font-normal">(optional)</span></label>
+                <input
+                  type="date"
+                  value={qtValidUntil}
+                  onChange={(e) => setQtValidUntil(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                />
+              </div>
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes <span className="text-gray-400 font-normal">(optional)</span></label>
+                <textarea
+                  value={qtNotes}
+                  onChange={(e) => setQtNotes(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm resize-none"
+                  placeholder="Add any notes..."
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 p-5 border-t">
+              <button onClick={() => setShowQuotationModal(false)} className="px-4 py-2 text-sm text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50">
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveAsQuotation}
+                disabled={quotationSaving}
+                className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 font-medium"
+              >
+                {quotationSaving ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />}
+                Save Quotation
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

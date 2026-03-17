@@ -1,177 +1,298 @@
-import { useState, useEffect } from 'react';
-import { Receipt, Plus, Trash2, X, Download } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Receipt, Plus, Trash2, Download, Search, ChevronDown, X } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { localToday } from '../../utils/dateUtils';
 
-const ReceiptVoucherModal = ({ isOpen, onClose, onSuccess }: any) => {
+// ── Searchable Account Selector ───────────────────────────────────────────────
+const AccountSelector = ({
+  value, onChange, accounts, onAfterSelect,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  accounts: any[];
+  onAfterSelect?: () => void;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [hi, setHi] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const selected = accounts.find(a => String(a.account_id) === String(value));
+  const filtered = accounts.filter(a =>
+    !search ||
+    a.account_name.toLowerCase().includes(search.toLowerCase()) ||
+    a.account_code.includes(search)
+  );
+
+  useEffect(() => { setHi(0); }, [search]);
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const select = (id: string) => {
+    onChange(id); setOpen(false); setSearch(''); setHi(0);
+    setTimeout(() => onAfterSelect?.(), 0);
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-2 py-1.5 border border-gray-200 rounded text-sm bg-white hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-left">
+        <span className={selected ? 'text-gray-900 font-medium truncate' : 'text-gray-400'}>
+          {selected ? `${selected.account_code} — ${selected.account_name}` : 'Select Account…'}
+        </span>
+        <ChevronDown size={13} className="text-gray-400 shrink-0 ml-1" />
+      </button>
+      {open && (
+        <div className="absolute z-50 left-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-xl">
+          <div className="p-2 border-b border-gray-100">
+            <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 rounded">
+              <Search size={13} className="text-gray-400 shrink-0" />
+              <input autoFocus type="text" value={search}
+                onChange={e => setSearch(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setHi(h => Math.min(h + 1, filtered.length - 1)); }
+                  else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(h => Math.max(h - 1, 0)); }
+                  else if (e.key === 'Enter') { e.preventDefault(); if (filtered[hi]) select(String(filtered[hi].account_id)); }
+                  else if (e.key === 'Escape') setOpen(false);
+                }}
+                className="bg-transparent text-sm outline-none w-full"
+                placeholder="Search or code…" />
+            </div>
+          </div>
+          <ul className="max-h-52 overflow-y-auto py-1">
+            {filtered.length === 0
+              ? <li className="px-3 py-2 text-sm text-gray-400">No accounts found</li>
+              : filtered.map((a, idx) => (
+                <li key={a.account_id}>
+                  <button type="button" onClick={() => select(String(a.account_id))}
+                    className={`w-full text-left px-3 py-2 flex items-center gap-2 text-sm ${idx === hi ? 'bg-emerald-50' : 'hover:bg-gray-50'}`}>
+                    <span className="font-mono text-xs text-gray-400 shrink-0">{a.account_code}</span>
+                    <span className="text-gray-800 truncate">{a.account_name}</span>
+                  </button>
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── CRV Modal ─────────────────────────────────────────────────────────────────
+type SavedLine = { voucher_id: number; voucher_number: string; account_name: string; narration: string; amount: number };
+
+const CRVModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; onClose: () => void; onRefresh: () => void }) => {
   const toast = useToast();
-  const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState<any[]>([]);
-  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
-  const [formData, setFormData] = useState({
-    voucher_date: new Date().toISOString().split('T')[0],
-    received_from: '',
-    receipt_type: 'customer',
-    account_id: '',
-    amount: '',
-    payment_method: 'cash',
-    cheque_number: '',
-    bank_account_id: '',
-    description: ''
-  });
+  const [date, setDate] = useState(localToday());
+  const [savedLines, setSavedLines] = useState<SavedLine[]>([]);
+  const [entry, setEntry] = useState({ account_id: '', narration: '', amount: '' });
+  const [saving, setSaving] = useState(false);
+
+  const narrationRef = useRef<HTMLInputElement>(null);
+  const amountRef    = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
-      api.get('/accounting/accounts', { params: { type: 'revenue', limit: 200 } })
+      api.get('/accounting/accounts', { params: { limit: 500 } })
         .then(r => setAccounts(r.data.data || []))
         .catch(() => {});
-      api.get('/accounting/bank-accounts')
-        .then(r => setBankAccounts(r.data.data || []))
-        .catch(() => {});
+      setSavedLines([]);
+      setEntry({ account_id: '', narration: '', amount: '' });
+      setDate(localToday());
     }
   }, [isOpen]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.voucher_date || !formData.received_from || !formData.account_id || !formData.amount) {
-      toast.error('Please fill all required fields');
+  const saveEntry = async () => {
+    if (!date || !entry.account_id || !entry.amount) {
+      toast.error('Account and Amount are required');
       return;
     }
+    const amount = parseFloat(entry.amount);
+    if (isNaN(amount) || amount <= 0) { toast.error('Enter a valid amount'); return; }
 
-    setLoading(true);
+    setSaving(true);
     try {
-      await api.post('/accounting/receipt-vouchers', formData);
-      toast.success('Receipt voucher created');
-      onSuccess();
-      onClose();
+      const res = await api.post('/accounting/receipt-vouchers', {
+        voucher_date:   date,
+        received_from:  entry.narration || '—',
+        receipt_type:   'customer',
+        account_id:     entry.account_id,
+        amount,
+        payment_method: 'cash',
+        description:    entry.narration,
+      });
+      const acct = accounts.find(a => String(a.account_id) === entry.account_id);
+      setSavedLines(prev => [...prev, {
+        voucher_id:     res.data.voucher_id,
+        voucher_number: res.data.voucher_number,
+        account_name:   acct?.account_name ?? '',
+        narration:      entry.narration,
+        amount,
+      }]);
+      setEntry({ account_id: '', narration: '', amount: '' });
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Operation failed');
+      toast.error(err.response?.data?.message || 'Save failed');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
+
+  const deleteLine = async (voucher_id: number) => {
+    try {
+      await api.delete(`/accounting/receipt-vouchers/${voucher_id}`);
+      setSavedLines(prev => prev.filter(l => l.voucher_id !== voucher_id));
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Delete failed');
+    }
+  };
+
+  const handleDone = () => { onRefresh(); onClose(); };
+  const total = savedLines.reduce((s, l) => s + l.amount, 0);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-base font-semibold text-gray-800">Create Receipt Voucher</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X size={24} />
-          </button>
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-1">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[85vw] h-[calc(100vh-8px)] flex flex-col">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <Receipt size={16} className="text-emerald-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Cash Receipt Voucher <span className="text-emerald-600">(CRV)</span></h2>
+              <p className="text-xs text-gray-500">Fill each row and press Enter on Amount to save</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-600">Date:</label>
+              <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+            </div>
+            <button onClick={handleDone} className="text-gray-400 hover:text-gray-600 transition">
+              <X size={22} />
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Voucher Date *</label>
-              <input type="date" value={formData.voucher_date}
-                onChange={(e) => setFormData({ ...formData, voucher_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Received From *</label>
-              <input type="text" value={formData.received_from}
-                onChange={(e) => setFormData({ ...formData, received_from: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-                placeholder="e.g., Customer Name" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Receipt Type *</label>
-              <select value={formData.receipt_type} onChange={(e) => setFormData({ ...formData, receipt_type: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500">
-                <option value="customer">Customer Payment</option>
-                <option value="sales">Sales</option>
-                <option value="other">Other Income</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Revenue Account *</label>
-              <select value={formData.account_id} onChange={(e) => setFormData({ ...formData, account_id: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500" required>
-                <option value="">Select Account</option>
-                {accounts.map(a => (
-                  <option key={a.account_id} value={a.account_id}>{a.account_code} - {a.account_name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
-              <input type="number" step="0.01" value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-                placeholder="0.00" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method *</label>
-              <select value={formData.payment_method} onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500">
-                <option value="cash">Cash</option>
-                <option value="bank">Bank Transfer</option>
-                <option value="cheque">Cheque</option>
-                <option value="online">Online Payment</option>
-              </select>
-            </div>
-            {(formData.payment_method === 'bank' || formData.payment_method === 'online') && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Bank Account</label>
-                <select value={formData.bank_account_id} onChange={(e) => setFormData({ ...formData, bank_account_id: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500">
-                  <option value="">Select Bank Account</option>
-                  {bankAccounts.map(b => (
-                    <option key={b.bank_account_id} value={b.bank_account_id}>{b.bank_name} - {b.account_number}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {formData.payment_method === 'cheque' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Cheque Number</label>
-                <input type="text" value={formData.cheque_number}
-                  onChange={(e) => setFormData({ ...formData, cheque_number: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-                  placeholder="e.g., CHQ-123456" />
-              </div>
-            )}
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-              <textarea value={formData.description} rows={3}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-                placeholder="Enter receipt details..." />
-            </div>
-          </div>
+        {/* Lines Table */}
+        <div className="overflow-y-auto flex-1 px-6 py-4">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-gray-800 text-white">
+                <th className="px-3 py-2.5 text-left font-semibold w-32 rounded-tl-lg">Voucher #</th>
+                <th className="px-3 py-2.5 text-left font-semibold">Account Title</th>
+                <th className="px-3 py-2.5 text-left font-semibold">Narration</th>
+                <th className="px-3 py-2.5 text-right font-semibold w-40">Amount</th>
+                <th className="px-3 py-2.5 text-center font-semibold w-12 rounded-tr-lg">Del</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Already-saved lines */}
+              {savedLines.map((line, i) => (
+                <tr key={line.voucher_id} className={`border-b border-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}`}>
+                  <td className="px-3 py-2.5 font-mono text-xs font-bold text-emerald-600">{line.voucher_number}</td>
+                  <td className="px-3 py-2.5 text-gray-800 font-medium">{line.account_name}</td>
+                  <td className="px-3 py-2.5 text-gray-500">{line.narration || '—'}</td>
+                  <td className="px-3 py-2.5 text-right font-semibold text-emerald-700">
+                    {line.amount.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    <button onClick={() => deleteLine(line.voucher_id)}
+                      className="p-1.5 text-red-300 hover:text-red-600 hover:bg-red-50 rounded transition">
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
 
-          <div className="flex gap-3 mt-6">
-            <button type="button" onClick={onClose} disabled={loading}
-              className="flex-1 px-6 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium transition">
-              Cancel
-            </button>
-            <button type="submit" disabled={loading}
-              className="flex-1 bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 font-medium transition disabled:bg-gray-400">
-              {loading ? 'Creating...' : 'Create Receipt Voucher'}
+              {/* Active input row */}
+              <tr className="border-b-2 border-emerald-300 bg-emerald-50/40">
+                <td className="px-3 py-2 text-center">
+                  {saving
+                    ? <span className="inline-block w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                    : <span className="text-xs text-gray-400 font-mono">{String(savedLines.length + 1).padStart(2, '0')}</span>
+                  }
+                </td>
+                <td className="px-2 py-2 min-w-[200px]">
+                  <AccountSelector
+                    value={entry.account_id}
+                    onChange={id => setEntry(v => ({ ...v, account_id: id }))}
+                    onAfterSelect={() => narrationRef.current?.focus()}
+                    accounts={accounts}
+                  />
+                </td>
+                <td className="px-2 py-2">
+                  <input
+                    ref={narrationRef}
+                    type="text" value={entry.narration}
+                    onChange={e => setEntry(v => ({ ...v, narration: e.target.value }))}
+                    onKeyDown={e => { if (e.key === 'Enter') amountRef.current?.focus(); }}
+                    placeholder="Line narration…"
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-2 focus:ring-emerald-500 bg-white outline-none" />
+                </td>
+                <td className="px-2 py-2">
+                  <input
+                    ref={amountRef}
+                    type="number" step="0.01" min="0"
+                    value={entry.amount}
+                    onChange={e => setEntry(v => ({ ...v, amount: e.target.value }))}
+                    onKeyDown={e => { if (e.key === 'Enter') saveEntry(); }}
+                    placeholder="0.00"
+                    className="w-full px-2 py-1.5 border border-emerald-200 bg-emerald-50 rounded text-sm text-right font-semibold text-emerald-700 focus:ring-2 focus:ring-emerald-500 outline-none" />
+                </td>
+                <td />
+              </tr>
+
+              {/* Total row */}
+              {savedLines.length > 0 && (
+                <tr className="bg-emerald-600 text-white font-bold">
+                  <td colSpan={4} className="px-3 py-3 text-right text-sm tracking-wide rounded-bl-lg">TOTAL</td>
+                  <td className="px-3 py-3 text-right rounded-br-lg">
+                    {total.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-200 shrink-0 bg-gray-50 rounded-b-2xl">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-500">
+              {savedLines.length > 0
+                ? <span className="text-emerald-600 font-semibold">{savedLines.length} voucher{savedLines.length !== 1 ? 's' : ''} saved ✓</span>
+                : 'Select account, enter narration and amount, then press Enter'}
+            </p>
+            <button onClick={handleDone}
+              className="px-8 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition shadow">
+              Done
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
 };
 
+// ── Main List Page ────────────────────────────────────────────────────────────
 const ReceiptVouchers = () => {
   const toast = useToast();
-  const [vouchers, setVouchers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
+  const [vouchers, setVouchers]   = useState<any[]>([]);
+  const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [filters, setFilters] = useState({
-    from_date: '',
-    to_date: '',
-    receipt_type: ''
-  });
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
+  const [filters, setFilters]     = useState({ from_date: '', to_date: '' });
 
   const fetchVouchers = async () => {
     setLoading(true);
@@ -181,8 +302,8 @@ const ReceiptVouchers = () => {
       });
       setVouchers(res.data.data || []);
       setPagination(res.data.pagination);
-    } catch (err) {
-      toast.error('Failed to fetch receipt vouchers');
+    } catch {
+      toast.error('Failed to fetch Cash Receipt Vouchers');
     } finally {
       setLoading(false);
     }
@@ -191,167 +312,163 @@ const ReceiptVouchers = () => {
   useEffect(() => { fetchVouchers(); }, [pagination.page, filters]);
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this receipt voucher?')) return;
+    if (!confirm('Delete this Cash Receipt Voucher?')) return;
     try {
       await api.delete(`/accounting/receipt-vouchers/${id}`);
-      toast.success('Receipt voucher deleted');
+      toast.success('Deleted');
       fetchVouchers();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Delete failed');
     }
   };
 
-  const exportToCSV = () => {
-    const headers = ['Voucher #', 'Date', 'Received From', 'Type', 'Amount', 'Method', 'Account', 'Created By'];
+  const totalAmount = vouchers.reduce((sum, v) => sum + Number(v.amount), 0);
+
+  const exportCSV = () => {
+    const header = 'Voucher #,Date,Account,Narration,Amount';
     const rows = vouchers.map(v => [
       v.voucher_number,
       new Date(v.voucher_date).toLocaleDateString(),
-      v.received_from,
-      v.receipt_type,
-      v.amount,
-      v.payment_method,
-      v.account_name,
-      v.created_by_name
-    ]);
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
+      `"${v.account_name || ''}"`,
+      `"${v.description || v.received_from || ''}"`,
+      Number(v.amount).toFixed(2)
+    ].join(','));
+    const csv = [header, ...rows].join('\n');
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `receipt-vouchers-${new Date().toISOString().split('T')[0]}.csv`;
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = `crv-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
-    toast.success('Exported to CSV');
+    URL.revokeObjectURL(a.href);
   };
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-6">
+      {/* Page Header */}
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Receipt className="text-green-600" size={20} />
+          <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center">
+            <Receipt size={18} className="text-emerald-600" />
+          </div>
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Receipt Vouchers</h1>
-            <p className="text-gray-600 text-sm mt-1">Track all incoming payments</p>
+            <h1 className="text-xl font-bold text-gray-900">
+              Cash Receipt Voucher <span className="text-emerald-600">(CRV)</span>
+            </h1>
+            <p className="text-sm text-gray-500">Track all incoming payments</p>
           </div>
         </div>
-        <div className="flex gap-3">
-          <button onClick={exportToCSV} disabled={vouchers.length === 0}
-            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-200 transition disabled:opacity-50">
-            <Download size={20} /> Export CSV
+        <div className="flex gap-2">
+          <button onClick={exportCSV} disabled={vouchers.length === 0}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition disabled:opacity-40">
+            <Download size={15} /> Export CSV
           </button>
           <button onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition shadow-lg">
-            <Plus size={20} /> New Receipt
+            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition shadow-md">
+            <Plus size={17} /> New CRV
           </button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">From Date</label>
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 mb-5">
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Filter</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">From</span>
             <input type="date" value={filters.from_date}
-              onChange={(e) => setFilters({ ...filters, from_date: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500" />
+              onChange={e => setFilters(f => ({ ...f, from_date: e.target.value }))}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">To Date</label>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">To</span>
             <input type="date" value={filters.to_date}
-              onChange={(e) => setFilters({ ...filters, to_date: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500" />
+              onChange={e => setFilters(f => ({ ...f, to_date: e.target.value }))}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Receipt Type</label>
-            <select value={filters.receipt_type} onChange={(e) => setFilters({ ...filters, receipt_type: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500">
-              <option value="">All Types</option>
-              <option value="customer">Customer</option>
-              <option value="sales">Sales</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
+          {(filters.from_date || filters.to_date) && (
+            <button onClick={() => setFilters({ from_date: '', to_date: '' })}
+              className="text-xs text-emerald-600 hover:text-emerald-800 transition">Clear</button>
+          )}
+          <span className="ml-auto text-xs text-gray-400">{pagination.total} voucher{pagination.total !== 1 ? 's' : ''}</span>
         </div>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12 text-gray-500">Loading...</div>
-      ) : vouchers.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-          <Receipt className="mx-auto text-gray-300 mb-4" size={64} />
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">No Receipt Vouchers</h3>
-          <p className="text-gray-500 mb-6">Start by creating your first receipt voucher</p>
-          <button onClick={() => setShowModal(true)}
-            className="inline-flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition">
-            <Plus size={20} /> New Receipt
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin h-7 w-7 rounded-full border-2 border-emerald-600 border-t-transparent" />
+          </div>
+        ) : vouchers.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">
+            <Receipt size={44} className="mx-auto mb-3 opacity-20" />
+            <p className="font-medium">No Cash Receipt Vouchers found</p>
+            <p className="text-sm mt-1">Click <strong>New CRV</strong> to create entries</p>
+          </div>
+        ) : (
+          <>
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-100">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Voucher #</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Date</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Received From</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Type</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700">Amount</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Method</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Actions</th>
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-800 text-white text-xs uppercase tracking-wide">
+                    <th className="px-4 py-3 text-left font-semibold">Voucher #</th>
+                    <th className="px-4 py-3 text-left font-semibold">Date</th>
+                    <th className="px-4 py-3 text-left font-semibold">Account</th>
+                    <th className="px-4 py-3 text-left font-semibold">Narration</th>
+                    <th className="px-4 py-3 text-right font-semibold">Amount</th>
+                    <th className="px-4 py-3 text-center font-semibold w-14"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {vouchers.map((voucher) => (
-                    <tr key={voucher.voucher_id} className="hover:bg-gray-50 transition">
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-gray-800">{voucher.voucher_number}</div>
-                        <div className="text-xs text-gray-500">{voucher.account_name}</div>
+                <tbody>
+                  {vouchers.map((v, i) => (
+                    <tr key={v.voucher_id}
+                      className={`border-b border-gray-50 hover:bg-emerald-50/30 transition ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                      <td className="px-4 py-3 font-mono text-xs font-bold text-emerald-600">{v.voucher_number}</td>
+                      <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
+                        {new Date(v.voucher_date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {new Date(voucher.voucher_date).toLocaleDateString()}
+                      <td className="px-4 py-3 text-gray-800 font-medium">{v.account_name}</td>
+                      <td className="px-4 py-3 text-gray-500">{v.description || v.received_from || '—'}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-emerald-700 whitespace-nowrap">
+                        {Number(v.amount).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-800">{voucher.received_from}</td>
-                      <td className="px-6 py-4">
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 capitalize">
-                          {voucher.receipt_type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className="font-semibold text-green-600">Rs. {Number(voucher.amount).toFixed(2)}</span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 capitalize">{voucher.payment_method}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-center">
-                          <button onClick={() => handleDelete(voucher.voucher_id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition">
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
+                      <td className="px-4 py-3 text-center">
+                        <button onClick={() => handleDelete(v.voucher_id)}
+                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                          <Trash2 size={14} />
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="bg-emerald-600 text-white">
+                    <td colSpan={4} className="px-4 py-3 text-right font-bold text-sm">Total (this page)</td>
+                    <td className="px-4 py-3 text-right font-bold text-base whitespace-nowrap">
+                      {totalAmount.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td />
+                  </tr>
+                </tfoot>
               </table>
             </div>
-          </div>
+            <div className="px-4 py-3 border-t border-gray-100">
+              <Pagination
+                currentPage={pagination.page}
+                totalPages={pagination.totalPages}
+                onPageChange={page => setPagination(p => ({ ...p, page }))}
+                totalItems={pagination.total}
+                itemsPerPage={pagination.limit}
+                onItemsPerPageChange={limit => setPagination(p => ({ ...p, limit, page: 1 }))}
+              />
+            </div>
+          </>
+        )}
+      </div>
 
-          {/* Pagination */}
-          <Pagination
-            currentPage={pagination.page}
-            totalPages={pagination.totalPages}
-            onPageChange={(page) => setPagination({ ...pagination, page })}
-            totalItems={pagination.total}
-            itemsPerPage={pagination.limit}
-          onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
-          />
-        </>
-      )}
-
-      <ReceiptVoucherModal
+      <CRVModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        onSuccess={fetchVouchers}
+        onRefresh={fetchVouchers}
       />
     </div>
   );

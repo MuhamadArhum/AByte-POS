@@ -38,6 +38,7 @@ exports.updateSettings = async (req, res) => {
       receipt_paper_width,
       printer_type, printer_ip, printer_port, printer_name, printer_paper_width,
       view_completed_orders_password, refund_password, reports_password,
+      jv_delete_password,
       default_delivery_charges
     } = req.body;
 
@@ -84,6 +85,15 @@ exports.updateSettings = async (req, res) => {
       );
     } catch (pwErr) {
       console.warn('POS security password columns not found. Run migrate_pos_security.js');
+    }
+
+    // Update accounts security password
+    try {
+      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS jv_delete_password VARCHAR(255) NULL`);
+      await query(`UPDATE store_settings SET jv_delete_password=? WHERE setting_id=1`,
+        [jv_delete_password || null]);
+    } catch (jvErr) {
+      console.warn('jv_delete_password column error:', jvErr.message);
     }
 
     // Update default delivery charges (column may not exist on older DBs)

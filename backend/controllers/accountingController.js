@@ -29,9 +29,30 @@ exports.getAccountGroups = async (req, res) => {
 
 exports.getAccounts = async (req, res) => {
   try {
-    const { type, group_id, is_active, search } = req.query;
-    const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
+    const { type, search, tree } = req.query;
 
+    // Tree mode: return all accounts flat, sorted for tree building
+    if (tree === '1' || tree === 'true') {
+      let sql = `SELECT a.account_id, a.account_code, a.account_name, a.account_type,
+                   a.parent_account_id, a.level, a.is_system, a.is_active,
+                   a.opening_balance, a.current_balance, a.description,
+                   g.group_name
+                 FROM accounts a
+                 JOIN account_groups g ON a.group_id = g.group_id
+                 WHERE 1=1`;
+      const params = [];
+      if (type) { sql += ' AND a.account_type = ?'; params.push(type); }
+      if (search) {
+        sql += ' AND (a.account_code LIKE ? OR a.account_name LIKE ?)';
+        params.push(`%${search}%`, `%${search}%`);
+      }
+      sql += ' ORDER BY a.level ASC, a.account_code ASC';
+      const accounts = await query(sql, params);
+      return res.json({ data: accounts });
+    }
+
+    // Paginated mode (legacy)
+    const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
     let sql = `SELECT a.*, g.group_name, g.group_type,
                (SELECT account_name FROM accounts WHERE account_id = a.parent_account_id) as parent_account_name
                FROM accounts a
@@ -40,21 +61,54 @@ exports.getAccounts = async (req, res) => {
     const params = [], countParams = [];
 
     if (type) { sql += ' AND a.account_type = ?'; countSql += ' AND account_type = ?'; params.push(type); countParams.push(type); }
-    if (group_id) { sql += ' AND a.group_id = ?'; countSql += ' AND group_id = ?'; params.push(group_id); countParams.push(group_id); }
-    if (is_active !== undefined) { sql += ' AND a.is_active = ?'; countSql += ' AND is_active = ?'; params.push(is_active); countParams.push(is_active); }
     if (search) {
       const pattern = `%${search}%`;
       sql += ' AND (a.account_code LIKE ? OR a.account_name LIKE ?)';
       countSql += ' AND (account_code LIKE ? OR account_name LIKE ?)';
-      params.push(pattern, pattern);
-      countParams.push(pattern, pattern);
+      params.push(pattern, pattern); countParams.push(pattern, pattern);
     }
-
     sql += ' ORDER BY a.account_code LIMIT ? OFFSET ?';
     params.push(limit, offset);
 
     const [accounts, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
     res.json({ data: accounts, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /accounting/accounts/next-code?parent_id=X
+exports.getNextCode = async (req, res) => {
+  try {
+    const { parent_id } = req.query;
+    if (!parent_id) return res.status(400).json({ message: 'parent_id is required' });
+
+    const parents = await query('SELECT * FROM accounts WHERE account_id = ?', [parent_id]);
+    if (parents.length === 0) return res.status(404).json({ message: 'Parent not found' });
+    const parent = parents[0];
+
+    const childLevel = parent.level + 1;
+    if (childLevel > 4) return res.status(400).json({ message: 'Max 4 levels allowed' });
+
+    // Get existing sibling codes under this parent
+    const siblings = await query(
+      'SELECT account_code FROM accounts WHERE parent_account_id = ? ORDER BY account_code',
+      [parent_id]
+    );
+
+    // Dash-pattern: L2=1-01, L3=1-01-001, L4=1-01-001-001
+    const pad = childLevel === 2 ? 2 : 3;
+    let maxSeq = 0;
+    if (siblings.length > 0) {
+      maxSeq = Math.max(...siblings.map(s => {
+        const parts = s.account_code.split('-');
+        return parseInt(parts[parts.length - 1]) || 0;
+      }));
+    }
+    const nextCode = parent.account_code + '-' + String(maxSeq + 1).padStart(pad, '0');
+
+    res.json({ next_code: nextCode, parent_code: parent.account_code, child_level: childLevel });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -80,22 +134,37 @@ exports.getAccountById = async (req, res) => {
 
 exports.createAccount = async (req, res) => {
   try {
-    const { account_code, account_name, group_id, parent_account_id, account_type, opening_balance, description } = req.body;
-    if (!account_code || !account_name || !group_id || !account_type) {
-      return res.status(400).json({ message: 'Required fields missing' });
+    const { account_code, account_name, parent_account_id, opening_balance, description } = req.body;
+
+    if (!account_code || !account_name) {
+      return res.status(400).json({ message: 'Account code and name are required' });
+    }
+    if (!parent_account_id) {
+      return res.status(400).json({ message: 'Parent account is required' });
     }
 
+    // Fetch parent to inherit type, group, and compute level
+    const parents = await query('SELECT * FROM accounts WHERE account_id = ?', [parent_account_id]);
+    if (parents.length === 0) return res.status(400).json({ message: 'Parent account not found' });
+    const parent = parents[0];
+
+    const level = parent.level + 1;
+    if (level > 4) return res.status(400).json({ message: 'Maximum 4 levels of accounts allowed' });
+
     const result = await query(
-      'INSERT INTO accounts (account_code, account_name, group_id, parent_account_id, account_type, opening_balance, current_balance, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [account_code, account_name, group_id, parent_account_id || null, account_type, opening_balance || 0, opening_balance || 0, description || null]
+      `INSERT INTO accounts (account_code, account_name, group_id, parent_account_id, account_type, level, is_system, opening_balance, current_balance, description)
+       VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+      [account_code, account_name, parent.group_id, parent_account_id, parent.account_type,
+       level, opening_balance || 0, opening_balance || 0, description || null]
     );
 
-    await logAction(req.user.user_id, req.user.name, 'ACCOUNT_CREATED', 'accounts', result.insertId, { account_code, account_name }, req.ip);
+    await logAction(req.user.user_id, req.user.name, 'ACCOUNT_CREATED', 'accounts', result.insertId,
+      { account_code, account_name, parent: parent.account_name, level }, req.ip);
     res.status(201).json({ message: 'Account created', account_id: result.insertId });
   } catch (err) {
     console.error(err);
     if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({ message: 'Account code already exists', field: 'account_code' });
+      return res.status(400).json({ message: 'Account code already exists' });
     }
     res.status(500).json({ message: 'Server error' });
   }
@@ -104,17 +173,20 @@ exports.createAccount = async (req, res) => {
 exports.updateAccount = async (req, res) => {
   try {
     const { id } = req.params;
-    const { account_code, account_name, group_id, parent_account_id, is_active, description } = req.body;
-    if (!account_code || !account_name || !group_id) {
-      return res.status(400).json({ message: 'Required fields missing' });
-    }
+    const { account_name, is_active, description } = req.body;
+
+    const existing = await query('SELECT * FROM accounts WHERE account_id = ?', [id]);
+    if (existing.length === 0) return res.status(404).json({ message: 'Account not found' });
+    if (existing[0].is_system) return res.status(400).json({ message: 'System accounts cannot be edited' });
+
+    if (!account_name) return res.status(400).json({ message: 'Account name is required' });
 
     await query(
-      'UPDATE accounts SET account_code=?, account_name=?, group_id=?, parent_account_id=?, is_active=?, description=?, updated_at=CURRENT_TIMESTAMP WHERE account_id=?',
-      [account_code, account_name, group_id, parent_account_id || null, is_active ?? 1, description || null, id]
+      'UPDATE accounts SET account_name=?, is_active=?, description=?, updated_at=CURRENT_TIMESTAMP WHERE account_id=?',
+      [account_name, is_active ?? 1, description || null, id]
     );
 
-    await logAction(req.user.user_id, req.user.name, 'ACCOUNT_UPDATED', 'accounts', id, { account_code, account_name }, req.ip);
+    await logAction(req.user.user_id, req.user.name, 'ACCOUNT_UPDATED', 'accounts', id, { account_name }, req.ip);
     res.json({ message: 'Account updated' });
   } catch (err) {
     console.error(err);
@@ -126,11 +198,17 @@ exports.deleteAccount = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if account has transactions
-    const [hasTransactions] = await query('SELECT COUNT(*) as count FROM journal_entry_lines WHERE account_id = ?', [id]);
-    if (hasTransactions.count > 0) {
-      return res.status(400).json({ message: 'Cannot delete account with existing transactions' });
-    }
+    const existing = await query('SELECT * FROM accounts WHERE account_id = ?', [id]);
+    if (existing.length === 0) return res.status(404).json({ message: 'Account not found' });
+    if (existing[0].is_system) return res.status(400).json({ message: 'System accounts cannot be deleted' });
+
+    // Block if has sub-accounts
+    const [{ children }] = await query('SELECT COUNT(*) as children FROM accounts WHERE parent_account_id = ?', [id]);
+    if (children > 0) return res.status(400).json({ message: 'Cannot delete account that has sub-accounts' });
+
+    // Block if has transactions
+    const [{ txns }] = await query('SELECT COUNT(*) as txns FROM journal_entry_lines WHERE account_id = ?', [id]);
+    if (txns > 0) return res.status(400).json({ message: 'Cannot delete account with existing transactions' });
 
     await query('DELETE FROM accounts WHERE account_id = ?', [id]);
     await logAction(req.user.user_id, req.user.name, 'ACCOUNT_DELETED', 'accounts', id, {}, req.ip);
@@ -221,10 +299,10 @@ exports.createJournalEntry = async (req, res) => {
     const [lastEntry] = await conn.query('SELECT entry_number FROM journal_entries ORDER BY entry_id DESC LIMIT 1');
     let nextNumber = 1;
     if (lastEntry && lastEntry.entry_number) {
-      const match = lastEntry.entry_number.match(/JE(\d+)/);
+      const match = lastEntry.entry_number.match(/JV(\d+)/);
       if (match) nextNumber = parseInt(match[1]) + 1;
     }
-    const entryNumber = `JE${String(nextNumber).padStart(6, '0')}`;
+    const entryNumber = `JV${String(nextNumber).padStart(6, '0')}`;
 
     // Create journal entry
     const result = await conn.query(
@@ -309,18 +387,56 @@ exports.postJournalEntry = async (req, res) => {
 };
 
 exports.deleteJournalEntry = async (req, res) => {
+  const conn = await getConnection();
   try {
     const { id } = req.params;
     const [entry] = await query('SELECT * FROM journal_entries WHERE entry_id = ?', [id]);
     if (!entry) return res.status(404).json({ message: 'Entry not found' });
-    if (entry.status === 'posted') return res.status(400).json({ message: 'Cannot delete posted entry' });
 
-    await query('DELETE FROM journal_entries WHERE entry_id = ?', [id]);
-    await logAction(req.user.user_id, req.user.name, 'JOURNAL_ENTRY_DELETED', 'journal_entries', id, { entry_number: entry.entry_number }, req.ip);
+    await conn.beginTransaction();
+
+    // If posted, reverse account balance changes before deleting
+    if (entry.status === 'posted') {
+      const lines = await conn.query('SELECT * FROM journal_entry_lines WHERE entry_id = ?', [id]);
+      if (lines.length > 0) {
+        const accountIds = [...new Set(lines.map(l => l.account_id))];
+        const accountRows = await conn.query(
+          `SELECT account_id, account_type FROM accounts WHERE account_id IN (${accountIds.map(() => '?').join(',')})`,
+          accountIds
+        );
+        const typeMap = {};
+        for (const acc of accountRows) typeMap[acc.account_id] = acc.account_type;
+
+        // Reverse: opposite sign of what postJournalEntry applied
+        const caseWhenParts = lines.map(() => 'WHEN ? THEN current_balance + ?').join(' ');
+        const caseParams = [];
+        for (const line of lines) {
+          const debitIncrease = ['asset', 'expense'].includes(typeMap[line.account_id]);
+          const reversal = debitIncrease
+            ? -(Number(line.debit) - Number(line.credit))
+            : -(Number(line.credit) - Number(line.debit));
+          caseParams.push(line.account_id, reversal);
+        }
+        await conn.query(
+          `UPDATE accounts SET current_balance = CASE account_id ${caseWhenParts} END WHERE account_id IN (${accountIds.map(() => '?').join(',')})`,
+          [...caseParams, ...accountIds]
+        );
+      }
+    }
+
+    await conn.query('DELETE FROM journal_entry_lines WHERE entry_id = ?', [id]);
+    await conn.query('DELETE FROM journal_entries WHERE entry_id = ?', [id]);
+    await conn.commit();
+
+    await logAction(req.user.user_id, req.user.name, 'JOURNAL_ENTRY_DELETED', 'journal_entries', id,
+      { entry_number: entry.entry_number, was_posted: entry.status === 'posted' }, req.ip);
     res.json({ message: 'Journal entry deleted' });
   } catch (err) {
+    await conn.rollback();
     console.error(err);
     res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
   }
 };
 
@@ -331,8 +447,10 @@ exports.getGeneralLedger = async (req, res) => {
     const { account_id, from_date, to_date } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 
-    let sql = `SELECT jel.*, je.entry_number, je.entry_date, je.description as entry_description,
-               a.account_code, a.account_name, a.account_type
+    let sql = `SELECT jel.line_id, jel.entry_id, je.entry_number, je.entry_date,
+               COALESCE(jel.description, je.description) as description,
+               a.account_id, a.account_code, a.account_name, a.account_type,
+               jel.debit, jel.credit
                FROM journal_entry_lines jel
                JOIN journal_entries je ON jel.entry_id = je.entry_id
                JOIN accounts a ON jel.account_id = a.account_id
@@ -342,19 +460,53 @@ exports.getGeneralLedger = async (req, res) => {
                     WHERE je.status = 'posted'`;
     const params = [], countParams = [];
 
-    if (account_id) { sql += ' AND jel.account_id = ?'; countSql += ' AND jel.account_id = ?'; params.push(account_id); countParams.push(account_id); }
+    if (account_id) {
+      sql += ' AND jel.account_id = ?'; countSql += ' AND jel.account_id = ?';
+      params.push(account_id); countParams.push(account_id);
+    }
     if (from_date && to_date) {
       sql += ' AND je.entry_date BETWEEN ? AND ?';
       countSql += ' AND je.entry_date BETWEEN ? AND ?';
-      params.push(from_date, to_date);
-      countParams.push(from_date, to_date);
+      params.push(from_date, to_date); countParams.push(from_date, to_date);
     }
 
-    sql += ' ORDER BY je.entry_date DESC, jel.line_id DESC LIMIT ? OFFSET ?';
+    sql += ' ORDER BY je.entry_date ASC, jel.line_id ASC LIMIT ? OFFSET ?';
     params.push(limit, offset);
 
-    const [ledger, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
-    res.json({ data: ledger, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
+    const [ledger, [{ total }]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
+
+    // Calculate opening balance for the selected account before from_date
+    let openingBalance = 0;
+    let accountInfo = null;
+    if (account_id) {
+      const accs = await query(
+        'SELECT account_id, account_code, account_name, account_type, opening_balance FROM accounts WHERE account_id = ?',
+        [account_id]
+      );
+      if (accs.length > 0) {
+        accountInfo = accs[0];
+        openingBalance = Number(accs[0].opening_balance || 0);
+        if (from_date) {
+          const [prev] = await query(`
+            SELECT COALESCE(SUM(jel.debit), 0) as total_debit, COALESCE(SUM(jel.credit), 0) as total_credit
+            FROM journal_entry_lines jel
+            JOIN journal_entries je ON jel.entry_id = je.entry_id
+            WHERE jel.account_id = ? AND je.status = 'posted' AND je.entry_date < ?
+          `, [account_id, from_date]);
+          const debitIncrease = ['asset', 'expense'].includes(accs[0].account_type);
+          const prevDr = Number(prev.total_debit || 0);
+          const prevCr = Number(prev.total_credit || 0);
+          openingBalance += debitIncrease ? (prevDr - prevCr) : (prevCr - prevDr);
+        }
+      }
+    }
+
+    res.json({
+      data: ledger,
+      pagination: { total: Number(total), page, limit, totalPages: Math.ceil(Number(total) / limit) },
+      opening_balance: openingBalance,
+      account: accountInfo
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -404,6 +556,98 @@ exports.getTrialBalance = async (req, res) => {
     }), { total_debit: 0, total_credit: 0 });
 
     res.json({ as_of_date: asOfDate, trial_balance: trial, totals });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getTrialBalance6Col = async (req, res) => {
+  try {
+    const { from_date, to_date, parent_account_id } = req.query;
+    if (!from_date || !to_date) return res.status(400).json({ message: 'from_date and to_date are required' });
+
+    // Build list of account IDs to include (all descendants of parent, or all accounts)
+    let accountIdFilter = '';
+    let filterParams = [];
+    if (parent_account_id) {
+      // Recursively collect all descendant IDs in JS (avoids CTE version issues)
+      const allAccs = await query('SELECT account_id, parent_account_id FROM accounts WHERE is_active = 1');
+      const childMap = {};
+      for (const a of allAccs) {
+        if (!childMap[a.parent_account_id]) childMap[a.parent_account_id] = [];
+        childMap[a.parent_account_id].push(Number(a.account_id));
+      }
+      const ids = [];
+      const queue = [Number(parent_account_id)];
+      while (queue.length > 0) {
+        const id = queue.shift();
+        ids.push(id);
+        for (const child of (childMap[id] || [])) queue.push(child);
+      }
+      accountIdFilter = `AND a.account_id IN (${ids.join(',')})`;
+    }
+
+    const accounts = await query(`
+      SELECT a.account_id, a.parent_account_id, a.level, a.account_code, a.account_name, a.account_type, a.opening_balance,
+             COALESCE(SUM(CASE WHEN je.entry_date < ? THEN jel.debit  ELSE 0 END), 0) as ob_debit,
+             COALESCE(SUM(CASE WHEN je.entry_date < ? THEN jel.credit ELSE 0 END), 0) as ob_credit,
+             COALESCE(SUM(CASE WHEN je.entry_date BETWEEN ? AND ? THEN jel.debit  ELSE 0 END), 0) as period_debit,
+             COALESCE(SUM(CASE WHEN je.entry_date BETWEEN ? AND ? THEN jel.credit ELSE 0 END), 0) as period_credit
+      FROM accounts a
+      LEFT JOIN journal_entry_lines jel ON a.account_id = jel.account_id
+      LEFT JOIN journal_entries je ON jel.entry_id = je.entry_id AND je.status = 'posted'
+      WHERE a.is_active = 1 ${accountIdFilter}
+      GROUP BY a.account_id
+      ORDER BY a.account_code
+    `, [from_date, from_date, from_date, to_date, from_date, to_date]);
+
+    const rows = accounts.map(a => {
+      const debitIncrease = ['asset', 'expense'].includes(a.account_type);
+      const obBase = Number(a.opening_balance || 0);
+      const obDr = Number(a.ob_debit || 0);
+      const obCr = Number(a.ob_credit || 0);
+
+      // Net opening balance (signed: positive = Dr side, negative = Cr side)
+      const openingNet = obBase + (debitIncrease ? (obDr - obCr) : (obCr - obDr));
+
+      const periodDr = Number(a.period_debit || 0);
+      const periodCr = Number(a.period_credit || 0);
+
+      // Net closing balance
+      const closingNet = openingNet + (debitIncrease ? (periodDr - periodCr) : (periodCr - periodDr));
+
+      return {
+        account_id:        Number(a.account_id),
+        parent_account_id: a.parent_account_id ? Number(a.parent_account_id) : null,
+        level:             Number(a.level || 1),
+        account_code:      a.account_code,
+        account_name:      a.account_name,
+        account_type:      a.account_type,
+        opening_dr:        openingNet > 0 ? openingNet : 0,
+        opening_cr:        openingNet < 0 ? Math.abs(openingNet) : 0,
+        period_dr:         periodDr,
+        period_cr:         periodCr,
+        closing_dr:        closingNet > 0 ? closingNet : 0,
+        closing_cr:        closingNet < 0 ? Math.abs(closingNet) : 0,
+      };
+    });
+
+    // Totals from leaf accounts only (accounts with no children in result) to avoid double-counting
+    const accountIdsInResult = new Set(rows.map(r => r.account_id));
+    const parentIdsInResult  = new Set(rows.map(r => r.parent_account_id).filter(id => id !== null && accountIdsInResult.has(id)));
+    const leafRows = rows.filter(r => !parentIdsInResult.has(r.account_id));
+
+    const totals = leafRows.reduce((acc, r) => ({
+      opening_dr:  acc.opening_dr  + r.opening_dr,
+      opening_cr:  acc.opening_cr  + r.opening_cr,
+      period_dr:   acc.period_dr   + r.period_dr,
+      period_cr:   acc.period_cr   + r.period_cr,
+      closing_dr:  acc.closing_dr  + r.closing_dr,
+      closing_cr:  acc.closing_cr  + r.closing_cr,
+    }), { opening_dr: 0, opening_cr: 0, period_dr: 0, period_cr: 0, closing_dr: 0, closing_cr: 0 });
+
+    res.json({ from_date, to_date, data: rows, totals });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -634,10 +878,10 @@ exports.createPaymentVoucher = async (req, res) => {
     const [lastVoucher] = await conn.query('SELECT voucher_number FROM payment_vouchers ORDER BY voucher_id DESC LIMIT 1');
     let nextNumber = 1;
     if (lastVoucher && lastVoucher.voucher_number) {
-      const match = lastVoucher.voucher_number.match(/PV(\d+)/);
+      const match = lastVoucher.voucher_number.match(/CPV(\d+)/);
       if (match) nextNumber = parseInt(match[1]) + 1;
     }
-    const voucherNumber = `PV${String(nextNumber).padStart(6, '0')}`;
+    const voucherNumber = `CPV${String(nextNumber).padStart(6, '0')}`;
 
     // Create payment voucher
     const result = await conn.query(
@@ -720,10 +964,10 @@ exports.createReceiptVoucher = async (req, res) => {
     const [lastVoucher] = await conn.query('SELECT voucher_number FROM receipt_vouchers ORDER BY voucher_id DESC LIMIT 1');
     let nextNumber = 1;
     if (lastVoucher && lastVoucher.voucher_number) {
-      const match = lastVoucher.voucher_number.match(/RV(\d+)/);
+      const match = lastVoucher.voucher_number.match(/CRV(\d+)/);
       if (match) nextNumber = parseInt(match[1]) + 1;
     }
-    const voucherNumber = `RV${String(nextNumber).padStart(6, '0')}`;
+    const voucherNumber = `CRV${String(nextNumber).padStart(6, '0')}`;
 
     // Create receipt voucher
     const result = await conn.query(

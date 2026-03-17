@@ -1,247 +1,377 @@
-import { useState, useEffect } from 'react';
-import { Book, RefreshCw, Printer } from 'lucide-react';
-import DateRangeFilter from '../../components/DateRangeFilter';
+import { useState, useEffect, useRef } from 'react';
+import { Book, RefreshCw, Printer, Search, ChevronDown, TrendingUp, TrendingDown } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
-import { printReport, buildTable } from '../../utils/reportPrinter';
 import { localToday, localMonthStart } from '../../utils/dateUtils';
 import ReportPasswordGate from '../../components/ReportPasswordGate';
 
-interface LedgerEntry {
-  entry_id: number;
-  entry_date: string;
-  entry_number: string;
-  description: string;
-  account_name: string;
-  account_code: string;
-  debit: number;
-  credit: number;
-  balance: number;
-}
+// ── Searchable account picker ────────────────────────────────────────────────
+const AccountPicker = ({
+  value, onChange, accounts
+}: { value: string; onChange: (id: string) => void; accounts: any[] }) => {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [hi, setHi] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
 
-const GeneralLedger = () => {
-  const toast = useToast();
-  const [entries, setEntries] = useState<LedgerEntry[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
+  const selected = accounts.find(a => String(a.account_id) === String(value));
+  const filtered = accounts.filter(a =>
+    !search ||
+    a.account_name.toLowerCase().includes(search.toLowerCase()) ||
+    a.account_code.includes(search)
+  );
 
-  // Filters
-  const [accountFilter, setAccountFilter] = useState('all');
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [fromDate, setFromDate] = useState(localMonthStart);
-  const [toDate, setToDate] = useState(localToday);
-
+  useEffect(() => { setHi(0); }, [search]);
   useEffect(() => {
-    fetchAccounts();
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, []);
 
+  const select = (id: string) => { onChange(id); setOpen(false); setSearch(''); };
+
+  return (
+    <div ref={ref} className="relative min-w-[280px]">
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-left">
+        <span className={selected ? 'font-medium text-gray-900' : 'text-gray-400'}>
+          {selected ? `${selected.account_code} — ${selected.account_name}` : 'Select Account...'}
+        </span>
+        <ChevronDown size={14} className="text-gray-400 ml-2 shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute z-50 left-0 top-full mt-1 w-96 bg-white border border-gray-200 rounded-xl shadow-2xl">
+          <div className="p-2 border-b border-gray-100">
+            <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 rounded-lg">
+              <Search size={13} className="text-gray-400" />
+              <input autoFocus type="text" value={search} onChange={e => setSearch(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setHi(h => Math.min(h + 1, filtered.length - 1)); }
+                  else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(h => Math.max(h - 1, 0)); }
+                  else if (e.key === 'Enter' && filtered.length > 0) { e.preventDefault(); select(String(filtered[hi]?.account_id ?? filtered[0].account_id)); }
+                  else if (e.key === 'Escape') setOpen(false);
+                }}
+                className="bg-transparent text-sm outline-none w-full" placeholder="Search by name or code..." />
+            </div>
+          </div>
+          <ul className="max-h-64 overflow-y-auto py-1">
+            {filtered.length === 0
+              ? <li className="px-4 py-3 text-sm text-gray-400">No accounts found</li>
+              : filtered.map((a, idx) => (
+                <li key={a.account_id}>
+                  <button type="button" onClick={() => select(String(a.account_id))}
+                    className={`w-full text-left px-4 py-2.5 flex items-center justify-between gap-3 ${idx === hi ? 'bg-emerald-50' : 'hover:bg-gray-50'}`}>
+                    <div>
+                      <span className="text-xs font-mono text-gray-400">{a.account_code}</span>
+                      <span className="ml-2 text-sm text-gray-800 font-medium">{a.account_name}</span>
+                    </div>
+                    <span className="text-xs text-gray-500 shrink-0 capitalize">{a.account_type}</span>
+                  </button>
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const fmt = (n: number) => Math.abs(n).toLocaleString('en-PK', { minimumFractionDigits: 2 });
+const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
+
+// ── Main Component ────────────────────────────────────────────────────────────
+const GeneralLedger = () => {
+  const toast = useToast();
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState('');
+  const [fromDate, setFromDate] = useState(localMonthStart());
+  const [toDate, setToDate] = useState(localToday());
+
+  const [loading, setLoading] = useState(false);
+  const [ledgerData, setLedgerData] = useState<any[]>([]);
+  const [openingBalance, setOpeningBalance] = useState(0);
+  const [accountInfo, setAccountInfo] = useState<any>(null);
+  const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0, totalPages: 0 });
+
   useEffect(() => {
-    fetchLedger();
-  }, [pagination.page, accountFilter]);
+    api.get('/accounting/accounts', { params: { tree: 1 } })
+      .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active)))
+      .catch(() => {});
+  }, []);
 
-  const fetchAccounts = async () => {
-    try {
-      const res = await api.get('/accounting/accounts');
-      setAccounts(res.data.data || []);
-    } catch (error: any) {
-      console.error('Failed to load accounts:', error);
-    }
-  };
-
-  const fetchLedger = async () => {
+  const fetchLedger = async (page = 1) => {
+    if (!selectedAccount) { toast.error('Please select an account first'); return; }
     setLoading(true);
     try {
-      const params: any = {
-        page: pagination.page,
-        limit: pagination.limit,
-        from_date: fromDate,
-        to_date: toDate,
-      };
-
-      if (accountFilter !== 'all') {
-        params.account_id = accountFilter;
-      }
-
-      const res = await api.get('/accounting/general-ledger', { params });
-      setEntries(res.data.data || []);
-      if (res.data.pagination) {
-        setPagination(res.data.pagination);
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to load general ledger');
-      setEntries([]);
+      const res = await api.get('/accounting/general-ledger', {
+        params: { account_id: selectedAccount, from_date: fromDate, to_date: toDate, page, limit: pagination.limit }
+      });
+      setLedgerData(res.data.data || []);
+      setOpeningBalance(Number(res.data.opening_balance || 0));
+      setAccountInfo(res.data.account || null);
+      if (res.data.pagination) setPagination(res.data.pagination);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to load ledger');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = () => {
-    if (!fromDate || !toDate) {
-      toast.error('Select date range');
-      return;
-    }
-    if (fromDate > toDate) {
-      toast.error('From date must be before to date');
-      return;
-    }
-    setPagination({ ...pagination, page: 1 });
-    fetchLedger();
-  };
+  // Compute running balance from opening balance
+  const debitIncrease = accountInfo ? ['asset', 'expense'].includes(accountInfo.account_type) : true;
+  const rows: { row: any; runningBalance: number }[] = [];
+  let running = openingBalance;
+  for (const row of ledgerData) {
+    const dr = Number(row.debit || 0);
+    const cr = Number(row.credit || 0);
+    running += debitIncrease ? (dr - cr) : (cr - dr);
+    rows.push({ row, runningBalance: running });
+  }
+  const closingBalance = running;
 
-  const handleReset = () => {
-    setFromDate(localMonthStart());
-    setToDate(localToday());
-    setAccountFilter('all');
-    setPagination({ ...pagination, page: 1 });
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const totalDebit = ledgerData.reduce((s, r) => s + Number(r.debit || 0), 0);
+  const totalCredit = ledgerData.reduce((s, r) => s + Number(r.credit || 0), 0);
 
   const handlePrint = () => {
-    if (entries.length === 0) return;
-    const rows = entries.map(e => [formatDate(e.entry_date), e.entry_number, `${e.account_name} (${e.account_code})`, e.description, e.debit > 0 ? formatCurrency(e.debit) : '-', e.credit > 0 ? formatCurrency(e.credit) : '-', formatCurrency(e.balance)]);
-    const content = buildTable(['Date', 'Entry #', 'Account', 'Description', 'Debit', 'Credit', 'Balance'], rows, { alignRight: [4, 5, 6] });
-    printReport({ title: 'General Ledger', dateRange: `${fromDate} to ${toDate}`, content, orientation: 'landscape' });
+    if (!accountInfo || rows.length === 0) return;
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(`<html><head><title>Account Ledger</title>
+    <style>
+      body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; }
+      h2 { text-align: center; margin: 0; font-size: 16px; }
+      p  { text-align: center; color: #555; margin: 4px 0 16px; }
+      table { width: 100%; border-collapse: collapse; }
+      th { background: #1f2937; color: white; padding: 8px; text-align: left; font-size: 11px; }
+      td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; }
+      .right { text-align: right; }
+      .ob { background: #f0fdf4; font-style: italic; }
+      .total { background: #f3f4f6; font-weight: bold; }
+      .cb { background: #ecfdf5; font-weight: bold; }
+    </style></head><body>
+    <h2>Account Ledger — ${accountInfo.account_name}</h2>
+    <p>Code: ${accountInfo.account_code} &nbsp;|&nbsp; Period: ${fromDate} to ${toDate}</p>
+    <table>
+      <tr><th>Date</th><th>JV #</th><th>Narration</th><th class="right">Debit</th><th class="right">Credit</th><th class="right">Balance</th></tr>
+      <tr class="ob"><td colspan="3">Opening Balance</td><td class="right"></td><td class="right"></td><td class="right">${fmt(openingBalance)} ${openingBalance >= 0 ? 'Dr' : 'Cr'}</td></tr>
+      ${rows.map(({ row, runningBalance }) => `
+        <tr>
+          <td>${fmtDate(row.entry_date)}</td>
+          <td>${row.entry_number}</td>
+          <td>${row.description || ''}</td>
+          <td class="right">${Number(row.debit) > 0 ? fmt(row.debit) : ''}</td>
+          <td class="right">${Number(row.credit) > 0 ? fmt(row.credit) : ''}</td>
+          <td class="right">${fmt(runningBalance)} ${runningBalance >= 0 ? 'Dr' : 'Cr'}</td>
+        </tr>`).join('')}
+      <tr class="total"><td colspan="3">Total</td><td class="right">${fmt(totalDebit)}</td><td class="right">${fmt(totalCredit)}</td><td></td></tr>
+      <tr class="cb"><td colspan="3">Closing Balance</td><td></td><td></td><td class="right">${fmt(closingBalance)} ${closingBalance >= 0 ? 'Dr' : 'Cr'}</td></tr>
+    </table>
+    </body></html>`);
+    win.document.close();
+    win.print();
   };
 
   return (
-    <div className="p-8">
+    <div className="p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Book className="text-emerald-600" size={20} />
+          <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center">
+            <Book size={18} className="text-emerald-700" />
+          </div>
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-gray-900">General Ledger</h1>
-            <p className="text-gray-600 text-sm mt-1">View all posted transactions</p>
+            <h1 className="text-xl font-bold text-gray-900">Account Ledger</h1>
+            <p className="text-sm text-gray-500">Per-account transaction history with running balance</p>
           </div>
         </div>
-        {entries.length > 0 && (
-          <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
-            <Printer size={16} /> Print
+        {ledgerData.length > 0 && (
+          <button onClick={handlePrint}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition">
+            <Printer size={15} /> Print Ledger
           </button>
         )}
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap items-center gap-4">
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Account</label>
-          <select
-            value={accountFilter}
-            onChange={(e) => setAccountFilter(e.target.value)}
-            className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent min-w-[200px]"
-          >
-            <option value="all">All Accounts</option>
-            {accounts.map((acc) => (
-              <option key={acc.account_id} value={acc.account_id}>
-                {acc.account_code} - {acc.account_name}
-              </option>
-            ))}
-          </select>
+      {/* Filter Bar */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-6">
+        <div className="flex flex-wrap items-end gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Account</label>
+            <AccountPicker value={selectedAccount} onChange={setSelectedAccount} accounts={accounts} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">From Date</label>
+            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">To Date</label>
+            <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <button onClick={() => fetchLedger(1)}
+            className="px-6 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition shadow-sm">
+            View Ledger
+          </button>
+          <button onClick={() => { setSelectedAccount(''); setLedgerData([]); setAccountInfo(null); setFromDate(localMonthStart()); setToDate(localToday()); }}
+            className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
+            <RefreshCw size={14} /> Reset
+          </button>
         </div>
-        <DateRangeFilter standalone={false} dateFrom={fromDate} dateTo={toDate} onFromChange={setFromDate} onToChange={setToDate} onApply={handleSearch} />
-        <button
-          onClick={handleReset}
-          className="flex items-center gap-2 px-4 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition"
-        >
-          <RefreshCw size={15} />
-          Reset
-        </button>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+      {/* Account Info Cards — shown after data loads */}
+      {accountInfo && ledgerData.length >= 0 && !loading && (
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
+            <p className="text-xs text-gray-500 mb-1">Account</p>
+            <p className="font-bold text-gray-900">{accountInfo.account_name}</p>
+            <p className="text-xs text-gray-400 mt-0.5 font-mono">{accountInfo.account_code}</p>
           </div>
-        ) : entries.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <Book size={48} className="mx-auto mb-4 opacity-30" />
-            <p>No entries found</p>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
+            <p className="text-xs text-gray-500 mb-1">Opening Balance</p>
+            <p className={`font-bold text-lg ${openingBalance >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
+              {fmt(openingBalance)}
+            </p>
+            <p className="text-xs text-gray-400">{openingBalance >= 0 ? 'Debit' : 'Credit'}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
+            <p className="text-xs text-gray-500 mb-1">Period Turnover</p>
+            <div className="flex items-center gap-3 mt-1">
+              <div>
+                <p className="text-xs text-gray-400">Dr</p>
+                <p className="font-semibold text-blue-700">{fmt(totalDebit)}</p>
+              </div>
+              <div className="w-px h-8 bg-gray-200" />
+              <div>
+                <p className="text-xs text-gray-400">Cr</p>
+                <p className="font-semibold text-orange-600">{fmt(totalCredit)}</p>
+              </div>
+            </div>
+          </div>
+          <div className={`rounded-xl border shadow-sm px-5 py-4 ${closingBalance >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+            <p className="text-xs text-gray-500 mb-1">Closing Balance</p>
+            <p className={`font-bold text-lg ${closingBalance >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+              {fmt(closingBalance)}
+            </p>
+            <div className="flex items-center gap-1 mt-0.5">
+              {closingBalance >= 0
+                ? <TrendingUp size={13} className="text-emerald-600" />
+                : <TrendingDown size={13} className="text-red-500" />}
+              <p className="text-xs text-gray-500">{closingBalance >= 0 ? 'Debit' : 'Credit'}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ledger Table */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        {!selectedAccount && !loading ? (
+          <div className="text-center py-16 text-gray-400">
+            <Book size={48} className="mx-auto mb-3 opacity-20" />
+            <p className="font-medium">Select an account to view its ledger</p>
+          </div>
+        ) : loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin h-8 w-8 rounded-full border-2 border-emerald-600 border-t-transparent" />
+          </div>
+        ) : ledgerData.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">
+            <Book size={48} className="mx-auto mb-3 opacity-20" />
+            <p className="font-medium">No transactions found for this period</p>
           </div>
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-emerald-50 border-b border-emerald-100">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-emerald-700 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-emerald-700 uppercase tracking-wider">
-                      Entry #
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-emerald-700 uppercase tracking-wider">
-                      Account
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-emerald-700 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-emerald-700 uppercase tracking-wider">
-                      Debit
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-emerald-700 uppercase tracking-wider">
-                      Credit
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-emerald-700 uppercase tracking-wider">
-                      Balance
-                    </th>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-800 text-white">
+                    <th className="px-4 py-3 text-left font-semibold rounded-tl-lg w-28">Date</th>
+                    <th className="px-4 py-3 text-left font-semibold w-28">JV #</th>
+                    <th className="px-4 py-3 text-left font-semibold">Narration</th>
+                    <th className="px-4 py-3 text-right font-semibold w-36">Debit</th>
+                    <th className="px-4 py-3 text-right font-semibold w-36">Credit</th>
+                    <th className="px-4 py-3 text-right font-semibold w-40 rounded-tr-lg">Balance</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {entries.map((entry) => (
-                    <tr key={entry.entry_id} className="hover:bg-gray-50 transition">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(entry.entry_date)}
+                <tbody>
+                  {/* Opening Balance Row */}
+                  <tr className="bg-blue-50 border-b border-blue-100">
+                    <td className="px-4 py-3 text-xs text-blue-600 font-medium" colSpan={3}>
+                      Opening Balance — {fromDate}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm text-blue-700 font-semibold">
+                      {openingBalance > 0 ? fmt(openingBalance) : ''}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm text-orange-600 font-semibold">
+                      {openingBalance < 0 ? fmt(openingBalance) : ''}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm font-bold text-gray-800">
+                      {fmt(openingBalance)}
+                      <span className={`ml-1 text-xs font-normal ${openingBalance >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                        {openingBalance >= 0 ? 'Dr' : 'Cr'}
+                      </span>
+                    </td>
+                  </tr>
+
+                  {/* Transaction Rows */}
+                  {rows.map(({ row, runningBalance }, i) => (
+                    <tr key={row.line_id} className={`border-b border-gray-50 hover:bg-gray-50 transition ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDate(row.entry_date)}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-emerald-700 font-semibold">{row.entry_number}</td>
+                      <td className="px-4 py-3 text-gray-700">{row.description || <span className="text-gray-300 italic">—</span>}</td>
+                      <td className="px-4 py-3 text-right font-medium text-blue-700">
+                        {Number(row.debit) > 0 ? fmt(Number(row.debit)) : ''}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                        {entry.entry_number}
+                      <td className="px-4 py-3 text-right font-medium text-orange-600">
+                        {Number(row.credit) > 0 ? fmt(Number(row.credit)) : ''}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        <div className="font-medium">{entry.account_name}</div>
-                        <div className="text-xs text-gray-500">{entry.account_code}</div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700">
-                        {entry.description}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
-                        {entry.debit > 0 ? formatCurrency(entry.debit) : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
-                        {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-emerald-600">
-                        {formatCurrency(entry.balance)}
+                      <td className="px-4 py-3 text-right font-semibold text-gray-800">
+                        {fmt(runningBalance)}
+                        <span className={`ml-1 text-xs font-normal ${runningBalance >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
+                          {runningBalance >= 0 ? 'Dr' : 'Cr'}
+                        </span>
                       </td>
                     </tr>
                   ))}
+
+                  {/* Totals Row */}
+                  <tr className="bg-gray-100 border-t-2 border-gray-300 font-bold">
+                    <td colSpan={3} className="px-4 py-3 text-gray-700 text-right">Period Total</td>
+                    <td className="px-4 py-3 text-right text-blue-700">{fmt(totalDebit)}</td>
+                    <td className="px-4 py-3 text-right text-orange-600">{fmt(totalCredit)}</td>
+                    <td className="px-4 py-3"></td>
+                  </tr>
+
+                  {/* Closing Balance Row */}
+                  <tr className={`font-bold border-t border-gray-200 ${closingBalance >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                    <td colSpan={3} className="px-4 py-3 text-gray-700 text-right">Closing Balance — {toDate}</td>
+                    <td className="px-4 py-3 text-right text-blue-700">
+                      {closingBalance >= 0 ? fmt(closingBalance) : ''}
+                    </td>
+                    <td className="px-4 py-3 text-right text-orange-600">
+                      {closingBalance < 0 ? fmt(closingBalance) : ''}
+                    </td>
+                    <td className={`px-4 py-3 text-right text-base ${closingBalance >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                      {fmt(closingBalance)}
+                      <span className="ml-1 text-xs font-normal">
+                        {closingBalance >= 0 ? 'Dr' : 'Cr'}
+                      </span>
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
 
-            {/* Pagination */}
             <Pagination
               currentPage={pagination.page}
               totalPages={pagination.totalPages}
-              onPageChange={(page) => setPagination({ ...pagination, page })}
+              onPageChange={p => { setPagination(prev => ({ ...prev, page: p })); fetchLedger(p); }}
               totalItems={pagination.total}
               itemsPerPage={pagination.limit}
-            onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
+              onItemsPerPageChange={limit => setPagination(p => ({ ...p, limit, page: 1 }))}
             />
           </>
         )}

@@ -28,7 +28,7 @@ exports.getAll = async (req, res) => {
   try {
     const { search } = req.query;  // Optional search keyword from URL ?search=...
     // JOIN with customer_addresses to get default address (fallback for older records)
-    let sql = `SELECT c.*, COALESCE(c.address, ca.address_text) AS address
+    let sql = `SELECT c.*, COALESCE(c.address, ca.address_text) AS default_address
                FROM customers c
                LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1`;
     const params = [];

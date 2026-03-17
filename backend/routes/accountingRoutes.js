@@ -12,6 +12,7 @@ router.get('/account-groups', accountingController.getAccountGroups);
 
 // Chart of Accounts
 router.get('/accounts', accountingController.getAccounts);
+router.get('/accounts/next-code', accountingController.getNextCode);
 router.get('/accounts/:id', accountingController.getAccountById);
 router.post('/accounts', authorize('Admin', 'Manager'), accountingController.createAccount);
 router.put('/accounts/:id', authorize('Admin', 'Manager'), accountingController.updateAccount);
@@ -46,6 +47,7 @@ router.delete('/receipt-vouchers/:id', authorize('Admin'), accountingController.
 
 // Reports
 router.get('/reports/trial-balance', accountingController.getTrialBalance);
+router.get('/reports/trial-balance-6col', accountingController.getTrialBalance6Col);
 router.get('/reports/profit-loss', accountingController.getProfitLoss);
 router.get('/reports/balance-sheet', accountingController.getBalanceSheet);
 

@@ -70,13 +70,15 @@ const Settings = () => {
     receipt_show_store_name: true, receipt_show_address: true, receipt_show_phone: true, receipt_show_tax: true,
     receipt_paper_width: '80mm',
     printer_type: 'none', printer_ip: '', printer_port: 9100, printer_name: '', printer_paper_width: 80,
-    view_completed_orders_password: '', refund_password: '', reports_password: ''
+    view_completed_orders_password: '', refund_password: '', reports_password: '',
+    jv_delete_password: ''
   });
 
   // Show/hide state for POS security password fields
   const [showViewCompletedPw, setShowViewCompletedPw] = useState(false);
   const [showRefundPw, setShowRefundPw] = useState(false);
   const [showReportsPw, setShowReportsPw] = useState(false);
+  const [showJvDeletePw, setShowJvDeletePw] = useState(false);
 
   // Roles
   interface Role { role_id: number; role_name: string; }
@@ -405,7 +407,7 @@ const Settings = () => {
         { key: 'sales.credit', label: 'Credit Sales' },
         { key: 'sales.pricerules', label: 'Price Rules' },
         { key: 'sales.targets', label: 'Sales Targets' },
-        { key: 'sales.deliveries', label: 'Deliveries' },
+        { key: 'sales.deliveries', label: 'Delivery' },
         { key: 'sales.reports', label: 'Sales Reports' },
       ],
     },
@@ -441,9 +443,10 @@ const Settings = () => {
     {
       key: 'accounts', label: 'Accounts', children: [
         { key: 'accounts.chart', label: 'Chart of Accounts' },
-        { key: 'accounts.journal', label: 'Journal Entries' },
-        { key: 'accounts.ledger', label: 'General Ledger' },
+        { key: 'accounts.journal', label: 'Journal Voucher' },
+        { key: 'accounts.ledger', label: 'Account Ledger' },
         { key: 'accounts.trial-balance', label: 'Trial Balance' },
+        { key: 'accounts.trial-balance-6col', label: 'Trial Balance 6 Col' },
         { key: 'accounts.profit-loss', label: 'Profit & Loss' },
         { key: 'accounts.balance-sheet', label: 'Balance Sheet' },
         { key: 'accounts.bank-accounts', label: 'Bank Accounts' },
@@ -1308,6 +1311,50 @@ const Settings = () => {
                       className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-lg hover:from-amber-600 hover:to-amber-700 disabled:opacity-50 font-semibold shadow-lg transition-all">
                       {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                       Save POS Security Settings
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* Accounts Security (Admin only) */}
+              {currentUser?.role_name === 'Admin' && (
+                <div className="border-t border-gray-200 pt-8">
+                  <h2 className="text-base font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                    <FileText size={18} className="text-emerald-600" />
+                    Accounts Security
+                  </h2>
+                  <p className="text-sm text-gray-600 mb-6">
+                    Set passwords to protect sensitive accounting actions. Leave empty to disable protection.
+                  </p>
+
+                  <form onSubmit={handleSaveSettings} className="max-w-lg space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Journal Voucher Delete Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showJvDeletePw ? 'text' : 'password'}
+                          value={settings.jv_delete_password || ''}
+                          onChange={e => setSettings({ ...settings, jv_delete_password: e.target.value })}
+                          className="w-full pl-4 pr-10 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                          placeholder="Leave empty to disable"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowJvDeletePw(s => !s)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showJvDeletePw ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Require password before deleting any Journal Voucher (draft or posted)</p>
+                    </div>
+
+                    <button type="submit" disabled={saving}
+                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 font-semibold shadow-lg transition-all">
+                      {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                      Save Accounts Security Settings
                     </button>
                   </form>
                 </div>
