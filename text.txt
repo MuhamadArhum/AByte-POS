@@ -1,0 +1,27 @@
+Parent Module = Inventory
+Child Module = Stock Items / Products
+Child Module = Purchase
+Child Module = Issuance
+Child Module = Reports
+
+Sub Childs of Stock Items / Products
+1: Products Form and Products List (iss main user Product add kry ga or category wise add kr skta hai (raw items, semi finish items, finished items))
+2: Deals And Bundle bnanay Liye Aik Sub Module Bnao iska 
+
+Sub Module of Purchase
+1: Purchase Order (2 trha sy PO bany ga aik Automated Low Stock items ka jo raw Material or Semi Finish goods main hongi uska / or user manual bhi bna skta hai)
+2: Purcahse Voucher (Us PO ko Receive Krny k liye ya Manaul PV dalny liye )
+3:Purcahse Return module hoga jis main Returns manage hongi (stock auto update hoga)
+
+Sub Module of Issuance
+1:Stock Issue (Section Wise) iss main Stock Issue form hoga or Issuance List hogi 
+2:Stock Return (Section Wise) iss main Return ki list hogi 
+3:Raw Sale (Section Wise) iss main Raw Sale form hoga or Raw Sale List hogi 
+4: Sections Management (Sections yahan Sy Manage Hongy)
+
+Sub Module of Reports
+1:Items Ledger
+2:Item Wise Purchase
+3:Supplier Wise Purchase & Return
+4:Stock Issuance Reports (Every Thing)
+5: Stock Reconciliation

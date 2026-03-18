@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit, Trash2, Barcode, Package, DollarSign, AlertTriangle, XCircle, Download } from 'lucide-react';
 import api from '../../utils/api';
+import { localToday } from '../../utils/dateUtils';
 import AddProductModal from '../../components/AddProductModal';
 import BarcodeModal from '../../components/BarcodeModal';
 import Pagination from '../../components/Pagination';
@@ -20,6 +21,11 @@ interface InventoryItem {
   description?: string;
   image_url?: string;
   has_variants?: number;
+  product_type?: 'finished_good' | 'raw_material';
+}
+
+interface InventoryProps {
+  productType?: 'finished_good' | 'raw_material';
 }
 
 interface Category {
@@ -27,7 +33,7 @@ interface Category {
   category_name: string;
 }
 
-const Inventory = () => {
+const Inventory = ({ productType }: InventoryProps = {}) => {
   const [products, setProducts] = useState<InventoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -58,6 +64,7 @@ const Inventory = () => {
       if (searchTerm) params.search = searchTerm;
       if (categoryFilter) params.category = categoryFilter;
       if (stockFilter) params.stock = stockFilter;
+      if (productType) params.type = productType;
 
       const res = await api.get('/products', { params });
       if (res.data.pagination) {
@@ -72,7 +79,7 @@ const Inventory = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchTerm, categoryFilter, stockFilter]);
+  }, [currentPage, itemsPerPage, searchTerm, categoryFilter, stockFilter, productType]);
 
   const fetchCategories = async () => {
     try {
@@ -128,7 +135,8 @@ const Inventory = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `inventory-${new Date().toISOString().split('T')[0]}.csv`;
+    const typeLabel = productType === 'raw_material' ? 'raw-materials' : productType === 'finished_good' ? 'finished-goods' : 'inventory';
+    a.download = `${typeLabel}-${localToday()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -148,9 +156,11 @@ const Inventory = () => {
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
             <Package className="text-emerald-600" size={20} />
-            Inventory Management
+            {productType === 'raw_material' ? 'Raw Materials' : productType === 'finished_good' ? 'Finished Goods' : 'Inventory'}
           </h1>
-          <p className="text-gray-500 mt-1">Track stock, manage products</p>
+          <p className="text-gray-500 mt-1">
+            {productType === 'raw_material' ? 'Manage raw materials and input stock' : productType === 'finished_good' ? 'Products available for sale' : 'Track stock, manage products'}
+          </p>
         </div>
         <div className="flex gap-3">
           <button onClick={exportCSV}
@@ -159,7 +169,7 @@ const Inventory = () => {
           </button>
           <button onClick={() => { setEditProduct(null); setIsAddModalOpen(true); }}
             className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 flex items-center gap-2 transition-colors">
-            <Plus size={20} /> Add Product
+            <Plus size={20} /> {productType === 'raw_material' ? 'Add Raw Material' : productType === 'finished_good' ? 'Add Finished Good' : 'Add Product'}
           </button>
         </div>
       </div>
@@ -169,6 +179,7 @@ const Inventory = () => {
         onClose={handleModalClose}
         onSuccess={handleModalSuccess}
         productToEdit={editProduct}
+        productType={productType}
       />
 
       {/* Stats Cards */}

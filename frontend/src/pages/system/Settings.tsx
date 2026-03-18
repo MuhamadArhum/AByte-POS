@@ -452,7 +452,6 @@ const Settings = () => {
         { key: 'accounts.bank-accounts', label: 'Bank Accounts' },
         { key: 'accounts.payment-vouchers', label: 'Payment Vouchers' },
         { key: 'accounts.receipt-vouchers', label: 'Receipt Vouchers' },
-        { key: 'accounts.expenses', label: 'Expenses' },
         { key: 'accounts.analytics', label: 'Analytics' },
         { key: 'accounts.reports', label: 'Reports' },
       ],

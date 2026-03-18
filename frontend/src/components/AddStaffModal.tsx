@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, User, Briefcase, DollarSign, Calendar, Mail, Phone, MapPin } from 'lucide-react';
 import api from '../utils/api';
+import { localToday } from '../utils/dateUtils';
 import { useToast } from './Toast';
 
 interface StaffMember {
@@ -44,7 +45,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
     department: '',
     salary: '',
     salary_type: 'monthly',
-    hire_date: new Date().toISOString().split('T')[0],
+    hire_date: localToday(),
     is_active: 1,
     leave_balance: '20'
   });
@@ -96,7 +97,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
       department: '',
       salary: '',
       salary_type: 'monthly',
-      hire_date: new Date().toISOString().split('T')[0],
+      hire_date: localToday(),
       is_active: 1,
       leave_balance: '20'
     });

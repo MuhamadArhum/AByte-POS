@@ -21,6 +21,8 @@ import SalesReports from './pages/sales/SalesReports';
 
 // Inventory Module
 import Inventory from './pages/inventory/Inventory';
+import FinishedGoods from './pages/inventory/FinishedGoods';
+import RawMaterials from './pages/inventory/RawMaterials';
 import Categories from './pages/inventory/Categories';
 import PurchaseOrders from './pages/inventory/PurchaseOrders';
 import StockTransfers from './pages/inventory/StockTransfers';
@@ -31,6 +33,19 @@ import InventoryReports from './pages/inventory/InventoryReports';
 import Bundles from './pages/inventory/Bundles';
 import ProductVariants from './pages/inventory/ProductVariants';
 import StockCount from './pages/inventory/StockCount';
+import Products from './pages/inventory/Products';
+import PurchaseVoucher from './pages/inventory/PurchaseVoucher';
+import PurchaseReturn from './pages/inventory/PurchaseReturn';
+import StockIssue from './pages/inventory/StockIssue';
+import StockReturnIssuance from './pages/inventory/StockReturnIssuance';
+import RawSale from './pages/inventory/RawSale';
+import Sections from './pages/inventory/Sections';
+import ItemsLedger from './pages/inventory/ItemsLedger';
+import ItemWisePurchase from './pages/inventory/ItemWisePurchase';
+import SupplierWisePurchase from './pages/inventory/SupplierWisePurchase';
+import IssuanceReports from './pages/inventory/IssuanceReports';
+import StockReconciliation from './pages/inventory/StockReconciliation';
+import OpeningStock from './pages/inventory/OpeningStock';
 
 // HR Module
 import Customers from './pages/hr/Customers';
@@ -58,7 +73,6 @@ import BalanceSheet from './pages/accounts/BalanceSheet';
 import BankAccounts from './pages/accounts/BankAccounts';
 import PaymentVouchers from './pages/accounts/PaymentVouchers';
 import ReceiptVouchers from './pages/accounts/ReceiptVouchers';
-import Expenses from './pages/accounts/Expenses';
 import Analytics from './pages/accounts/Analytics';
 import Reports from './pages/accounts/Reports';
 
@@ -124,6 +138,8 @@ function App() {
 
                       {/* Inventory */}
                       <Route path="/inventory" element={<PermissionGuard moduleKey="inventory.products"><Inventory /></PermissionGuard>} />
+                      <Route path="/finished-goods" element={<PermissionGuard moduleKey="inventory.products"><FinishedGoods /></PermissionGuard>} />
+                      <Route path="/raw-materials" element={<PermissionGuard moduleKey="inventory.products"><RawMaterials /></PermissionGuard>} />
                       <Route path="/categories" element={<PermissionGuard moduleKey="inventory.categories"><Categories /></PermissionGuard>} />
                       <Route path="/purchase-orders" element={<PermissionGuard moduleKey="inventory.purchases"><PurchaseOrders /></PermissionGuard>} />
                       <Route path="/stock-transfers" element={<PermissionGuard moduleKey="inventory.transfers"><StockTransfers /></PermissionGuard>} />
@@ -134,6 +150,19 @@ function App() {
                       <Route path="/bundles" element={<PermissionGuard moduleKey="inventory.bundles"><Bundles /></PermissionGuard>} />
                       <Route path="/product-variants" element={<PermissionGuard moduleKey="inventory.variants"><ProductVariants /></PermissionGuard>} />
                       <Route path="/stock-count" element={<PermissionGuard moduleKey="inventory.stockcount"><StockCount /></PermissionGuard>} />
+                      <Route path="/products" element={<PermissionGuard moduleKey="inventory.products"><Products /></PermissionGuard>} />
+                      <Route path="/purchase-voucher" element={<PermissionGuard moduleKey="inventory.purchases"><PurchaseVoucher /></PermissionGuard>} />
+                      <Route path="/purchase-return" element={<PermissionGuard moduleKey="inventory.purchases"><PurchaseReturn /></PermissionGuard>} />
+                      <Route path="/stock-issue" element={<PermissionGuard moduleKey="inventory.adjustments"><StockIssue /></PermissionGuard>} />
+                      <Route path="/stock-return-issuance" element={<PermissionGuard moduleKey="inventory.adjustments"><StockReturnIssuance /></PermissionGuard>} />
+                      <Route path="/raw-sale" element={<PermissionGuard moduleKey="inventory.adjustments"><RawSale /></PermissionGuard>} />
+                      <Route path="/sections" element={<PermissionGuard moduleKey="inventory.adjustments"><Sections /></PermissionGuard>} />
+                      <Route path="/items-ledger" element={<PermissionGuard moduleKey="inventory.reports"><ItemsLedger /></PermissionGuard>} />
+                      <Route path="/item-wise-purchase" element={<PermissionGuard moduleKey="inventory.reports"><ItemWisePurchase /></PermissionGuard>} />
+                      <Route path="/supplier-wise-purchase" element={<PermissionGuard moduleKey="inventory.reports"><SupplierWisePurchase /></PermissionGuard>} />
+                      <Route path="/issuance-reports" element={<PermissionGuard moduleKey="inventory.reports"><IssuanceReports /></PermissionGuard>} />
+                      <Route path="/stock-reconciliation" element={<PermissionGuard moduleKey="inventory.reports"><StockReconciliation /></PermissionGuard>} />
+                      <Route path="/opening-stock" element={<PermissionGuard moduleKey="inventory.products"><OpeningStock /></PermissionGuard>} />
 
                       {/* HR */}
                       <Route path="/staff" element={<PermissionGuard moduleKey="hr.staff"><Staff /></PermissionGuard>} />
@@ -160,7 +189,6 @@ function App() {
                       <Route path="/bank-accounts" element={<PermissionGuard moduleKey="accounts.bank-accounts"><BankAccounts /></PermissionGuard>} />
                       <Route path="/payment-vouchers" element={<PermissionGuard moduleKey="accounts.payment-vouchers"><PaymentVouchers /></PermissionGuard>} />
                       <Route path="/receipt-vouchers" element={<PermissionGuard moduleKey="accounts.receipt-vouchers"><ReceiptVouchers /></PermissionGuard>} />
-                      <Route path="/expenses" element={<PermissionGuard moduleKey="accounts.expenses"><Expenses /></PermissionGuard>} />
                       <Route path="/analytics" element={<PermissionGuard moduleKey="accounts.analytics"><Analytics /></PermissionGuard>} />
                       <Route path="/reports" element={<PermissionGuard moduleKey="accounts.reports"><Reports /></PermissionGuard>} />
 

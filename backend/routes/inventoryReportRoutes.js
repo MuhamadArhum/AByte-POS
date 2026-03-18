@@ -11,4 +11,11 @@ router.get('/top-products', controller.getTopProducts);
 router.get('/category-breakdown', controller.getCategoryBreakdown);
 router.get('/slow-movers', controller.getSlowMovers);
 
+// New inventory report endpoints
+router.get('/items-ledger', controller.itemsLedger);
+router.get('/item-wise-purchase', controller.itemWisePurchase);
+router.get('/supplier-wise', controller.supplierWise);
+router.get('/issuance-summary', controller.issuanceSummary);
+router.get('/stock-reconciliation', controller.stockReconciliation);
+
 module.exports = router;

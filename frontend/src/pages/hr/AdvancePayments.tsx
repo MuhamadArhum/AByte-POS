@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { DollarSign, Plus, Download } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
+import { localToday } from '../../utils/dateUtils';
 import { useToast } from '../../components/Toast';
 
 interface AdvancePaymentModalProps {
@@ -17,7 +18,7 @@ const AdvancePaymentModal = ({ isOpen, onClose, onSuccess }: AdvancePaymentModal
   const [formData, setFormData] = useState({
     staff_id: '',
     amount: '',
-    payment_date: new Date().toISOString().split('T')[0],
+    payment_date: localToday(),
     payment_method: 'cash',
     reason: ''
   });
@@ -43,7 +44,7 @@ const AdvancePaymentModal = ({ isOpen, onClose, onSuccess }: AdvancePaymentModal
       toast.success('Advance payment recorded');
       onSuccess();
       onClose();
-      setFormData({ staff_id: '', amount: '', payment_date: new Date().toISOString().split('T')[0], payment_method: 'cash', reason: '' });
+      setFormData({ staff_id: '', amount: '', payment_date: localToday(), payment_method: 'cash', reason: '' });
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to record payment');
     } finally {
@@ -158,7 +159,7 @@ const AdvancePayments = () => {
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `advance_payments_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+    a.href = url; a.download = `advance_payments_${localToday()}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 

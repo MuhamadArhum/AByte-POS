@@ -1,326 +1,475 @@
 import { useState } from 'react';
-import { FileBarChart, Calendar, Download, RefreshCw, Printer } from 'lucide-react';
+import { FileBarChart, Calendar, Download, RefreshCw, Printer, CheckCircle, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
-import { printReport, buildTable } from '../../utils/reportPrinter';
+import { printReport } from '../../utils/reportPrinter';
 import { localToday } from '../../utils/dateUtils';
 import ReportPasswordGate from '../../components/ReportPasswordGate';
 
-interface BalanceSheetSection {
+// ── Types ──────────────────────────────────────────────────────────────────
+
+interface BSNode {
+  account_id: number;
   account_code: string;
   account_name: string;
-  amount: number;
+  account_type: string;
+  parent_account_id: number | null;
+  level: number;
+  is_system: number;
+  balance: number;
+  children: BSNode[];
 }
 
-interface BalanceSheetData {
-  assets: BalanceSheetSection[];
-  liabilities: BalanceSheetSection[];
-  equity: BalanceSheetSection[];
+interface BSData {
+  as_of_date: string;
+  assets: BSNode[];
+  liabilities: BSNode[];
+  equity: BSNode[];
+  net_profit: number;
   total_assets: number;
   total_liabilities: number;
   total_equity: number;
   total_liabilities_equity: number;
 }
 
-const exportToCSV = (data: any[], filename: string, columns: { key: string; label: string }[]) => {
-  const header = columns.map(c => c.label).join(',');
-  const rows = data.map(row =>
-    columns.map(c => {
-      const val = row[c.key];
-      if (val === null || val === undefined) return '';
-      const str = String(val);
-      return str.includes(',') || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str;
-    }).join(',')
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+const fmt = (n: number) =>
+  new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+
+// Flatten tree to CSV rows
+function flattenForCSV(nodes: BSNode[], sectionLabel: string, rows: any[] = []) {
+  for (const n of nodes) {
+    rows.push({
+      section: sectionLabel,
+      level: n.level,
+      code: n.account_code,
+      name: '  '.repeat(n.level - 1) + n.account_name,
+      balance: fmt(Math.abs(n.balance)),
+    });
+    flattenForCSV(n.children, '', rows);
+  }
+  return rows;
+}
+
+// Build print HTML for a section tree
+function buildPrintSection(nodes: BSNode[], title: string, total: number): string {
+  const renderNode = (n: BSNode): string => {
+    const indent = n.level * 16;
+    const isParent = n.children.length > 0;
+    const style = isParent
+      ? `font-weight:600; padding-left:${indent}px`
+      : `padding-left:${indent}px`;
+    const val = n.level === 1 ? '' : fmt(Math.abs(n.balance));
+    const sub = n.children.map(renderNode).join('');
+    const subtotalRow = isParent && n.level > 1
+      ? `<tr style="background:#f3f4f6"><td style="padding-left:${indent + 8}px; font-weight:600; font-style:italic; color:#6b7280">Subtotal ${n.account_name}</td><td style="text-align:right; font-weight:600">${fmt(Math.abs(n.balance))}</td></tr>`
+      : '';
+    return `<tr><td style="${style}">${n.account_code} - ${n.account_name}</td><td style="text-align:right">${val}</td></tr>${sub}${subtotalRow}`;
+  };
+
+  return `
+    <div style="margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #111;padding-bottom:4px;margin-bottom:8px">${title}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#f3f4f6">
+          <th style="text-align:left;padding:6px 8px;border-bottom:1px solid #ccc">Account</th>
+          <th style="text-align:right;padding:6px 8px;border-bottom:1px solid #ccc">Amount</th>
+        </tr></thead>
+        <tbody>${nodes.map(renderNode).join('')}</tbody>
+        <tfoot><tr style="background:#ecfdf5;font-weight:700">
+          <td style="padding:8px;border-top:2px solid #111">Total ${title}</td>
+          <td style="padding:8px;text-align:right;border-top:2px solid #111">${fmt(total)}</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+}
+
+// ── Tree Row Component ─────────────────────────────────────────────────────
+
+function TreeRow({ node, section }: { node: BSNode; section: 'asset' | 'liability' | 'equity' }) {
+  const isParent = node.children.length > 0;
+  const indentPx = (node.level - 1) * 20;
+
+  const colorMap = {
+    asset:     { row: 'hover:bg-blue-50/40',   subtotal: 'bg-blue-50 text-blue-800',   border: 'border-blue-200' },
+    liability: { row: 'hover:bg-rose-50/40',   subtotal: 'bg-rose-50 text-rose-800',   border: 'border-rose-200' },
+    equity:    { row: 'hover:bg-purple-50/40', subtotal: 'bg-purple-50 text-purple-800', border: 'border-purple-200' },
+  };
+  const c = colorMap[section];
+
+  return (
+    <>
+      <tr className={`${c.row} transition-colors`}>
+        <td className="py-2 pr-4" style={{ paddingLeft: `${indentPx + 12}px` }}>
+          <span className={`text-sm ${isParent ? 'font-semibold text-gray-800' : 'text-gray-700'}`}>
+            <span className="text-gray-400 mr-2 text-xs">{node.account_code}</span>
+            {node.account_name}
+          </span>
+        </td>
+        <td className="py-2 px-4 text-right w-36">
+          {/* Show balance only for leaf nodes */}
+          {!isParent && (
+            <span className="text-sm font-medium text-gray-800 tabular-nums">
+              {fmt(Math.abs(node.balance))}
+            </span>
+          )}
+        </td>
+      </tr>
+
+      {/* Render children */}
+      {node.children.map(child => (
+        <TreeRow key={child.account_id} node={child} section={section} />
+      ))}
+
+      {/* Subtotal row for parent nodes (not level-1 root) */}
+      {isParent && node.level > 1 && (
+        <tr className={`${c.subtotal} border-t ${c.border}`}>
+          <td className="py-1.5 pr-4 text-xs font-semibold italic" style={{ paddingLeft: `${indentPx + 12}px` }}>
+            Subtotal — {node.account_name}
+          </td>
+          <td className="py-1.5 px-4 text-right text-sm font-bold tabular-nums w-36">
+            {fmt(Math.abs(node.balance))}
+          </td>
+        </tr>
+      )}
+    </>
   );
-  const csv = [header, ...rows].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `${filename}.csv`;
-  link.click();
-  URL.revokeObjectURL(link.href);
-};
+}
+
+// ── Section Card ──────────────────────────────────────────────────────────
+
+function SectionCard({
+  title,
+  nodes,
+  total,
+  totalLabel,
+  section,
+  extra,
+}: {
+  title: string;
+  nodes: BSNode[];
+  total: number;
+  totalLabel: string;
+  section: 'asset' | 'liability' | 'equity';
+  extra?: React.ReactNode;
+}) {
+  const headerColors = {
+    asset:     'from-blue-600 to-blue-700',
+    liability: 'from-rose-600 to-rose-700',
+    equity:    'from-purple-600 to-purple-700',
+  };
+  const totalColors = {
+    asset:     'bg-blue-600 text-white',
+    liability: 'bg-rose-600 text-white',
+    equity:    'bg-purple-600 text-white',
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      {/* Section Header */}
+      <div className={`bg-gradient-to-r ${headerColors[section]} px-5 py-3`}>
+        <h2 className="text-white font-bold text-sm uppercase tracking-widest">{title}</h2>
+      </div>
+
+      {/* Accounts Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-100">
+              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 px-3">Account</th>
+              <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 px-4 w-36">Amount</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {nodes.length === 0 ? (
+              <tr>
+                <td colSpan={2} className="text-center py-6 text-gray-400 text-sm italic">No accounts</td>
+              </tr>
+            ) : (
+              nodes.map(node => (
+                <TreeRow key={node.account_id} node={node} section={section} />
+              ))
+            )}
+            {extra}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Total Row */}
+      <div className={`${totalColors[section]} flex justify-between items-center px-5 py-3`}>
+        <span className="font-bold text-sm uppercase tracking-wide">{totalLabel}</span>
+        <span className="font-bold text-lg tabular-nums">{fmt(total)}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Component ─────────────────────────────────────────────────────────
 
 const BalanceSheet = () => {
   const toast = useToast();
-  const [data, setData] = useState<BalanceSheetData | null>(null);
+  const [data, setData] = useState<BSData | null>(null);
   const [loading, setLoading] = useState(false);
   const [asOfDate, setAsOfDate] = useState(localToday);
 
   const fetchBalanceSheet = async () => {
-    if (!asOfDate) {
-      toast.error('Select an as-of date');
-      return;
-    }
+    if (!asOfDate) { toast.error('Select an as-of date'); return; }
     setLoading(true);
     try {
-      const res = await api.get('/accounting/reports/balance-sheet', {
-        params: { as_of_date: asOfDate }
-      });
+      const res = await api.get('/accounting/reports/balance-sheet', { params: { as_of_date: asOfDate } });
       setData(res.data);
-      if (res.data.assets.length === 0 && res.data.liabilities.length === 0 && res.data.equity.length === 0) {
-        toast.info('No data found for selected date');
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to load balance sheet');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to load balance sheet');
       setData(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReset = () => {
-    setAsOfDate(localToday());
-    setData(null);
-  };
+  const handleReset = () => { setAsOfDate(localToday()); setData(null); };
 
+  // ── Export CSV ──
   const handleExport = () => {
     if (!data) return;
+    const rows: any[] = [];
+    flattenForCSV(data.assets,      'Assets',      rows);
+    rows.push({ section: '', level: '', code: '', name: 'TOTAL ASSETS',      balance: fmt(data.total_assets) });
+    rows.push({ section: '', level: '', code: '', name: '', balance: '' });
+    flattenForCSV(data.liabilities, 'Liabilities', rows);
+    rows.push({ section: '', level: '', code: '', name: 'TOTAL LIABILITIES', balance: fmt(data.total_liabilities) });
+    rows.push({ section: '', level: '', code: '', name: '', balance: '' });
+    flattenForCSV(data.equity,      'Equity',      rows);
+    rows.push({ section: '', level: '', code: '', name: 'Net Profit / (Loss)', balance: fmt(data.net_profit) });
+    rows.push({ section: '', level: '', code: '', name: 'TOTAL EQUITY',       balance: fmt(data.total_equity) });
+    rows.push({ section: '', level: '', code: '', name: '', balance: '' });
+    rows.push({ section: '', level: '', code: '', name: 'TOTAL LIABILITIES + EQUITY', balance: fmt(data.total_liabilities_equity) });
 
-    const exportData = [
-      { section: 'ASSETS', account: '', amount: '' },
-      ...data.assets.map(a => ({ section: '', account: `${a.account_code} - ${a.account_name}`, amount: a.amount })),
-      { section: '', account: 'Total Assets', amount: data.total_assets },
-      { section: '', account: '', amount: '' },
-      { section: 'LIABILITIES', account: '', amount: '' },
-      ...data.liabilities.map(l => ({ section: '', account: `${l.account_code} - ${l.account_name}`, amount: l.amount })),
-      { section: '', account: 'Total Liabilities', amount: data.total_liabilities },
-      { section: '', account: '', amount: '' },
-      { section: 'EQUITY', account: '', amount: '' },
-      ...data.equity.map(e => ({ section: '', account: `${e.account_code} - ${e.account_name}`, amount: e.amount })),
-      { section: '', account: 'Total Equity', amount: data.total_equity },
-      { section: '', account: '', amount: '' },
-      { section: '', account: 'Total Liabilities + Equity', amount: data.total_liabilities_equity },
-    ];
-
-    exportToCSV(exportData, `balance-sheet-${asOfDate}`, [
-      { key: 'section', label: 'Section' },
-      { key: 'account', label: 'Account' },
-      { key: 'amount', label: 'Amount' },
-    ]);
+    const header = 'Section,Level,Code,Account,Balance';
+    const csv = [header, ...rows.map(r =>
+      [r.section, r.level, r.code, `"${r.name}"`, r.balance].join(',')
+    )].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `balance-sheet-${asOfDate}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
   };
 
+  // ── Print ──
   const handlePrint = () => {
     if (!data) return;
-    let content = '';
-    content += buildTable(['Account Code', 'Account Name', 'Amount'], data.assets.map(a => [a.account_code, a.account_name, formatCurrency(a.amount)]), { alignRight: [2], summaryRow: ['', 'Total Assets', formatCurrency(data.total_assets)], caption: 'ASSETS' });
-    content += buildTable(['Account Code', 'Account Name', 'Amount'], data.liabilities.map(l => [l.account_code, l.account_name, formatCurrency(l.amount)]), { alignRight: [2], summaryRow: ['', 'Total Liabilities', formatCurrency(data.total_liabilities)], caption: 'LIABILITIES' });
-    content += buildTable(['Account Code', 'Account Name', 'Amount'], data.equity.map(e => [e.account_code, e.account_name, formatCurrency(e.amount)]), { alignRight: [2], summaryRow: ['', 'Total Equity', formatCurrency(data.total_equity)], caption: 'EQUITY' });
-    content += `<div style="margin-top:20px;padding:12px;border-top:3px solid #000;font-size:16px;font-weight:bold;display:flex;justify-content:space-between"><span>Total Liabilities + Equity</span><span>${formatCurrency(data.total_liabilities_equity)}</span></div>`;
-    printReport({ title: 'Balance Sheet', dateRange: `As of ${asOfDate}`, content });
-  };
+    const netProfitRow = `
+      <tr style="background:#f5f3ff">
+        <td style="padding-left:24px;font-style:italic;color:#6b7280">Net Profit / (Loss)</td>
+        <td style="text-align:right;font-weight:600;color:${data.net_profit >= 0 ? '#059669' : '#dc2626'}">${fmt(data.net_profit)}</td>
+      </tr>`;
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
+    let content = buildPrintSection(data.assets, 'Assets', data.total_assets);
+    content    += buildPrintSection(data.liabilities, 'Liabilities', data.total_liabilities);
+
+    // Equity section with Net Profit injected
+    const equityHTML = buildPrintSection(data.equity, 'Equity', data.total_equity)
+      .replace('</tbody>', `${netProfitRow}</tbody>`);
+    content += equityHTML;
+
+    content += `
+      <div style="margin-top:16px;background:#111827;color:white;padding:12px 16px;border-radius:6px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px">Total Liabilities + Equity</span>
+        <span style="font-size:18px;font-weight:700">${fmt(data.total_liabilities_equity)}</span>
+      </div>`;
+
+    const isBalanced = Math.abs(data.total_assets - data.total_liabilities_equity) < 0.01;
+    content += `
+      <div style="margin-top:8px;text-align:center;font-size:11px;color:${isBalanced ? '#059669' : '#dc2626'};font-weight:600">
+        ${isBalanced ? '✓ Balance Sheet is Balanced' : '⚠ Balance Sheet is OUT OF BALANCE — Difference: ' + fmt(Math.abs(data.total_assets - data.total_liabilities_equity))}
+      </div>`;
+
+    printReport({ title: 'Balance Sheet', dateRange: `As of ${asOfDate}`, content });
   };
 
   const isBalanced = data ? Math.abs(data.total_assets - data.total_liabilities_equity) < 0.01 : true;
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-6 min-h-full bg-gray-50">
+      {/* ── Page Header ── */}
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <FileBarChart className="text-emerald-600" size={20} />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow">
+            <FileBarChart className="text-white" size={20} />
+          </div>
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Balance Sheet</h1>
-            <p className="text-gray-600 text-sm mt-1">Financial position as of date</p>
+            <h1 className="text-xl font-bold text-gray-900">Balance Sheet</h1>
+            <p className="text-sm text-gray-500">Financial position as of a specific date</p>
           </div>
         </div>
+
+        {data && (
+          <div className="flex items-center gap-2">
+            <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-white transition shadow-sm">
+              <Printer size={15} /> Print
+            </button>
+            <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-white transition shadow-sm">
+              <Download size={15} /> Export CSV
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+      {/* ── Filter Bar ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
         <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">As of Date</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">As of Date</label>
             <input
               type="date"
               value={asOfDate}
-              onChange={(e) => setAsOfDate(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              onChange={e => setAsOfDate(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             />
           </div>
-
           <button
             onClick={fetchBalanceSheet}
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-50 shadow-sm"
           >
-            <Calendar size={18} />
+            <Calendar size={16} />
             {loading ? 'Loading...' : 'Generate'}
           </button>
-
           <button
             onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition"
           >
-            <RefreshCw size={16} />
-            Reset
+            <RefreshCw size={15} /> Reset
           </button>
-
-          {data && (
-            <>
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition ml-auto"
-            >
-              <Printer size={16} />
-              Print
-            </button>
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
-            >
-              <Download size={16} />
-              Export CSV
-            </button>
-            </>
-          )}
         </div>
       </div>
 
-      {/* Balance Status */}
-      {data && (
-        <div className={`mb-6 p-4 rounded-xl border-2 ${isBalanced ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-          <div className="flex items-center gap-3">
-            <FileBarChart className={isBalanced ? 'text-emerald-600' : 'text-red-600'} size={24} />
+      {/* ── Loading ── */}
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600" />
+        </div>
+      )}
+
+      {/* ── Empty State ── */}
+      {!loading && !data && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm text-center py-16">
+          <FileBarChart size={48} className="mx-auto mb-4 text-gray-300" />
+          <p className="text-gray-500 font-medium">No data to display</p>
+          <p className="text-sm text-gray-400 mt-1">Select a date and click Generate</p>
+        </div>
+      )}
+
+      {/* ── Report ── */}
+      {!loading && data && (
+        <>
+          {/* Balance Status */}
+          <div className={`mb-6 flex items-center gap-3 px-5 py-3 rounded-xl border-2 ${
+            isBalanced ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'
+          }`}>
+            {isBalanced
+              ? <CheckCircle className="text-emerald-600 flex-shrink-0" size={22} />
+              : <AlertTriangle className="text-red-600 flex-shrink-0" size={22} />}
+            <div className="flex-1">
+              <p className={`font-semibold text-sm ${isBalanced ? 'text-emerald-800' : 'text-red-800'}`}>
+                {isBalanced ? 'Balance Sheet is Balanced' : 'Balance Sheet is OUT OF BALANCE'}
+              </p>
+              <p className="text-xs text-gray-600 mt-0.5">
+                Assets: <strong>{fmt(data.total_assets)}</strong>
+                &nbsp;|&nbsp;
+                Liabilities + Equity: <strong>{fmt(data.total_liabilities_equity)}</strong>
+                {!isBalanced && (
+                  <span className="text-red-600 ml-2">
+                    Difference: {fmt(Math.abs(data.total_assets - data.total_liabilities_equity))}
+                  </span>
+                )}
+              </p>
+            </div>
+            {/* Summary chips */}
+            <div className="hidden md:flex items-center gap-3">
+              <div className="text-center px-4 py-1.5 bg-blue-100 rounded-lg">
+                <p className="text-xs text-blue-600 font-semibold uppercase">Assets</p>
+                <p className="text-sm font-bold text-blue-800 tabular-nums">{fmt(data.total_assets)}</p>
+              </div>
+              <div className="text-center px-4 py-1.5 bg-rose-100 rounded-lg">
+                <p className="text-xs text-rose-600 font-semibold uppercase">Liabilities</p>
+                <p className="text-sm font-bold text-rose-800 tabular-nums">{fmt(data.total_liabilities)}</p>
+              </div>
+              <div className="text-center px-4 py-1.5 bg-purple-100 rounded-lg">
+                <p className="text-xs text-purple-600 font-semibold uppercase">Equity</p>
+                <p className="text-sm font-bold text-purple-800 tabular-nums">{fmt(data.total_equity)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Three Section Cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+            {/* Assets */}
+            <SectionCard
+              title="Assets"
+              nodes={data.assets}
+              total={data.total_assets}
+              totalLabel="Total Assets"
+              section="asset"
+            />
+
+            {/* Liabilities + Equity stacked */}
+            <div className="flex flex-col gap-5">
+              <SectionCard
+                title="Liabilities"
+                nodes={data.liabilities}
+                total={data.total_liabilities}
+                totalLabel="Total Liabilities"
+                section="liability"
+              />
+
+              {/* Equity with Net Profit row */}
+              <SectionCard
+                title="Equity"
+                nodes={data.equity}
+                total={data.total_equity}
+                totalLabel="Total Equity"
+                section="equity"
+                extra={
+                  <tr className="bg-purple-50/60 border-t border-purple-100">
+                    <td className="py-2 px-3 pl-5">
+                      <span className="text-sm font-semibold text-purple-700 flex items-center gap-1.5">
+                        {data.net_profit >= 0
+                          ? <TrendingUp size={14} className="text-emerald-500" />
+                          : <TrendingDown size={14} className="text-red-500" />}
+                        Net Profit / (Loss)
+                      </span>
+                    </td>
+                    <td className="py-2 px-4 text-right w-36">
+                      <span className={`text-sm font-bold tabular-nums ${data.net_profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {fmt(data.net_profit)}
+                      </span>
+                    </td>
+                  </tr>
+                }
+              />
+            </div>
+          </div>
+
+          {/* Grand Total Bar */}
+          <div className="bg-gray-900 text-white rounded-xl px-6 py-4 flex justify-between items-center shadow-lg">
             <div>
-              <p className={`font-semibold ${isBalanced ? 'text-emerald-900' : 'text-red-900'}`}>
-                {isBalanced ? 'Balance Sheet is Balanced' : 'Balance Sheet is Out of Balance'}
-              </p>
-              <p className="text-sm text-gray-700 mt-1">
-                Assets: {formatCurrency(data.total_assets)} | Liabilities + Equity: {formatCurrency(data.total_liabilities_equity)}
-              </p>
-              {!isBalanced && (
-                <p className="text-sm text-red-700 mt-1">
-                  Difference: {formatCurrency(Math.abs(data.total_assets - data.total_liabilities_equity))}
+              <p className="text-xs text-gray-400 uppercase tracking-widest mb-0.5">Total Liabilities + Equity</p>
+              <p className="text-sm text-gray-300">As of {asOfDate}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold tabular-nums">{fmt(data.total_liabilities_equity)}</p>
+              {isBalanced && (
+                <p className="text-xs text-emerald-400 mt-0.5 flex items-center justify-end gap-1">
+                  <CheckCircle size={12} /> Balanced
                 </p>
               )}
             </div>
           </div>
-        </div>
+        </>
       )}
-
-      {/* Report */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-          </div>
-        ) : !data ? (
-          <div className="text-center py-12 text-gray-500">
-            <FileBarChart size={48} className="mx-auto mb-4 opacity-30" />
-            <p>No data to display</p>
-            <p className="text-sm mt-2">Select a date and click Generate to view balance sheet</p>
-          </div>
-        ) : (
-          <div className="p-8">
-            {/* Assets Section */}
-            <div className="mb-8">
-              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-emerald-200">
-                ASSETS
-              </h2>
-              {data.assets.length === 0 ? (
-                <p className="text-sm text-gray-500 italic">No asset accounts</p>
-              ) : (
-                <div className="space-y-2">
-                  {data.assets.map((item) => (
-                    <div key={item.account_code} className="flex justify-between items-center py-2 hover:bg-gray-50 px-4 rounded">
-                      <div>
-                        <span className="font-medium text-gray-900">{item.account_name}</span>
-                        <span className="text-sm text-gray-500 ml-2">({item.account_code})</span>
-                      </div>
-                      <span className="font-medium text-gray-900">
-                        {formatCurrency(item.amount)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="flex justify-between items-center py-3 mt-4 border-t-2 border-emerald-100 bg-emerald-50 px-4 rounded">
-                <span className="font-bold text-emerald-900">Total Assets</span>
-                <span className="font-bold text-emerald-900 text-lg">
-                  {formatCurrency(data.total_assets)}
-                </span>
-              </div>
-            </div>
-
-            {/* Liabilities Section */}
-            <div className="mb-8">
-              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-emerald-200">
-                LIABILITIES
-              </h2>
-              {data.liabilities.length === 0 ? (
-                <p className="text-sm text-gray-500 italic">No liability accounts</p>
-              ) : (
-                <div className="space-y-2">
-                  {data.liabilities.map((item) => (
-                    <div key={item.account_code} className="flex justify-between items-center py-2 hover:bg-gray-50 px-4 rounded">
-                      <div>
-                        <span className="font-medium text-gray-900">{item.account_name}</span>
-                        <span className="text-sm text-gray-500 ml-2">({item.account_code})</span>
-                      </div>
-                      <span className="font-medium text-gray-900">
-                        {formatCurrency(item.amount)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="flex justify-between items-center py-3 mt-4 border-t-2 border-emerald-100 bg-emerald-50 px-4 rounded">
-                <span className="font-bold text-emerald-900">Total Liabilities</span>
-                <span className="font-bold text-emerald-900 text-lg">
-                  {formatCurrency(data.total_liabilities)}
-                </span>
-              </div>
-            </div>
-
-            {/* Equity Section */}
-            <div className="mb-8">
-              <h2 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b-2 border-emerald-200">
-                EQUITY
-              </h2>
-              {data.equity.length === 0 ? (
-                <p className="text-sm text-gray-500 italic">No equity accounts</p>
-              ) : (
-                <div className="space-y-2">
-                  {data.equity.map((item) => (
-                    <div key={item.account_code} className="flex justify-between items-center py-2 hover:bg-gray-50 px-4 rounded">
-                      <div>
-                        <span className="font-medium text-gray-900">{item.account_name}</span>
-                        <span className="text-sm text-gray-500 ml-2">({item.account_code})</span>
-                      </div>
-                      <span className="font-medium text-gray-900">
-                        {formatCurrency(item.amount)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="flex justify-between items-center py-3 mt-4 border-t-2 border-emerald-100 bg-emerald-50 px-4 rounded">
-                <span className="font-bold text-emerald-900">Total Equity</span>
-                <span className="font-bold text-emerald-900 text-lg">
-                  {formatCurrency(data.total_equity)}
-                </span>
-              </div>
-            </div>
-
-            {/* Total Liabilities + Equity */}
-            <div className="flex justify-between items-center py-4 mt-6 border-t-4 border-emerald-300 bg-emerald-100 px-4 rounded-lg">
-              <span className="font-bold text-xl text-emerald-900">
-                Total Liabilities + Equity
-              </span>
-              <span className="font-bold text-2xl text-emerald-900">
-                {formatCurrency(data.total_liabilities_equity)}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 };

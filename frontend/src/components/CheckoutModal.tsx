@@ -3,6 +3,7 @@ import { X, CreditCard, Banknote, Smartphone, Check, Loader2, Printer, Tag, Star
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
+import { localToday } from '../utils/dateUtils';
 import { printReceipt, printToThermalPrinter, isThermalPrinterAvailable } from '../utils/receiptPrinter';
 
 interface CheckoutModalProps {
@@ -686,7 +687,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                 type="date"
                 value={creditDueDate}
                 onChange={(e) => setCreditDueDate(e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
+                min={localToday()}
                 className="w-full px-3 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
               />
               {selectedCustomer?.customer_id === 1 || !selectedCustomer ? (

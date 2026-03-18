@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { DollarSign, Calendar, Play, Download, CheckCircle } from 'lucide-react';
 import api from '../../utils/api';
+import { localToday } from '../../utils/dateUtils';
 import { useToast } from '../../components/Toast';
 
 const PayrollProcessing = () => {
@@ -11,7 +12,7 @@ const PayrollProcessing = () => {
   const [formData, setFormData] = useState({
     from_date: '',
     to_date: '',
-    payment_date: new Date().toISOString().split('T')[0],
+    payment_date: localToday(),
     department: ''
   });
 

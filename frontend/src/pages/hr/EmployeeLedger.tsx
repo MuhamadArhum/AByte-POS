@@ -107,7 +107,7 @@ const EmployeeLedger = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ledger_${staffInfo.full_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `ledger_${staffInfo.full_name.replace(/\s+/g, '_')}_${localToday()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };

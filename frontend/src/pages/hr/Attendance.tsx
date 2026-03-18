@@ -30,7 +30,7 @@ const exportToCSV = (data: any[], filename: string, columns: { key: string; head
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+  link.download = `${filename}_${localToday()}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 };

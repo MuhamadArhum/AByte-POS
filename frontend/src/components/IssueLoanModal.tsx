@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, DollarSign } from 'lucide-react';
 import api from '../utils/api';
+import { localToday } from '../utils/dateUtils';
 import { useToast } from './Toast';
 
 interface Props {
@@ -18,7 +19,7 @@ const IssueLoanModal = ({ isOpen, onClose, onSuccess }: Props) => {
     staff_id: '',
     loan_amount: '',
     monthly_deduction: '',
-    loan_date: new Date().toISOString().split('T')[0],
+    loan_date: localToday(),
     reason: ''
   });
 
@@ -26,7 +27,7 @@ const IssueLoanModal = ({ isOpen, onClose, onSuccess }: Props) => {
     if (isOpen) {
       fetchStaff();
       setFormErrors({});
-      setFormData({ staff_id: '', loan_amount: '', monthly_deduction: '', loan_date: new Date().toISOString().split('T')[0], reason: '' });
+      setFormData({ staff_id: '', loan_amount: '', monthly_deduction: '', loan_date: localToday(), reason: '' });
     }
   }, [isOpen]);
 

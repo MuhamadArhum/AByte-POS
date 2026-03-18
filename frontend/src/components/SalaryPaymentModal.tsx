@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, DollarSign, Calendar, Minus, Plus, FileText } from 'lucide-react';
 import api from '../utils/api';
+import { localToday } from '../utils/dateUtils';
 import { useToast } from './Toast';
 
 interface SalaryPaymentModalProps {
@@ -16,7 +17,7 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState({
-    payment_date: new Date().toISOString().split('T')[0],
+    payment_date: localToday(),
     from_date: '',
     to_date: '',
     amount: '',
@@ -108,7 +109,7 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
 
   const resetForm = () => {
     setFormData({
-      payment_date: new Date().toISOString().split('T')[0],
+      payment_date: localToday(),
       from_date: '',
       to_date: '',
       amount: '',

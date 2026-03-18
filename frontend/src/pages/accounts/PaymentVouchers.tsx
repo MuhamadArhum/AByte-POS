@@ -339,7 +339,7 @@ const PaymentVouchers = () => {
     const csv = [header, ...rows].join('\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-    a.download = `cpv-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `cpv-${localToday()}.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
   };

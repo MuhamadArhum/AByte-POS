@@ -20,6 +20,7 @@ interface ProductToEdit {
   sku?: string;
   description?: string;
   image_url?: string;
+  product_type?: 'finished_good' | 'raw_material';
 }
 
 interface AddProductModalProps {
@@ -27,9 +28,10 @@ interface AddProductModalProps {
   onClose: () => void;
   onSuccess: () => void;
   productToEdit?: ProductToEdit | null;
+  productType?: 'finished_good' | 'raw_material';
 }
 
-const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSuccess, productToEdit }) => {
+const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSuccess, productToEdit, productType = 'finished_good' }) => {
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [price, setPrice] = useState('');
@@ -149,7 +151,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
         barcode: barcode || null,
         sku: sku || null,
         description: description || null,
-        image_url: imageUrl || null
+        image_url: imageUrl || null,
+        product_type: productToEdit?.product_type ?? productType
       };
       if (productToEdit) {
         await api.put(`/products/${productToEdit.product_id}`, payload);

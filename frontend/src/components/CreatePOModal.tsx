@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Plus, Trash2, ChevronRight, ChevronLeft } from 'lucide-react';
 import api from '../utils/api';
+import { localToday } from '../utils/dateUtils';
 
 interface Product {
   product_id: number;
@@ -28,9 +29,11 @@ interface CreatePOModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  editPO?: any; // if provided, modal is in edit mode
 }
 
-const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
+const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProps) => {
+  const isEdit = !!editPO;
   const [step, setStep] = useState(1);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -38,9 +41,10 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
 
   // Form data
   const [selectedSupplier, setSelectedSupplier] = useState<number | null>(null);
-  const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
+  const [orderDate, setOrderDate] = useState(localToday());
   const [expectedDate, setExpectedDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [additionalCharges, setAdditionalCharges] = useState<number>(0);
   const [items, setItems] = useState<POItem[]>([]);
 
   // Item form
@@ -54,6 +58,25 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
       fetchProducts();
     }
   }, [isOpen]);
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (isOpen && isEdit && editPO) {
+      setSelectedSupplier(editPO.supplier_id);
+      setOrderDate(editPO.order_date?.split('T')[0] || localToday());
+      setExpectedDate(editPO.expected_date?.split('T')[0] || '');
+      setNotes(editPO.notes || '');
+      setAdditionalCharges(Number(editPO.additional_charges) || 0);
+      setItems((editPO.items || []).map((i: any) => ({
+        product_id: i.product_id,
+        product_name: i.product_name,
+        quantity: Number(i.quantity_ordered),
+        unit_cost: Number(i.unit_cost),
+        total_cost: Number(i.quantity_ordered) * Number(i.unit_cost),
+      })));
+      setStep(1);
+    }
+  }, [isOpen, editPO]);
 
   const fetchSuppliers = async () => {
     try {
@@ -107,8 +130,17 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
     setItems(items.filter((_, i) => i !== index));
   };
 
+  const updateItemField = (index: number, field: 'quantity' | 'unit_cost', value: number) => {
+    setItems(prev => prev.map((item, i) => {
+      if (i !== index) return item;
+      const updated = { ...item, [field]: value };
+      updated.total_cost = updated.quantity * updated.unit_cost;
+      return updated;
+    }));
+  };
+
   const calculateTotal = () => {
-    return items.reduce((sum, item) => sum + item.total_cost, 0);
+    return items.reduce((sum, item) => sum + item.total_cost, 0) + (additionalCharges || 0);
   };
 
   const handleNext = () => {
@@ -137,6 +169,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
         order_date: orderDate,
         expected_date: expectedDate || null,
         notes,
+        additional_charges: additionalCharges || 0,
         items: items.map(item => ({
           product_id: item.product_id,
           quantity_ordered: item.quantity,
@@ -144,14 +177,17 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
         }))
       };
 
-      await api.post('/purchase-orders', poData);
-      alert('Purchase Order created successfully!');
+      if (isEdit) {
+        await api.put(`/purchase-orders/${editPO.po_id}`, poData);
+      } else {
+        await api.post('/purchase-orders', poData);
+      }
       resetForm();
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error('Error creating PO:', error);
-      alert(error.response?.data?.message || 'Failed to create Purchase Order');
+      console.error('Error saving PO:', error);
+      alert(error.response?.data?.message || 'Failed to save Purchase Order');
     } finally {
       setLoading(false);
     }
@@ -160,9 +196,10 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
   const resetForm = () => {
     setStep(1);
     setSelectedSupplier(null);
-    setOrderDate(new Date().toISOString().split('T')[0]);
+    setOrderDate(localToday());
     setExpectedDate('');
     setNotes('');
+    setAdditionalCharges(0);
     setItems([]);
     setSelectedProduct(null);
     setQuantity(1);
@@ -182,7 +219,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white flex items-center justify-between">
           <div>
-            <h2 className="text-base font-semibold">Create Purchase Order</h2>
+            <h2 className="text-base font-semibold">{isEdit ? `Edit PO — ${editPO.po_number}` : 'Create Purchase Order'}</h2>
             <p className="text-emerald-100 text-sm mt-1">Step {step} of 3</p>
           </div>
           <button onClick={handleClose} className="text-white hover:bg-white/20 p-2 rounded-lg transition">
@@ -321,41 +358,71 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
               {/* Items List */}
               {items.length > 0 && (
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <table className="w-full">
+                  <table className="w-full text-sm">
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="text-left p-3 font-semibold text-gray-700">Product</th>
-                        <th className="text-center p-3 font-semibold text-gray-700">Quantity</th>
-                        <th className="text-right p-3 font-semibold text-gray-700">Unit Cost</th>
-                        <th className="text-right p-3 font-semibold text-gray-700">Total</th>
-                        <th className="text-center p-3 font-semibold text-gray-700">Action</th>
+                        <th className="text-center p-3 font-semibold text-gray-700 w-28">Qty</th>
+                        <th className="text-right p-3 font-semibold text-gray-700 w-32">Unit Cost</th>
+                        <th className="text-right p-3 font-semibold text-gray-700 w-28">Total</th>
+                        <th className="text-center p-3 font-semibold text-gray-700 w-10"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {items.map((item, index) => (
                         <tr key={index} className="border-t hover:bg-gray-50">
-                          <td className="p-3">{item.product_name}</td>
-                          <td className="p-3 text-center">{item.quantity}</td>
-                          <td className="p-3 text-right">${Number(item.unit_cost).toFixed(2)}</td>
-                          <td className="p-3 text-right font-semibold">${Number(item.total_cost).toFixed(2)}</td>
+                          <td className="p-3 font-medium">{item.product_name}</td>
+                          <td className="p-3">
+                            <input
+                              type="number" min="0.001" step="0.001"
+                              value={item.quantity}
+                              onChange={e => updateItemField(index, 'quantity', parseFloat(e.target.value) || 0)}
+                              className="w-full text-center border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-emerald-400"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <input
+                              type="number" min="0" step="0.01"
+                              value={item.unit_cost}
+                              onChange={e => updateItemField(index, 'unit_cost', parseFloat(e.target.value) || 0)}
+                              className="w-full text-right border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-emerald-400"
+                            />
+                          </td>
+                          <td className="p-3 text-right font-semibold">{Number(item.total_cost).toFixed(2)}</td>
                           <td className="p-3 text-center">
-                            <button
-                              onClick={() => removeItem(index)}
-                              className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition"
-                            >
-                              <Trash2 size={18} />
+                            <button onClick={() => removeItem(index)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition">
+                              <Trash2 size={16} />
                             </button>
                           </td>
                         </tr>
                       ))}
                     </tbody>
-                    <tfoot className="bg-gray-50 border-t-2">
-                      <tr>
-                        <td colSpan={3} className="p-3 text-right font-bold text-gray-800">
-                          Total Amount:
+                    <tfoot className="bg-gray-50 border-t-2 text-sm">
+                      <tr className="border-t border-gray-200">
+                        <td colSpan={3} className="p-3 text-right text-gray-600">Sub-total:</td>
+                        <td className="p-3 text-right font-semibold">
+                          {items.reduce((s, i) => s + i.total_cost, 0).toFixed(2)}
                         </td>
-                        <td className="p-3 text-right font-bold text-emerald-600 text-lg">
-                          ${calculateTotal().toFixed(2)}
+                        <td></td>
+                      </tr>
+                      <tr className="border-t border-gray-200">
+                        <td colSpan={2} className="p-3 text-right text-gray-600">Additional Charges:</td>
+                        <td className="p-3">
+                          <input
+                            type="number" min="0" step="0.01"
+                            value={additionalCharges}
+                            onChange={e => setAdditionalCharges(parseFloat(e.target.value) || 0)}
+                            className="w-full text-right border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-emerald-400"
+                            placeholder="0.00"
+                          />
+                        </td>
+                        <td className="p-3 text-right font-semibold">{Number(additionalCharges || 0).toFixed(2)}</td>
+                        <td></td>
+                      </tr>
+                      <tr className="border-t-2 border-gray-300 bg-emerald-50">
+                        <td colSpan={3} className="p-3 text-right font-bold text-gray-800">Grand Total:</td>
+                        <td className="p-3 text-right font-bold text-emerald-700 text-base">
+                          {calculateTotal().toFixed(2)}
                         </td>
                         <td></td>
                       </tr>
@@ -399,6 +466,12 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                     <p className="text-sm text-gray-600">Total Items</p>
                     <p className="font-semibold">{items.length} products</p>
                   </div>
+                  {additionalCharges > 0 && (
+                    <div>
+                      <p className="text-sm text-gray-600">Additional Charges</p>
+                      <p className="font-semibold">{Number(additionalCharges).toFixed(2)}</p>
+                    </div>
+                  )}
                 </div>
 
                 {notes && (
@@ -429,13 +502,17 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="bg-gray-50 border-t-2">
+                  <tfoot className="bg-gray-50 border-t-2 text-sm">
+                    {additionalCharges > 0 && (
+                      <tr className="border-t border-gray-200">
+                        <td colSpan={3} className="p-3 text-right text-gray-600">Additional Charges:</td>
+                        <td className="p-3 text-right">{Number(additionalCharges).toFixed(2)}</td>
+                      </tr>
+                    )}
                     <tr>
-                      <td colSpan={3} className="p-3 text-right font-bold text-gray-800">
-                        Grand Total:
-                      </td>
+                      <td colSpan={3} className="p-3 text-right font-bold text-gray-800">Grand Total:</td>
                       <td className="p-3 text-right font-bold text-green-600 text-xl">
-                        ${calculateTotal().toFixed(2)}
+                        {calculateTotal().toFixed(2)}
                       </td>
                     </tr>
                   </tfoot>
@@ -481,7 +558,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }: CreatePOModalProps) => {
                 disabled={loading}
                 className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
               >
-                {loading ? 'Creating...' : 'Create Purchase Order'}
+                {loading ? 'Saving...' : isEdit ? 'Update Purchase Order' : 'Create Purchase Order'}
               </button>
             )}
           </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, DollarSign } from 'lucide-react';
 import api from '../utils/api';
+import { localToday } from '../utils/dateUtils';
 import { useToast } from './Toast';
 
 interface Props {
@@ -16,7 +17,7 @@ const LoanRepaymentModal = ({ isOpen, onClose, onSuccess, loan }: Props) => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     amount: '',
-    repayment_date: new Date().toISOString().split('T')[0],
+    repayment_date: localToday(),
     payment_method: 'cash' as string,
     notes: ''
   });
@@ -45,7 +46,7 @@ const LoanRepaymentModal = ({ isOpen, onClose, onSuccess, loan }: Props) => {
         notes: formData.notes || null
       });
       toast.success('Repayment recorded');
-      setFormData({ amount: '', repayment_date: new Date().toISOString().split('T')[0], payment_method: 'cash', notes: '' });
+      setFormData({ amount: '', repayment_date: localToday(), payment_method: 'cash', notes: '' });
       onSuccess();
       onClose();
     } catch (err: any) {

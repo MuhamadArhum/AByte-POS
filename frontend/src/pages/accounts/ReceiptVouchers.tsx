@@ -336,7 +336,7 @@ const ReceiptVouchers = () => {
     const csv = [header, ...rows].join('\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-    a.download = `crv-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `crv-${localToday()}.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
   };

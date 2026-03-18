@@ -68,17 +68,18 @@ exports.getById = async (req, res) => {
 exports.create = async (req, res) => {
   const conn = await getConnection();
   try {
-    const { supplier_id, order_date, expected_date, notes, items } = req.body;
+    const { supplier_id, order_date, expected_date, notes, items, additional_charges } = req.body;
     if (!supplier_id || !order_date || !items || items.length === 0) return res.status(400).json({ message: 'Required fields missing' });
 
     await conn.beginTransaction();
 
-    const total = items.reduce((sum, item) => sum + (item.quantity_ordered * item.unit_cost), 0);
+    const extraCharges = Number(additional_charges) || 0;
+    const total = items.reduce((sum, item) => sum + (item.quantity_ordered * item.unit_cost), 0) + extraCharges;
     const po_number = `PO-${Date.now()}`;
 
     const poResult = await conn.query(
-      'INSERT INTO purchase_orders (po_number, supplier_id, order_date, expected_date, total_amount, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [po_number, supplier_id, order_date, expected_date || null, total, notes || null, req.user.user_id]
+      'INSERT INTO purchase_orders (po_number, supplier_id, order_date, expected_date, total_amount, additional_charges, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [po_number, supplier_id, order_date, expected_date || null, total, extraCharges, notes || null, req.user.user_id]
     );
 
     for (const item of items) {
@@ -97,6 +98,61 @@ exports.create = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
+  }
+};
+
+exports.update = async (req, res) => {
+  const conn = await getConnection();
+  try {
+    const { id } = req.params;
+    const [po] = await query('SELECT * FROM purchase_orders WHERE po_id = ?', [id]);
+    if (!po) return res.status(404).json({ message: 'PO not found' });
+    if (po.status === 'received') return res.status(400).json({ message: 'Cannot edit a received PO' });
+    if (po.status === 'cancelled') return res.status(400).json({ message: 'Cannot edit a cancelled PO' });
+
+    const { supplier_id, order_date, expected_date, notes, items, additional_charges } = req.body;
+    if (!supplier_id || !order_date || !items || items.length === 0)
+      return res.status(400).json({ message: 'Required fields missing' });
+
+    const extraCharges = Number(additional_charges) || 0;
+    const total = items.reduce((sum, item) => sum + (item.quantity_ordered * item.unit_cost), 0) + extraCharges;
+
+    await conn.beginTransaction();
+    await conn.query(
+      'UPDATE purchase_orders SET supplier_id=?, order_date=?, expected_date=?, total_amount=?, additional_charges=?, notes=? WHERE po_id=?',
+      [supplier_id, order_date, expected_date || null, total, extraCharges, notes || null, id]
+    );
+    await conn.query('DELETE FROM purchase_order_items WHERE po_id = ?', [id]);
+    for (const item of items) {
+      await conn.query(
+        'INSERT INTO purchase_order_items (po_id, product_id, quantity_ordered, unit_cost, total_cost) VALUES (?, ?, ?, ?, ?)',
+        [id, item.product_id, item.quantity_ordered, item.unit_cost, item.quantity_ordered * item.unit_cost]
+      );
+    }
+    await conn.commit();
+    await logAction(req.user.user_id, req.user.name, 'PO_UPDATED', 'purchase_order', id, { po_number: po.po_number }, req.ip);
+    res.json({ message: 'PO updated' });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  } finally { conn.release(); }
+};
+
+exports.remove = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [po] = await query('SELECT * FROM purchase_orders WHERE po_id = ?', [id]);
+    if (!po) return res.status(404).json({ message: 'PO not found' });
+    if (po.status === 'received') return res.status(400).json({ message: 'Cannot delete a received PO' });
+
+    await query('DELETE FROM purchase_order_items WHERE po_id = ?', [id]);
+    await query('DELETE FROM purchase_orders WHERE po_id = ?', [id]);
+    await logAction(req.user.user_id, req.user.name, 'PO_DELETED', 'purchase_order', id, { po_number: po.po_number }, req.ip);
+    res.json({ message: 'PO deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 

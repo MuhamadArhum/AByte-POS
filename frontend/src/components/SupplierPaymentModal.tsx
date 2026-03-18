@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import api from '../utils/api';
+import { localToday } from '../utils/dateUtils';
 
 interface SupplierPaymentModalProps {
   isOpen: boolean;
@@ -12,7 +13,7 @@ interface SupplierPaymentModalProps {
 const SupplierPaymentModal: React.FC<SupplierPaymentModalProps> = ({ isOpen, onClose, onSuccess, supplier }) => {
   const [formData, setFormData] = useState({
     amount: '',
-    payment_date: new Date().toISOString().split('T')[0],
+    payment_date: localToday(),
     payment_method: 'cash',
     reference_number: '',
     notes: ''
@@ -24,7 +25,7 @@ const SupplierPaymentModal: React.FC<SupplierPaymentModalProps> = ({ isOpen, onC
     if (isOpen) {
       setFormData({
         amount: '',
-        payment_date: new Date().toISOString().split('T')[0],
+        payment_date: localToday(),
         payment_method: 'cash',
         reference_number: '',
         notes: ''

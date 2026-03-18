@@ -219,7 +219,7 @@ const AuditLog = () => {
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `audit-log-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `audit-log-${localToday()}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {

@@ -21,6 +21,7 @@ interface PODetails {
   received_date: string | null;
   status: string;
   total_amount: number;
+  additional_charges: number;
   notes: string | null;
   created_by_name: string;
   items: POItem[];
@@ -215,12 +216,16 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
                     ))}
                   </tbody>
                   <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+                    {Number(po.additional_charges) > 0 && (
+                      <tr className="border-t border-gray-200">
+                        <td colSpan={4} className="p-3 text-right text-gray-600 text-sm">Additional Charges:</td>
+                        <td className="p-3 text-right text-sm">{Number(po.additional_charges).toFixed(2)}</td>
+                      </tr>
+                    )}
                     <tr>
-                      <td colSpan={4} className="p-4 text-right font-bold text-gray-800 text-lg">
-                        Grand Total:
-                      </td>
+                      <td colSpan={4} className="p-4 text-right font-bold text-gray-800 text-lg">Grand Total:</td>
                       <td className="p-4 text-right font-bold text-emerald-600 text-xl">
-                        ${Number(po.total_amount || 0).toFixed(2)}
+                        {Number(po.total_amount || 0).toFixed(2)}
                       </td>
                     </tr>
                   </tfoot>

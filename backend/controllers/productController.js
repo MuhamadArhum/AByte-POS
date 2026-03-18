@@ -17,7 +17,7 @@ const { logAction } = require('../services/auditService');
 //   ?stock=out       - Show only out of stock (0 units)
 exports.getAll = async (req, res) => {
   try {
-    const { search, category, stock } = req.query;  // Get filter parameters from URL
+    const { search, category, stock, type } = req.query;  // Get filter parameters from URL
 
     // Base query: JOIN products with categories and inventory tables
     // LEFT JOIN because a product might not have a category or inventory record
@@ -39,6 +39,11 @@ exports.getAll = async (req, res) => {
       sql += ' AND p.category_id = ?';
       params.push(category);
     }
+    // Product type filter (raw_material / finished_good)
+    if (type) {
+      sql += ' AND p.product_type = ?';
+      params.push(type);
+    }
     // Stock level filters
     if (stock === 'low') {
       sql += ' AND i.available_stock > 0 AND i.available_stock < 10';  // Low: 1-9 units
@@ -54,13 +59,14 @@ exports.getAll = async (req, res) => {
       const offset = (pageNum - 1) * limitNum;
 
       // Count total records for pagination
-      const countSql = `SELECT COUNT(*) as total 
-                        FROM products p 
+      const countSql = `SELECT COUNT(*) as total
+                        FROM products p
                         LEFT JOIN categories c ON p.category_id = c.category_id
                         LEFT JOIN inventory i ON p.product_id = i.product_id
-                        WHERE 1=1 ` + 
+                        WHERE 1=1 ` +
                         (search ? ' AND (p.product_name LIKE ? OR p.barcode LIKE ?)' : '') +
                         (category ? ' AND p.category_id = ?' : '') +
+                        (type ? ' AND p.product_type = ?' : '') +
                         (stock === 'low' ? ' AND i.available_stock > 0 AND i.available_stock < 10' : '') +
                         (stock === 'out' ? ' AND (i.available_stock = 0 OR i.available_stock IS NULL)' : '');
       
@@ -159,7 +165,7 @@ exports.getById = async (req, res) => {
 // Only Admin and Manager can create products.
 exports.create = async (req, res) => {
   try {
-    const { product_name, category_id, price, stock_quantity, barcode } = req.body;
+    const { product_name, category_id, price, stock_quantity, barcode, product_type } = req.body;
 
     // Validate required fields
     if (!product_name || !price) {
@@ -168,8 +174,8 @@ exports.create = async (req, res) => {
 
     // Insert the product into the products table
     const result = await query(
-      'INSERT INTO products (product_name, category_id, price, stock_quantity, barcode) VALUES (?, ?, ?, ?, ?)',
-      [product_name, category_id || null, price, stock_quantity || 0, barcode || null]
+      'INSERT INTO products (product_name, category_id, price, stock_quantity, barcode, product_type) VALUES (?, ?, ?, ?, ?, ?)',
+      [product_name, category_id || null, price, stock_quantity || 0, barcode || null, product_type || 'finished_good']
     );
 
     // Also create a corresponding inventory record to track stock separately
@@ -198,12 +204,12 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;  // Product ID from URL
-    const { product_name, category_id, price, stock_quantity, barcode } = req.body;
+    const { product_name, category_id, price, stock_quantity, barcode, product_type } = req.body;
 
     // Update the product record
     await query(
-      'UPDATE products SET product_name = ?, category_id = ?, price = ?, stock_quantity = ?, barcode = ? WHERE product_id = ?',
-      [product_name, category_id || null, price, stock_quantity, barcode || null, id]
+      'UPDATE products SET product_name = ?, category_id = ?, price = ?, stock_quantity = ?, barcode = ?, product_type = ? WHERE product_id = ?',
+      [product_name, category_id || null, price, stock_quantity, barcode || null, product_type || 'finished_good', id]
     );
 
     // Sync the inventory table with the new stock quantity

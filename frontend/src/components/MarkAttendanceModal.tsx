@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Calendar, Clock, User, CheckCircle } from 'lucide-react';
 import api from '../utils/api';
+import { localToday } from '../utils/dateUtils';
 import { useToast } from './Toast';
 
 interface MarkAttendanceModalProps {
@@ -16,7 +17,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
   const [selectedStaff, setSelectedStaff] = useState<number | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
-    attendance_date: new Date().toISOString().split('T')[0],
+    attendance_date: localToday(),
     check_in: '',
     check_out: '',
     status: 'present',
@@ -123,7 +124,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
   const resetForm = () => {
     setSelectedStaff(null);
     setFormData({
-      attendance_date: new Date().toISOString().split('T')[0],
+      attendance_date: localToday(),
       check_in: '',
       check_out: '',
       status: 'present',

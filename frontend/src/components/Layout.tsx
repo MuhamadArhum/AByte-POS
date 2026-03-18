@@ -40,7 +40,16 @@ import {
   Layers,
   ClipboardCheck,
   Truck,
-  ShoppingBag
+  ShoppingBag,
+  Boxes,
+  ArrowLeftRight,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Warehouse,
+  FileStack,
+  RefreshCw,
+  ClipboardList,
+  PackageOpen
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -52,6 +61,7 @@ interface MenuItem {
   path?: string;
   moduleKey?: string;
   color?: string;
+  isSection?: boolean;
   children?: MenuItem[];
 }
 
@@ -85,6 +95,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     accounts: false,
     system: false
   });
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
+    'STOCK ITEMS': true,
+    'PURCHASE': true,
+    'ISSUANCE': true,
+    'REPORTS': true,
+  });
+  const toggleSection = (key: string) =>
+    setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
   const [notifications] = useState([
     { id: 1, title: 'Low Stock Alert', message: 'Product ABC is running low', time: '5m ago', read: false },
     { id: 2, title: 'New Order', message: 'Order #1234 received', time: '10m ago', read: false },
@@ -125,17 +143,30 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       moduleKey: 'inventory',
       color: 'purple',
       children: [
-        { icon: Package, label: 'Products', path: '/inventory', moduleKey: 'inventory.products' },
-        { icon: ScrollText, label: 'Categories', path: '/categories', moduleKey: 'inventory.categories' },
-        { icon: Package, label: 'Purchase Orders', path: '/purchase-orders', moduleKey: 'inventory.purchases' },
-        { icon: RotateCcw, label: 'Stock Transfers', path: '/stock-transfers', moduleKey: 'inventory.transfers' },
-        { icon: FileText, label: 'Stock Adjustments', path: '/stock-adjustments', moduleKey: 'inventory.adjustments' },
-        { icon: Bell, label: 'Stock Alerts', path: '/stock-alerts', moduleKey: 'inventory.alerts' },
-        { icon: Users, label: 'Suppliers', path: '/suppliers', moduleKey: 'inventory.suppliers' },
-        { icon: BarChart3, label: 'Inventory Reports', path: '/inventory-reports', moduleKey: 'inventory.reports' },
-        { icon: Tag, label: 'Bundles & Kits', path: '/bundles', moduleKey: 'inventory.bundles' },
-        { icon: Layers, label: 'Product Variants', path: '/product-variants', moduleKey: 'inventory.variants' },
-        { icon: ClipboardCheck, label: 'Stock Count', path: '/stock-count', moduleKey: 'inventory.stockcount' },
+        // ── STOCK ITEMS ──
+        { icon: Package,        label: 'STOCK ITEMS',       isSection: true } as any,
+        { icon: Boxes,          label: 'Products',          path: '/products',           moduleKey: 'inventory.products' },
+        { icon: Tag,            label: 'Deals & Bundles',   path: '/bundles',            moduleKey: 'inventory.bundles' },
+        { icon: PackageOpen,    label: 'Opening Stock',     path: '/opening-stock',      moduleKey: 'inventory.products' },
+        // ── PURCHASE ──
+        { icon: Package,        label: 'PURCHASE',          isSection: true } as any,
+        { icon: ClipboardList,  label: 'Purchase Orders',   path: '/purchase-orders',    moduleKey: 'inventory.purchases' },
+        { icon: ArrowDownToLine,label: 'Purchase Voucher',  path: '/purchase-voucher',   moduleKey: 'inventory.purchases' },
+        { icon: ArrowUpFromLine,label: 'Purchase Return',   path: '/purchase-return',    moduleKey: 'inventory.purchases' },
+        { icon: Users,          label: 'Suppliers',         path: '/suppliers',          moduleKey: 'inventory.suppliers' },
+        // ── ISSUANCE ──
+        { icon: Package,        label: 'ISSUANCE',          isSection: true } as any,
+        { icon: ArrowUpFromLine,label: 'Stock Issue',       path: '/stock-issue',        moduleKey: 'inventory.adjustments' },
+        { icon: ArrowDownToLine,label: 'Stock Return',      path: '/stock-return-issuance', moduleKey: 'inventory.adjustments' },
+        { icon: ShoppingBag,    label: 'Raw Sale',          path: '/raw-sale',           moduleKey: 'inventory.adjustments' },
+        { icon: Warehouse,      label: 'Sections',          path: '/sections',           moduleKey: 'inventory.adjustments' },
+        // ── REPORTS ──
+        { icon: Package,        label: 'REPORTS',           isSection: true } as any,
+        { icon: BookOpen,       label: 'Items Ledger',      path: '/items-ledger',       moduleKey: 'inventory.reports' },
+        { icon: FileStack,      label: 'Item Wise Purchase',path: '/item-wise-purchase', moduleKey: 'inventory.reports' },
+        { icon: Users,          label: 'Supplier Wise',     path: '/supplier-wise-purchase', moduleKey: 'inventory.reports' },
+        { icon: ArrowLeftRight, label: 'Issuance Reports',  path: '/issuance-reports',   moduleKey: 'inventory.reports' },
+        { icon: RefreshCw,      label: 'Stock Reconciliation', path: '/stock-reconciliation', moduleKey: 'inventory.reports' },
       ]
     },
     {
@@ -166,15 +197,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       children: [
         { icon: BookOpen, label: 'Chart of Accounts', path: '/chart-of-accounts', moduleKey: 'accounts.chart' },
         { icon: FileText, label: 'Journal Voucher', path: '/journal-entries', moduleKey: 'accounts.journal' },
+        { icon: CreditCard, label: 'Cash Payment Voucher (CPV)', path: '/payment-vouchers', moduleKey: 'accounts.payment-vouchers' },
+        { icon: Receipt, label: 'Cash Receipt Voucher (CRV)', path: '/receipt-vouchers', moduleKey: 'accounts.receipt-vouchers' },
         { icon: Book, label: 'Account Ledger', path: '/general-ledger', moduleKey: 'accounts.ledger' },
         { icon: Scale, label: 'Trial Balance', path: '/trial-balance', moduleKey: 'accounts.trial-balance' },
         { icon: LayoutGrid, label: 'Trial Balance 6 Col', path: '/trial-balance-6col', moduleKey: 'accounts.trial-balance-6col' },
         { icon: TrendingUp, label: 'Profit & Loss', path: '/profit-loss', moduleKey: 'accounts.profit-loss' },
         { icon: FileBarChart, label: 'Balance Sheet', path: '/balance-sheet', moduleKey: 'accounts.balance-sheet' },
         { icon: Building2, label: 'Bank Accounts', path: '/bank-accounts', moduleKey: 'accounts.bank-accounts' },
-        { icon: CreditCard, label: 'Cash Payment Voucher (CPV)', path: '/payment-vouchers', moduleKey: 'accounts.payment-vouchers' },
-        { icon: Receipt, label: 'Cash Receipt Voucher (CRV)', path: '/receipt-vouchers', moduleKey: 'accounts.receipt-vouchers' },
-        { icon: Wallet, label: 'Expenses', path: '/expenses', moduleKey: 'accounts.expenses' },
         { icon: TrendingUp, label: 'Analytics', path: '/analytics', moduleKey: 'accounts.analytics' },
         { icon: BarChart3, label: 'Reports', path: '/reports', moduleKey: 'accounts.reports' },
       ]
@@ -222,7 +252,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     const isExpanded = expandedMenus[menuKey];
     const isActive = item.path && location.pathname === item.path;
     const hasChildren = item.children && item.children.length > 0;
-    const isParentActive = hasChildren && item.children!.some(child => child.path === location.pathname);
+    const isParentActive = hasChildren && item.children!.some(child => !child.isSection && child.path === location.pathname);
 
     if (hasChildren && !isCollapsed) {
       return (
@@ -260,27 +290,48 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 transition={{ duration: 0.2 }}
                 className="ml-4 space-y-1 border-l-2 border-gray-100 pl-2"
               >
-                {item.children!.map((child, childIndex) => {
-                  const ChildIcon = child.icon;
-                  const isChildActive = child.path && location.pathname === child.path;
-                  return (
-                    <Link
-                      key={childIndex}
-                      to={child.path!}
-                      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group ${isChildActive
-                          ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium shadow-md'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        }`}
-                    >
-                      <ChildIcon
-                        size={18}
-                        className={`flex-shrink-0 ${isChildActive ? 'text-white' : 'text-gray-400 group-hover:text-emerald-600'
+                {(() => {
+                  let currentSection = '';
+                  return item.children!.map((child, childIndex) => {
+                    if (child.isSection) {
+                      currentSection = child.label;
+                      const secCollapsed = !!collapsedSections[currentSection];
+                      return (
+                        <button
+                          key={childIndex}
+                          onClick={() => toggleSection(child.label)}
+                          className="w-full flex items-center justify-between pt-2 pb-1 px-2 group"
+                        >
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 group-hover:text-gray-600 transition-colors">{child.label}</span>
+                          <ChevronDown
+                            size={12}
+                            className={`text-gray-400 group-hover:text-gray-600 transition-transform duration-200 ${secCollapsed ? '' : 'rotate-180'}`}
+                          />
+                        </button>
+                      );
+                    }
+                    if (collapsedSections[currentSection]) return null;
+                    const ChildIcon = child.icon;
+                    const isChildActive = child.path && location.pathname === child.path;
+                    return (
+                      <Link
+                        key={childIndex}
+                        to={child.path!}
+                        className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group ${isChildActive
+                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium shadow-md'
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                           }`}
-                      />
-                      <span className="text-sm">{child.label}</span>
-                    </Link>
-                  );
-                })}
+                      >
+                        <ChildIcon
+                          size={18}
+                          className={`flex-shrink-0 ${isChildActive ? 'text-white' : 'text-gray-400 group-hover:text-emerald-600'
+                            }`}
+                        />
+                        <span className="text-sm">{child.label}</span>
+                      </Link>
+                    );
+                  });
+                })()}
               </motion.div>
             )}
           </AnimatePresence>

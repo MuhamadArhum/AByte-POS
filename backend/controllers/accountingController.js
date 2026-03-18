@@ -696,41 +696,112 @@ exports.getBalanceSheet = async (req, res) => {
     const { as_of_date } = req.query;
     const asOfDate = as_of_date || new Date().toISOString().split('T')[0];
 
-    const accounts = await query(`
-      SELECT a.account_id, a.account_code, a.account_name, a.account_type, a.opening_balance, g.group_name,
-             COALESCE(SUM(CASE WHEN je.entry_date <= ? THEN jel.debit - jel.credit ELSE 0 END), 0) as net_change
+    // 1. Fetch all BS accounts with hierarchy and net movement up to as_of_date
+    const rows = await query(`
+      SELECT
+        a.account_id, a.account_code, a.account_name, a.account_type,
+        a.parent_account_id, a.level, a.is_system,
+        COALESCE(a.opening_balance, 0) as opening_balance,
+        COALESCE(SUM(CASE WHEN je.entry_date <= ? AND je.status = 'posted'
+                     THEN jel.debit - jel.credit ELSE 0 END), 0) as net_change
       FROM accounts a
-      JOIN account_groups g ON a.group_id = g.group_id
       LEFT JOIN journal_entry_lines jel ON a.account_id = jel.account_id
-      LEFT JOIN journal_entries je ON jel.entry_id = je.entry_id AND je.status = 'posted'
+      LEFT JOIN journal_entries je ON jel.entry_id = je.entry_id
       WHERE a.account_type IN ('asset', 'liability', 'equity') AND a.is_active = 1
       GROUP BY a.account_id
-      ORDER BY a.account_type, a.account_code
+      ORDER BY a.account_code
     `, [asOfDate]);
 
-    const processAccounts = (type, debitIncrease) => {
-      return accounts.filter(a => a.account_type === type).map(a => {
-        const opening = Number(a.opening_balance || 0);
-        const change = Number(a.net_change || 0);
-        const balance = debitIncrease ? (opening + change) : (opening - change);
-        return { ...a, balance: Math.abs(balance) };
-      }).filter(a => a.balance !== 0);
+    // 2. Calculate Net Profit/Loss (Revenue - Expenses) up to as_of_date for Retained Earnings
+    const plRows = await query(`
+      SELECT
+        a.account_type,
+        COALESCE(a.opening_balance, 0) as opening_balance,
+        COALESCE(SUM(CASE WHEN je.entry_date <= ? AND je.status = 'posted'
+                     THEN jel.debit - jel.credit ELSE 0 END), 0) as net_change
+      FROM accounts a
+      LEFT JOIN journal_entry_lines jel ON a.account_id = jel.account_id
+      LEFT JOIN journal_entries je ON jel.entry_id = je.entry_id
+      WHERE a.account_type IN ('revenue', 'expense') AND a.is_active = 1
+      GROUP BY a.account_id
+    `, [asOfDate]);
+
+    let totalRevenue = 0, totalExpense = 0;
+    for (const r of plRows) {
+      const opening = Number(r.opening_balance || 0);
+      const change  = Number(r.net_change || 0);
+      if (r.account_type === 'revenue') {
+        // Revenue: credit increases → balance = opening - net_change (debit-credit)
+        totalRevenue += opening - change;
+      } else {
+        // Expense: debit increases → balance = opening + net_change
+        totalExpense += opening + change;
+      }
+    }
+    const netProfit = totalRevenue - totalExpense;
+
+    // 3. Build node map with computed balances
+    const nodeMap = {};
+    for (const r of rows) {
+      const opening = Number(r.opening_balance || 0);
+      const change  = Number(r.net_change || 0);
+      // Asset: debit-normal → balance = opening + net_change
+      // Liability/Equity: credit-normal → balance = opening - net_change
+      const balance = r.account_type === 'asset' ? (opening + change) : (opening - change);
+      nodeMap[r.account_id] = {
+        account_id:        Number(r.account_id),
+        account_code:      r.account_code,
+        account_name:      r.account_name,
+        account_type:      r.account_type,
+        parent_account_id: r.parent_account_id ? Number(r.parent_account_id) : null,
+        level:             Number(r.level || 1),
+        is_system:         Number(r.is_system || 0),
+        balance,
+        children: []
+      };
+    }
+
+    // 4. Link children to parents; collect roots by section
+    const roots = { asset: [], liability: [], equity: [] };
+    for (const node of Object.values(nodeMap)) {
+      const pid = node.parent_account_id;
+      if (pid && nodeMap[pid]) {
+        nodeMap[pid].children.push(node);
+      } else {
+        if (roots[node.account_type]) roots[node.account_type].push(node);
+      }
+    }
+
+    // Sort children by account_code
+    const sortChildren = (node) => {
+      node.children.sort((a, b) => a.account_code.localeCompare(b.account_code));
+      node.children.forEach(sortChildren);
     };
+    [...roots.asset, ...roots.liability, ...roots.equity].forEach(sortChildren);
 
-    const assets = processAccounts('asset', true);
-    const liabilities = processAccounts('liability', false);
-    const equity = processAccounts('equity', false);
+    // 5. Bubble-up balances: parent = sum of children (if any children exist)
+    function bubbleUp(node) {
+      if (node.children.length > 0) {
+        node.children.forEach(bubbleUp);
+        node.balance = node.children.reduce((s, c) => s + c.balance, 0);
+      }
+    }
+    [...roots.asset, ...roots.liability, ...roots.equity].forEach(bubbleUp);
 
-    const totalAssets = assets.reduce((sum, a) => sum + a.balance, 0);
-    const totalLiabilities = liabilities.reduce((sum, l) => sum + l.balance, 0);
-    const totalEquity = equity.reduce((sum, e) => sum + e.balance, 0);
+    const totalAssets      = roots.asset.reduce((s, n) => s + n.balance, 0);
+    const totalLiabilities = roots.liability.reduce((s, n) => s + n.balance, 0);
+    const totalEquity      = roots.equity.reduce((s, n) => s + n.balance, 0);
 
     res.json({
-      as_of_date: asOfDate,
-      assets: { accounts: assets, total: totalAssets },
-      liabilities: { accounts: liabilities, total: totalLiabilities },
-      equity: { accounts: equity, total: totalEquity },
-      total_liabilities_equity: totalLiabilities + totalEquity
+      as_of_date:              asOfDate,
+      assets:                  roots.asset,
+      liabilities:             roots.liability,
+      equity:                  roots.equity,
+      net_profit:              netProfit,
+      total_assets:            totalAssets,
+      total_liabilities:       totalLiabilities,
+      total_equity:            totalEquity + netProfit,
+      total_liabilities_equity: totalLiabilities + totalEquity + netProfit
     });
   } catch (err) {
     console.error(err);
@@ -993,6 +1064,92 @@ exports.deleteReceiptVoucher = async (req, res) => {
     await query('DELETE FROM receipt_vouchers WHERE voucher_id = ?', [id]);
     await logAction(req.user.user_id, req.user.name, 'RECEIPT_VOUCHER_DELETED', 'receipt_vouchers', id, {}, req.ip);
     res.json({ message: 'Receipt voucher deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== ACCOUNTING ANALYTICS ==============
+
+exports.getAccountingAnalytics = async (req, res) => {
+  try {
+    const { from_date, to_date } = req.query;
+    if (!from_date || !to_date) return res.status(400).json({ message: 'Date range required' });
+
+    // 1. P&L accounts for period
+    const plAccounts = await query(`
+      SELECT a.account_id, a.account_name, a.account_code, a.account_type,
+             COALESCE(SUM(jel.credit - jel.debit), 0) as amount
+      FROM accounts a
+      LEFT JOIN journal_entry_lines jel ON a.account_id = jel.account_id
+      LEFT JOIN journal_entries je ON jel.entry_id = je.entry_id
+        AND je.status = 'posted' AND je.entry_date BETWEEN ? AND ?
+      WHERE a.account_type IN ('revenue', 'expense') AND a.is_active = 1
+      GROUP BY a.account_id
+      HAVING amount != 0
+      ORDER BY ABS(amount) DESC
+    `, [from_date, to_date]);
+
+    const revenueAccounts = plAccounts.filter(a => a.account_type === 'revenue').map(a => ({ ...a, amount: Number(a.amount) }));
+    const expenseAccounts = plAccounts.filter(a => a.account_type === 'expense').map(a => ({ ...a, amount: Math.abs(Number(a.amount)) }));
+    const totalRevenue = revenueAccounts.reduce((s, a) => s + a.amount, 0);
+    const totalExpenses = expenseAccounts.reduce((s, a) => s + a.amount, 0);
+
+    // 2. Monthly trend (revenue vs expenses per month)
+    const monthlyRows = await query(`
+      SELECT
+        DATE_FORMAT(je.entry_date, '%Y-%m') as month,
+        a.account_type,
+        SUM(CASE WHEN a.account_type = 'revenue' THEN jel.credit - jel.debit
+                 ELSE jel.debit - jel.credit END) as amount
+      FROM journal_entry_lines jel
+      JOIN journal_entries je ON jel.entry_id = je.entry_id AND je.status = 'posted'
+      JOIN accounts a ON jel.account_id = a.account_id
+      WHERE je.entry_date BETWEEN ? AND ? AND a.account_type IN ('revenue', 'expense')
+      GROUP BY DATE_FORMAT(je.entry_date, '%Y-%m'), a.account_type
+      ORDER BY month
+    `, [from_date, to_date]);
+
+    const monthMap = {};
+    for (const row of monthlyRows) {
+      if (!monthMap[row.month]) monthMap[row.month] = { month: row.month, revenue: 0, expenses: 0 };
+      if (row.account_type === 'revenue') monthMap[row.month].revenue = Number(row.amount);
+      else monthMap[row.month].expenses = Number(row.amount);
+    }
+    const monthlyTrend = Object.values(monthMap).sort((a, b) => a.month.localeCompare(b.month));
+
+    // 3. Voucher summary
+    const [vRow] = await query(`
+      SELECT
+        (SELECT COUNT(*) FROM payment_vouchers WHERE voucher_date BETWEEN ? AND ?) as cpv_count,
+        (SELECT COALESCE(SUM(amount), 0) FROM payment_vouchers WHERE voucher_date BETWEEN ? AND ?) as cpv_amount,
+        (SELECT COUNT(*) FROM receipt_vouchers WHERE voucher_date BETWEEN ? AND ?) as crv_count,
+        (SELECT COALESCE(SUM(amount), 0) FROM receipt_vouchers WHERE voucher_date BETWEEN ? AND ?) as crv_amount
+    `, [from_date, to_date, from_date, to_date, from_date, to_date, from_date, to_date]);
+
+    // 4. Journal entries summary
+    const jvRows = await query(
+      `SELECT status, COUNT(*) as count FROM journal_entries WHERE entry_date BETWEEN ? AND ? GROUP BY status`,
+      [from_date, to_date]
+    );
+    const jvSummary = { posted: 0, draft: 0 };
+    for (const r of jvRows) jvSummary[r.status] = Number(r.count);
+
+    res.json({
+      period: { from_date, to_date },
+      summary: { total_revenue: totalRevenue, total_expenses: totalExpenses, net_profit: totalRevenue - totalExpenses },
+      monthly_trend: monthlyTrend,
+      top_revenue: revenueAccounts.slice(0, 5),
+      top_expenses: expenseAccounts.slice(0, 5),
+      vouchers: {
+        cpv_count: Number(vRow.cpv_count),
+        cpv_amount: Number(vRow.cpv_amount),
+        crv_count: Number(vRow.crv_count),
+        crv_amount: Number(vRow.crv_amount)
+      },
+      journal_summary: jvSummary
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

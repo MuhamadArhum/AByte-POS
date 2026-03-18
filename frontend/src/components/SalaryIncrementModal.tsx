@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, TrendingUp } from 'lucide-react';
 import api from '../utils/api';
+import { localToday } from '../utils/dateUtils';
 import { useToast } from './Toast';
 
 interface Props {
@@ -19,7 +20,7 @@ const SalaryIncrementModal = ({ isOpen, onClose, onSuccess, staffMember }: Props
   const [formData, setFormData] = useState({
     staff_id: '',
     new_salary: '',
-    effective_date: new Date().toISOString().split('T')[0],
+    effective_date: localToday(),
     reason: ''
   });
 
@@ -35,7 +36,7 @@ const SalaryIncrementModal = ({ isOpen, onClose, onSuccess, staffMember }: Props
         }));
       } else {
         fetchStaff();
-        setFormData({ staff_id: '', new_salary: '', effective_date: new Date().toISOString().split('T')[0], reason: '' });
+        setFormData({ staff_id: '', new_salary: '', effective_date: localToday(), reason: '' });
         setSelectedStaff(null);
       }
     }

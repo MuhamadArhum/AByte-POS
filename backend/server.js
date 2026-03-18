@@ -33,7 +33,6 @@ const backupRoutes          = require('./routes/backupRoutes');
 const variantRoutes         = require('./routes/variantRoutes');
 const bundleRoutes          = require('./routes/bundleRoutes');
 const supplierRoutes        = require('./routes/supplierRoutes');
-const expenseRoutes         = require('./routes/expenseRoutes');
 const staffRoutes           = require('./routes/staffRoutes');
 const purchaseOrderRoutes   = require('./routes/purchaseOrderRoutes');
 const storeRoutes           = require('./routes/storeRoutes');
@@ -43,6 +42,11 @@ const stockAdjustmentRoutes = require('./routes/stockAdjustmentRoutes');
 const stockTransferRoutes   = require('./routes/stockTransferRoutes');
 const inventoryReportRoutes = require('./routes/inventoryReportRoutes');
 const salesReportRoutes     = require('./routes/salesReportRoutes');
+const sectionsRoutes        = require('./routes/sectionsRoutes');
+const issuanceRoutes        = require('./routes/issuanceRoutes');
+const purchaseVoucherRoutes = require('./routes/purchaseVoucherRoutes');
+const purchaseReturnRoutes  = require('./routes/purchaseReturnRoutes');
+const openingStockRoutes    = require('./routes/openingStockRoutes');
 const creditSaleRoutes      = require('./routes/creditSaleRoutes');
 const quotationRoutes       = require('./routes/quotationRoutes');
 const priceRuleRoutes       = require('./routes/priceRuleRoutes');
@@ -109,12 +113,16 @@ app.use('/api/suppliers',           supplierRoutes);
 app.use('/api/purchase-orders',     purchaseOrderRoutes);
 app.use('/api/stock-adjustments',   stockAdjustmentRoutes);
 app.use('/api/stock-transfers',     stockTransferRoutes);
+app.use('/api/sections',            sectionsRoutes);
+app.use('/api/issuance',            issuanceRoutes);
+app.use('/api/purchase-vouchers',   purchaseVoucherRoutes);
+app.use('/api/purchase-returns',    purchaseReturnRoutes);
+app.use('/api/opening-stock',       openingStockRoutes);
 
 // Reports module (basic+)
 app.use('/api/reports',             reportRoutes);
 app.use('/api/sales-reports',       salesReportRoutes);
 app.use('/api/inventory-reports',   inventoryReportRoutes);
-app.use('/api/expenses',            expenseRoutes);
 
 // Accounting module — PROFESSIONAL+ only
 // requireModule is applied INSIDE accountingRoutes (see Step 4 note)

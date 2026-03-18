@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ClipboardCheck, Search, RefreshCw, CheckCircle, XCircle, AlertTriangle, Package, Download, Plus, Minus, Save, BarChart2 } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
+import { localToday } from '../../utils/dateUtils';
 
 interface StockCountItem {
   product_id: number;
@@ -143,7 +144,7 @@ const StockCount = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `stock-count-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `stock-count-${localToday()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };

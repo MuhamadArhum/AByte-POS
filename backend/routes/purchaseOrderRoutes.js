@@ -11,6 +11,8 @@ router.put('/stock-alerts/:id/resolve', authorize('Admin', 'Manager'), poControl
 router.get('/', poController.getAll);
 router.get('/:id', poController.getById);
 router.post('/', authorize('Admin', 'Manager'), poController.create);
+router.put('/:id', authorize('Admin', 'Manager'), poController.update);
+router.delete('/:id', authorize('Admin', 'Manager'), poController.remove);
 router.post('/:id/receive', authorize('Admin', 'Manager'), poController.receive);
 router.put('/:id/cancel', authorize('Admin', 'Manager'), poController.cancel);
 

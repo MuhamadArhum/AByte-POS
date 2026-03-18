@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { TrendingUp, Filter, Download } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
+import { localToday } from '../../utils/dateUtils';
 import { useToast } from '../../components/Toast';
 import SalaryIncrementModal from '../../components/SalaryIncrementModal';
 
@@ -53,7 +54,7 @@ const IncrementHistory = () => {
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `increment_history_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+    a.href = url; a.download = `increment_history_${localToday()}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
