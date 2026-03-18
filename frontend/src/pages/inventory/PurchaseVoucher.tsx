@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Eye, Trash2, X, Search, ShoppingCart, Printer } from 'lucide-react';
+import { Plus, Eye, Trash2, X, Search, ShoppingCart, Printer, Pencil } from 'lucide-react';
 import api from '../../utils/api';
 import { printGRN } from '../../utils/printUtils';
 import { localToday, localMonthStart } from '../../utils/dateUtils';
@@ -17,6 +17,7 @@ const PurchaseVoucher = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showForm, setShowForm]   = useState(false);
+  const [editingPV, setEditingPV] = useState<any>(null); // null = create, object = edit
   const [viewVoucher, setViewVoucher] = useState<any>(null);
   const [dateFrom, setDateFrom]   = useState(localMonthStart());
   const [dateTo, setDateTo]       = useState(localToday());
@@ -27,16 +28,21 @@ const PurchaseVoucher = () => {
   const { showToast } = useToast();
 
   // Form state
-  const [mode, setMode]           = useState<'po' | 'manual'>('manual');
-  const [pos, setPOs]             = useState<PO[]>([]);
+  const [mode, setMode]             = useState<'po' | 'manual'>('manual');
+  const [pos, setPOs]               = useState<PO[]>([]);
   const [selectedPO, setSelectedPO] = useState('');
   const [formSupplier, setFormSupplier] = useState('');
-  const [formDate, setFormDate]   = useState(localToday());
-  const [formNotes, setFormNotes] = useState('');
-  const [items, setItems]         = useState<VoucherItem[]>([]);
+  const [formDate, setFormDate]     = useState(localToday());
+  const [formNotes, setFormNotes]   = useState('');
+  const [formShipping, setFormShipping]         = useState<number>(0);
+  const [formExtra, setFormExtra]               = useState<number>(0);
+  const [formOther, setFormOther]               = useState<number>(0);
+  const [formDiscountPct, setFormDiscountPct]   = useState<number>(0);
+  const [formTaxPct, setFormTaxPct]             = useState<number>(0);
+  const [items, setItems]           = useState<VoucherItem[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [productResults, setProductResults] = useState<Product[]>([]);
-  const [saving, setSaving]       = useState(false);
+  const [saving, setSaving]         = useState(false);
 
   const fetchVouchers = useCallback(async () => {
     setLoading(true);
@@ -92,9 +98,48 @@ const PurchaseVoucher = () => {
 
   const resetForm = () => {
     setMode('manual'); setSelectedPO(''); setFormSupplier('');
-    setFormDate(localToday()); setFormNotes(''); setItems([]);
-    setProductSearch(''); setProductResults([]);
+    setFormDate(localToday()); setFormNotes('');
+    setFormShipping(0); setFormExtra(0); setFormOther(0);
+    setFormDiscountPct(0); setFormTaxPct(0);
+    setItems([]); setProductSearch(''); setProductResults([]);
+    setEditingPV(null);
   };
+
+  const openCreate = () => { resetForm(); setShowForm(true); };
+
+  const openEdit = async (pv: any) => {
+    try {
+      const res = await api.get(`/purchase-vouchers/${pv.pv_id}`);
+      const data = res.data;
+      setEditingPV(data);
+      setMode('manual');
+      setSelectedPO('');
+      setFormSupplier(data.supplier_id ? String(data.supplier_id) : '');
+      setFormDate(data.voucher_date?.split('T')[0] || localToday());
+      setFormNotes(data.notes || '');
+      setFormShipping(Number(data.shipping_cost) || 0);
+      setFormExtra(Number(data.extra_charges) || 0);
+      setFormOther(Number(data.other_charges) || 0);
+      setFormDiscountPct(Number(data.discount_percent) || 0);
+      setFormTaxPct(Number(data.tax_percent) || 0);
+      setItems((data.items || []).map((i: any) => ({
+        product_id: i.product_id,
+        product_name: i.product_name,
+        quantity_received: Number(i.quantity_received),
+        unit_price: Number(i.unit_price),
+      })));
+      setProductSearch(''); setProductResults([]);
+      setShowForm(true);
+    } catch { showToast('Failed to load voucher', 'error'); }
+  };
+
+  const itemsTotal      = items.reduce((s, i) => s + i.quantity_received * i.unit_price, 0);
+  const chargesTotal    = formShipping + formExtra + formOther;
+  const subtotal        = itemsTotal + chargesTotal;
+  const discountAmount  = subtotal * formDiscountPct / 100;
+  const taxable         = subtotal - discountAmount;
+  const taxAmount       = taxable * formTaxPct / 100;
+  const grandTotal      = taxable + taxAmount;
 
   const handleSubmit = async () => {
     if (!items.length) return showToast('Add at least one item', 'error');
@@ -104,11 +149,22 @@ const PurchaseVoucher = () => {
         supplier_id: formSupplier || null,
         voucher_date: formDate,
         notes: formNotes,
+        shipping_cost: formShipping,
+        extra_charges: formExtra,
+        other_charges: formOther,
+        discount_percent: formDiscountPct,
+        tax_percent: formTaxPct,
         items,
       };
-      if (mode === 'po' && selectedPO) payload.po_id = selectedPO;
-      const res = await api.post('/purchase-vouchers', payload);
-      showToast(`Purchase Voucher ${res.data.pv_number} created`, 'success');
+      if (!editingPV && mode === 'po' && selectedPO) payload.po_id = selectedPO;
+
+      if (editingPV) {
+        await api.put(`/purchase-vouchers/${editingPV.pv_id}`, payload);
+        showToast(`Voucher ${editingPV.pv_number} updated`, 'success');
+      } else {
+        const res = await api.post('/purchase-vouchers', payload);
+        showToast(`Purchase Voucher ${res.data.pv_number} created`, 'success');
+      }
       setShowForm(false); resetForm(); fetchVouchers();
     } catch (err: any) { showToast(err.response?.data?.message || 'Error', 'error'); }
     finally { setSaving(false); }
@@ -125,6 +181,13 @@ const PurchaseVoucher = () => {
     setViewVoucher(res.data);
   };
 
+  const handlePrint = async (pv: any) => {
+    try {
+      const res = await api.get(`/purchase-vouchers/${pv.pv_id}`);
+      printGRN(res.data);
+    } catch { showToast('Failed to load for print', 'error'); }
+  };
+
   const fmt = (n: any) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
@@ -136,34 +199,39 @@ const PurchaseVoucher = () => {
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">Receive goods from PO or create manual purchase entry</p>
         </div>
-        <button onClick={() => { resetForm(); setShowForm(true); }}
+        <button onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium">
           <Plus size={18} /> New Voucher
         </button>
       </div>
 
-      {/* Form Modal */}
+      {/* Create / Edit Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center px-6 py-4 border-b">
-              <h2 className="font-semibold text-gray-800 text-lg">New Purchase Voucher</h2>
-              <button onClick={() => setShowForm(false)}><X size={20} className="text-gray-400" /></button>
+              <h2 className="font-semibold text-gray-800 text-lg">
+                {editingPV ? `Edit Voucher — ${editingPV.pv_number}` : 'New Purchase Voucher'}
+              </h2>
+              <button onClick={() => { setShowForm(false); resetForm(); }}><X size={20} className="text-gray-400" /></button>
             </div>
             <div className="p-6 overflow-y-auto flex-1">
-              {/* Mode tabs */}
-              <div className="flex gap-2 mb-5">
-                <button onClick={() => { setMode('manual'); setSelectedPO(''); setItems([]); setFormSupplier(''); }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium border ${mode === 'manual' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>
-                  Manual Entry
-                </button>
-                <button onClick={() => setMode('po')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium border ${mode === 'po' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>
-                  From Purchase Order
-                </button>
-              </div>
 
-              {mode === 'po' && (
+              {/* Mode tabs — only for new voucher */}
+              {!editingPV && (
+                <div className="flex gap-2 mb-5">
+                  <button onClick={() => { setMode('manual'); setSelectedPO(''); setItems([]); setFormSupplier(''); }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border ${mode === 'manual' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>
+                    Manual Entry
+                  </button>
+                  <button onClick={() => setMode('po')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border ${mode === 'po' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>
+                    From Purchase Order
+                  </button>
+                </div>
+              )}
+
+              {!editingPV && mode === 'po' && (
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Select Purchase Order *</label>
                   <select value={selectedPO} onChange={e => { setSelectedPO(e.target.value); loadPOItems(e.target.value); }}
@@ -195,8 +263,8 @@ const PurchaseVoucher = () => {
                 </div>
               </div>
 
-              {/* Product Search (manual mode only) */}
-              {mode === 'manual' && (
+              {/* Product Search (manual mode or edit mode) */}
+              {(editingPV || mode === 'manual') && (
                 <div className="relative mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Add Products</label>
                   <div className="relative">
@@ -221,7 +289,7 @@ const PurchaseVoucher = () => {
 
               {/* Items Table */}
               {items.length > 0 && (
-                <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+                <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden mb-4">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
@@ -252,22 +320,75 @@ const PurchaseVoucher = () => {
                         </td>
                       </tr>
                     ))}
-                    <tr className="bg-gray-50 font-semibold">
-                      <td colSpan={3} className="px-4 py-2.5 text-right text-gray-700">Grand Total</td>
-                      <td className="px-4 py-2.5 text-right text-indigo-700">
-                        {fmt(items.reduce((s, i) => s + i.quantity_received * i.unit_price, 0))}
-                      </td>
-                      <td></td>
-                    </tr>
                   </tbody>
                 </table>
               )}
+
+              {/* Additional Charges + Tax/Discount */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Charges, Discount & Tax</p>
+                <div className="grid grid-cols-3 gap-4 mb-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Shipping Cost</label>
+                    <input type="number" min="0" step="0.01" value={formShipping}
+                      onChange={e => setFormShipping(parseFloat(e.target.value) || 0)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-right focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Extra Charges</label>
+                    <input type="number" min="0" step="0.01" value={formExtra}
+                      onChange={e => setFormExtra(parseFloat(e.target.value) || 0)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-right focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Other Charges</label>
+                    <input type="number" min="0" step="0.01" value={formOther}
+                      onChange={e => setFormOther(parseFloat(e.target.value) || 0)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-right focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-red-600 mb-1">Discount %</label>
+                    <input type="number" min="0" max="100" step="0.01" value={formDiscountPct}
+                      onChange={e => setFormDiscountPct(parseFloat(e.target.value) || 0)}
+                      className="w-full border border-red-200 rounded-lg px-3 py-2 text-sm text-right focus:ring-2 focus:ring-red-400 outline-none" placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-blue-600 mb-1">Tax %</label>
+                    <input type="number" min="0" step="0.01" value={formTaxPct}
+                      onChange={e => setFormTaxPct(parseFloat(e.target.value) || 0)}
+                      className="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm text-right focus:ring-2 focus:ring-blue-400 outline-none" placeholder="0.00" />
+                  </div>
+                </div>
+                <div className="border-t border-gray-200 pt-3 space-y-1 text-sm">
+                  <div className="flex justify-end gap-6">
+                    <span className="text-gray-600">Items Sub-total: <strong>{fmt(itemsTotal)}</strong></span>
+                    {chargesTotal > 0 && (
+                      <span className="text-gray-600">+ Charges: <strong>{fmt(chargesTotal)}</strong></span>
+                    )}
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-end">
+                      <span className="text-red-600">− Discount ({fmt(formDiscountPct)}%): <strong>{fmt(discountAmount)}</strong></span>
+                    </div>
+                  )}
+                  {taxAmount > 0 && (
+                    <div className="flex justify-end">
+                      <span className="text-blue-600">+ Tax ({fmt(formTaxPct)}%): <strong>{fmt(taxAmount)}</strong></span>
+                    </div>
+                  )}
+                  <div className="flex justify-end pt-1 border-t border-gray-300">
+                    <span className="text-indigo-700 font-bold text-base">Grand Total: {fmt(grandTotal)}</span>
+                  </div>
+                </div>
+              </div>
             </div>
+
             <div className="flex justify-end gap-3 px-6 py-4 border-t">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">Cancel</button>
+              <button onClick={() => { setShowForm(false); resetForm(); }}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">Cancel</button>
               <button onClick={handleSubmit} disabled={saving}
                 className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
-                {saving ? 'Saving...' : 'Create Voucher'}
+                {saving ? 'Saving...' : editingPV ? 'Update Voucher' : 'Create Voucher'}
               </button>
             </div>
           </div>
@@ -292,10 +413,15 @@ const PurchaseVoucher = () => {
               <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
                 <div><span className="text-gray-500">Supplier:</span> <span className="font-medium">{viewVoucher.supplier_name || '—'}</span></div>
                 <div><span className="text-gray-500">Date:</span> <span className="font-medium">{viewVoucher.voucher_date}</span></div>
-                {viewVoucher.po_number && <div><span className="text-gray-500">PO:</span> <span className="font-medium">{viewVoucher.po_number}</span></div>}
+                {viewVoucher.po_number && (
+                  <div className="col-span-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                    <span className="text-blue-600 text-xs font-semibold">Received Against PO:</span>
+                    <span className="ml-2 font-bold text-blue-800">{viewVoucher.po_number}</span>
+                  </div>
+                )}
                 <div><span className="text-gray-500">By:</span> <span className="font-medium">{viewVoucher.created_by_name}</span></div>
               </div>
-              <table className="w-full text-sm">
+              <table className="w-full text-sm mb-3">
                 <thead className="bg-gray-50 border-b">
                   <tr>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
@@ -313,12 +439,35 @@ const PurchaseVoucher = () => {
                       <td className="px-4 py-2 text-right font-medium">{fmt(Number(item.quantity_received) * Number(item.unit_price))}</td>
                     </tr>
                   ))}
-                  <tr className="bg-gray-50 font-semibold">
-                    <td colSpan={3} className="px-4 py-2 text-right">Total</td>
-                    <td className="px-4 py-2 text-right text-indigo-700">{fmt(viewVoucher.total_amount)}</td>
-                  </tr>
                 </tbody>
               </table>
+              {/* Charges breakdown */}
+              <div className="border-t border-gray-200 pt-2 text-sm space-y-1">
+                {Number(viewVoucher.shipping_cost) > 0 && (
+                  <div className="flex justify-between text-gray-600 px-4"><span>Shipping Cost</span><span>{fmt(viewVoucher.shipping_cost)}</span></div>
+                )}
+                {Number(viewVoucher.extra_charges) > 0 && (
+                  <div className="flex justify-between text-gray-600 px-4"><span>Extra Charges</span><span>{fmt(viewVoucher.extra_charges)}</span></div>
+                )}
+                {Number(viewVoucher.other_charges) > 0 && (
+                  <div className="flex justify-between text-gray-600 px-4"><span>Other Charges</span><span>{fmt(viewVoucher.other_charges)}</span></div>
+                )}
+                {Number(viewVoucher.discount_amount) > 0 && (
+                  <div className="flex justify-between text-red-600 px-4">
+                    <span>Discount ({fmt(viewVoucher.discount_percent)}%)</span>
+                    <span>- {fmt(viewVoucher.discount_amount)}</span>
+                  </div>
+                )}
+                {Number(viewVoucher.tax_amount) > 0 && (
+                  <div className="flex justify-between text-blue-600 px-4">
+                    <span>Tax ({fmt(viewVoucher.tax_percent)}%)</span>
+                    <span>{fmt(viewVoucher.tax_amount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-indigo-700 px-4 pt-1 border-t border-gray-200">
+                  <span>Grand Total</span><span>{fmt(viewVoucher.total_amount)}</span>
+                </div>
+              </div>
               {viewVoucher.notes && <p className="mt-3 text-sm text-gray-500">Notes: {viewVoucher.notes}</p>}
             </div>
           </div>
@@ -350,7 +499,7 @@ const PurchaseVoucher = () => {
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Items</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">By</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -358,17 +507,27 @@ const PurchaseVoucher = () => {
                 <tr><td colSpan={8} className="px-4 py-10 text-center text-gray-400">No purchase vouchers found</td></tr>
               ) : vouchers.map(v => (
                 <tr key={v.pv_id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-indigo-700">{v.pv_number}</td>
-                  <td className="px-4 py-3 text-gray-500">{v.po_number || '—'}</td>
+                  <td className="px-4 py-3 font-mono text-indigo-700 font-semibold">{v.pv_number}</td>
+                  <td className="px-4 py-3">
+                    {v.po_number
+                      ? <span className="text-blue-600 font-medium text-xs bg-blue-50 px-2 py-0.5 rounded">{v.po_number}</span>
+                      : <span className="text-gray-400">—</span>}
+                  </td>
                   <td className="px-4 py-3 text-gray-800">{v.supplier_name || '—'}</td>
                   <td className="px-4 py-3 text-gray-600">{v.voucher_date}</td>
                   <td className="px-4 py-3 text-right">{v.item_count}</td>
                   <td className="px-4 py-3 text-right font-medium text-gray-900">{fmt(v.total_amount)}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">{v.created_by_name}</td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <button onClick={() => openView(v.pv_id)} className="text-indigo-600 hover:text-indigo-800"><Eye size={15} /></button>
-                      <button onClick={() => handleDelete(v.pv_id)} className="text-red-500 hover:text-red-700"><Trash2 size={15} /></button>
+                    <div className="flex items-center justify-center gap-1">
+                      <button onClick={() => openView(v.pv_id)} title="View"
+                        className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition"><Eye size={15} /></button>
+                      <button onClick={() => handlePrint(v)} title="Print GRN"
+                        className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition"><Printer size={15} /></button>
+                      <button onClick={() => openEdit(v)} title="Edit"
+                        className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition"><Pencil size={15} /></button>
+                      <button onClick={() => handleDelete(v.pv_id)} title="Delete"
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition"><Trash2 size={15} /></button>
                     </div>
                   </td>
                 </tr>

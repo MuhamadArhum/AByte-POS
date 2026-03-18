@@ -25,6 +25,7 @@ interface PODetails {
   notes: string | null;
   created_by_name: string;
   items: POItem[];
+  linked_pv?: { pv_id: number; pv_number: string; voucher_date: string; total_amount: number } | null;
 }
 
 interface ViewPODetailsModalProps {
@@ -46,8 +47,14 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
   const fetchPODetails = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/purchase-orders/${poId}`);
-      setPO(res.data);
+      const [poRes, pvRes] = await Promise.all([
+        api.get(`/purchase-orders/${poId}`),
+        api.get('/purchase-vouchers', { params: { po_id: poId, limit: 1 } })
+      ]);
+      const poData = poRes.data;
+      const pvList = pvRes.data.data || [];
+      poData.linked_pv = pvList.length > 0 ? pvList[0] : null;
+      setPO(poData);
     } catch (error) {
       console.error('Error fetching PO details:', error);
       alert('Failed to fetch PO details');
@@ -124,6 +131,13 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
                   <span className={`inline-block px-4 py-2 rounded-full text-sm font-semibold capitalize ${getStatusColor(po.status)}`}>
                     {po.status}
                   </span>
+                  {po.linked_pv && (
+                    <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                      <p className="text-xs text-blue-600 font-semibold mb-0.5">Received via Purchase Voucher</p>
+                      <p className="font-bold text-blue-800">{po.linked_pv.pv_number}</p>
+                      <p className="text-xs text-blue-500">{po.linked_pv.voucher_date}</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">

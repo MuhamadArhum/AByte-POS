@@ -281,18 +281,22 @@ exports.getCategories = async (req, res) => {
 };
 
 // --- Create New Category ---
-// Adds a new product category (e.g., "Beverages", "Snacks").
-// Category names must be unique (enforced by DB constraint).
+// Adds a new product category with type (raw_material / semi_finished / finished_good).
 exports.createCategory = async (req, res) => {
   try {
-    const { category_name } = req.body;
+    const { category_name, category_type, description, is_active } = req.body;
     if (!category_name) return res.status(400).json({ message: 'Category name is required' });
 
-    const result = await query('INSERT INTO categories (category_name) VALUES (?)', [category_name]);
-    await logAction(req.user.user_id, req.user.name, 'CATEGORY_CREATED', 'category', result.insertId, { category_name }, req.ip);
+    const validTypes = ['raw_material', 'semi_finished', 'finished_good'];
+    const catType = validTypes.includes(category_type) ? category_type : 'finished_good';
+
+    const result = await query(
+      'INSERT INTO categories (category_name, category_type, description, is_active) VALUES (?, ?, ?, ?)',
+      [category_name, catType, description || null, is_active !== undefined ? is_active : 1]
+    );
+    await logAction(req.user.user_id, req.user.name, 'CATEGORY_CREATED', 'category', result.insertId, { category_name, category_type: catType }, req.ip);
     res.status(201).json({ message: 'Category created', category_id: Number(result.insertId) });
   } catch (err) {
-    // Handle duplicate category name
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Category already exists' });
     }
@@ -305,17 +309,20 @@ exports.createCategory = async (req, res) => {
 exports.updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { category_name, description, is_active } = req.body;
+    const { category_name, category_type, description, is_active } = req.body;
     if (!category_name) return res.status(400).json({ message: 'Category name is required' });
 
     const [existing] = await query('SELECT category_id FROM categories WHERE category_id = ?', [id]);
     if (!existing) return res.status(404).json({ message: 'Category not found' });
 
+    const validTypes = ['raw_material', 'semi_finished', 'finished_good'];
+    const catType = validTypes.includes(category_type) ? category_type : 'finished_good';
+
     await query(
-      'UPDATE categories SET category_name = ?, description = ?, is_active = ? WHERE category_id = ?',
-      [category_name, description || null, is_active !== undefined ? is_active : 1, id]
+      'UPDATE categories SET category_name = ?, category_type = ?, description = ?, is_active = ? WHERE category_id = ?',
+      [category_name, catType, description || null, is_active !== undefined ? is_active : 1, id]
     );
-    await logAction(req.user.user_id, req.user.name, 'CATEGORY_UPDATED', 'category', id, { category_name }, req.ip);
+    await logAction(req.user.user_id, req.user.name, 'CATEGORY_UPDATED', 'category', id, { category_name, category_type: catType }, req.ip);
     res.json({ message: 'Category updated' });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Category name already exists' });

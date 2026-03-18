@@ -1,4 +1,14 @@
 // Print utility — generates HTML and opens browser print dialog
+import api from './api';
+
+const getStoreSettings = async (): Promise<{ store_name?: string; address?: string; phone?: string; email?: string }> => {
+  try {
+    const res = await api.get('/settings');
+    return res.data || {};
+  } catch {
+    return {};
+  }
+};
 
 const styles = `
   <style>
@@ -32,6 +42,19 @@ const openPrintWindow = (bodyHtml: string, title: string) => {
   setTimeout(() => { w.focus(); w.print(); }, 400);
 };
 
+// Opens window synchronously (required for popup blocker), then populates async
+const openPrintWindowAsync = async (buildHtml: (settings: Awaited<ReturnType<typeof getStoreSettings>>) => string, title: string) => {
+  const w = window.open('', '_blank', 'width=820,height=650');
+  if (!w) { alert('Allow popups to print.'); return; }
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>${styles}</head><body><p style="padding:30px;font-family:Arial">Loading...</p></body></html>`);
+  const settings = await getStoreSettings();
+  const bodyHtml = buildHtml(settings);
+  w.document.open();
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>${styles}</head><body>${bodyHtml}</body></html>`);
+  w.document.close();
+  setTimeout(() => { w.focus(); w.print(); }, 400);
+};
+
 const getCompanyName = () => {
   try { return localStorage.getItem('company_name') || 'AByte Manufacturing'; } catch { return 'AByte Manufacturing'; }
 };
@@ -41,48 +64,74 @@ const fmt2 = (n: any) => Number(n || 0).toFixed(2);
 
 // ─── GRN (Goods Received Note) ────────────────────────────────
 export const printGRN = (voucher: any) => {
-  const rows = (voucher.items || []).map((item: any) => `
-    <tr>
-      <td>${item.product_name}</td>
-      <td class="text-right">${fmt3(item.quantity_received)}</td>
-      <td class="text-right">${fmt2(item.unit_price)}</td>
-      <td class="text-right">${fmt2(Number(item.quantity_received) * Number(item.unit_price))}</td>
-    </tr>`).join('');
+  const title = `GRN - ${voucher.pv_number}`;
 
-  const html = `
-    <div class="doc-header">
-      <div class="company-name">${getCompanyName()}</div>
-      <div class="doc-title">Goods Received Note (GRN)</div>
-    </div>
-    <div class="meta-grid">
-      <div><span>GRN # : </span><strong>${voucher.pv_number}</strong></div>
-      <div><span>Date : </span><strong>${voucher.voucher_date}</strong></div>
-      <div><span>Supplier : </span><strong>${voucher.supplier_name || '—'}</strong></div>
-      ${voucher.po_number ? `<div><span>PO Ref : </span><strong>${voucher.po_number}</strong></div>` : '<div></div>'}
-      <div><span>Received By : </span><strong>${voucher.created_by_name || ''}</strong></div>
-    </div>
-    <table>
-      <thead><tr>
-        <th>Product</th>
-        <th class="text-right">Qty Received</th>
-        <th class="text-right">Unit Price</th>
-        <th class="text-right">Amount</th>
-      </tr></thead>
-      <tbody>
-        ${rows}
-        <tr class="total-row">
-          <td colspan="3" class="text-right">Grand Total</td>
-          <td class="text-right">${fmt2(voucher.total_amount)}</td>
-        </tr>
-      </tbody>
-    </table>
-    ${voucher.notes ? `<p class="notes">Notes: ${voucher.notes}</p>` : ''}
-    <div class="sig-row">
-      <div class="sig-box"><div class="sig-line">Received By</div></div>
-      <div class="sig-box"><div class="sig-line">Store Keeper</div></div>
-      <div class="sig-box"><div class="sig-line">Authorized By</div></div>
-    </div>`;
-  openPrintWindow(html, `GRN - ${voucher.pv_number}`);
+  openPrintWindowAsync((settings) => {
+    const companyName = settings.store_name || getCompanyName();
+    const address     = settings.address || '';
+    const phone       = settings.phone   || '';
+
+    const rows = (voucher.items || []).map((item: any) => `
+      <tr>
+        <td>${item.product_name}</td>
+        <td class="text-right">${fmt3(item.quantity_received)}</td>
+        <td class="text-right">${fmt2(item.unit_price)}</td>
+        <td class="text-right">${fmt2(Number(item.quantity_received) * Number(item.unit_price))}</td>
+      </tr>`).join('');
+
+    const shipping        = Number(voucher.shipping_cost)    || 0;
+    const extra           = Number(voucher.extra_charges)    || 0;
+    const other           = Number(voucher.other_charges)    || 0;
+    const discount_pct    = Number(voucher.discount_percent) || 0;
+    const discount_amount = Number(voucher.discount_amount)  || 0;
+    const tax_pct         = Number(voucher.tax_percent)      || 0;
+    const tax_amount      = Number(voucher.tax_amount)       || 0;
+
+    const chargeRows = [
+      shipping > 0        ? `<tr><td colspan="3" class="text-right" style="color:#555">Shipping Cost</td><td class="text-right">${fmt2(shipping)}</td></tr>` : '',
+      extra    > 0        ? `<tr><td colspan="3" class="text-right" style="color:#555">Extra Charges</td><td class="text-right">${fmt2(extra)}</td></tr>` : '',
+      other    > 0        ? `<tr><td colspan="3" class="text-right" style="color:#555">Other Charges</td><td class="text-right">${fmt2(other)}</td></tr>` : '',
+      discount_amount > 0 ? `<tr><td colspan="3" class="text-right" style="color:#c00">Discount (${fmt2(discount_pct)}%)</td><td class="text-right" style="color:#c00">- ${fmt2(discount_amount)}</td></tr>` : '',
+      tax_amount      > 0 ? `<tr><td colspan="3" class="text-right" style="color:#555">Tax (${fmt2(tax_pct)}%)</td><td class="text-right">${fmt2(tax_amount)}</td></tr>` : '',
+    ].join('');
+
+    return `
+      <div class="doc-header">
+        <div class="company-name">${companyName}</div>
+        ${address ? `<div style="font-size:12px;color:#444;margin-top:3px">${address}</div>` : ''}
+        ${phone   ? `<div style="font-size:12px;color:#444">Tel: ${phone}</div>` : ''}
+        <div class="doc-title">Goods Received Note (GRN)</div>
+      </div>
+      <div class="meta-grid">
+        <div><span>GRN # : </span><strong>${voucher.pv_number}</strong></div>
+        <div><span>Date : </span><strong>${voucher.voucher_date}</strong></div>
+        <div><span>Supplier : </span><strong>${voucher.supplier_name || '—'}</strong></div>
+        ${voucher.po_number ? `<div><span>PO Ref : </span><strong>${voucher.po_number}</strong></div>` : '<div></div>'}
+        <div><span>Received By : </span><strong>${voucher.created_by_name || ''}</strong></div>
+      </div>
+      <table>
+        <thead><tr>
+          <th>Product</th>
+          <th class="text-right">Qty Received</th>
+          <th class="text-right">Unit Price</th>
+          <th class="text-right">Amount</th>
+        </tr></thead>
+        <tbody>
+          ${rows}
+          ${chargeRows}
+          <tr class="total-row">
+            <td colspan="3" class="text-right">Grand Total</td>
+            <td class="text-right">${fmt2(voucher.total_amount)}</td>
+          </tr>
+        </tbody>
+      </table>
+      ${voucher.notes ? `<p class="notes">Notes: ${voucher.notes}</p>` : ''}
+      <div class="sig-row">
+        <div class="sig-box"><div class="sig-line">Received By</div></div>
+        <div class="sig-box"><div class="sig-line">Store Keeper</div></div>
+        <div class="sig-box"><div class="sig-line">Authorized By</div></div>
+      </div>`;
+  }, title);
 };
 
 // ─── Stock Issue Challan ──────────────────────────────────────

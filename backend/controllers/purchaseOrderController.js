@@ -1,6 +1,17 @@
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
+const pad = (n) => String(n).padStart(6, '0');
+
+async function nextPONumber() {
+  const [last] = await query('SELECT po_number FROM purchase_orders ORDER BY po_id DESC LIMIT 1');
+  if (last?.po_number) {
+    const m = last.po_number.match(/\d+$/);
+    if (m) return `PO-${pad(parseInt(m[0]) + 1)}`;
+  }
+  return `PO-${pad(1)}`;
+}
+
 const parsePagination = (page, limit) => {
   const pageNum = parseInt(page) || 1;
   const limitNum = Math.min(parseInt(limit) || 20, 100);
@@ -9,23 +20,30 @@ const parsePagination = (page, limit) => {
 
 exports.getAll = async (req, res) => {
   try {
-    const { status, supplier_id } = req.query;
+    const { status, supplier_id, search } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 
     let sql = 'SELECT po.*, s.supplier_name FROM purchase_orders po JOIN suppliers s ON po.supplier_id = s.supplier_id WHERE 1=1';
-    let countSql = 'SELECT COUNT(*) as total FROM purchase_orders WHERE 1=1';
+    let countSql = 'SELECT COUNT(*) as total FROM purchase_orders po JOIN suppliers s ON po.supplier_id = s.supplier_id WHERE 1=1';
     const params = [], countParams = [];
+
+    if (search) {
+      sql += ' AND (po.po_number LIKE ? OR s.supplier_name LIKE ?)';
+      countSql += ' AND (po.po_number LIKE ? OR s.supplier_name LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+      countParams.push(`%${search}%`, `%${search}%`);
+    }
 
     if (status) {
       sql += ' AND po.status = ?';
-      countSql += ' AND status = ?';
+      countSql += ' AND po.status = ?';
       params.push(status);
       countParams.push(status);
     }
 
     if (supplier_id) {
       sql += ' AND po.supplier_id = ?';
-      countSql += ' AND supplier_id = ?';
+      countSql += ' AND po.supplier_id = ?';
       params.push(supplier_id);
       countParams.push(supplier_id);
     }
@@ -75,7 +93,7 @@ exports.create = async (req, res) => {
 
     const extraCharges = Number(additional_charges) || 0;
     const total = items.reduce((sum, item) => sum + (item.quantity_ordered * item.unit_cost), 0) + extraCharges;
-    const po_number = `PO-${Date.now()}`;
+    const po_number = await nextPONumber();
 
     const poResult = await conn.query(
       'INSERT INTO purchase_orders (po_number, supplier_id, order_date, expected_date, total_amount, additional_charges, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',

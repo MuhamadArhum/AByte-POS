@@ -19,7 +19,11 @@ INSERT IGNORE INTO roles (role_name) VALUES ('Admin'), ('Manager'), ('Cashier');
 -- Categories
 CREATE TABLE IF NOT EXISTS categories (
     category_id INT PRIMARY KEY AUTO_INCREMENT,
-    category_name VARCHAR(100) NOT NULL UNIQUE
+    category_name VARCHAR(100) NOT NULL UNIQUE,
+    category_type ENUM('raw_material','semi_finished','finished_good') NOT NULL DEFAULT 'finished_good',
+    description TEXT,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Variant Types (e.g. Size, Color)
@@ -657,7 +661,8 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
     expected_date DATE,
     received_date DATE,
     status ENUM('draft', 'pending', 'received', 'cancelled') DEFAULT 'pending',
-    total_amount DECIMAL(10, 2) NOT NULL,
+    total_amount DECIMAL(15, 2) NOT NULL,
+    additional_charges DECIMAL(15, 2) DEFAULT 0,
     notes TEXT,
     created_by INT NOT NULL,
     store_id INT DEFAULT 1,

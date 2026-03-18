@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, Save, Package, DollarSign, Boxes, Barcode, Tag, FileText, Image, AlertCircle, PackagePlus } from 'lucide-react';
+import { X, Loader2, Save, Package, DollarSign, Boxes, Barcode, Tag, FileText, AlertCircle, PackagePlus } from 'lucide-react';
 import api from '../utils/api';
+
+type CategoryType = 'raw_material' | 'semi_finished' | 'finished_good';
 
 interface Category {
   category_id: number;
   category_name: string;
+  category_type: CategoryType;
 }
+
+const TYPE_LABELS: Record<CategoryType, string> = {
+  raw_material: 'Raw Material',
+  semi_finished: 'Semi-Finished',
+  finished_good: 'Finished Good',
+};
 
 interface ProductToEdit {
   product_id: number;
@@ -19,7 +28,6 @@ interface ProductToEdit {
   barcode?: string;
   sku?: string;
   description?: string;
-  image_url?: string;
   product_type?: 'finished_good' | 'raw_material';
 }
 
@@ -41,7 +49,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
   const [barcode, setBarcode] = useState('');
   const [sku, setSku] = useState('');
   const [description, setDescription] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -64,7 +71,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
         setBarcode(productToEdit.barcode || '');
         setSku(productToEdit.sku || '');
         setDescription(productToEdit.description || '');
-        setImageUrl(productToEdit.image_url || '');
         setError('');
         setTouched({ name: false, price: false, stock: false });
       } else {
@@ -83,7 +89,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
     setBarcode('');
     setSku('');
     setDescription('');
-    setImageUrl('');
     setError('');
     setTouched({ name: false, price: false, stock: false });
   };
@@ -151,7 +156,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
         barcode: barcode || null,
         sku: sku || null,
         description: description || null,
-        image_url: imageUrl || null,
         product_type: productToEdit?.product_type ?? productType
       };
       if (productToEdit) {
@@ -250,9 +254,17 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
                     className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white appearance-none transition-all shadow-sm"
                   >
                     <option value="">Select Category</option>
-                    {categories.map(cat => (
-                      <option key={cat.category_id} value={cat.category_id}>{cat.category_name}</option>
-                    ))}
+                    {(['raw_material', 'semi_finished', 'finished_good'] as CategoryType[]).map(type => {
+                      const group = categories.filter(c => c.category_type === type);
+                      if (group.length === 0) return null;
+                      return (
+                        <optgroup key={type} label={`── ${TYPE_LABELS[type]} ──`}>
+                          {group.map(cat => (
+                            <option key={cat.category_id} value={cat.category_id}>{cat.category_name}</option>
+                          ))}
+                        </optgroup>
+                      );
+                    })}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                     <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -405,36 +417,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
                     placeholder="e.g. PROD-001"
                   />
                 </div>
-              </div>
-
-              {/* Image URL */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                  <Image size={16} className="text-pink-600" />
-                  Product Image URL
-                </label>
-                <div className="relative">
-                  <Image className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                  <input
-                    type="url"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-all shadow-sm bg-white"
-                    placeholder="https://example.com/image.jpg"
-                  />
-                </div>
-                {imageUrl && (
-                  <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
-                    <img 
-                      src={imageUrl} 
-                      alt="Preview" 
-                      className="h-20 w-20 object-cover rounded-lg mx-auto"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80?text=Invalid';
-                      }}
-                    />
-                  </div>
-                )}
               </div>
 
               {/* Description */}

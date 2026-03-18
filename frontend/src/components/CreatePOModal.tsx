@@ -44,7 +44,6 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
   const [orderDate, setOrderDate] = useState(localToday());
   const [expectedDate, setExpectedDate] = useState('');
   const [notes, setNotes] = useState('');
-  const [additionalCharges, setAdditionalCharges] = useState<number>(0);
   const [items, setItems] = useState<POItem[]>([]);
 
   // Item form
@@ -66,7 +65,6 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
       setOrderDate(editPO.order_date?.split('T')[0] || localToday());
       setExpectedDate(editPO.expected_date?.split('T')[0] || '');
       setNotes(editPO.notes || '');
-      setAdditionalCharges(Number(editPO.additional_charges) || 0);
       setItems((editPO.items || []).map((i: any) => ({
         product_id: i.product_id,
         product_name: i.product_name,
@@ -140,7 +138,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
   };
 
   const calculateTotal = () => {
-    return items.reduce((sum, item) => sum + item.total_cost, 0) + (additionalCharges || 0);
+    return items.reduce((sum, item) => sum + item.total_cost, 0);
   };
 
   const handleNext = () => {
@@ -169,7 +167,6 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
         order_date: orderDate,
         expected_date: expectedDate || null,
         notes,
-        additional_charges: additionalCharges || 0,
         items: items.map(item => ({
           product_id: item.product_id,
           quantity_ordered: item.quantity,
@@ -199,7 +196,6 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
     setOrderDate(localToday());
     setExpectedDate('');
     setNotes('');
-    setAdditionalCharges(0);
     setItems([]);
     setSelectedProduct(null);
     setQuantity(1);
@@ -398,29 +394,8 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
                       ))}
                     </tbody>
                     <tfoot className="bg-gray-50 border-t-2 text-sm">
-                      <tr className="border-t border-gray-200">
-                        <td colSpan={3} className="p-3 text-right text-gray-600">Sub-total:</td>
-                        <td className="p-3 text-right font-semibold">
-                          {items.reduce((s, i) => s + i.total_cost, 0).toFixed(2)}
-                        </td>
-                        <td></td>
-                      </tr>
-                      <tr className="border-t border-gray-200">
-                        <td colSpan={2} className="p-3 text-right text-gray-600">Additional Charges:</td>
-                        <td className="p-3">
-                          <input
-                            type="number" min="0" step="0.01"
-                            value={additionalCharges}
-                            onChange={e => setAdditionalCharges(parseFloat(e.target.value) || 0)}
-                            className="w-full text-right border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-emerald-400"
-                            placeholder="0.00"
-                          />
-                        </td>
-                        <td className="p-3 text-right font-semibold">{Number(additionalCharges || 0).toFixed(2)}</td>
-                        <td></td>
-                      </tr>
                       <tr className="border-t-2 border-gray-300 bg-emerald-50">
-                        <td colSpan={3} className="p-3 text-right font-bold text-gray-800">Grand Total:</td>
+                        <td colSpan={3} className="p-3 text-right font-bold text-gray-800">Total:</td>
                         <td className="p-3 text-right font-bold text-emerald-700 text-base">
                           {calculateTotal().toFixed(2)}
                         </td>
@@ -466,12 +441,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
                     <p className="text-sm text-gray-600">Total Items</p>
                     <p className="font-semibold">{items.length} products</p>
                   </div>
-                  {additionalCharges > 0 && (
-                    <div>
-                      <p className="text-sm text-gray-600">Additional Charges</p>
-                      <p className="font-semibold">{Number(additionalCharges).toFixed(2)}</p>
-                    </div>
-                  )}
+
                 </div>
 
                 {notes && (
@@ -503,14 +473,8 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
                     ))}
                   </tbody>
                   <tfoot className="bg-gray-50 border-t-2 text-sm">
-                    {additionalCharges > 0 && (
-                      <tr className="border-t border-gray-200">
-                        <td colSpan={3} className="p-3 text-right text-gray-600">Additional Charges:</td>
-                        <td className="p-3 text-right">{Number(additionalCharges).toFixed(2)}</td>
-                      </tr>
-                    )}
                     <tr>
-                      <td colSpan={3} className="p-3 text-right font-bold text-gray-800">Grand Total:</td>
+                      <td colSpan={3} className="p-3 text-right font-bold text-gray-800">Total:</td>
                       <td className="p-3 text-right font-bold text-green-600 text-xl">
                         {calculateTotal().toFixed(2)}
                       </td>
