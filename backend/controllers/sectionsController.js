@@ -7,8 +7,8 @@ exports.getAll = async (req, res) => {
     const rows = await query('SELECT * FROM sections ORDER BY section_name');
     res.json({ data: rows });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('getAll sections error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
   }
 };
 
@@ -19,8 +19,8 @@ exports.getById = async (req, res) => {
     if (!row) return res.status(404).json({ message: 'Section not found' });
     res.json(row);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('getById section error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
   }
 };
 
@@ -33,11 +33,12 @@ exports.create = async (req, res) => {
       'INSERT INTO sections (section_name, description) VALUES (?, ?)',
       [section_name, description || null]
     );
-    await logAction(req.user.user_id, req.user.name, 'SECTION_CREATED', 'sections', result.insertId, { section_name }, req.ip);
-    res.status(201).json({ message: 'Section created', section_id: Number(result.insertId) });
+    const newId = Number(result.insertId);
+    await logAction(req.user.user_id, req.user.name, 'SECTION_CREATED', 'sections', newId, { section_name }, req.ip);
+    res.status(201).json({ message: 'Section created', section_id: newId });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('create section error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
   }
 };
 
@@ -52,8 +53,8 @@ exports.update = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'SECTION_UPDATED', 'sections', parseInt(req.params.id), { section_name }, req.ip);
     res.json({ message: 'Section updated' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('update section error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
   }
 };
 
@@ -71,7 +72,7 @@ exports.remove = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'SECTION_DELETED', 'sections', parseInt(req.params.id), {}, req.ip);
     res.json({ message: 'Section deleted' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('delete section error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
   }
 };

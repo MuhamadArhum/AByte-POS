@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, Warehouse, ToggleLeft, ToggleRight } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
@@ -16,18 +16,23 @@ const Sections = () => {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Section | null>(null);
   const [form, setForm] = useState({ section_name: '', description: '' });
+  const [saving, setSaving] = useState(false);
   const { showToast } = useToast();
 
-  useEffect(() => { fetchSections(); }, []);
-
-  const fetchSections = async () => {
+  const fetchSections = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.get('/sections');
       setSections(res.data.data || []);
-    } catch { showToast('Failed to load sections', 'error'); }
-    finally { setLoading(false); }
-  };
+    } catch (err) {
+      console.error('fetchSections error:', err);
+      showToast('Failed to load sections', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchSections(); }, [fetchSections]);
 
   const openAdd = () => { setEditing(null); setForm({ section_name: '', description: '' }); setShowForm(true); };
   const openEdit = (s: Section) => { setEditing(s); setForm({ section_name: s.section_name, description: s.description || '' }); setShowForm(true); };
@@ -35,6 +40,7 @@ const Sections = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.section_name.trim()) return showToast('Section name is required', 'error');
+    setSaving(true);
     try {
       if (editing) {
         await api.put(`/sections/${editing.section_id}`, { ...form, is_active: editing.is_active });
@@ -44,9 +50,12 @@ const Sections = () => {
         showToast('Section created', 'success');
       }
       setShowForm(false);
-      fetchSections();
+      await fetchSections();
     } catch (err: any) {
-      showToast(err.response?.data?.message || 'Error', 'error');
+      console.error('handleSubmit error:', err);
+      showToast(err.response?.data?.message || 'Error saving section', 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -55,7 +64,7 @@ const Sections = () => {
     try {
       await api.delete(`/sections/${id}`);
       showToast('Section deleted', 'success');
-      fetchSections();
+      await fetchSections();
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Cannot delete', 'error');
     }
@@ -64,7 +73,7 @@ const Sections = () => {
   const toggleActive = async (s: Section) => {
     try {
       await api.put(`/sections/${s.section_id}`, { section_name: s.section_name, description: s.description, is_active: s.is_active ? 0 : 1 });
-      fetchSections();
+      await fetchSections();
     } catch { showToast('Error', 'error'); }
   };
 
@@ -102,7 +111,9 @@ const Sections = () => {
               />
             </div>
             <div className="flex gap-2">
-              <button type="submit" className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">Save</button>
+              <button type="submit" disabled={saving} className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-60">
+                {saving ? 'Saving...' : 'Save'}
+              </button>
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">Cancel</button>
             </div>
           </form>

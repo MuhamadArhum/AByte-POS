@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Eye, Search, X, ArrowUpFromLine, Printer } from 'lucide-react';
+import { Plus, Trash2, Eye, Search, X, ArrowUpFromLine, Printer, Edit } from 'lucide-react';
 import api from '../../utils/api';
 import { printChallan } from '../../utils/printUtils';
 import { localToday, localMonthStart } from '../../utils/dateUtils';
@@ -7,7 +7,7 @@ import { useToast } from '../../components/Toast';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import Pagination from '../../components/Pagination';
 
-interface Section { section_id: number; section_name: string; }
+interface Section { section_id: number; section_name: string; is_active?: number; }
 interface Product { product_id: number; product_name: string; barcode?: string; available_stock?: number; cost_price?: number; }
 interface IssueItem { product_id: number; product_name: string; quantity: number; unit_cost: number; }
 
@@ -17,6 +17,8 @@ const StockIssue = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [viewIssue, setViewIssue] = useState<any>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingNumber, setEditingNumber] = useState('');
   const [dateFrom, setDateFrom] = useState(localMonthStart());
   const [dateTo, setDateTo]   = useState(localToday());
   const [sectionFilter, setSectionFilter] = useState('');
@@ -47,9 +49,11 @@ const StockIssue = () => {
     finally { setLoading(false); }
   }, [dateFrom, dateTo, sectionFilter, page]);
 
-  useEffect(() => {
-    api.get('/sections').then(r => setSections(r.data.data || []));
-  }, []);
+  const fetchSections = useCallback(() =>
+    api.get('/sections').then(r => setSections(r.data.data || [])).catch(() => {}),
+  []);
+
+  useEffect(() => { fetchSections(); }, [fetchSections]);
   useEffect(() => { fetchIssues(); }, [fetchIssues]);
 
   const searchProducts = async (q: string) => {
@@ -69,16 +73,57 @@ const StockIssue = () => {
   const updateItem = (id: number, field: 'quantity' | 'unit_cost', val: number) =>
     setItems(prev => prev.map(i => i.product_id === id ? { ...i, [field]: val } : i));
 
+  const openNew = () => {
+    fetchSections();
+    setEditingId(null);
+    setEditingNumber('');
+    setFormSection('');
+    setFormDate(localToday());
+    setFormNotes('');
+    setItems([]);
+    setProductSearch('');
+    setProductResults([]);
+    setShowForm(true);
+  };
+
+  const openEdit = async (issueId: number) => {
+    try {
+      fetchSections();
+      const res = await api.get(`/issuance/issues/${issueId}`);
+      const d = res.data;
+      setEditingId(issueId);
+      setEditingNumber(d.issue_number);
+      setFormSection(String(d.section_id));
+      setFormDate(d.issue_date?.slice(0, 10) || localToday());
+      setFormNotes(d.notes || '');
+      setItems((d.items || []).map((i: any) => ({
+        product_id: i.product_id,
+        product_name: i.product_name,
+        quantity: Number(i.quantity),
+        unit_cost: Number(i.unit_cost),
+      })));
+      setProductSearch('');
+      setProductResults([]);
+      setShowForm(true);
+    } catch (err: any) {
+      showToast(err.response?.data?.message || 'Failed to load issue', 'error');
+    }
+  };
+
   const handleSubmit = async () => {
     if (!formSection) return showToast('Select a section', 'error');
     if (!items.length) return showToast('Add at least one item', 'error');
     setSaving(true);
     try {
-      const res = await api.post('/issuance/issues', {
-        section_id: formSection, issue_date: formDate, notes: formNotes, items
-      });
-      showToast(`Stock Issue ${res.data.issue_number} created`, 'success');
-      setShowForm(false); setItems([]); setFormSection(''); setFormNotes('');
+      const payload = { section_id: formSection, issue_date: formDate, notes: formNotes, items };
+      if (editingId) {
+        const res = await api.put(`/issuance/issues/${editingId}`, payload);
+        showToast(`Stock Issue ${res.data.issue_number} updated`, 'success');
+      } else {
+        const res = await api.post('/issuance/issues', payload);
+        showToast(`Stock Issue ${res.data.issue_number} created`, 'success');
+      }
+      setShowForm(false);
       fetchIssues();
     } catch (err: any) { showToast(err.response?.data?.message || 'Error', 'error'); }
     finally { setSaving(false); }
@@ -95,6 +140,13 @@ const StockIssue = () => {
     setViewIssue(res.data);
   };
 
+  const handlePrint = async (id: number) => {
+    try {
+      const res = await api.get(`/issuance/issues/${id}`);
+      printChallan(res.data);
+    } catch { showToast('Failed to load for print', 'error'); }
+  };
+
   const fmt = (n: any) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
@@ -104,7 +156,7 @@ const StockIssue = () => {
           <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2"><ArrowUpFromLine size={20} className="text-emerald-600" /> Stock Issue</h1>
           <p className="text-sm text-gray-500 mt-0.5">Issue stock to sections / departments</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium">
+        <button onClick={openNew} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium">
           <Plus size={18} /> New Issue
         </button>
       </div>
@@ -114,7 +166,9 @@ const StockIssue = () => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center px-6 py-4 border-b">
-              <h2 className="font-semibold text-gray-800 text-lg">New Stock Issue</h2>
+              <h2 className="font-semibold text-gray-800 text-lg">
+                {editingId ? `Edit Stock Issue — ${editingNumber}` : 'New Stock Issue'}
+              </h2>
               <button onClick={() => setShowForm(false)}><X size={20} className="text-gray-400" /></button>
             </div>
             <div className="p-6 overflow-y-auto flex-1">
@@ -208,7 +262,7 @@ const StockIssue = () => {
             <div className="flex justify-end gap-3 px-6 py-4 border-t">
               <button onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">Cancel</button>
               <button onClick={handleSubmit} disabled={saving} className="px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-60">
-                {saving ? 'Saving...' : 'Create Issue'}
+                {saving ? 'Saving...' : editingId ? 'Update Issue' : 'Create Issue'}
               </button>
             </div>
           </div>
@@ -300,9 +354,11 @@ const StockIssue = () => {
                   <td className="px-4 py-3 text-right font-medium text-gray-900">{fmt(issue.total_cost)}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">{issue.created_by_name}</td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <button onClick={() => openView(issue.issue_id)} className="text-emerald-600 hover:text-emerald-800"><Eye size={15} /></button>
-                      <button onClick={() => handleDelete(issue.issue_id)} className="text-red-500 hover:text-red-700"><Trash2 size={15} /></button>
+                    <div className="flex gap-2 items-center">
+                      <button onClick={() => openView(issue.issue_id)} title="View" className="text-emerald-600 hover:text-emerald-800"><Eye size={15} /></button>
+                      <button onClick={() => handlePrint(issue.issue_id)} title="Print Challan" className="text-gray-500 hover:text-gray-800"><Printer size={15} /></button>
+                      <button onClick={() => openEdit(issue.issue_id)} title="Edit" className="text-blue-500 hover:text-blue-700"><Edit size={15} /></button>
+                      <button onClick={() => handleDelete(issue.issue_id)} title="Delete" className="text-red-500 hover:text-red-700"><Trash2 size={15} /></button>
                     </div>
                   </td>
                 </tr>

@@ -49,7 +49,8 @@ const RawSale = () => {
     finally { setLoading(false); }
   }, [dateFrom, dateTo, sectionFilter, page]);
 
-  useEffect(() => { api.get('/sections').then(r => setSections(r.data.data || [])); }, []);
+  const fetchSections = () => api.get('/sections').then(r => setSections(r.data.data || []));
+  useEffect(() => { fetchSections(); }, []);
   useEffect(() => { fetchSales(); }, [fetchSales]);
 
   const searchProducts = async (q: string) => {
@@ -101,7 +102,7 @@ const RawSale = () => {
           <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2"><ShoppingBag size={20} className="text-orange-600" /> Raw Sale</h1>
           <p className="text-sm text-gray-500 mt-0.5">Sell raw materials / section-wise</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium">
+        <button onClick={() => { fetchSections(); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium">
           <Plus size={18} /> New Raw Sale
         </button>
       </div>

@@ -5,7 +5,7 @@ const pad = (n, len = 6) => String(n).padStart(len, '0');
 
 // ============ HELPERS ============
 async function nextNumber(prefix, table, column) {
-  const [last] = await query(`SELECT ${column} FROM ${table} ORDER BY ${table.split('_')[0]}_id DESC LIMIT 1`);
+  const [last] = await query(`SELECT ${column} FROM ${table} ORDER BY ${column} DESC LIMIT 1`);
   if (last?.[column]) {
     const m = last[column].match(/\d+$/);
     if (m) return `${prefix}${pad(parseInt(m[0]) + 1)}`;
@@ -44,7 +44,7 @@ exports.getIssues = async (req, res) => {
       query(countSql, params)
     ]);
     res.json({ data: rows, pagination: { total: Number(total), page, limit, totalPages: Math.ceil(Number(total) / limit) } });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { console.error('getIssues error:', err); res.status(500).json({ message: err.message || 'Server error' }); }
 };
 
 exports.getIssueById = async (req, res) => {
@@ -64,7 +64,7 @@ exports.getIssueById = async (req, res) => {
        WHERE sii.issue_id = ?`, [req.params.id]
     );
     res.json({ ...issue, items });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { console.error('getIssueById error:', err); res.status(500).json({ message: err.message || 'Server error' }); }
 };
 
 exports.createIssue = async (req, res) => {
@@ -105,8 +105,55 @@ exports.createIssue = async (req, res) => {
     res.status(201).json({ message: 'Stock issue created', issue_id: issueId, issue_number });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('createIssue error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  } finally { conn.release(); }
+};
+
+exports.updateIssue = async (req, res) => {
+  const conn = await getConnection();
+  try {
+    const { section_id, issue_date, notes, items } = req.body;
+    if (!section_id || !issue_date || !items?.length) {
+      return res.status(400).json({ message: 'section_id, issue_date and items are required' });
+    }
+
+    const [issue] = await query('SELECT * FROM stock_issues WHERE issue_id = ?', [req.params.id]);
+    if (!issue) return res.status(404).json({ message: 'Not found' });
+
+    const oldItems = await query('SELECT * FROM stock_issue_items WHERE issue_id = ?', [req.params.id]);
+
+    await conn.beginTransaction();
+
+    // Reverse old stock
+    for (const item of oldItems) {
+      await conn.query('UPDATE inventory SET available_stock = available_stock + ? WHERE product_id = ?', [item.quantity, item.product_id]);
+      await conn.query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?', [item.quantity, item.product_id]);
+    }
+
+    // Delete old items, insert new
+    await conn.query('DELETE FROM stock_issue_items WHERE issue_id = ?', [req.params.id]);
+    await conn.query(
+      'UPDATE stock_issues SET section_id = ?, issue_date = ?, notes = ? WHERE issue_id = ?',
+      [section_id, issue_date, notes || null, req.params.id]
+    );
+
+    for (const item of items) {
+      await conn.query(
+        'INSERT INTO stock_issue_items (issue_id, product_id, quantity, unit_cost) VALUES (?, ?, ?, ?)',
+        [req.params.id, item.product_id, item.quantity, item.unit_cost || 0]
+      );
+      await conn.query('UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?', [item.quantity, item.product_id]);
+      await conn.query('UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?', [item.quantity, item.product_id]);
+    }
+
+    await conn.commit();
+    await logAction(req.user.user_id, req.user.name, 'STOCK_ISSUE_UPDATED', 'stock_issues', parseInt(req.params.id), { issue_number: issue.issue_number }, req.ip);
+    res.json({ message: 'Stock issue updated', issue_number: issue.issue_number });
+  } catch (err) {
+    await conn.rollback();
+    console.error('updateIssue error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
   } finally { conn.release(); }
 };
 
@@ -129,8 +176,8 @@ exports.deleteIssue = async (req, res) => {
     res.json({ message: 'Stock issue deleted and stock reversed' });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('deleteIssue error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
   } finally { conn.release(); }
 };
 
@@ -164,7 +211,7 @@ exports.getReturns = async (req, res) => {
       query(countSql, params)
     ]);
     res.json({ data: rows, pagination: { total: Number(total), page, limit, totalPages: Math.ceil(Number(total) / limit) } });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { console.error('getReturns error:', err); res.status(500).json({ message: err.message || 'Server error' }); }
 };
 
 exports.createReturn = async (req, res) => {
@@ -199,8 +246,8 @@ exports.createReturn = async (req, res) => {
     res.status(201).json({ message: 'Stock return created', return_id: returnId, return_number });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('createReturn error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
   } finally { conn.release(); }
 };
 
@@ -219,7 +266,7 @@ exports.getReturnById = async (req, res) => {
        JOIN products p ON siri.product_id = p.product_id WHERE siri.return_id = ?`, [req.params.id]
     );
     res.json({ ...ret, items });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { console.error('getReturnById error:', err); res.status(500).json({ message: err.message || 'Server error' }); }
 };
 
 // ==================== RAW SALES ====================
@@ -252,7 +299,7 @@ exports.getRawSales = async (req, res) => {
       query(countSql, params)
     ]);
     res.json({ data: rows, pagination: { total: Number(total), page, limit, totalPages: Math.ceil(Number(total) / limit) } });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { console.error('getRawSales error:', err); res.status(500).json({ message: err.message || 'Server error' }); }
 };
 
 exports.getRawSaleById = async (req, res) => {
@@ -270,7 +317,7 @@ exports.getRawSaleById = async (req, res) => {
        JOIN products p ON rsi.product_id = p.product_id WHERE rsi.sale_id = ?`, [req.params.id]
     );
     res.json({ ...sale, items });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { console.error('getRawSaleById error:', err); res.status(500).json({ message: err.message || 'Server error' }); }
 };
 
 exports.createRawSale = async (req, res) => {
@@ -307,8 +354,8 @@ exports.createRawSale = async (req, res) => {
     res.status(201).json({ message: 'Raw sale created', sale_id: saleId, sale_number });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('createRawSale error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
   } finally { conn.release(); }
 };
 
@@ -326,7 +373,7 @@ exports.deleteRawSale = async (req, res) => {
     res.json({ message: 'Raw sale deleted and stock reversed' });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('deleteRawSale error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
   } finally { conn.release(); }
 };

@@ -9,6 +9,7 @@ router.use(authenticate);
 router.get('/issues',            ctrl.getIssues);
 router.get('/issues/:id',        ctrl.getIssueById);
 router.post('/issues',           authorize('Admin', 'Manager'), ctrl.createIssue);
+router.put('/issues/:id',        authorize('Admin', 'Manager'), ctrl.updateIssue);
 router.delete('/issues/:id',     authorize('Admin'), ctrl.deleteIssue);
 
 // Stock Issue Returns

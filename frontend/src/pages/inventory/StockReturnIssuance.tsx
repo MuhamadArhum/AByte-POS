@@ -45,7 +45,8 @@ const StockReturnIssuance = () => {
     finally { setLoading(false); }
   }, [dateFrom, dateTo, sectionFilter, page]);
 
-  useEffect(() => { api.get('/sections').then(r => setSections(r.data.data || [])); }, []);
+  const fetchSections = () => api.get('/sections').then(r => setSections(r.data.data || []));
+  useEffect(() => { fetchSections(); }, []);
   useEffect(() => { fetchReturns(); }, [fetchReturns]);
 
   const searchProducts = async (q: string) => {
@@ -88,7 +89,7 @@ const StockReturnIssuance = () => {
           <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2"><ArrowDownToLine size={20} className="text-blue-600" /> Stock Return (Issuance)</h1>
           <p className="text-sm text-gray-500 mt-0.5">Return stock from sections back to warehouse</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+        <button onClick={() => { fetchSections(); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
           <Plus size={18} /> New Return
         </button>
       </div>
