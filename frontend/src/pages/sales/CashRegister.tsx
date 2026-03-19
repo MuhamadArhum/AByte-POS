@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import { Wallet, Plus, Lock, Unlock, ArrowDownCircle, ArrowUpCircle, History, Loader2 } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -37,6 +38,7 @@ interface Register {
 }
 
 const CashRegister = () => {
+  const { currencySymbol: currency } = useSettings();
   const { user } = useAuth();
   const [register, setRegister] = useState<Register | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,6 +94,7 @@ const CashRegister = () => {
           limit: itemsPerPage
         }
       });
+  const { currencySymbol: currency } = useSettings();
       if (res.data.pagination) {
         setHistory(res.data.registers);
         setTotalItems(res.data.pagination.total);
@@ -191,9 +194,9 @@ const CashRegister = () => {
                     <tr key={h.register_id} className="hover:bg-gray-50">
                       <td className="p-4 text-gray-500">{new Date(h.opened_at).toLocaleString()}</td>
                       <td className="p-4 font-medium">{h.opened_by_name}</td>
-                      <td className="p-4">${parseFloat(h.opening_balance).toFixed(2)}</td>
-                      <td className="p-4 text-emerald-600">${parseFloat(h.cash_sales_total).toFixed(2)}</td>
-                      <td className="p-4">{h.closing_balance ? `$${parseFloat(h.closing_balance).toFixed(2)}` : '-'}</td>
+                      <td className="p-4">{currency}{parseFloat(h.opening_balance).toFixed(2)}</td>
+                      <td className="p-4 text-emerald-600">{currency}{parseFloat(h.cash_sales_total).toFixed(2)}</td>
+                      <td className="p-4">{h.closing_balance ? `${currency}${parseFloat(h.closing_balance).toFixed(2)}` : '-'}</td>
                       <td className="p-4">
                         {h.difference !== null && h.difference !== undefined ? (
                           <span className={parseFloat(h.difference) >= 0 ? 'text-emerald-600' : 'text-red-600'}>
@@ -271,19 +274,19 @@ const CashRegister = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 className="text-gray-500 text-sm font-medium">Opening Balance</h3>
-          <p className="text-3xl font-bold text-gray-800 mt-2">${opening.toFixed(2)}</p>
+          <p className="text-3xl font-bold text-gray-800 mt-2">{currency}{opening.toFixed(2)}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 className="text-gray-500 text-sm font-medium">Cash Sales</h3>
-          <p className="text-3xl font-bold text-emerald-600 mt-2">${cashSales.toFixed(2)}</p>
+          <p className="text-3xl font-bold text-emerald-600 mt-2">{currency}{cashSales.toFixed(2)}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 className="text-gray-500 text-sm font-medium">Card Sales</h3>
-          <p className="text-3xl font-bold text-emerald-600 mt-2">${cardSales.toFixed(2)}</p>
+          <p className="text-3xl font-bold text-emerald-600 mt-2">{currency}{cardSales.toFixed(2)}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 className="text-gray-500 text-sm font-medium">Expected Cash in Drawer</h3>
-          <p className="text-3xl font-bold text-gray-800 mt-2">${expectedCash.toFixed(2)}</p>
+          <p className="text-3xl font-bold text-gray-800 mt-2">{currency}{expectedCash.toFixed(2)}</p>
         </div>
       </div>
 
@@ -294,14 +297,14 @@ const CashRegister = () => {
             <ArrowDownCircle size={20} className="text-emerald-500" />
             <h3 className="text-gray-700 font-medium">Total Cash In</h3>
           </div>
-          <p className="text-2xl font-bold text-emerald-600">${cashIn.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-emerald-600">{currency}{cashIn.toFixed(2)}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-2">
             <ArrowUpCircle size={20} className="text-red-500" />
             <h3 className="text-gray-700 font-medium">Total Cash Out</h3>
           </div>
-          <p className="text-2xl font-bold text-red-600">${cashOut.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-red-600">{currency}{cashOut.toFixed(2)}</p>
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import { Plus, Search, Edit, Trash2, Barcode, Package, DollarSign, AlertTriangle, XCircle, Download } from 'lucide-react';
 import api from '../../utils/api';
 import { localToday } from '../../utils/dateUtils';
@@ -34,6 +35,7 @@ interface Category {
 }
 
 const Inventory = ({ productType }: InventoryProps = {}) => {
+  const { currencySymbol: currency } = useSettings();
   const [products, setProducts] = useState<InventoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -59,6 +61,7 @@ const Inventory = ({ productType }: InventoryProps = {}) => {
 
   const fetchInventory = useCallback(async () => {
     setLoading(true);
+  const { currencySymbol: currency } = useSettings();
     try {
       const params: Record<string, string | number> = { page: currentPage, limit: itemsPerPage };
       if (searchTerm) params.search = searchTerm;
@@ -197,7 +200,7 @@ const Inventory = ({ productType }: InventoryProps = {}) => {
           <div className="flex items-center gap-3">
             <div className="p-3 bg-emerald-50 rounded-xl"><DollarSign size={24} className="text-emerald-600" /></div>
             <div>
-              <p className="text-2xl font-bold text-emerald-600">${Number(stats.total_stock_value).toLocaleString()}</p>
+              <p className="text-2xl font-bold text-emerald-600">{currency}{Number(stats.total_stock_value).toLocaleString()}</p>
               <p className="text-sm text-gray-500">Stock Value</p>
             </div>
           </div>
@@ -281,9 +284,9 @@ const Inventory = ({ productType }: InventoryProps = {}) => {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-gray-500">{product.category_name || 'Uncategorized'}</td>
-                      <td className="px-4 py-3 text-right text-gray-900 font-medium">${Number(product.price).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right text-gray-900 font-medium">{currency}{Number(product.price).toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-gray-500">
-                        {product.cost_price ? `$${Number(product.cost_price).toFixed(2)}` : '-'}
+                        {product.cost_price ? `${currency}${Number(product.cost_price).toFixed(2)}` : '-'}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {margin ? (

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import { TrendingUp, Download, RefreshCw, Printer } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
@@ -106,7 +107,7 @@ const ProfitLoss = () => {
     let content = '';
     content += buildTable(['Account Code', 'Account Name', 'Amount'], data.revenue.map(r => [r.account_code, r.account_name, formatCurrency(r.amount)]), { alignRight: [2], summaryRow: ['', 'Total Revenue', formatCurrency(data.total_revenue)], caption: 'REVENUE' });
     content += buildTable(['Account Code', 'Account Name', 'Amount'], data.expenses.map(e => [e.account_code, e.account_name, formatCurrency(e.amount)]), { alignRight: [2], summaryRow: ['', 'Total Expenses', formatCurrency(data.total_expenses)], caption: 'EXPENSES' });
-    content += `<div style="margin-top:20px;padding:12px;border-top:3px solid #000;font-size:16px;font-weight:bold;display:flex;justify-content:space-between"><span>${data.net_profit >= 0 ? 'NET PROFIT' : 'NET LOSS'}</span><span>${formatCurrency(Math.abs(data.net_profit))}</span></div>`;
+    content += `<div style="margin-top:20px;padding:12px;border-top:3px solid #000;font-size:16px;font-weight:bold;display:flex;justify-content:space-between"><span>{currency}{data.net_profit >= 0 ? 'NET PROFIT' : 'NET LOSS'}</span><span>{currency}{formatCurrency(Math.abs(data.net_profit))}</span></div>`;
     printReport({ title: 'Profit & Loss Statement', dateRange: `${fromDate} to ${toDate}`, content });
   };
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSettings } from '../context/SettingsContext';
 import { X, Plus, Trash2, ChevronRight, ChevronLeft } from 'lucide-react';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
@@ -34,6 +35,7 @@ interface CreatePOModalProps {
 
 const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProps) => {
   const isEdit = !!editPO;
+  const { currencySymbol: currency } = useSettings();
   const [step, setStep] = useState(1);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -467,8 +469,8 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
                       <tr key={index} className="border-t">
                         <td className="p-3">{item.product_name}</td>
                         <td className="p-3 text-center">{item.quantity}</td>
-                        <td className="p-3 text-right">${Number(item.unit_cost).toFixed(2)}</td>
-                        <td className="p-3 text-right font-semibold">${Number(item.total_cost).toFixed(2)}</td>
+                        <td className="p-3 text-right">{currency}{Number(item.unit_cost).toFixed(2)}</td>
+                        <td className="p-3 text-right font-semibold">{currency}{Number(item.total_cost).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>

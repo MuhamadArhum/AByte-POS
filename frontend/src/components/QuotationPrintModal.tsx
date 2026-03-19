@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSettings } from '../context/SettingsContext';
 import { X, Printer, Zap } from 'lucide-react';
 import api from '../utils/api';
 import { printReport } from '../utils/reportPrinter';
@@ -84,9 +85,9 @@ const QuotationPrintModal = ({ quotationId, onClose }: QuotationPrintModalProps)
 
     const itemsRows = quotation.items.map((item, idx) =>
       `<tr style="border-bottom:1px solid #e5e7eb;">
-        <td style="padding:10px 8px;font-size:13px;color:#666;">${idx + 1}</td>
-        <td style="padding:10px 8px;font-size:13px;color:#1f2937;">${item.product_name}</td>
-        <td style="padding:10px 8px;font-size:13px;color:#1f2937;text-align:right;">${item.quantity}</td>
+        <td style="padding:10px 8px;font-size:13px;color:#666;">{currency}{idx + 1}</td>
+        <td style="padding:10px 8px;font-size:13px;color:#1f2937;">{currency}{item.product_name}</td>
+        <td style="padding:10px 8px;font-size:13px;color:#1f2937;text-align:right;">{currency}{item.quantity}</td>
         <td style="padding:10px 8px;font-size:13px;color:#1f2937;text-align:right;">Rs. ${Number(item.unit_price).toFixed(2)}</td>
         <td style="padding:10px 8px;font-size:13px;color:#1f2937;text-align:right;font-weight:500;">Rs. ${Number(item.total_price).toFixed(2)}</td>
       </tr>`
@@ -96,8 +97,8 @@ const QuotationPrintModal = ({ quotationId, onClose }: QuotationPrintModalProps)
       <div style="max-width:700px;margin:0 auto;">
         <!-- Store Header -->
         <div style="text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:2px solid #1f2937;">
-          <h1 style="font-size:26px;font-weight:bold;color:#1f2937;margin:0;">${store.store_name}</h1>
-          ${store.address ? `<p style="font-size:13px;color:#666;margin:4px 0 0;">${store.address}</p>` : ''}
+          <h1 style="font-size:26px;font-weight:bold;color:#1f2937;margin:0;">{currency}{store.store_name}</h1>
+          ${store.address ? `<p style="font-size:13px;color:#666;margin:4px 0 0;">{currency}{store.address}</p>` : ''}
           <div style="font-size:13px;color:#666;margin-top:4px;">
             ${store.phone ? `Tel: ${store.phone}` : ''}${store.phone && store.email ? ' &nbsp;|&nbsp; ' : ''}${store.email ? `Email: ${store.email}` : ''}
           </div>
@@ -112,12 +113,12 @@ const QuotationPrintModal = ({ quotationId, onClose }: QuotationPrintModalProps)
         <table style="width:100%;margin-bottom:30px;"><tr>
           <td style="vertical-align:top;width:50%;">
             <p style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;margin:0 0 8px;">Quotation For</p>
-            <p style="font-size:16px;font-weight:600;color:#1f2937;margin:0;">${quotation.customer_name}</p>
+            <p style="font-size:16px;font-weight:600;color:#1f2937;margin:0;">{currency}{quotation.customer_name}</p>
             ${quotation.customer_phone ? `<p style="font-size:13px;color:#666;margin:2px 0 0;">Tel: ${quotation.customer_phone}</p>` : ''}
           </td>
           <td style="vertical-align:top;width:50%;text-align:right;">
             <p style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;margin:0 0 8px;">Quotation Details</p>
-            <p style="font-size:16px;font-weight:600;color:#1f2937;margin:0;">${quotation.quotation_number}</p>
+            <p style="font-size:16px;font-weight:600;color:#1f2937;margin:0;">{currency}{quotation.quotation_number}</p>
             <p style="font-size:13px;color:#666;margin:2px 0 0;">Date: ${new Date(quotation.created_at).toLocaleDateString()}</p>
             ${quotation.valid_until ? `<p style="font-size:13px;color:#666;margin:2px 0 0;">Valid Until: ${new Date(quotation.valid_until).toLocaleDateString()}</p>` : ''}
             <p style="font-size:13px;color:#666;margin:2px 0 0;">Prepared by: ${quotation.created_by_name}</p>
@@ -135,7 +136,7 @@ const QuotationPrintModal = ({ quotationId, onClose }: QuotationPrintModalProps)
               <th style="padding:10px 8px;text-align:right;font-size:12px;font-weight:600;color:#374151;width:120px;">Total</th>
             </tr>
           </thead>
-          <tbody>${itemsRows}</tbody>
+          <tbody>{currency}{itemsRows}</tbody>
         </table>
 
         <!-- Totals -->
@@ -163,7 +164,7 @@ const QuotationPrintModal = ({ quotationId, onClose }: QuotationPrintModalProps)
         <!-- Notes -->
         ${quotation.notes ? `<div style="border-top:1px solid #e5e7eb;padding-top:20px;">
           <h4 style="font-size:13px;font-weight:600;color:#374151;margin:0 0 4px;">Notes / Terms</h4>
-          <p style="font-size:13px;color:#666;margin:0;">${quotation.notes}</p>
+          <p style="font-size:13px;color:#666;margin:0;">{currency}{quotation.notes}</p>
         </div>` : ''}
 
         <!-- Footer -->

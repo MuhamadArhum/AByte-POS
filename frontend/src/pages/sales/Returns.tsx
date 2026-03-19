@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import { RotateCcw, Search, Loader2, Check, Printer } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
@@ -32,6 +33,7 @@ const REASONS = [
 ];
 
 const Returns = () => {
+  const { currencySymbol: currency } = useSettings();
   const [saleId, setSaleId] = useState('');
   const [sale, setSale] = useState<SaleData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -183,6 +185,7 @@ const Returns = () => {
           limit: itemsPerPage
         }
       });
+  const { currencySymbol: currency } = useSettings();
       
       if (res.data.pagination) {
         setRecentReturns(res.data.data);
@@ -290,7 +293,7 @@ const Returns = () => {
                 </div>
                 <div>
                   <span className="text-gray-500">Total</span>
-                  <p className="font-bold text-emerald-600">${parseFloat(sale.total_amount).toFixed(2)}</p>
+                  <p className="font-bold text-emerald-600">{currency}{parseFloat(sale.total_amount).toFixed(2)}</p>
                 </div>
               </div>
             </div>
@@ -408,7 +411,7 @@ const Returns = () => {
               <h3 className="font-semibold text-gray-800 mb-3">Refund Summary</h3>
               <div className="text-center">
                 <p className="text-sm text-gray-500">Total Refund Amount</p>
-                <p className="text-3xl font-bold text-red-600 mt-1">${totalRefund.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-red-600 mt-1">{currency}{totalRefund.toFixed(2)}</p>
                 <p className="text-xs text-gray-400 mt-1">{Object.keys(selectedItems).length} item(s) selected</p>
               </div>
 
@@ -448,7 +451,7 @@ const Returns = () => {
                     <td className="p-4">#{r.sale_id}</td>
                     <td className="p-4 text-gray-500">{new Date(r.return_date).toLocaleDateString()}</td>
                     <td className="p-4 text-gray-600 capitalize">{(r.reason || '').replace(/_/g, ' ')}</td>
-                    <td className="p-4 font-medium text-red-600">${parseFloat(r.refund_amount || 0).toFixed(2)}</td>
+                    <td className="p-4 font-medium text-red-600">{currency}{parseFloat(r.refund_amount || 0).toFixed(2)}</td>
                     <td className="p-4 text-gray-600">{r.processed_by}</td>
                   </tr>
                 ))}

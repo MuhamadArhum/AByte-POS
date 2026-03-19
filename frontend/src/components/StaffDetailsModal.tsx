@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSettings } from '../context/SettingsContext';
 import { X, User, Calendar, DollarSign, TrendingUp, Edit, Trash2, BarChart3, CreditCard, Printer } from 'lucide-react';
 import api from '../utils/api';
 import { useToast } from './Toast';
@@ -13,6 +14,7 @@ interface StaffDetailsModalProps {
 }
 
 const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps) => {
+  const { currencySymbol: currency } = useSettings();
   const toast = useToast();
   const { user } = useAuth();
   const isAdmin = (user?.role_name || user?.role) === 'Admin';
@@ -245,7 +247,7 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
                     </div>
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                       <p className="text-sm text-gray-600 mb-1">Salary</p>
-                      <p className="text-lg font-semibold text-gray-800">${Number(staff.salary || 0).toFixed(2)} / {staff.salary_type}</p>
+                      <p className="text-lg font-semibold text-gray-800">{currency}{Number(staff.salary || 0).toFixed(2)} / {staff.salary_type}</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                       <p className="text-sm text-gray-600 mb-1">Status</p>
@@ -368,10 +370,10 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
                               <td className="p-4 text-sm text-gray-600">
                                 {new Date(payment.from_date).toLocaleDateString()} - {new Date(payment.to_date).toLocaleDateString()}
                               </td>
-                              <td className="p-4 text-right">${Number(payment.amount).toFixed(2)}</td>
+                              <td className="p-4 text-right">{currency}{Number(payment.amount).toFixed(2)}</td>
                               <td className="p-4 text-right text-red-600">{payment.deductions > 0 ? `-$${Number(payment.deductions).toFixed(2)}` : '-'}</td>
                               <td className="p-4 text-right text-green-600">{payment.bonuses > 0 ? `+$${Number(payment.bonuses).toFixed(2)}` : '-'}</td>
-                              <td className="p-4 text-right font-bold text-emerald-600">${Number(payment.net_amount).toFixed(2)}</td>
+                              <td className="p-4 text-right font-bold text-emerald-600">{currency}{Number(payment.net_amount).toFixed(2)}</td>
                               {isAdmin && (
                                 <td className="p-4 text-center">
                                   <div className="flex items-center justify-center gap-1">
@@ -422,10 +424,10 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
                           {loanHistory.map((loan: any) => (
                             <tr key={loan.loan_id} className="border-t hover:bg-gray-50">
                               <td className="p-4 font-medium">{new Date(loan.loan_date).toLocaleDateString()}</td>
-                              <td className="p-4 text-right">${Number(loan.loan_amount).toLocaleString()}</td>
-                              <td className="p-4 text-right text-green-600">${Number(loan.total_repaid || 0).toLocaleString()}</td>
-                              <td className="p-4 text-right font-bold text-red-600">${Number(loan.remaining_balance).toLocaleString()}</td>
-                              <td className="p-4 text-right text-gray-600">{Number(loan.monthly_deduction) > 0 ? `$${Number(loan.monthly_deduction).toLocaleString()}` : '-'}</td>
+                              <td className="p-4 text-right">{currency}{Number(loan.loan_amount).toLocaleString()}</td>
+                              <td className="p-4 text-right text-green-600">{currency}{Number(loan.total_repaid || 0).toLocaleString()}</td>
+                              <td className="p-4 text-right font-bold text-red-600">{currency}{Number(loan.remaining_balance).toLocaleString()}</td>
+                              <td className="p-4 text-right text-gray-600">{Number(loan.monthly_deduction) > 0 ? `${currency}${Number(loan.monthly_deduction).toLocaleString()}` : '-'}</td>
                               <td className="p-4 text-center">
                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${
                                   loan.status === 'active' ? 'bg-green-100 text-green-700' :
@@ -469,8 +471,8 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
                             return (
                               <tr key={inc.increment_id} className="border-t hover:bg-gray-50">
                                 <td className="p-4 font-medium">{new Date(inc.effective_date).toLocaleDateString()}</td>
-                                <td className="p-4 text-right text-gray-600">${Number(inc.old_salary).toLocaleString()}</td>
-                                <td className="p-4 text-right font-bold">${Number(inc.new_salary).toLocaleString()}</td>
+                                <td className="p-4 text-right text-gray-600">{currency}{Number(inc.old_salary).toLocaleString()}</td>
+                                <td className="p-4 text-right font-bold">{currency}{Number(inc.new_salary).toLocaleString()}</td>
                                 <td className="p-4 text-right">
                                   <span className={`font-semibold ${isIncrease ? 'text-green-600' : 'text-red-600'}`}>
                                     {isIncrease ? '+' : ''}{Number(inc.increment_amount).toLocaleString()} ({Number(inc.increment_percentage).toFixed(1)}%)

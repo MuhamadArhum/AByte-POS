@@ -165,17 +165,20 @@ exports.getById = async (req, res) => {
 // Only Admin and Manager can create products.
 exports.create = async (req, res) => {
   try {
-    const { product_name, category_id, price, stock_quantity, barcode, product_type } = req.body;
+    const { product_name, category_id, price, stock_quantity, barcode, product_type, unit, cost_price, min_stock_level, sku, description } = req.body;
 
     // Validate required fields
-    if (!product_name || !price) {
-      return res.status(400).json({ message: 'Product name and price are required' });
+    if (!product_name) {
+      return res.status(400).json({ message: 'Product name is required' });
+    }
+    if (product_type !== 'raw_material' && !price) {
+      return res.status(400).json({ message: 'Price is required for finished goods' });
     }
 
     // Insert the product into the products table
     const result = await query(
-      'INSERT INTO products (product_name, category_id, price, stock_quantity, barcode, product_type) VALUES (?, ?, ?, ?, ?, ?)',
-      [product_name, category_id || null, price, stock_quantity || 0, barcode || null, product_type || 'finished_good']
+      'INSERT INTO products (product_name, category_id, price, stock_quantity, barcode, product_type, unit, cost_price, min_stock_level, sku, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [product_name, category_id || null, price || 0, stock_quantity || 0, barcode || null, product_type || 'finished_good', unit || 'pcs', cost_price || 0, min_stock_level || 0, sku || null, description || null]
     );
 
     // Also create a corresponding inventory record to track stock separately
@@ -204,12 +207,12 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;  // Product ID from URL
-    const { product_name, category_id, price, stock_quantity, barcode, product_type } = req.body;
+    const { product_name, category_id, price, stock_quantity, barcode, product_type, unit, cost_price, min_stock_level, sku, description } = req.body;
 
     // Update the product record
     await query(
-      'UPDATE products SET product_name = ?, category_id = ?, price = ?, stock_quantity = ?, barcode = ?, product_type = ? WHERE product_id = ?',
-      [product_name, category_id || null, price, stock_quantity, barcode || null, product_type || 'finished_good', id]
+      'UPDATE products SET product_name = ?, category_id = ?, price = ?, stock_quantity = ?, barcode = ?, product_type = ?, unit = ?, cost_price = ?, min_stock_level = ?, sku = ?, description = ? WHERE product_id = ?',
+      [product_name, category_id || null, price || 0, stock_quantity, barcode || null, product_type || 'finished_good', unit || 'pcs', cost_price || 0, min_stock_level || 0, sku || null, description || null, id]
     );
 
     // Sync the inventory table with the new stock quantity
@@ -271,7 +274,7 @@ exports.getCategories = async (req, res) => {
        FROM categories c
        LEFT JOIN products p ON c.category_id = p.category_id
        GROUP BY c.category_id
-       ORDER BY c.category_name`
+       ORDER BY c.parent_id ASC, c.category_name ASC`
     );
     res.json({ data: rows });
   } catch (err) {
@@ -284,22 +287,27 @@ exports.getCategories = async (req, res) => {
 // Adds a new product category with type (raw_material / semi_finished / finished_good).
 exports.createCategory = async (req, res) => {
   try {
-    const { category_name, category_type, description, is_active } = req.body;
+    const { category_name, category_type, description, is_active, parent_id } = req.body;
     if (!category_name) return res.status(400).json({ message: 'Category name is required' });
 
     const validTypes = ['raw_material', 'semi_finished', 'finished_good'];
     const catType = validTypes.includes(category_type) ? category_type : 'finished_good';
 
+    // If parent given, inherit its type
+    let resolvedType = catType;
+    if (parent_id) {
+      const [parent] = await query('SELECT category_type FROM categories WHERE category_id = ?', [parent_id]);
+      if (!parent) return res.status(400).json({ message: 'Parent category not found' });
+      resolvedType = parent.category_type;
+    }
+
     const result = await query(
-      'INSERT INTO categories (category_name, category_type, description, is_active) VALUES (?, ?, ?, ?)',
-      [category_name, catType, description || null, is_active !== undefined ? is_active : 1]
+      'INSERT INTO categories (category_name, category_type, parent_id, description, is_active) VALUES (?, ?, ?, ?, ?)',
+      [category_name, resolvedType, parent_id || null, description || null, is_active !== undefined ? is_active : 1]
     );
-    await logAction(req.user.user_id, req.user.name, 'CATEGORY_CREATED', 'category', result.insertId, { category_name, category_type: catType }, req.ip);
+    await logAction(req.user.user_id, req.user.name, 'CATEGORY_CREATED', 'category', result.insertId, { category_name, category_type: resolvedType, parent_id: parent_id || null }, req.ip);
     res.status(201).json({ message: 'Category created', category_id: Number(result.insertId) });
   } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({ message: 'Category already exists' });
-    }
     console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
@@ -309,23 +317,27 @@ exports.createCategory = async (req, res) => {
 exports.updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { category_name, category_type, description, is_active } = req.body;
+    const { category_name, category_type, description, is_active, parent_id } = req.body;
     if (!category_name) return res.status(400).json({ message: 'Category name is required' });
 
     const [existing] = await query('SELECT category_id FROM categories WHERE category_id = ?', [id]);
     if (!existing) return res.status(404).json({ message: 'Category not found' });
 
+    // Prevent circular reference
+    if (parent_id && Number(parent_id) === Number(id)) {
+      return res.status(400).json({ message: 'Category cannot be its own parent' });
+    }
+
     const validTypes = ['raw_material', 'semi_finished', 'finished_good'];
     const catType = validTypes.includes(category_type) ? category_type : 'finished_good';
 
     await query(
-      'UPDATE categories SET category_name = ?, category_type = ?, description = ?, is_active = ? WHERE category_id = ?',
-      [category_name, catType, description || null, is_active !== undefined ? is_active : 1, id]
+      'UPDATE categories SET category_name = ?, category_type = ?, description = ?, is_active = ?, parent_id = ? WHERE category_id = ?',
+      [category_name, catType, description || null, is_active !== undefined ? is_active : 1, parent_id || null, id]
     );
     await logAction(req.user.user_id, req.user.name, 'CATEGORY_UPDATED', 'category', id, { category_name, category_type: catType }, req.ip);
     res.json({ message: 'Category updated' });
   } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Category name already exists' });
     console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
@@ -337,7 +349,11 @@ exports.deleteCategory = async (req, res) => {
     const { id } = req.params;
     const [productCount] = await query('SELECT COUNT(*) as cnt FROM products WHERE category_id = ?', [id]);
     if (productCount.cnt > 0) {
-      return res.status(400).json({ message: `Cannot delete category with ${productCount.cnt} products. Reassign products first.` });
+      return res.status(400).json({ message: `Cannot delete — ${productCount.cnt} products use this category.` });
+    }
+    const [subCount] = await query('SELECT COUNT(*) as cnt FROM categories WHERE parent_id = ?', [id]);
+    if (subCount.cnt > 0) {
+      return res.status(400).json({ message: `Cannot delete — ${subCount.cnt} sub-categories exist. Delete them first.` });
     }
     await query('DELETE FROM categories WHERE category_id = ?', [id]);
     await logAction(req.user.user_id, req.user.name, 'CATEGORY_DELETED', 'category', id, {}, req.ip);

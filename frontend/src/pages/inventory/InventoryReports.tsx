@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import { BarChart3, Package, DollarSign, AlertTriangle, XCircle, TrendingUp, Tag, Clock } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
@@ -32,6 +33,7 @@ interface SlowMover {
 }
 
 const InventoryReports = () => {
+  const { currencySymbol: currency } = useSettings();
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState(localToday());
   const [dateTo, setDateTo] = useState(localToday());
@@ -104,7 +106,7 @@ const InventoryReports = () => {
           <div className="flex items-center gap-3">
             <div className="p-3 bg-emerald-50 rounded-xl"><DollarSign size={24} className="text-emerald-600" /></div>
             <div>
-              <p className="text-2xl font-bold text-emerald-600">${Number(summary.total_stock_value).toLocaleString()}</p>
+              <p className="text-2xl font-bold text-emerald-600">{currency}{Number(summary.total_stock_value).toLocaleString()}</p>
               <p className="text-sm text-gray-500">Stock Value</p>
             </div>
           </div>
@@ -186,7 +188,7 @@ const InventoryReports = () => {
                       <td className="p-3 font-medium text-gray-800">{c.category_name}</td>
                       <td className="p-3 text-right text-gray-600">{Number(c.product_count)}</td>
                       <td className="p-3 text-right text-gray-600">{Number(c.total_stock)}</td>
-                      <td className="p-3 text-right font-medium text-gray-800">${Number(c.stock_value).toLocaleString()}</td>
+                      <td className="p-3 text-right font-medium text-gray-800">{currency}{Number(c.stock_value).toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -233,7 +235,7 @@ const InventoryReports = () => {
                         {p.days_since_last_sale === null ? 'Never sold' : `${p.days_since_last_sale} days`}
                       </span>
                     </td>
-                    <td className="p-4 text-right font-medium text-red-600">${Number(p.value_at_risk).toLocaleString()}</td>
+                    <td className="p-4 text-right font-medium text-red-600">{currency}{Number(p.value_at_risk).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>

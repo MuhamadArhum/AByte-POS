@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSettings } from '../context/SettingsContext';
 import { X, FileText, Calendar, User, Package, DollarSign } from 'lucide-react';
 import api from '../utils/api';
 
@@ -35,6 +36,7 @@ interface ViewPODetailsModalProps {
 }
 
 const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) => {
+  const { currencySymbol: currency } = useSettings();
   const [po, setPO] = useState<PODetails | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -170,7 +172,7 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
                     <DollarSign className="text-emerald-600" size={20} />
                     <h3 className="font-semibold text-gray-800">Total Amount</h3>
                   </div>
-                  <p className="text-2xl font-bold text-emerald-600">${Number(po.total_amount || 0).toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-emerald-600">{currency}{Number(po.total_amount || 0).toFixed(2)}</p>
                 </div>
               </div>
 

@@ -1,4 +1,3 @@
-import Inventory from './Inventory';
-
-const RawMaterials = () => <Inventory productType="raw_material" />;
+import RawMaterialItems from './RawMaterialItems';
+const RawMaterials = () => <RawMaterialItems />;
 export default RawMaterials;

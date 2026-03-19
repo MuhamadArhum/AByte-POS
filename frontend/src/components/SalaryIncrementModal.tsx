@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSettings } from '../context/SettingsContext';
 import { X, TrendingUp } from 'lucide-react';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
@@ -12,6 +13,7 @@ interface Props {
 }
 
 const SalaryIncrementModal = ({ isOpen, onClose, onSuccess, staffMember }: Props) => {
+  const { currencySymbol: currency } = useSettings();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [staff, setStaff] = useState<any[]>([]);
@@ -133,7 +135,7 @@ const SalaryIncrementModal = ({ isOpen, onClose, onSuccess, staffMember }: Props
           {selectedStaff && (
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
               <p className="text-sm text-gray-600">Current Salary</p>
-              <p className="text-2xl font-bold text-gray-800">${currentSalary.toLocaleString()} <span className="text-sm font-normal text-gray-500">/ {selectedStaff.salary_type}</span></p>
+              <p className="text-2xl font-bold text-gray-800">{currency}{currentSalary.toLocaleString()} <span className="text-sm font-normal text-gray-500">/ {selectedStaff.salary_type}</span></p>
             </div>
           )}
 

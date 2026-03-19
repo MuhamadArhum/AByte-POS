@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSettings } from '../context/SettingsContext';
 import { X, Lock, Loader2, AlertTriangle, CheckCircle, DollarSign, TrendingUp, TrendingDown, Clock, Calendar, User, FileText, Calculator } from 'lucide-react';
 import api from '../utils/api';
 
@@ -19,6 +20,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
   shiftExpenses = 0,
   register
 }) => {
+  const { currencySymbol: currency } = useSettings();
   const [closingBalance, setClosingBalance] = useState('');
   const [closeNote, setCloseNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -253,11 +255,11 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
                       <p className="text-xs opacity-75">Expected:</p>
-                      <p className="font-bold">${expectedCash.toFixed(2)}</p>
+                      <p className="font-bold">{currency}{expectedCash.toFixed(2)}</p>
                     </div>
                     <div>
                       <p className="text-xs opacity-75">Actual:</p>
-                      <p className="font-bold">${closingValue.toFixed(2)}</p>
+                      <p className="font-bold">{currency}{closingValue.toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
@@ -273,7 +275,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                 <div className="flex-1">
                   <p className="font-bold text-amber-800 mb-2">Confirmation Required</p>
                   <p className="text-sm text-amber-700 mb-3">
-                    You are about to close the register with a discrepancy of <strong>${Math.abs(difference).toFixed(2)}</strong>. 
+                    You are about to close the register with a discrepancy of <strong>{currency}{Math.abs(difference).toFixed(2)}</strong>. 
                     Please verify your cash count is accurate before proceeding.
                   </p>
                   <div className="flex gap-3">

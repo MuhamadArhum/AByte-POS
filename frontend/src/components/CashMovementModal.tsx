@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSettings } from '../context/SettingsContext';
 import { X, ArrowDownCircle, ArrowUpCircle, Loader2, DollarSign, FileText, Calculator, AlertCircle, CheckCircle } from 'lucide-react';
 import api from '../utils/api';
 
@@ -34,6 +35,7 @@ const CashMovementModal: React.FC<CashMovementModalProps> = ({
   onSuccess,
   currentBalance = 0 
 }) => {
+  const { currencySymbol: currency } = useSettings();
   const [type, setType] = useState<'cash_in' | 'cash_out'>('cash_in');
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
@@ -329,7 +331,7 @@ const CashMovementModal: React.FC<CashMovementModalProps> = ({
                       <strong>Reason:</strong> {reason === 'Other' ? customReason : reason}
                     </p>
                     <p className="text-gray-700">
-                      <strong>New Balance:</strong> <span className="font-bold">${getNewBalance().toFixed(2)}</span>
+                      <strong>New Balance:</strong> <span className="font-bold">{currency}{getNewBalance().toFixed(2)}</span>
                     </p>
                   </div>
                 </div>

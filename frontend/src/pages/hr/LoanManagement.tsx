@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import React from 'react';
 import { DollarSign, Plus, CreditCard, Ban, Eye, Filter } from 'lucide-react';
 import Pagination from '../../components/Pagination';
@@ -8,6 +9,7 @@ import IssueLoanModal from '../../components/IssueLoanModal';
 import LoanRepaymentModal from '../../components/LoanRepaymentModal';
 
 const LoanManagement = () => {
+  const { currencySymbol: currency } = useSettings();
   const toast = useToast();
   const [loans, setLoans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,15 +105,15 @@ const LoanManagement = () => {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Active Total</p>
-          <p className="text-3xl font-bold text-emerald-600 mt-2">${activeTotals.total.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-emerald-600 mt-2">{currency}{activeTotals.total.toLocaleString()}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Total Repaid</p>
-          <p className="text-3xl font-bold text-green-600 mt-2">${activeTotals.repaid.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-green-600 mt-2">{currency}{activeTotals.repaid.toLocaleString()}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Outstanding</p>
-          <p className="text-3xl font-bold text-red-600 mt-2">${activeTotals.remaining.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-red-600 mt-2">{currency}{activeTotals.remaining.toLocaleString()}</p>
         </div>
       </div>
 
@@ -160,10 +162,10 @@ const LoanManagement = () => {
                       <div className="font-semibold text-gray-800">{loan.full_name}</div>
                       <div className="text-xs text-gray-500">{loan.employee_id || ''} {loan.department ? `- ${loan.department}` : ''}</div>
                     </td>
-                    <td className="p-4 text-right font-medium">${Number(loan.loan_amount).toLocaleString()}</td>
-                    <td className="p-4 text-right font-medium text-green-600">${Number(loan.total_repaid || 0).toLocaleString()}</td>
-                    <td className="p-4 text-right font-bold text-red-600">${Number(loan.remaining_balance).toLocaleString()}</td>
-                    <td className="p-4 text-right text-gray-600">{Number(loan.monthly_deduction) > 0 ? `$${Number(loan.monthly_deduction).toLocaleString()}` : '-'}</td>
+                    <td className="p-4 text-right font-medium">{currency}{Number(loan.loan_amount).toLocaleString()}</td>
+                    <td className="p-4 text-right font-medium text-green-600">{currency}{Number(loan.total_repaid || 0).toLocaleString()}</td>
+                    <td className="p-4 text-right font-bold text-red-600">{currency}{Number(loan.remaining_balance).toLocaleString()}</td>
+                    <td className="p-4 text-right text-gray-600">{Number(loan.monthly_deduction) > 0 ? `${currency}${Number(loan.monthly_deduction).toLocaleString()}` : '-'}</td>
                     <td className="p-4 text-center text-gray-600">{new Date(loan.loan_date).toLocaleDateString()}</td>
                     <td className="p-4 text-center">{statusBadge(loan.status)}</td>
                     <td className="p-4">
@@ -203,7 +205,7 @@ const LoanManagement = () => {
                                 {repayments[loan.loan_id].map((r: any) => (
                                   <tr key={r.repayment_id} className="border-t border-gray-200">
                                     <td className="py-2 px-3">{new Date(r.repayment_date).toLocaleDateString()}</td>
-                                    <td className="py-2 px-3 text-right font-medium text-green-600">${Number(r.amount).toLocaleString()}</td>
+                                    <td className="py-2 px-3 text-right font-medium text-green-600">{currency}{Number(r.amount).toLocaleString()}</td>
                                     <td className="py-2 px-3 capitalize">{r.payment_method?.replace('_', ' ')}</td>
                                     <td className="py-2 px-3 text-gray-500">{r.notes || '-'}</td>
                                   </tr>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import { DollarSign, Plus, Download } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
@@ -12,6 +13,7 @@ interface AdvancePaymentModalProps {
 }
 
 const AdvancePaymentModal = ({ isOpen, onClose, onSuccess }: AdvancePaymentModalProps) => {
+  const { currencySymbol: currency } = useSettings();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [staffList, setStaffList] = useState<any[]>([]);
@@ -115,6 +117,7 @@ const AdvancePaymentModal = ({ isOpen, onClose, onSuccess }: AdvancePaymentModal
 };
 
 const AdvancePayments = () => {
+  const { currencySymbol: currency } = useSettings();
   const toast = useToast();
   const [advances, setAdvances] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,7 +192,7 @@ const AdvancePayments = () => {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Total Amount (Filtered)</p>
-          <p className="text-3xl font-bold text-emerald-600 mt-2">${totalAdvances.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-emerald-600 mt-2">{currency}{totalAdvances.toLocaleString()}</p>
         </div>
       </div>
 
@@ -232,7 +235,7 @@ const AdvancePayments = () => {
                     <div className="font-semibold text-gray-800">{adv.full_name}</div>
                     <div className="text-xs text-gray-500">{adv.employee_id || ''} {adv.department ? `- ${adv.department}` : ''}</div>
                   </td>
-                  <td className="p-4 text-right font-bold text-emerald-600">${Number(adv.amount).toLocaleString()}</td>
+                  <td className="p-4 text-right font-bold text-emerald-600">{currency}{Number(adv.amount).toLocaleString()}</td>
                   <td className="p-4 text-center">
                     <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium capitalize">
                       {(adv.payment_method || '').replace('_', ' ')}

@@ -146,6 +146,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         // ── STOCK ITEMS ──
         { icon: Package,        label: 'STOCK ITEMS',       isSection: true } as any,
         { icon: Boxes,          label: 'Products',          path: '/products',           moduleKey: 'inventory.products' },
+        { icon: Tag,            label: 'Categories',        path: '/categories',         moduleKey: 'inventory.categories' },
         { icon: Tag,            label: 'Deals & Bundles',   path: '/bundles',            moduleKey: 'inventory.bundles' },
         { icon: PackageOpen,    label: 'Opening Stock',     path: '/opening-stock',      moduleKey: 'inventory.products' },
         // ── PURCHASE ──

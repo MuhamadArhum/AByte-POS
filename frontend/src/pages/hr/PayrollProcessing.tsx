@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import { DollarSign, Calendar, Play, Download, CheckCircle } from 'lucide-react';
 import api from '../../utils/api';
 import { localToday } from '../../utils/dateUtils';
 import { useToast } from '../../components/Toast';
 
 const PayrollProcessing = () => {
+  const { currencySymbol: currency } = useSettings();
   const toast = useToast();
   const [step, setStep] = useState<'setup' | 'preview' | 'processing' | 'complete'>('setup');
   const [loading, setLoading] = useState(false);
@@ -189,15 +191,15 @@ const PayrollProcessing = () => {
             </div>
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <p className="text-gray-600 text-sm">Total Base Salary</p>
-              <p className="text-3xl font-bold text-emerald-600 mt-2">${totals.total_base.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-emerald-600 mt-2">{currency}{totals.total_base.toLocaleString()}</p>
             </div>
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <p className="text-gray-600 text-sm">Total Deductions</p>
-              <p className="text-3xl font-bold text-red-600 mt-2">${totals.total_deductions.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-red-600 mt-2">{currency}{totals.total_deductions.toLocaleString()}</p>
             </div>
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <p className="text-gray-600 text-sm">Total Net Payable</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">${totals.total_net.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-green-600 mt-2">{currency}{totals.total_net.toLocaleString()}</p>
             </div>
           </div>
 
@@ -226,10 +228,10 @@ const PayrollProcessing = () => {
                         <div className="font-semibold text-gray-800">{p.full_name}</div>
                         <div className="text-xs text-gray-500">{p.employee_id || ''} {p.department ? `- ${p.department}` : ''}</div>
                       </td>
-                      <td className="p-4 text-right font-medium">${p.base_salary.toLocaleString()}</td>
+                      <td className="p-4 text-right font-medium">{currency}{p.base_salary.toLocaleString()}</td>
                       <td className="p-4 text-right font-medium text-red-600">{p.deductions > 0 ? `-$${p.deductions.toLocaleString()}` : '-'}</td>
                       <td className="p-4 text-right font-medium text-green-600">{p.bonuses > 0 ? `+$${p.bonuses.toLocaleString()}` : '-'}</td>
-                      <td className="p-4 text-right font-bold text-emerald-600">${p.net_amount.toLocaleString()}</td>
+                      <td className="p-4 text-right font-bold text-emerald-600">{currency}{p.net_amount.toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>

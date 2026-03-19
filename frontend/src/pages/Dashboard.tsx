@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSettings } from '../context/SettingsContext';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -64,6 +65,7 @@ interface TopProduct {
 }
 
 const Dashboard = () => {
+  const { currencySymbol: currency } = useSettings();
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalSales: 0,
@@ -236,7 +238,7 @@ const Dashboard = () => {
             </div>
           </div>
           <h3 className="text-white/80 font-medium mb-1 text-sm">Today's Sales</h3>
-          <p className="text-3xl font-bold">${stats.totalSales.toFixed(2)}</p>
+          <p className="text-3xl font-bold">{currency}{stats.totalSales.toFixed(2)}</p>
           <p className="text-white/70 text-xs mt-2">vs yesterday</p>
         </div>
 
@@ -302,7 +304,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-500 text-sm font-medium">This Week</p>
-              <p className="text-2xl font-bold text-gray-800 mt-1">${stats.weekRevenue.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-gray-800 mt-1">{currency}{stats.weekRevenue.toFixed(2)}</p>
             </div>
             <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
               <TrendingUp size={20} />
@@ -314,7 +316,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-500 text-sm font-medium">This Month</p>
-              <p className="text-2xl font-bold text-gray-800 mt-1">${stats.monthRevenue.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-gray-800 mt-1">{currency}{stats.monthRevenue.toFixed(2)}</p>
             </div>
             <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
               <DollarSign size={20} />
@@ -373,7 +375,7 @@ const Dashboard = () => {
                   axisLine={false} 
                   tickLine={false} 
                   tick={{ fill: '#9CA3AF', fontSize: 12 }} 
-                  tickFormatter={(value) => `$${value}`}
+                  tickFormatter={(value) => `${currency}${value}`}
                 />
                 <Tooltip 
                   contentStyle={{ 
@@ -384,7 +386,7 @@ const Dashboard = () => {
                     padding: '12px'
                   }}
                   formatter={(value: number | undefined, name: string | undefined) => {
-                    if (name === 'sales') return [`$${(value ?? 0).toFixed(2)}`, 'Revenue'] as [string, string];
+                    if (name === 'sales') return [`${currency}${(value ?? 0).toFixed(2)}`, 'Revenue'] as [string, string];
                     return [value ?? 0, 'Orders'] as [number, string];
                   }}
                 />
@@ -472,7 +474,7 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-gray-800">${Number(order.total).toFixed(2)}</p>
+                    <p className="font-bold text-gray-800">{currency}{Number(order.total).toFixed(2)}</p>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs">
                       <CheckCircle size={10} />
                       Completed
@@ -515,7 +517,7 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-gray-800">${parseFloat(product.revenue.toString()).toFixed(2)}</p>
+                    <p className="font-bold text-gray-800">{currency}{parseFloat(product.revenue.toString()).toFixed(2)}</p>
                   </div>
                 </div>
               ))

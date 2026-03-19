@@ -84,6 +84,7 @@ import SettingsPage from './pages/system/Settings';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
+import { SettingsProvider } from './context/SettingsContext';
 
 
 // Protected Route Component
@@ -108,6 +109,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 function App() {
   return (
     <AuthProvider>
+      <SettingsProvider>
       <ToastProvider>
       <CartProvider>
         <Router>
@@ -206,6 +208,7 @@ function App() {
         </Router>
       </CartProvider>
       </ToastProvider>
+      </SettingsProvider>
     </AuthProvider>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import { TrendingUp, Filter, Download } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
@@ -7,6 +8,7 @@ import { useToast } from '../../components/Toast';
 import SalaryIncrementModal from '../../components/SalaryIncrementModal';
 
 const IncrementHistory = () => {
+  const { currencySymbol: currency } = useSettings();
   const toast = useToast();
   const [increments, setIncrements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,8 +145,8 @@ const IncrementHistory = () => {
                       {inc.employee_id && <div className="text-xs text-gray-500">{inc.employee_id}</div>}
                     </td>
                     <td className="p-4 text-gray-600">{inc.department || '-'}</td>
-                    <td className="p-4 text-right text-gray-600">${Number(inc.old_salary).toLocaleString()}</td>
-                    <td className="p-4 text-right font-bold text-gray-800">${Number(inc.new_salary).toLocaleString()}</td>
+                    <td className="p-4 text-right text-gray-600">{currency}{Number(inc.old_salary).toLocaleString()}</td>
+                    <td className="p-4 text-right font-bold text-gray-800">{currency}{Number(inc.new_salary).toLocaleString()}</td>
                     <td className="p-4 text-right">
                       <span className={`font-semibold ${isIncrease ? 'text-green-600' : 'text-red-600'}`}>
                         {isIncrease ? '+' : ''}{Number(inc.increment_amount).toLocaleString()}

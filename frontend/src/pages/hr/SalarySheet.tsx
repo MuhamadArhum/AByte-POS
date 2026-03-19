@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import { DollarSign, Download, Filter } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
@@ -18,6 +19,7 @@ const exportToCSV = (data: any[], filename: string, columns: { key: string; labe
 };
 
 const SalarySheet = () => {
+  const { currencySymbol: currency } = useSettings();
   const toast = useToast();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,15 +91,15 @@ const SalarySheet = () => {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Total Base Salary</p>
-          <p className="text-3xl font-bold text-emerald-600 mt-2">${totals.salary.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-emerald-600 mt-2">{currency}{totals.salary.toLocaleString()}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Total Loan Deductions</p>
-          <p className="text-3xl font-bold text-red-600 mt-2">${totals.loan.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-red-600 mt-2">{currency}{totals.loan.toLocaleString()}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Total Net Salary</p>
-          <p className="text-3xl font-bold text-emerald-600 mt-2">${totals.net.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-emerald-600 mt-2">{currency}{totals.net.toLocaleString()}</p>
         </div>
       </div>
 
@@ -142,23 +144,23 @@ const SalarySheet = () => {
                     <td className="p-4 font-semibold text-gray-800">{s.full_name}</td>
                     <td className="p-4 text-gray-600">{s.department || '-'}</td>
                     <td className="p-4 text-gray-600">{s.position || '-'}</td>
-                    <td className="p-4 text-right font-medium">${Number(s.salary).toLocaleString()}</td>
+                    <td className="p-4 text-right font-medium">{currency}{Number(s.salary).toLocaleString()}</td>
                     <td className="p-4 text-center">
                       <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium capitalize">{s.salary_type}</span>
                     </td>
                     <td className="p-4 text-right font-medium text-red-600">
                       {s.loan_deduction > 0 ? `-$${Number(s.loan_deduction).toLocaleString()}` : '-'}
                     </td>
-                    <td className="p-4 text-right font-bold text-emerald-700">${Number(s.net_salary).toLocaleString()}</td>
+                    <td className="p-4 text-right font-bold text-emerald-700">{currency}{Number(s.net_salary).toLocaleString()}</td>
                   </tr>
                 ))}
                 {/* Totals Row */}
                 <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
                   <td colSpan={4} className="p-4 text-gray-800">TOTAL ({filtered.length} Staff)</td>
-                  <td className="p-4 text-right">${totals.salary.toLocaleString()}</td>
+                  <td className="p-4 text-right">{currency}{totals.salary.toLocaleString()}</td>
                   <td className="p-4"></td>
                   <td className="p-4 text-right text-red-600">{totals.loan > 0 ? `-$${totals.loan.toLocaleString()}` : '-'}</td>
-                  <td className="p-4 text-right text-emerald-700">${totals.net.toLocaleString()}</td>
+                  <td className="p-4 text-right text-emerald-700">{currency}{totals.net.toLocaleString()}</td>
                 </tr>
               </>
             ) : (

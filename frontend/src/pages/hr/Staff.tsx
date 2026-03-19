@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import { Plus, Eye, Edit, Trash2, DollarSign, User, Search, Filter, RotateCcw, TrendingUp } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
@@ -9,6 +10,7 @@ import SalaryPaymentModal from '../../components/SalaryPaymentModal';
 import SalaryIncrementModal from '../../components/SalaryIncrementModal';
 
 const Staff = () => {
+  const { currencySymbol: currency } = useSettings();
   const toast = useToast();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -242,7 +244,7 @@ const Staff = () => {
                   <td className="p-4 text-gray-600">{member.department || '-'}</td>
                   <td className="p-4 text-gray-600">{member.phone || '-'}</td>
                   <td className="p-4 text-right font-medium">
-                    {member.salary ? `$${Number(member.salary).toFixed(0)}` : '-'}
+                    {member.salary ? `${currency}${Number(member.salary).toFixed(0)}` : '-'}
                   </td>
                   <td className="p-4 text-center">
                     <span className={`px-3 py-1 rounded-full text-sm font-semibold ${

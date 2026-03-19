@@ -224,7 +224,7 @@ const POS = () => {
     if (!register) return;
     setLoading(true);
     try {
-      const params: any = { page, limit: productLimit };
+      const params: any = { page, limit: productLimit, type: 'finished_good' };
       if (search) params.search = search;
       if (category !== 'All') params.category = category;
       const res = await api.get('/products', { params });

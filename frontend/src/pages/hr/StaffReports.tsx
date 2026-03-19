@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import { BarChart3, Download, Users, DollarSign, TrendingUp, Printer, Calendar } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import { printReport, buildTable } from '../../utils/reportPrinter';
@@ -51,6 +52,7 @@ const exportToCSV = (data: any[], filename: string, columns: { key: string; labe
 };
 
 const StaffReports = () => {
+  const { currencySymbol: currency } = useSettings();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<'attendance' | 'salary'>('attendance');
 
@@ -339,15 +341,15 @@ const StaffReports = () => {
               </div>
               <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                 <p className="text-sm text-gray-500">Total Net Paid</p>
-                <p className="text-2xl font-bold text-green-600">${salaryTotals.total_net_paid.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-green-600">{currency}{salaryTotals.total_net_paid.toFixed(2)}</p>
               </div>
               <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                 <p className="text-sm text-gray-500">Total Deductions</p>
-                <p className="text-2xl font-bold text-red-600">${salaryTotals.total_deductions.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-red-600">{currency}{salaryTotals.total_deductions.toFixed(2)}</p>
               </div>
               <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                 <p className="text-sm text-gray-500">Pending Amount</p>
-                <p className="text-2xl font-bold text-amber-600">${salaryTotals.pending_amount.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-amber-600">{currency}{salaryTotals.pending_amount.toFixed(2)}</p>
               </div>
             </div>
           )}
@@ -375,11 +377,11 @@ const StaffReports = () => {
                       <td className="p-4 font-medium text-gray-800">{row.department || 'Unassigned'}</td>
                       <td className="p-4 text-center">{row.staff_count}</td>
                       <td className="p-4 text-center">{row.paid_count}</td>
-                      <td className="p-4 text-right">${Number(row.total_base).toFixed(2)}</td>
-                      <td className="p-4 text-right text-red-600">${Number(row.total_deductions).toFixed(2)}</td>
-                      <td className="p-4 text-right text-green-600">${Number(row.total_bonuses).toFixed(2)}</td>
-                      <td className="p-4 text-right font-medium text-emerald-600">${Number(row.total_net_paid).toFixed(2)}</td>
-                      <td className="p-4 text-right">${Number(row.total_expected).toFixed(2)}</td>
+                      <td className="p-4 text-right">{currency}{Number(row.total_base).toFixed(2)}</td>
+                      <td className="p-4 text-right text-red-600">{currency}{Number(row.total_deductions).toFixed(2)}</td>
+                      <td className="p-4 text-right text-green-600">{currency}{Number(row.total_bonuses).toFixed(2)}</td>
+                      <td className="p-4 text-right font-medium text-emerald-600">{currency}{Number(row.total_net_paid).toFixed(2)}</td>
+                      <td className="p-4 text-right">{currency}{Number(row.total_expected).toFixed(2)}</td>
                       <td className="p-4 text-right">
                         <span className={`font-medium ${Number(row.pending_amount) > 0 ? 'text-amber-600' : 'text-green-600'}`}>
                           ${Number(row.pending_amount).toFixed(2)}
@@ -392,12 +394,12 @@ const StaffReports = () => {
                     <td className="p-4 text-gray-800">Total</td>
                     <td className="p-4 text-center">{salaryTotals.staff_count}</td>
                     <td className="p-4 text-center">{salaryTotals.paid_count}</td>
-                    <td className="p-4 text-right">${salaryTotals.total_base.toFixed(2)}</td>
-                    <td className="p-4 text-right text-red-600">${salaryTotals.total_deductions.toFixed(2)}</td>
-                    <td className="p-4 text-right text-green-600">${salaryTotals.total_bonuses.toFixed(2)}</td>
-                    <td className="p-4 text-right text-emerald-600">${salaryTotals.total_net_paid.toFixed(2)}</td>
-                    <td className="p-4 text-right">${salaryTotals.total_expected.toFixed(2)}</td>
-                    <td className="p-4 text-right text-amber-600">${salaryTotals.pending_amount.toFixed(2)}</td>
+                    <td className="p-4 text-right">{currency}{salaryTotals.total_base.toFixed(2)}</td>
+                    <td className="p-4 text-right text-red-600">{currency}{salaryTotals.total_deductions.toFixed(2)}</td>
+                    <td className="p-4 text-right text-green-600">{currency}{salaryTotals.total_bonuses.toFixed(2)}</td>
+                    <td className="p-4 text-right text-emerald-600">{currency}{salaryTotals.total_net_paid.toFixed(2)}</td>
+                    <td className="p-4 text-right">{currency}{salaryTotals.total_expected.toFixed(2)}</td>
+                    <td className="p-4 text-right text-amber-600">{currency}{salaryTotals.pending_amount.toFixed(2)}</td>
                   </tr>
                 </tbody>
               </table>

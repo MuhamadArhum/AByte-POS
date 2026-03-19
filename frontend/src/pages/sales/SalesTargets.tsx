@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import { Target, Plus, TrendingUp, Award, Users, Edit2, Trash2, X, BarChart3, Printer } from 'lucide-react';
 import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
 import api from '../../utils/api';
@@ -329,6 +330,7 @@ const getTypeBadgeClass = (type: string): string => {
 
 // ---------- Main Page ----------
 const SalesTargets = () => {
+  const { currencySymbol: currency } = useSettings();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'manage'>('dashboard');
 
@@ -418,6 +420,7 @@ const SalesTargets = () => {
 
   const fetchTargets = useCallback(async () => {
     setManageLoading(true);
+  const { currencySymbol: currency } = useSettings();
     try {
       const params: any = { page: pagination.page, limit: pagination.limit };
       if (filterUserId) params.user_id = filterUserId;
@@ -493,7 +496,7 @@ const SalesTargets = () => {
       { label: 'Lowest Performer', value: stats.lowest_performer ? `${stats.lowest_performer.name} (${stats.lowest_performer.percentage}%)` : '-' },
     ]);
     if (dashboardItems.length > 0) {
-      const rows = dashboardItems.map(d => [d.user_name, d.target_type, `$${Number(d.target_amount).toFixed(2)}`, `$${Number(d.actual_amount).toFixed(2)}`, `${d.achievement_percentage}%`]);
+      const rows = dashboardItems.map(d => [d.user_name, d.target_type, `${currency}${Number(d.target_amount).toFixed(2)}`, `${currency}${Number(d.actual_amount).toFixed(2)}`, `${d.achievement_percentage}%`]);
       content += buildTable(['Cashier', 'Type', 'Target', 'Actual', 'Achievement'], rows, { alignRight: [2, 3, 4], caption: 'Sales Targets Dashboard' });
     }
     printReport({ title: 'Sales Targets Report', content });

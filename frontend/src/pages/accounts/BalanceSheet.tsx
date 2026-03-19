@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import { FileBarChart, Calendar, Download, RefreshCw, Printer, CheckCircle, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
@@ -63,23 +64,23 @@ function buildPrintSection(nodes: BSNode[], title: string, total: number): strin
     const val = n.level === 1 ? '' : fmt(Math.abs(n.balance));
     const sub = n.children.map(renderNode).join('');
     const subtotalRow = isParent && n.level > 1
-      ? `<tr style="background:#f3f4f6"><td style="padding-left:${indent + 8}px; font-weight:600; font-style:italic; color:#6b7280">Subtotal ${n.account_name}</td><td style="text-align:right; font-weight:600">${fmt(Math.abs(n.balance))}</td></tr>`
+      ? `<tr style="background:#f3f4f6"><td style="padding-left:${indent + 8}px; font-weight:600; font-style:italic; color:#6b7280">Subtotal ${n.account_name}</td><td style="text-align:right; font-weight:600">{currency}{fmt(Math.abs(n.balance))}</td></tr>`
       : '';
-    return `<tr><td style="${style}">${n.account_code} - ${n.account_name}</td><td style="text-align:right">${val}</td></tr>${sub}${subtotalRow}`;
+    return `<tr><td style="${style}">{currency}{n.account_code} - ${n.account_name}</td><td style="text-align:right">{currency}{val}</td></tr>{currency}{sub}${subtotalRow}`;
   };
 
   return `
     <div style="margin-bottom:20px">
-      <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #111;padding-bottom:4px;margin-bottom:8px">${title}</div>
+      <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #111;padding-bottom:4px;margin-bottom:8px">{currency}{title}</div>
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead><tr style="background:#f3f4f6">
           <th style="text-align:left;padding:6px 8px;border-bottom:1px solid #ccc">Account</th>
           <th style="text-align:right;padding:6px 8px;border-bottom:1px solid #ccc">Amount</th>
         </tr></thead>
-        <tbody>${nodes.map(renderNode).join('')}</tbody>
+        <tbody>{currency}{nodes.map(renderNode).join('')}</tbody>
         <tfoot><tr style="background:#ecfdf5;font-weight:700">
           <td style="padding:8px;border-top:2px solid #111">Total ${title}</td>
-          <td style="padding:8px;text-align:right;border-top:2px solid #111">${fmt(total)}</td>
+          <td style="padding:8px;text-align:right;border-top:2px solid #111">{currency}{fmt(total)}</td>
         </tr></tfoot>
       </table>
     </div>`;
@@ -263,7 +264,7 @@ const BalanceSheet = () => {
     const netProfitRow = `
       <tr style="background:#f5f3ff">
         <td style="padding-left:24px;font-style:italic;color:#6b7280">Net Profit / (Loss)</td>
-        <td style="text-align:right;font-weight:600;color:${data.net_profit >= 0 ? '#059669' : '#dc2626'}">${fmt(data.net_profit)}</td>
+        <td style="text-align:right;font-weight:600;color:${data.net_profit >= 0 ? '#059669' : '#dc2626'}">{currency}{fmt(data.net_profit)}</td>
       </tr>`;
 
     let content = buildPrintSection(data.assets, 'Assets', data.total_assets);
@@ -277,7 +278,7 @@ const BalanceSheet = () => {
     content += `
       <div style="margin-top:16px;background:#111827;color:white;padding:12px 16px;border-radius:6px;display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px">Total Liabilities + Equity</span>
-        <span style="font-size:18px;font-weight:700">${fmt(data.total_liabilities_equity)}</span>
+        <span style="font-size:18px;font-weight:700">{currency}{fmt(data.total_liabilities_equity)}</span>
       </div>`;
 
     const isBalanced = Math.abs(data.total_assets - data.total_liabilities_equity) < 0.01;

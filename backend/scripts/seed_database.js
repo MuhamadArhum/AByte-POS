@@ -91,20 +91,8 @@ async function seed() {
     console.log(`Using admin user_id: ${adminUserId}`);
 
     // ─────────────────────────────────────────
-    // 1. CATEGORIES (20)
+    // 1. CATEGORIES
     // ─────────────────────────────────────────
-    await conn.beginTransaction();
-    const categoryNames = [
-      'Electronics', 'Mobile Phones', 'Laptops & Computers', 'Accessories',
-      'Clothing - Men', 'Clothing - Women', 'Clothing - Kids', 'Footwear',
-      'Groceries', 'Beverages', 'Dairy Products', 'Bakery',
-      'Cosmetics & Beauty', 'Health & Wellness', 'Sports & Fitness',
-      'Home Appliances', 'Kitchen Items', 'Stationery', 'Toys & Games', 'Auto Parts'
-    ];
-    for (const name of categoryNames) {
-      await conn.query('INSERT IGNORE INTO categories (category_name) VALUES (?)', [name]);
-    }
-    await conn.commit();
     const catRows = await conn.query('SELECT category_id FROM categories');
     categoryIds = catRows.map(r => r.category_id);
     console.log(`Categories: ${categoryIds.length}`);

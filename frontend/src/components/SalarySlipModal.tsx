@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSettings } from '../context/SettingsContext';
 import { X, Printer, Download } from 'lucide-react';
 import api from '../utils/api';
 
@@ -9,6 +10,7 @@ interface SalarySlipModalProps {
 }
 
 const SalarySlipModal = ({ isOpen, onClose, payment }: SalarySlipModalProps) => {
+  const { currencySymbol: currency } = useSettings();
   const [settings, setSettings] = useState<any>(null);
   const [staff, setStaff] = useState<any>(null);
 
@@ -116,7 +118,7 @@ const SalarySlipModal = ({ isOpen, onClose, payment }: SalarySlipModalProps) => 
               <tbody>
                 <tr className="border-b">
                   <td className="p-4 text-gray-700">Basic Salary</td>
-                  <td className="p-4 text-right font-medium text-gray-800">${Number(payment.amount).toLocaleString()}</td>
+                  <td className="p-4 text-right font-medium text-gray-800">{currency}{Number(payment.amount).toLocaleString()}</td>
                 </tr>
                 {Number(payment.bonuses || 0) > 0 && (
                   <tr className="border-b">
@@ -132,7 +134,7 @@ const SalarySlipModal = ({ isOpen, onClose, payment }: SalarySlipModalProps) => 
                 )}
                 <tr className="bg-gray-50 font-bold">
                   <td className="p-4 text-gray-800">Net Salary</td>
-                  <td className="p-4 text-right text-lg text-emerald-600">${Number(payment.net_amount).toLocaleString()}</td>
+                  <td className="p-4 text-right text-lg text-emerald-600">{currency}{Number(payment.net_amount).toLocaleString()}</td>
                 </tr>
               </tbody>
             </table>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSettings } from '../../context/SettingsContext';
 import { BookOpen, Search, Download, DollarSign, CreditCard, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
@@ -7,6 +8,7 @@ import { localToday, localMonthStart } from '../../utils/dateUtils';
 import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 const EmployeeLedger = () => {
+  const { currencySymbol: currency } = useSettings();
   const toast = useToast();
   const [staff, setStaff] = useState<any[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState('');
@@ -180,7 +182,7 @@ const EmployeeLedger = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Total Earned</p>
-                  <p className="text-xl font-bold text-green-600">${data.totals.totalEarned.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <p className="text-xl font-bold text-green-600">{currency}{data.totals.totalEarned.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
               </div>
             </div>
@@ -191,7 +193,7 @@ const EmployeeLedger = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Total Loans</p>
-                  <p className="text-xl font-bold text-red-600">${data.totals.totalLoans.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <p className="text-xl font-bold text-red-600">{currency}{data.totals.totalLoans.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
               </div>
             </div>
@@ -202,7 +204,7 @@ const EmployeeLedger = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Total Repaid</p>
-                  <p className="text-xl font-bold text-emerald-600">${data.totals.totalRepaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <p className="text-xl font-bold text-emerald-600">{currency}{data.totals.totalRepaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
               </div>
             </div>
@@ -213,7 +215,7 @@ const EmployeeLedger = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Outstanding Balance</p>
-                  <p className="text-xl font-bold text-orange-600">${data.totals.outstandingLoanBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <p className="text-xl font-bold text-orange-600">{currency}{data.totals.outstandingLoanBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
               </div>
             </div>
@@ -270,10 +272,10 @@ const EmployeeLedger = () => {
                       </td>
                       <td className="p-4 text-gray-700 text-sm">{entry.description}</td>
                       <td className="p-4 text-right font-medium text-red-600">
-                        {entry.debit > 0 ? `$${entry.debit.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
+                        {entry.debit > 0 ? `${currency}${entry.debit.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                       </td>
                       <td className="p-4 text-right font-medium text-green-600">
-                        {entry.credit > 0 ? `$${entry.credit.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
+                        {entry.credit > 0 ? `${currency}${entry.credit.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                       </td>
                     </tr>
                   )) : (

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSettings } from '../context/SettingsContext';
 import { X, Printer, RefreshCw, Loader2 } from 'lucide-react';
 import api from '../utils/api';
 import JsBarcode from 'jsbarcode';
@@ -16,6 +17,7 @@ interface BarcodeModalProps {
 }
 
 const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, onClose, product, onBarcodeGenerated }) => {
+  const { currencySymbol: currency } = useSettings();
   const [barcode, setBarcode] = useState('');
   const [generating, setGenerating] = useState(false);
   const [printQty, setPrintQty] = useState(1);
@@ -65,7 +67,7 @@ const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, onClose, product, o
 
     const labels = Array(printQty).fill(null).map(() => `
       <div class="label">
-        <div class="product-name">${product.product_name}</div>
+        <div class="product-name">{currency}{product.product_name}</div>
         <div class="product-price">$${parseFloat(product.price).toFixed(2)}</div>
         <svg id="barcode-print-${Math.random()}"></svg>
       </div>
@@ -131,7 +133,7 @@ const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, onClose, product, o
           {/* Product Info */}
           <div className="text-center">
             <p className="font-bold text-gray-800">{product.product_name}</p>
-            <p className="text-emerald-600 font-bold text-lg">${parseFloat(product.price).toFixed(2)}</p>
+            <p className="text-emerald-600 font-bold text-lg">{currency}{parseFloat(product.price).toFixed(2)}</p>
           </div>
 
           {/* Barcode Preview */}

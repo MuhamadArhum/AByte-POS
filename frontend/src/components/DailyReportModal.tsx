@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSettings } from '../context/SettingsContext';
 import { X, Printer, DollarSign, CreditCard, Smartphone, RefreshCw, BarChart } from 'lucide-react';
 import api from '../utils/api';
 
@@ -8,6 +9,7 @@ interface DailyReportModalProps {
 }
 
 const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) => {
+  const { currencySymbol: currency } = useSettings();
   const [sales, setSales] = useState<any[]>([]);
   const [_loading, setLoading] = useState(false);
   const [summary, setSummary] = useState({
@@ -81,8 +83,8 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
           <body>
             <div class="header">
               <div class="title">Z-REPORT</div>
-              <div>${new Date().toLocaleDateString()}</div>
-              <div>${new Date().toLocaleTimeString()}</div>
+              <div>{currency}{new Date().toLocaleDateString()}</div>
+              <div>{currency}{new Date().toLocaleTimeString()}</div>
             </div>
             
             <div class="row bold">
@@ -91,7 +93,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
             </div>
             <div class="row">
               <span>Total Orders:</span>
-              <span>${summary.count}</span>
+              <span>{currency}{summary.count}</span>
             </div>
             
             <div class="divider"></div>
@@ -172,7 +174,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
                    </div>
                    <p className="text-sm text-gray-500 font-medium">Total Sales</p>
                 </div>
-                <p className="text-2xl font-bold text-gray-800">${summary.totalSales.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-800">{currency}{summary.totalSales.toFixed(2)}</p>
              </div>
 
              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
@@ -182,7 +184,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
                    </div>
                    <p className="text-sm text-gray-500 font-medium">Card Sales</p>
                 </div>
-                <p className="text-2xl font-bold text-gray-800">${summary.card.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-800">{currency}{summary.card.toFixed(2)}</p>
              </div>
 
              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
@@ -192,7 +194,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
                    </div>
                    <p className="text-sm text-gray-500 font-medium">Online Sales</p>
                 </div>
-                <p className="text-2xl font-bold text-gray-800">${summary.online.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-800">{currency}{summary.online.toFixed(2)}</p>
              </div>
 
              <div className="bg-white p-4 rounded-xl border border-red-100 shadow-sm">
@@ -202,7 +204,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
                    </div>
                    <p className="text-sm text-gray-500 font-medium">Refunds</p>
                 </div>
-                <p className="text-2xl font-bold text-gray-800">${summary.refunded.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-800">{currency}{summary.refunded.toFixed(2)}</p>
              </div>
           </div>
 
@@ -226,7 +228,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
                   <tr key={sale.sale_id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-3 text-sm text-gray-600">{new Date(sale.sale_date).toLocaleTimeString()}</td>
                     <td className="px-6 py-3 text-sm font-medium text-gray-900">#{sale.sale_id}</td>
-                    <td className="px-6 py-3 text-sm font-bold text-emerald-600">${parseFloat(sale.total_amount).toFixed(2)}</td>
+                    <td className="px-6 py-3 text-sm font-bold text-emerald-600">{currency}{parseFloat(sale.total_amount).toFixed(2)}</td>
                     <td className="px-6 py-3 text-sm text-gray-600 capitalize">{sale.payment_method}</td>
                     <td className="px-6 py-3">
                        <span className={`px-2 py-1 text-xs rounded-full font-medium capitalize border ${

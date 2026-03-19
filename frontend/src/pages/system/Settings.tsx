@@ -39,6 +39,7 @@ import {
   Truck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../components/Toast';
 import { isQZAvailable } from '../../utils/qzPrinter';
 
@@ -54,6 +55,7 @@ interface User {
 
 const Settings = () => {
   const { user: currentUser } = useAuth();
+  const { refreshSettings } = useSettings();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState('store');
 
@@ -261,6 +263,7 @@ const Settings = () => {
     setSaving(true);
     try {
       await api.put('/settings', settings);
+      refreshSettings();
       toast.success('Settings saved successfully');
     } catch (err) {
       toast.error('Failed to save settings');
