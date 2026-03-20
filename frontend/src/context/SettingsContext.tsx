@@ -17,6 +17,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
 
   const fetchSettings = useCallback(async () => {
+    if (!localStorage.getItem('token')) return; // Don't call if not authenticated — prevents 401 redirect loop
     try {
       const res = await api.get('/settings');
       const symbol = res.data?.currency_symbol || 'Rs.';

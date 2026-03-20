@@ -23,6 +23,7 @@ const AIWidget = () => {
 const AIWidgetInner = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(true);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -46,6 +47,12 @@ const AIWidgetInner = () => {
   useEffect(() => {
     if (isOpen && !isMinimized) inputRef.current?.focus();
   }, [isOpen, isMinimized]);
+
+  // Auto-hide tooltip after 5 seconds
+  useEffect(() => {
+    const t = setTimeout(() => setShowTooltip(false), 5000);
+    return () => clearTimeout(t);
+  }, []);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -291,21 +298,20 @@ const AIWidgetInner = () => {
         className={`relative p-4 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
           isOpen
             ? 'bg-gradient-to-r from-red-500 to-red-600 text-white rotate-90'
-            : 'bg-gradient-to-r from-emerald-600 to-emerald-600 text-white animate-bounce'
+            : 'bg-gradient-to-r from-emerald-600 to-emerald-600 text-white'
         }`}
         title={isOpen ? 'Close Chat' : 'Open AI Assistant'}
       >
         {isOpen ? <X size={28} /> : (
           <>
             <MessageCircle size={28} />
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse" />
-            <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-20 animate-ping" />
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
           </>
         )}
       </button>
 
-      {/* Hint tooltip */}
-      {!isOpen && (
+      {/* Hint tooltip — auto-hides after 5s */}
+      {!isOpen && showTooltip && (
         <div className="absolute bottom-20 right-0 bg-white text-gray-800 px-4 py-2 rounded-lg shadow-xl border-2 border-emerald-200 text-sm font-medium whitespace-nowrap">
           <div className="flex items-center gap-2">
             <Sparkles size={16} className="text-emerald-600" />

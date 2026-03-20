@@ -61,7 +61,6 @@ const Inventory = ({ productType }: InventoryProps = {}) => {
 
   const fetchInventory = useCallback(async () => {
     setLoading(true);
-  const { currencySymbol: currency } = useSettings();
     try {
       const params: Record<string, string | number> = { page: currentPage, limit: itemsPerPage };
       if (searchTerm) params.search = searchTerm;
