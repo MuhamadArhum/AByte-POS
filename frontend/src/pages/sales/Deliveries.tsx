@@ -849,7 +849,7 @@ const Deliveries = () => {
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-emerald-800 text-base">
                           {cs} {deliveries.reduce((s, d) =>
-                            s + parseFloat(String(d.sale_total_amount || 0)) + parseFloat(String(d.delivery_charges || 0)), 0
+                            s + parseFloat(String(d.sale_total_amount || 0)), 0
                           ).toFixed(2)}
                         </td>
                         <td colSpan={3}></td>
@@ -863,7 +863,7 @@ const Deliveries = () => {
                         const subTotal   = parseFloat(String(d.sale_sub_total || 0));
                         const taxAmt     = parseFloat(String(d.sale_tax_amount || 0));
                         const serviceAmt = parseFloat(String(d.sale_service_amount || 0));
-                        const grandTotal = saleTotal + delCharges;
+                        const grandTotal = saleTotal; // sale_total_amount already includes delivery_charges
                         const dateVal    = d.actual_delivery || d.created_at;
                         return (
                           <tr key={d.delivery_id} className="hover:bg-gradient-to-r hover:from-emerald-50/30 hover:to-emerald-50/30 transition-all duration-150">

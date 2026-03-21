@@ -517,10 +517,12 @@ exports.getAll = async (req, res) => {
   try {
     const { page, limit, search, status, date_from, date_to, order_type } = req.query;
     let sql = `
-      SELECT s.*, c.customer_name, u.name as cashier_name
+      SELECT s.*, c.customer_name, u.name as cashier_name,
+             COALESCE(d.delivery_charges, 0) AS delivery_charges
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
+      LEFT JOIN deliveries d ON d.sale_id = s.sale_id
       WHERE 1=1
     `;
     const params = [];

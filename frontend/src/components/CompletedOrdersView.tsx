@@ -371,6 +371,7 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                       <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Sub Total</th>
                       <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Tax</th>
                       <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Service</th>
+                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Delivery</th>
                       <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">
                         <div className="flex items-center justify-end gap-2"><DollarSign size={16} /> Grand Total</div>
                       </th>
@@ -397,6 +398,9 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-purple-700 text-sm">
                           {cs} {sales.reduce((s, r) => s + parseFloat(r.additional_charges_amount || 0), 0).toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-blue-700 text-sm">
+                          {cs} {sales.reduce((s, r) => s + parseFloat(r.delivery_charges || 0), 0).toFixed(2)}
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-emerald-800 text-base">
                           {cs} {summary.total_amount.toFixed(2)}
@@ -448,6 +452,11 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                           <td className="px-4 py-4 text-right text-purple-600">
                             {parseFloat(sale.additional_charges_amount || 0) > 0
                               ? `${cs} ${parseFloat(sale.additional_charges_amount).toFixed(2)}`
+                              : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="px-4 py-4 text-right text-blue-600">
+                            {parseFloat(sale.delivery_charges || 0) > 0
+                              ? `${cs} ${parseFloat(sale.delivery_charges).toFixed(2)}`
                               : <span className="text-gray-300">—</span>}
                           </td>
                           <td className="px-4 py-4 text-right font-bold text-lg text-emerald-600">
