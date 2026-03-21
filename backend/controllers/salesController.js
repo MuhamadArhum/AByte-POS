@@ -262,9 +262,11 @@ exports.getPending = async (req, res) => {
   try {
     const { page, limit } = req.query;
 
-    // Always compute summary for all pending orders
+    // Always compute summary — exclude delivery orders
     const summaryResult = await query(
-      "SELECT COUNT(*) as order_count, COALESCE(SUM(total_amount), 0) as total_amount FROM sales WHERE status = 'pending'"
+      `SELECT COUNT(*) as order_count, COALESCE(SUM(total_amount), 0) as total_amount
+       FROM sales WHERE status = 'pending'
+       AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = sales.sale_id)`
     );
     const summary = {
       order_count: Number(summaryResult[0].order_count),
@@ -277,6 +279,7 @@ exports.getPending = async (req, res) => {
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
       WHERE s.status = 'pending'
+      AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)
     `;
     const params = [];
 

@@ -95,7 +95,8 @@
       "Bash(cut -d'\\(' -f1)",
       "Bash(head -5 grep -n \"currencySymbol: currency\\\\|useSettings\" \"F:/AByte-POS/frontend/src/pages/inventory/Inventory.tsx\")",
       "Bash(python3 -c \":*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(node -e \":*)"
     ]
   }
 }
