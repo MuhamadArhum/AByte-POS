@@ -16,9 +16,13 @@ interface CheckoutModalProps {
 }
 
 const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSuccess, pendingSale, selectedCustomer, appliedBundles = [] }) => {
-  const { cart, total, clearCart, taxRate, additionalRate } = useCart();
+  const { cart, subtotal, clearCart, additionalRate, additionalAmount, bundleDiscount } = useCart();
   const { user } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'online' | 'split' | 'credit'>('cash');
+
+  // GST derived directly from paymentMethod — no state, no effect, always in sync
+  const gstRate   = (paymentMethod === 'card' || paymentMethod === 'online') ? 5 : 16;
+  const gstAmount = subtotal * gstRate / 100;
   const [amountPaid, setAmountPaid] = useState('');
   const [splitCash, setSplitCash] = useState('');
   const [splitCard, setSplitCard] = useState('');
@@ -76,6 +80,12 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       }
     }
   }, [isOpen]);
+
+  // Reset amountPaid when payment method changes so the updated total is shown
+  useEffect(() => {
+    setAmountPaid('');
+  }, [paymentMethod]);
+
 
   const fetchPendingSaleDetails = async (saleId: number) => {
     setPendingItemsLoading(true);
@@ -154,13 +164,16 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   const pendingTaxAmount = pendingSubtotal * pendingTaxRate / 100;
   const pendingAdditionalAmount = pendingSubtotal * pendingAdditionalRate / 100;
 
+  // Cart total using local gstAmount (derived from paymentMethod, always in sync)
+  const cartTotal = subtotal + gstAmount + additionalAmount - bundleDiscount;
+
   const baseTotal = pendingSale
     ? (pendingSale.isCartEdit
-        ? total  // Cart-edit mode: use current cart total
+        ? cartTotal  // Cart-edit mode: use GST-adjusted cart total
         : pendingItems.length > 0
           ? pendingSubtotal + pendingTaxAmount + pendingAdditionalAmount
           : parseFloat(pendingSale.total_amount || 0))
-    : total;
+    : cartTotal;
 
   const discountValue = parseFloat(discount) || 0;
   const couponDiscount = appliedCoupon ? parseFloat(appliedCoupon.discount_amount) : 0;
@@ -174,9 +187,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   }
 
   const finalTotal = Math.max(0, baseTotal - discountValue - couponDiscount - loyaltyDiscount);
+  const effectiveAmountPaid = amountPaid !== '' ? parseFloat(amountPaid) : finalTotal;
   const changeDue = paymentMethod === 'split' || paymentMethod === 'credit'
     ? 0
-    : Math.max(0, (parseFloat(amountPaid) || 0) - finalTotal);
+    : Math.max(0, effectiveAmountPaid - finalTotal);
 
   const handleCheckout = async () => {
     // Validate credit sale
@@ -250,7 +264,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
           amount_paid: finalAmountPaid,
           user_id: user?.user_id,
           status: paymentMethod === 'credit' ? 'completed' : 'completed',
-          tax_percent: taxRate,
+          tax_percent: gstRate,
           additional_charges_percent: additionalRate,
           note: noteStr,
           applied_bundles: appliedBundles || []
@@ -484,12 +498,32 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                 <span>Rs. {pendingAdditionalAmount.toFixed(2)}</span>
               </div>
             )}
+            {/* Non-pending: show proper breakdown (items → GST → discounts → total) */}
             {!pendingSale && (
               <div className="flex justify-between items-center text-gray-600">
-                <span>Subtotal</span>
-                <span>Rs. {baseTotal.toFixed(2)}</span>
+                <span>Items</span>
+                <span>Rs. {subtotal.toFixed(2)}</span>
               </div>
             )}
+            {!pendingSale && (
+              <div className={`flex justify-between items-center text-sm font-semibold ${paymentMethod === 'card' || paymentMethod === 'online' ? 'text-blue-600' : 'text-orange-600'}`}>
+                <span className="flex items-center gap-1">
+                  <Percent size={12} />
+                  GST ({gstRate}%)
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${paymentMethod === 'card' || paymentMethod === 'online' ? 'bg-blue-100' : 'bg-orange-100'}`}>
+                    {paymentMethod === 'card' ? 'Card' : paymentMethod === 'online' ? 'Online' : paymentMethod === 'split' ? 'Split' : paymentMethod === 'credit' ? 'Credit' : 'Cash'}
+                  </span>
+                </span>
+                <span>+ Rs. {gstAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {!pendingSale && additionalAmount > 0 && (
+              <div className="flex justify-between items-center text-gray-500 text-sm">
+                <span>Additional ({additionalRate}%)</span>
+                <span>+ Rs. {additionalAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {/* Pending sale with no items loaded yet */}
             {pendingSale && pendingItems.length === 0 && (
               <div className="flex justify-between items-center text-gray-600">
                 <span>Subtotal</span>
@@ -522,7 +556,12 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
               </div>
             )}
             <div className="flex justify-between items-center text-lg pt-2 border-t border-gray-200">
-              <span className="font-bold text-gray-800">Net Payable</span>
+              <div>
+                <span className="font-bold text-gray-800">Net Payable</span>
+                <div className={`text-xs font-semibold mt-0.5 ${paymentMethod === 'card' || paymentMethod === 'online' ? 'text-blue-600' : 'text-orange-600'}`}>
+                  incl. GST {gstRate}%
+                </div>
+              </div>
               <span className="font-bold text-2xl text-emerald-600">Rs. {finalTotal.toFixed(2)}</span>
             </div>
           </div>
@@ -608,7 +647,12 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
 
           {/* Payment Method */}
           <div className="space-y-3">
-            <label className="text-sm font-medium text-gray-700">Payment Method</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700">Payment Method</label>
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${paymentMethod === 'card' || paymentMethod === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                GST: {gstRate}% — Rs. {gstAmount.toFixed(2)}
+              </span>
+            </div>
             <div className="grid grid-cols-4 gap-2">
               <button
                 onClick={() => setPaymentMethod('cash')}
@@ -620,6 +664,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
               >
                 <Banknote size={20} />
                 <span className="text-xs font-medium">Cash</span>
+                <span className="text-[10px] font-bold text-orange-500">GST 16%</span>
               </button>
               <button
                 onClick={() => setPaymentMethod('card')}
@@ -631,6 +676,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
               >
                 <CreditCard size={20} />
                 <span className="text-xs font-medium">Card</span>
+                <span className="text-[10px] font-bold text-blue-500">GST 5%</span>
               </button>
               <button
                 onClick={() => setPaymentMethod('online')}
@@ -642,6 +688,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
               >
                 <Smartphone size={20} />
                 <span className="text-xs font-medium">Online</span>
+                <span className="text-[10px] font-bold text-blue-500">GST 5%</span>
               </button>
               <button
                 onClick={() => setPaymentMethod('credit')}
@@ -731,10 +778,11 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-sm">Rs.</span>
                  <input
                    type="number"
-                   value={amountPaid}
+                   value={amountPaid !== '' ? amountPaid : finalTotal > 0 ? finalTotal.toFixed(2) : ''}
                    onChange={(e) => setAmountPaid(e.target.value)}
+                   onFocus={(e) => { if (amountPaid === '') e.target.select(); }}
                    className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all font-bold text-lg"
-                   placeholder={finalTotal.toFixed(2)}
+                   placeholder="0.00"
                  />
                </div>
                <div className="flex justify-between items-center text-sm">

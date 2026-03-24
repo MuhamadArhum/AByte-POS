@@ -44,7 +44,15 @@ exports.getCurrentRegister = async (req, res) => {
     );
     const shift_expenses = parseFloat(expensesResult[0].total);
 
-    res.json({ ...register[0], movements, shift_expenses });
+    const shift_sales = await query(
+      `SELECT s.sale_id, s.invoice_no, s.sale_date, s.total_amount, s.payment_method, s.discount
+       FROM sales s
+       WHERE s.sale_date >= ? AND s.status = 'completed'
+       ORDER BY s.sale_date DESC`,
+      [register[0].opened_at]
+    );
+
+    res.json({ ...register[0], movements, shift_expenses, shift_sales });
   } catch (error) {
     console.error('Get current register error:', error);
     res.status(500).json({ message: 'Failed to fetch register' });

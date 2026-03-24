@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext';
-import { X, Lock, Loader2, AlertTriangle, CheckCircle, DollarSign, TrendingUp, TrendingDown, Clock, Calendar, User, FileText, Calculator } from 'lucide-react';
+import { X, Lock, Loader2, AlertTriangle, CheckCircle, DollarSign, TrendingUp, TrendingDown, Clock, Calendar, User, FileText, Calculator, Receipt } from 'lucide-react';
 import api from '../utils/api';
 
 interface RegisterCloseModalProps {
@@ -25,6 +25,19 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
   const [closeNote, setCloseNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [shiftSales, setShiftSales] = useState<any[]>([]);
+  const [shiftLoading, setShiftLoading] = useState(false);
+  const [showSalesList, setShowSalesList] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShiftLoading(true);
+      api.get('/register/current')
+        .then(res => { setShiftSales(res.data?.shift_sales || []); })
+        .catch(() => {})
+        .finally(() => setShiftLoading(false));
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -190,6 +203,80 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Shift Sales */}
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5">
+            <button
+              onClick={() => setShowSalesList(v => !v)}
+              className="w-full flex justify-between items-center"
+            >
+              <h3 className="font-semibold text-blue-800 flex items-center gap-2 text-base">
+                <Receipt size={20} className="text-blue-600" />
+                Shift Sales
+                <span className="bg-blue-200 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full">
+                  {shiftLoading ? '...' : shiftSales.length} transactions
+                </span>
+              </h3>
+              <span className="text-blue-500 text-sm">{showSalesList ? '▲ Hide' : '▼ Show'}</span>
+            </button>
+
+            {/* Payment method summary */}
+            <div className="grid grid-cols-3 gap-2 mt-4">
+              <div className="bg-white rounded-xl p-3 text-center border border-emerald-200">
+                <p className="text-xs text-gray-500 mb-1">Cash Sales</p>
+                <p className="font-bold text-emerald-700 text-base">{currency}{parseFloat(register.cash_sales_total || 0).toFixed(2)}</p>
+              </div>
+              <div className="bg-white rounded-xl p-3 text-center border border-blue-200">
+                <p className="text-xs text-gray-500 mb-1">Card / Online</p>
+                <p className="font-bold text-blue-700 text-base">{currency}{parseFloat(register.card_sales_total || 0).toFixed(2)}</p>
+              </div>
+              <div className="bg-white rounded-xl p-3 text-center border border-gray-300">
+                <p className="text-xs text-gray-500 mb-1">Total Revenue</p>
+                <p className="font-bold text-gray-800 text-base">
+                  {currency}{(parseFloat(register.cash_sales_total || 0) + parseFloat(register.card_sales_total || 0)).toFixed(2)}
+                </p>
+              </div>
+            </div>
+
+            {/* Collapsible sales list */}
+            {showSalesList && (
+              <div className="mt-4">
+                {shiftLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="animate-spin text-blue-500" size={22} />
+                    <span className="ml-2 text-blue-600 text-sm">Loading sales...</span>
+                  </div>
+                ) : shiftSales.length === 0 ? (
+                  <p className="text-center text-blue-500 text-sm py-4">No completed sales in this shift</p>
+                ) : (
+                  <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+                    {shiftSales.map((sale: any) => (
+                      <div key={sale.sale_id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-blue-100">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs font-bold text-gray-700 shrink-0">
+                            {sale.invoice_no || `#${sale.sale_id}`}
+                          </span>
+                          <span className="text-xs text-gray-400 shrink-0">
+                            {new Date(sale.sale_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full capitalize ${
+                            sale.payment_method === 'cash'   ? 'bg-emerald-100 text-emerald-700' :
+                            sale.payment_method === 'credit' ? 'bg-orange-100 text-orange-700'  :
+                                                               'bg-blue-100 text-blue-700'
+                          }`}>{sale.payment_method}</span>
+                          <span className="text-sm font-bold text-gray-800">
+                            {currency}{parseFloat(sale.total_amount).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Actual Cash Count */}

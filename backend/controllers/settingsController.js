@@ -151,8 +151,11 @@ exports.changePassword = async (req, res) => {
 exports.printReceipt = async (req, res) => {
   try {
     // First try printers table (new multi-printer system)
-    const printers = await query("SELECT * FROM printers WHERE purpose = 'receipt' AND is_active = 1 ORDER BY printer_id LIMIT 1");
-    let printer = printers[0];
+    let printer = null;
+    try {
+      const printers = await query("SELECT * FROM printers WHERE purpose = 'receipt' AND is_active = 1 ORDER BY printer_id LIMIT 1");
+      printer = printers[0] || null;
+    } catch (_) { /* table may not exist yet */ }
 
     // Fallback to legacy store_settings
     if (!printer) {

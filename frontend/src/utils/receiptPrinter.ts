@@ -771,9 +771,10 @@ export function isThermalPrinterAvailable(settings: any): boolean {
 
 // Send receipt to thermal printer.
 // Strategy:
-//   - localhost  → backend API (direct TCP from local server to printer)
-//   - deployed   → QZ Tray (local agent on cashier PC) → network printer
-//   - fallback   → browser window.print() dialog
+//   1. Local Printer Agent (localhost:3001) — runs on cashier PC, works everywhere
+//   2. Backend API (localhost backend) — direct TCP from server to printer
+//   3. QZ Tray — local agent for cloud deployments
+//   4. Fallback — browser window.print() dialog
 export async function printToThermalPrinter(
   sale: ReceiptSale,
   settings: ReceiptSettings | null,
@@ -819,7 +820,24 @@ export async function printToThermalPrinter(
     footer:       settings?.receipt_footer || 'Thank you for shopping!',
   };
 
-  // ── 1. Localhost: use backend API (server on same LAN as printer) ──
+  // ── 1. Local Printer Agent (localhost:3001) — highest priority ──────
+  try {
+    const agentRes = await fetch('http://localhost:3001/health', { signal: AbortSignal.timeout(1000) });
+    if (agentRes.ok) {
+      const printRes = await fetch('http://localhost:3001/print', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purpose: 'receipt', receiptData }),
+      });
+      if (printRes.ok) return true;
+      const err = await printRes.json().catch(() => ({}));
+      console.warn('Printer agent print failed:', err.message);
+    }
+  } catch {
+    // Agent not running — try next method
+  }
+
+  // ── 2. Localhost: use backend API (server on same LAN as printer) ──
   if (isLocalhost) {
     try {
       await api.post('/settings/print-receipt', { receiptData });
@@ -831,7 +849,7 @@ export async function printToThermalPrinter(
     }
   }
 
-  // ── 2. Deployed: try QZ Tray (local agent on cashier PC) ────────────
+  // ── 3. Deployed: try QZ Tray (local agent on cashier PC) ────────────
   try {
     const { isQZAvailable, printViaQZ } = await import('./qzPrinter');
     const qzReady = await isQZAvailable();
@@ -855,7 +873,7 @@ export async function printToThermalPrinter(
     console.warn('QZ Tray print failed:', err);
   }
 
-  // ── 3. Final fallback: browser print dialog ──────────────────────────
+  // ── 4. Final fallback: browser print dialog ──────────────────────────
   printReceipt(sale, settings, cashierName, customerName);
   return false;
 }

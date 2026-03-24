@@ -270,9 +270,11 @@ const RunningCard = ({ delivery: d, onStatusChange, onEdit, onDelete, onRefresh,
           )}
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => onEdit(d)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit delivery details">
-            <Edit2 size={13} />
-          </button>
+          {d.sale_status !== 'completed' && (
+            <button onClick={() => onEdit(d)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit delivery details">
+              <Edit2 size={13} />
+            </button>
+          )}
           {['pending', 'cancelled'].includes(d.status) && (
             <button onClick={() => onDelete(d)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete">
               <Trash2 size={13} />
@@ -284,12 +286,14 @@ const RunningCard = ({ delivery: d, onStatusChange, onEdit, onDelete, onRefresh,
       {/* Sale Actions */}
       {d.sale_id && (
         <div className="px-3 pb-2 flex gap-2 border-t border-gray-50 pt-2">
-          <button
-            onClick={() => onEditOrder(d)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-800 rounded-lg transition-all"
-          >
-            <ShoppingCart size={12} /> Edit Order
-          </button>
+          {d.sale_status !== 'completed' && (
+            <button
+              onClick={() => onEditOrder(d)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-800 rounded-lg transition-all"
+            >
+              <ShoppingCart size={12} /> Edit Order
+            </button>
+          )}
           {d.sale_status === 'pending' && (
             <button
               onClick={() => onCheckout(d)}
@@ -943,13 +947,6 @@ const Deliveries = () => {
                                     </button>
                                   </>
                                 )}
-                                <button
-                                  onClick={() => openEdit(d)}
-                                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                  title="Edit"
-                                >
-                                  <Edit2 size={17} />
-                                </button>
                               </div>
                             </td>
                           </tr>
