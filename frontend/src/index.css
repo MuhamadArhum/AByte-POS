@@ -309,3 +309,48 @@ button {
   font-family: inherit !important;
   letter-spacing: -0.002em;
 }
+
+/* ── Shimmer animation for skeleton loaders ── */
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* ── Smooth page transitions ── */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 220ms ease-out, transform 220ms ease-out;
+}
+
+/* ── Button press effect ── */
+button:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform 80ms ease;
+}
+
+/* ── Better table row hover ── */
+tbody tr {
+  transition: background-color 120ms ease;
+}
+
+/* ── Smooth input focus transition ── */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select,
+textarea {
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+/* ── Modal backdrop blur ── */
+.modal-backdrop {
+  backdrop-filter: blur(2px);
+}

@@ -102,8 +102,8 @@ const CPVModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; onClose: ()
 
   useEffect(() => {
     if (isOpen) {
-      api.get('/accounting/accounts', { params: { limit: 500 } })
-        .then(r => setAccounts(r.data.data || []))
+      api.get('/accounting/accounts', { params: { tree: 1 } })
+        .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active && a.level === 4)))
         .catch(() => {});
       setSavedLines([]);
       setEntry({ account_id: '', narration: '', amount: '' });

@@ -128,7 +128,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
   useEffect(() => {
     if (isOpen) {
       api.get('/accounting/accounts', { params: { tree: 1 } })
-        .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active && a.level >= 2)))
+        .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active && a.level === 4)))
         .catch(() => {});
     }
   }, [isOpen]);

@@ -1183,10 +1183,448 @@ exports.reviewLeaveRequest = async (req, res) => {
       [status, review_notes || null, req.user.user_id, id]
     );
 
+    // Deduct leave balance when approved
+    if (status === 'approved' && request.leave_type !== 'unpaid') {
+      await query('UPDATE staff SET leave_balance = GREATEST(leave_balance - ?, 0) WHERE staff_id = ?', [request.days, request.staff_id]);
+    }
+
     await logAction(req.user.user_id, req.user.name, `LEAVE_${status.toUpperCase()}`, 'leave_requests', id, { staff_id: request.staff_id, days: request.days }, req.ip);
     res.json({ message: `Leave request ${status}` });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== DEPARTMENTS ==============
+
+exports.getDepartments = async (req, res) => {
+  try {
+    const { is_active } = req.query;
+    let sql = 'SELECT * FROM departments WHERE 1=1';
+    const params = [];
+    if (is_active !== undefined) { sql += ' AND is_active = ?'; params.push(is_active); }
+    sql += ' ORDER BY name ASC';
+    const depts = await query(sql, params);
+    res.json({ data: depts });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.createDepartment = async (req, res) => {
+  try {
+    const { name, description, head_of_dept } = req.body;
+    if (!name) return res.status(400).json({ message: 'Department name required' });
+    const result = await query(
+      'INSERT INTO departments (name, description, head_of_dept) VALUES (?, ?, ?)',
+      [name, description || null, head_of_dept || null]
+    );
+    await logAction(req.user.user_id, req.user.name, 'DEPT_CREATED', 'departments', result.insertId, { name }, req.ip);
+    res.status(201).json({ message: 'Department created', department_id: result.insertId });
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Department name already exists' });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.updateDepartment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, head_of_dept, is_active } = req.body;
+    if (!name) return res.status(400).json({ message: 'Department name required' });
+    await query(
+      'UPDATE departments SET name=?, description=?, head_of_dept=?, is_active=? WHERE department_id=?',
+      [name, description || null, head_of_dept || null, is_active ?? 1, id]
+    );
+    await logAction(req.user.user_id, req.user.name, 'DEPT_UPDATED', 'departments', id, { name }, req.ip);
+    res.json({ message: 'Department updated' });
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Department name already exists' });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.deleteDepartment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [dept] = await query('SELECT name FROM departments WHERE department_id = ?', [id]);
+    if (!dept) return res.status(404).json({ message: 'Department not found' });
+    const [{ count }] = await query('SELECT COUNT(*) as count FROM staff WHERE department = ? AND is_active = 1', [dept.name]);
+    if (Number(count) > 0) return res.status(400).json({ message: `Cannot delete — ${count} active staff in this department` });
+    await query('DELETE FROM departments WHERE department_id = ?', [id]);
+    await logAction(req.user.user_id, req.user.name, 'DEPT_DELETED', 'departments', id, { name: dept.name }, req.ip);
+    res.json({ message: 'Department deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== SALARY COMPONENTS ==============
+
+exports.getSalaryComponents = async (req, res) => {
+  try {
+    const components = await query('SELECT * FROM salary_components ORDER BY type, name');
+    res.json({ data: components });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.createSalaryComponent = async (req, res) => {
+  try {
+    const { name, type, calculation, default_value, is_taxable } = req.body;
+    if (!name || !type) return res.status(400).json({ message: 'Name and type required' });
+    const result = await query(
+      'INSERT INTO salary_components (name, type, calculation, default_value, is_taxable) VALUES (?,?,?,?,?)',
+      [name, type, calculation || 'fixed', default_value || 0, is_taxable ? 1 : 0]
+    );
+    await logAction(req.user.user_id, req.user.name, 'SALARY_COMPONENT_CREATED', 'salary_components', result.insertId, { name, type }, req.ip);
+    res.status(201).json({ message: 'Component created', component_id: result.insertId });
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Component name already exists' });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.updateSalaryComponent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, type, calculation, default_value, is_taxable, is_active } = req.body;
+    if (!name || !type) return res.status(400).json({ message: 'Name and type required' });
+    await query(
+      'UPDATE salary_components SET name=?, type=?, calculation=?, default_value=?, is_taxable=?, is_active=? WHERE component_id=?',
+      [name, type, calculation || 'fixed', default_value || 0, is_taxable ? 1 : 0, is_active ?? 1, id]
+    );
+    res.json({ message: 'Component updated' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.deleteSalaryComponent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM salary_components WHERE component_id = ?', [id]);
+    res.json({ message: 'Component deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getStaffComponents = async (req, res) => {
+  try {
+    const { staffId } = req.params;
+    const rows = await query(`
+      SELECT sc.*, COALESCE(ssc.custom_value, sc.default_value) as effective_value, ssc.is_active as staff_active
+      FROM salary_components sc
+      LEFT JOIN staff_salary_components ssc ON sc.component_id = ssc.component_id AND ssc.staff_id = ?
+      WHERE sc.is_active = 1
+      ORDER BY sc.type, sc.name
+    `, [staffId]);
+    res.json({ data: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.saveStaffComponents = async (req, res) => {
+  try {
+    const { staffId } = req.params;
+    const { components } = req.body;
+    if (!Array.isArray(components)) return res.status(400).json({ message: 'components array required' });
+
+    for (const c of components) {
+      await query(`
+        INSERT INTO staff_salary_components (staff_id, component_id, custom_value, is_active)
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE custom_value=?, is_active=?
+      `, [staffId, c.component_id, c.custom_value ?? null, c.is_active ? 1 : 0, c.custom_value ?? null, c.is_active ? 1 : 0]);
+    }
+    res.json({ message: 'Staff components saved' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== SHIFTS ==============
+
+exports.getShifts = async (req, res) => {
+  try {
+    const shifts = await query('SELECT * FROM shifts ORDER BY name');
+    res.json({ data: shifts });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.createShift = async (req, res) => {
+  try {
+    const { name, start_time, end_time, grace_minutes, is_overnight } = req.body;
+    if (!name || !start_time || !end_time) return res.status(400).json({ message: 'Name, start and end time required' });
+    const result = await query(
+      'INSERT INTO shifts (name, start_time, end_time, grace_minutes, is_overnight) VALUES (?,?,?,?,?)',
+      [name, start_time, end_time, grace_minutes || 15, is_overnight ? 1 : 0]
+    );
+    await logAction(req.user.user_id, req.user.name, 'SHIFT_CREATED', 'shifts', result.insertId, { name }, req.ip);
+    res.status(201).json({ message: 'Shift created', shift_id: result.insertId });
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Shift name already exists' });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.updateShift = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, start_time, end_time, grace_minutes, is_overnight, is_active } = req.body;
+    if (!name || !start_time || !end_time) return res.status(400).json({ message: 'Name, start and end time required' });
+    await query(
+      'UPDATE shifts SET name=?, start_time=?, end_time=?, grace_minutes=?, is_overnight=?, is_active=? WHERE shift_id=?',
+      [name, start_time, end_time, grace_minutes || 15, is_overnight ? 1 : 0, is_active ?? 1, id]
+    );
+    res.json({ message: 'Shift updated' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.deleteShift = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [{ count }] = await query('SELECT COUNT(*) as count FROM staff WHERE shift_id = ? AND is_active = 1', [id]);
+    if (Number(count) > 0) return res.status(400).json({ message: `Cannot delete — ${count} staff assigned to this shift` });
+    await query('DELETE FROM shifts WHERE shift_id = ?', [id]);
+    res.json({ message: 'Shift deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== PERFORMANCE APPRAISALS ==============
+
+exports.getAppraisals = async (req, res) => {
+  try {
+    const { staff_id } = req.query;
+    const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
+
+    let sql = `SELECT a.*, s.full_name, s.employee_id, s.department, u.name as appraised_by_name
+               FROM performance_appraisals a
+               JOIN staff s ON a.staff_id = s.staff_id
+               LEFT JOIN users u ON a.appraised_by = u.user_id WHERE 1=1`;
+    let countSql = 'SELECT COUNT(*) as total FROM performance_appraisals WHERE 1=1';
+    const params = [], countParams = [];
+
+    if (staff_id) { sql += ' AND a.staff_id = ?'; countSql += ' AND staff_id = ?'; params.push(staff_id); countParams.push(staff_id); }
+    sql += ' ORDER BY a.appraisal_date DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const [appraisals, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
+    res.json({ data: appraisals, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.createAppraisal = async (req, res) => {
+  try {
+    const { staff_id, appraisal_date, period_from, period_to, rating, goals_achieved, strengths, improvements, overall_comments } = req.body;
+    if (!staff_id || !appraisal_date || !rating) return res.status(400).json({ message: 'Staff, date and rating required' });
+
+    const [staff] = await query('SELECT full_name FROM staff WHERE staff_id = ?', [staff_id]);
+    if (!staff) return res.status(404).json({ message: 'Staff not found' });
+
+    const result = await query(
+      'INSERT INTO performance_appraisals (staff_id, appraisal_date, period_from, period_to, rating, goals_achieved, strengths, improvements, overall_comments, appraised_by) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      [staff_id, appraisal_date, period_from || null, period_to || null, rating, goals_achieved || null, strengths || null, improvements || null, overall_comments || null, req.user.user_id]
+    );
+    await logAction(req.user.user_id, req.user.name, 'APPRAISAL_CREATED', 'performance_appraisals', result.insertId, { staff_id, rating, staff_name: staff.full_name }, req.ip);
+    res.status(201).json({ message: 'Appraisal created', appraisal_id: result.insertId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.updateAppraisal = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { appraisal_date, period_from, period_to, rating, goals_achieved, strengths, improvements, overall_comments } = req.body;
+    if (!appraisal_date || !rating) return res.status(400).json({ message: 'Date and rating required' });
+    await query(
+      'UPDATE performance_appraisals SET appraisal_date=?, period_from=?, period_to=?, rating=?, goals_achieved=?, strengths=?, improvements=?, overall_comments=? WHERE appraisal_id=?',
+      [appraisal_date, period_from || null, period_to || null, rating, goals_achieved || null, strengths || null, improvements || null, overall_comments || null, id]
+    );
+    res.json({ message: 'Appraisal updated' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.deleteAppraisal = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM performance_appraisals WHERE appraisal_id = ?', [id]);
+    res.json({ message: 'Appraisal deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== EXIT MANAGEMENT ==============
+
+exports.getExitRequests = async (req, res) => {
+  try {
+    const { status } = req.query;
+    const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
+
+    let sql = `SELECT e.*, s.full_name, s.employee_id, s.department, s.position,
+               u.name as reviewed_by_name
+               FROM exit_requests e
+               JOIN staff s ON e.staff_id = s.staff_id
+               LEFT JOIN users u ON e.reviewed_by = u.user_id WHERE 1=1`;
+    let countSql = 'SELECT COUNT(*) as total FROM exit_requests WHERE 1=1';
+    const params = [], countParams = [];
+
+    if (status) { sql += ' AND e.status = ?'; countSql += ' AND status = ?'; params.push(status); countParams.push(status); }
+    sql += ' ORDER BY e.created_at DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const [exits, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
+    res.json({ data: exits, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.createExitRequest = async (req, res) => {
+  try {
+    const { staff_id, exit_type, notice_date, last_working_date, reason, final_settlement, settlement_notes } = req.body;
+    if (!staff_id || !exit_type || !notice_date) return res.status(400).json({ message: 'Staff, type and notice date required' });
+
+    const [staff] = await query('SELECT full_name FROM staff WHERE staff_id = ? AND is_active = 1', [staff_id]);
+    if (!staff) return res.status(404).json({ message: 'Active staff not found' });
+
+    // Check no pending exit exists
+    const [existing] = await query('SELECT exit_id FROM exit_requests WHERE staff_id = ? AND status IN ("pending","approved")', [staff_id]);
+    if (existing) return res.status(400).json({ message: 'Staff already has a pending/approved exit request' });
+
+    const result = await query(
+      'INSERT INTO exit_requests (staff_id, exit_type, notice_date, last_working_date, reason, final_settlement, settlement_notes) VALUES (?,?,?,?,?,?,?)',
+      [staff_id, exit_type, notice_date, last_working_date || null, reason || null, final_settlement || 0, settlement_notes || null]
+    );
+    await logAction(req.user.user_id, req.user.name, 'EXIT_REQUESTED', 'exit_requests', result.insertId, { staff_id, exit_type, staff_name: staff.full_name }, req.ip);
+    res.status(201).json({ message: 'Exit request created', exit_id: result.insertId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.reviewExitRequest = async (req, res) => {
+  const conn = await getConnection();
+  try {
+    const { id } = req.params;
+    const { status, review_notes, final_settlement } = req.body;
+    if (!status || !['approved', 'rejected', 'completed'].includes(status)) return res.status(400).json({ message: 'Invalid status' });
+
+    const [exit] = await query('SELECT * FROM exit_requests WHERE exit_id = ?', [id]);
+    if (!exit) return res.status(404).json({ message: 'Exit request not found' });
+
+    await conn.beginTransaction();
+
+    await conn.query(
+      'UPDATE exit_requests SET status=?, review_notes=?, reviewed_by=?, final_settlement=COALESCE(?,final_settlement) WHERE exit_id=?',
+      [status, review_notes || null, req.user.user_id, final_settlement ?? null, id]
+    );
+
+    // If completed → deactivate staff
+    if (status === 'completed') {
+      await conn.query('UPDATE staff SET is_active = 0 WHERE staff_id = ?', [exit.staff_id]);
+    }
+
+    await conn.commit();
+    await logAction(req.user.user_id, req.user.name, `EXIT_${status.toUpperCase()}`, 'exit_requests', id, { staff_id: exit.staff_id }, req.ip);
+    res.json({ message: `Exit request ${status}` });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
+  }
+};
+
+// ============== LEAVE POLICIES ==============
+
+exports.getLeavePolicies = async (req, res) => {
+  try {
+    const policies = await query('SELECT * FROM leave_policies ORDER BY leave_type');
+    res.json({ data: policies });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.updateLeavePolicy = async (req, res) => {
+  try {
+    const { leave_type } = req.params;
+    const { annual_entitlement, carry_forward_allowed, max_carry_forward, accrual_type } = req.body;
+    await query(
+      'UPDATE leave_policies SET annual_entitlement=?, carry_forward_allowed=?, max_carry_forward=?, accrual_type=? WHERE leave_type=?',
+      [annual_entitlement || 0, carry_forward_allowed ? 1 : 0, max_carry_forward || 0, accrual_type || 'yearly', leave_type]
+    );
+    res.json({ message: 'Policy updated' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Apply leave carry-forward at year end
+exports.processLeaveCarryForward = async (req, res) => {
+  const conn = await getConnection();
+  try {
+    const policies = await query('SELECT * FROM leave_policies WHERE carry_forward_allowed = 1');
+    const staff = await query('SELECT staff_id, leave_balance FROM staff WHERE is_active = 1');
+
+    await conn.beginTransaction();
+    let processed = 0;
+    for (const s of staff) {
+      const annualPolicy = policies.find(p => p.leave_type === 'annual');
+      if (!annualPolicy) continue;
+      const carry = Math.min(Number(s.leave_balance), Number(annualPolicy.max_carry_forward));
+      const newBalance = Number(annualPolicy.annual_entitlement) + carry;
+      await conn.query('UPDATE staff SET leave_balance = ? WHERE staff_id = ?', [newBalance, s.staff_id]);
+      processed++;
+    }
+    await conn.commit();
+    await logAction(req.user.user_id, req.user.name, 'LEAVE_CARRY_FORWARD', 'staff', null, { staff_count: processed }, req.ip);
+    res.json({ message: `Leave carry-forward processed for ${processed} staff`, processed });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
   }
 };

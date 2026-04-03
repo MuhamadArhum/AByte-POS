@@ -6,6 +6,7 @@ import api from '../../utils/api';
 import { localToday } from '../../utils/dateUtils';
 import { useToast } from '../../components/Toast';
 import SalaryIncrementModal from '../../components/SalaryIncrementModal';
+import { SkeletonTable } from '../../components/Skeleton';
 
 const IncrementHistory = () => {
   const { currencySymbol: currency } = useSettings();
@@ -62,54 +63,63 @@ const IncrementHistory = () => {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <TrendingUp className="text-emerald-600" size={20} />
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Salary Increments</h1>
-            <p className="text-gray-600 text-sm mt-1">Track all salary changes and increments</p>
+      {/* Gradient Page Header */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-teal-50 via-white to-white border-b border-gray-100 px-8 py-6 -mx-8 -mt-8 mb-8">
+        <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%23000%22 fill-opacity=%221%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')]" />
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-200">
+              <TrendingUp size={22} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Increment History</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Track salary increments</p>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-3">
-          {increments.length > 0 && (
-            <button onClick={exportCSV} className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-3 rounded-xl hover:bg-gray-200 transition border border-gray-200">
-              <Download size={18} /> Export CSV
+          <div className="flex gap-3">
+            {increments.length > 0 && (
+              <button onClick={exportCSV}
+                className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 bg-white/80 border border-gray-200 px-4 py-2.5 rounded-xl hover:bg-gray-50 transition font-medium">
+                <Download size={15} /> Export CSV
+              </button>
+            )}
+            <button onClick={() => setShowIncrementModal(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-teal-600 text-white px-5 py-2.5 rounded-xl hover:from-teal-600 hover:to-teal-700 shadow-md shadow-teal-200 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium text-sm">
+              <TrendingUp size={16} /> New Increment
             </button>
-          )}
-          <button onClick={() => setShowIncrementModal(true)} className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg">
-            <TrendingUp size={20} /> New Increment
-          </button>
+          </div>
         </div>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-gray-600 text-sm">Total Increments</p>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200">
+          <p className="text-gray-500 text-sm font-medium">Total Increments</p>
           <p className="text-3xl font-bold text-gray-800 mt-2">{pagination.total}</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-gray-600 text-sm">Avg Increase</p>
-          <p className="text-3xl font-bold text-emerald-600 mt-2">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200">
+          <p className="text-gray-500 text-sm font-medium">Avg Increase</p>
+          <p className="text-3xl font-bold text-teal-600 mt-2">
             {increments.length > 0
               ? `${(increments.reduce((s, i) => s + Number(i.increment_percentage || 0), 0) / increments.length).toFixed(1)}%`
               : '0%'}
           </p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-gray-600 text-sm">Total Salary Added</p>
-          <p className="text-3xl font-bold text-emerald-600 mt-2">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200">
+          <p className="text-gray-500 text-sm font-medium">Total Salary Added</p>
+          <p className="text-3xl font-bold text-teal-600 mt-2">
             ${increments.reduce((s, i) => s + Math.max(0, Number(i.increment_amount || 0)), 0).toLocaleString()}
           </p>
         </div>
       </div>
 
-      {/* Filter */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+      {/* Filter bar */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-6">
         <div className="flex flex-wrap items-center gap-4">
-          <Filter size={20} className="text-gray-600" />
+          <Filter size={18} className="text-teal-500 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-600">Filter by Staff:</span>
           <select value={staffFilter} onChange={(e) => { setStaffFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 min-w-[220px]">
+            className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent transition text-sm min-w-[220px]">
             <option value="">All Staff</option>
             {staffList.map(s => <option key={s.staff_id} value={s.staff_id}>{s.employee_id ? `[${s.employee_id}] ` : ''}{s.full_name}</option>)}
           </select>
@@ -117,64 +127,71 @@ const IncrementHistory = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr className="border-b">
-              <th className="text-left p-4 font-semibold text-gray-700">Date</th>
-              <th className="text-left p-4 font-semibold text-gray-700">Employee</th>
-              <th className="text-left p-4 font-semibold text-gray-700">Department</th>
-              <th className="text-right p-4 font-semibold text-gray-700">Old Salary</th>
-              <th className="text-right p-4 font-semibold text-gray-700">New Salary</th>
-              <th className="text-right p-4 font-semibold text-gray-700">Change</th>
-              <th className="text-left p-4 font-semibold text-gray-700">Reason</th>
-              <th className="text-left p-4 font-semibold text-gray-700">Approved By</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={8} className="p-8 text-center text-gray-500">Loading...</td></tr>
-            ) : increments.length > 0 ? (
-              increments.map((inc: any) => {
-                const isIncrease = Number(inc.increment_amount) >= 0;
-                return (
-                  <tr key={inc.increment_id} className="border-b hover:bg-gray-50 transition">
-                    <td className="p-4 text-gray-600">{new Date(inc.effective_date).toLocaleDateString()}</td>
-                    <td className="p-4">
-                      <div className="font-semibold text-gray-800">{inc.full_name}</div>
-                      {inc.employee_id && <div className="text-xs text-gray-500">{inc.employee_id}</div>}
-                    </td>
-                    <td className="p-4 text-gray-600">{inc.department || '-'}</td>
-                    <td className="p-4 text-right text-gray-600">{currency}{Number(inc.old_salary).toLocaleString()}</td>
-                    <td className="p-4 text-right font-bold text-gray-800">{currency}{Number(inc.new_salary).toLocaleString()}</td>
-                    <td className="p-4 text-right">
-                      <span className={`font-semibold ${isIncrease ? 'text-green-600' : 'text-red-600'}`}>
-                        {isIncrease ? '+' : ''}{Number(inc.increment_amount).toLocaleString()}
-                      </span>
-                      <span className={`block text-xs ${isIncrease ? 'text-green-500' : 'text-red-500'}`}>
-                        ({Number(inc.increment_percentage).toFixed(1)}%)
-                      </span>
-                    </td>
-                    <td className="p-4 text-sm text-gray-600 max-w-[200px] truncate">{inc.reason || '-'}</td>
-                    <td className="p-4 text-sm text-gray-600">{inc.approved_by_name || '-'}</td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr><td colSpan={8} className="p-8 text-center text-gray-500">No increment records found</td></tr>
-            )}
-          </tbody>
-        </table>
+      {loading ? (
+        <SkeletonTable rows={5} cols={8} />
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gradient-to-r from-gray-50 to-white">
+              <tr className="border-b border-gray-100">
+                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
+                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Department</th>
+                <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Old Salary</th>
+                <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">New Salary</th>
+                <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Change</th>
+                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Reason</th>
+                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Approved By</th>
+              </tr>
+            </thead>
+            <tbody>
+              {increments.length > 0 ? (
+                increments.map((inc: any) => {
+                  const isIncrease = Number(inc.increment_amount) >= 0;
+                  return (
+                    <tr key={inc.increment_id} className="border-b border-gray-50 hover:bg-teal-50/20 transition-colors">
+                      <td className="px-6 py-4 text-gray-500 text-sm">{new Date(inc.effective_date).toLocaleDateString()}</td>
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-gray-800">{inc.full_name}</div>
+                        {inc.employee_id && <div className="text-xs text-gray-400 mt-0.5">{inc.employee_id}</div>}
+                      </td>
+                      <td className="px-6 py-4 text-gray-500 text-sm">{inc.department || '-'}</td>
+                      <td className="px-6 py-4 text-right text-gray-500 text-sm">{currency}{Number(inc.old_salary).toLocaleString()}</td>
+                      <td className="px-6 py-4 text-right font-bold text-gray-800">{currency}{Number(inc.new_salary).toLocaleString()}</td>
+                      <td className="px-6 py-4 text-right">
+                        <span className={`font-semibold ${isIncrease ? 'text-teal-600' : 'text-red-500'}`}>
+                          {isIncrease ? '+' : ''}{Number(inc.increment_amount).toLocaleString()}
+                        </span>
+                        <span className={`block text-xs mt-0.5 ${isIncrease ? 'text-teal-500' : 'text-red-400'}`}>
+                          ({Number(inc.increment_percentage).toFixed(1)}%)
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 max-w-[200px] truncate">{inc.reason || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">{inc.approved_by_name || '-'}</td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-400">
+                    <TrendingUp size={32} className="mx-auto mb-3 opacity-30" />
+                    <p className="font-medium">No increment records found</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
 
-        <Pagination
-          currentPage={pagination.page}
-          totalPages={pagination.totalPages}
-          onPageChange={(page) => setPagination(p => ({ ...p, page }))}
-          totalItems={pagination.total}
-          itemsPerPage={pagination.limit}
-        onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
-        />
-      </div>
+          <Pagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+            onPageChange={(page) => setPagination(p => ({ ...p, page }))}
+            totalItems={pagination.total}
+            itemsPerPage={pagination.limit}
+            onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
+          />
+        </div>
+      )}
 
       <SalaryIncrementModal isOpen={showIncrementModal} onClose={() => setShowIncrementModal(false)} onSuccess={fetchIncrements} />
     </div>

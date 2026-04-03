@@ -55,6 +55,44 @@ router.delete('/attendance/:id', authorize('Admin'), staffController.deleteAtten
 router.put('/salary-payment/:id', authorize('Admin'), staffController.updateSalaryPayment);
 router.delete('/salary-payment/:id', authorize('Admin'), staffController.deleteSalaryPayment);
 
+// Departments
+router.get('/departments', staffController.getDepartments);
+router.post('/departments', authorize('Admin'), staffController.createDepartment);
+router.put('/departments/:id', authorize('Admin'), staffController.updateDepartment);
+router.delete('/departments/:id', authorize('Admin'), staffController.deleteDepartment);
+
+// Salary components
+router.get('/salary-components', staffController.getSalaryComponents);
+router.post('/salary-components', authorize('Admin'), staffController.createSalaryComponent);
+router.put('/salary-components/:id', authorize('Admin'), staffController.updateSalaryComponent);
+router.delete('/salary-components/:id', authorize('Admin'), staffController.deleteSalaryComponent);
+
+// Staff salary components
+router.get('/staff-components/:staffId', staffController.getStaffComponents);
+router.post('/staff-components/:staffId', authorize('Admin'), staffController.saveStaffComponents);
+
+// Shifts
+router.get('/shifts', staffController.getShifts);
+router.post('/shifts', authorize('Admin'), staffController.createShift);
+router.put('/shifts/:id', authorize('Admin'), staffController.updateShift);
+router.delete('/shifts/:id', authorize('Admin'), staffController.deleteShift);
+
+// Performance Appraisals
+router.get('/appraisals', staffController.getAppraisals);
+router.post('/appraisals', authorize('Admin', 'Manager'), staffController.createAppraisal);
+router.put('/appraisals/:id', authorize('Admin', 'Manager'), staffController.updateAppraisal);
+router.delete('/appraisals/:id', authorize('Admin'), staffController.deleteAppraisal);
+
+// Exit Management
+router.get('/exit-requests', staffController.getExitRequests);
+router.post('/exit-requests', authorize('Admin'), staffController.createExitRequest);
+router.put('/exit-requests/:id/review', authorize('Admin'), staffController.reviewExitRequest);
+
+// Leave Policies
+router.get('/leave-policies', staffController.getLeavePolicies);
+router.put('/leave-policies/:leave_type', authorize('Admin'), staffController.updateLeavePolicy);
+router.post('/leave-policies/carry-forward', authorize('Admin'), staffController.processLeaveCarryForward);
+
 // General staff routes
 router.get('/', staffController.getAll);
 router.post('/', authorize('Admin'), staffController.create);

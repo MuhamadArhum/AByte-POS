@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import MarkAttendanceModal from '../../components/MarkAttendanceModal';
 import EditAttendanceModal from '../../components/EditAttendanceModal';
 import { localToday, localMonthStart } from '../../utils/dateUtils';
+import { SkeletonTable } from '../../components/Skeleton';
 
 const calculateHours = (check_in: string | null, check_out: string | null) => {
   if (!check_in || !check_out) return null;
@@ -124,45 +125,54 @@ const Attendance = () => {
     toast.info('CSV exported');
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'present': return 'bg-green-100 text-green-700';
-      case 'absent': return 'bg-red-100 text-red-700';
-      case 'half_day': return 'bg-yellow-100 text-yellow-700';
-      case 'leave': return 'bg-emerald-100 text-emerald-700';
-      case 'holiday': return 'bg-emerald-100 text-emerald-700';
-      default: return 'bg-gray-100 text-gray-700';
-    }
+  const getStatusBadge = (status: string) => {
+    const map: Record<string, { bg: string; text: string; dot: string; label: string }> = {
+      present:  { bg: 'bg-green-100',  text: 'text-green-700',  dot: 'bg-green-500',  label: 'Present'  },
+      absent:   { bg: 'bg-red-100',    text: 'text-red-700',    dot: 'bg-red-500',    label: 'Absent'   },
+      half_day: { bg: 'bg-amber-100',  text: 'text-amber-700',  dot: 'bg-amber-500',  label: 'Half Day' },
+      leave:    { bg: 'bg-blue-100',   text: 'text-blue-700',   dot: 'bg-blue-500',   label: 'On Leave' },
+      holiday:  { bg: 'bg-emerald-100',text: 'text-emerald-700',dot: 'bg-emerald-500',label: 'Holiday'  },
+    };
+    const style = map[status] || { bg: 'bg-gray-100', text: 'text-gray-700', dot: 'bg-gray-400', label: status };
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${style.bg} ${style.text}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+        {style.label}
+      </span>
+    );
   };
-
-  if (loading && attendance.length === 0) return <div className="p-8">Loading...</div>;
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <Calendar className="text-emerald-600" size={20} />
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Attendance Management</h1>
-            <p className="text-gray-600 text-sm mt-1">Track staff attendance records</p>
+      {/* Gradient Header */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-indigo-50 via-white to-white border-b border-gray-100 px-8 py-6 -mx-8 -mt-8 mb-8">
+        <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%23000%22 fill-opacity=%221%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]" />
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
+              <Calendar size={22} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Attendance</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Track staff attendance records</p>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-3 rounded-xl hover:bg-gray-200 transition border border-gray-200"
-          >
-            <Download size={18} />
-            Export CSV
-          </button>
-          <button
-            onClick={() => setShowMarkModal(true)}
-            className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition shadow-lg hover:shadow-xl"
-          >
-            <Plus size={20} />
-            Mark Attendance
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl hover:bg-gray-50 hover:border-gray-300 shadow-sm hover:shadow hover:-translate-y-0.5 transition-all duration-200 font-medium text-sm"
+            >
+              <Download size={16} />
+              Export CSV
+            </button>
+            <button
+              onClick={() => setShowMarkModal(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-5 py-2.5 rounded-xl hover:from-indigo-600 hover:to-indigo-700 shadow-md shadow-indigo-200 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium text-sm"
+            >
+              <Plus size={18} />
+              Mark Attendance
+            </button>
+          </div>
         </div>
       </div>
 
@@ -206,122 +216,126 @@ const Attendance = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap items-center gap-4">
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Staff Member</label>
-          <select value={filters.staff_id} onChange={(e) => handleFilterChange('staff_id', e.target.value)} className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-            <option value="">All Staff</option>
-            {staff.map(member => (<option key={member.staff_id} value={member.staff_id}>{member.full_name}</option>))}
-          </select>
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-6">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Staff Member</label>
+            <select value={filters.staff_id} onChange={(e) => handleFilterChange('staff_id', e.target.value)} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition">
+              <option value="">All Staff</option>
+              {staff.map(member => (<option key={member.staff_id} value={member.staff_id}>{member.full_name}</option>))}
+            </select>
+          </div>
+          <DateRangeFilter
+            standalone={false}
+            dateFrom={filters.start_date}
+            dateTo={filters.end_date}
+            onFromChange={(d) => handleFilterChange('start_date', d)}
+            onToChange={(d) => handleFilterChange('end_date', d)}
+          />
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
+            <select value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition">
+              <option value="all">All Status</option>
+              <option value="present">Present</option>
+              <option value="absent">Absent</option>
+              <option value="half_day">Half Day</option>
+              <option value="leave">On Leave</option>
+              <option value="holiday">Holiday</option>
+            </select>
+          </div>
+          <button onClick={() => { setPagination(prev => ({ ...prev, page: 1 })); fetchAttendance(); }} className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:from-indigo-600 hover:to-indigo-700 shadow-sm hover:shadow hover:-translate-y-0.5 transition-all duration-200 mt-4">
+            Apply
+          </button>
         </div>
-        <DateRangeFilter
-          standalone={false}
-          dateFrom={filters.start_date}
-          dateTo={filters.end_date}
-          onFromChange={(d) => handleFilterChange('start_date', d)}
-          onToChange={(d) => handleFilterChange('end_date', d)}
-        />
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
-          <select value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-            <option value="all">All Status</option>
-            <option value="present">Present</option>
-            <option value="absent">Absent</option>
-            <option value="half_day">Half Day</option>
-            <option value="leave">On Leave</option>
-            <option value="holiday">Holiday</option>
-          </select>
-        </div>
-        <button onClick={() => { setPagination(prev => ({ ...prev, page: 1 })); fetchAttendance(); }} className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 transition">
-          Apply
-        </button>
       </div>
 
       {/* Attendance Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr className="border-b">
-              <th className="text-left p-4 font-semibold text-gray-700">Staff Member</th>
-              <th className="text-left p-4 font-semibold text-gray-700">Position</th>
-              <th className="text-center p-4 font-semibold text-gray-700">Date</th>
-              <th className="text-center p-4 font-semibold text-gray-700">Check In</th>
-              <th className="text-center p-4 font-semibold text-gray-700">Check Out</th>
-              <th className="text-center p-4 font-semibold text-gray-700">Hours</th>
-              <th className="text-center p-4 font-semibold text-gray-700">Status</th>
-              <th className="text-left p-4 font-semibold text-gray-700">Notes</th>
-              {isAdminOrManager && <th className="text-center p-4 font-semibold text-gray-700">Actions</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {attendance.length > 0 ? (
-              attendance.map((record: any) => {
-                const hrs = calculateHours(record.check_in, record.check_out);
-                return (
-                  <tr key={record.attendance_id} className="border-b hover:bg-gray-50 transition">
-                    <td className="p-4 font-semibold text-gray-800">{record.full_name}</td>
-                    <td className="p-4 text-gray-600">{record.position || '-'}</td>
-                    <td className="p-4 text-center">{new Date(record.attendance_date).toLocaleDateString()}</td>
-                    <td className="p-4 text-center font-mono text-sm">{record.check_in || '-'}</td>
-                    <td className="p-4 text-center font-mono text-sm">{record.check_out || '-'}</td>
-                    <td className="p-4 text-center font-mono text-sm">
-                      {hrs ? (
-                        <span className={hrs.isOvertime ? 'text-orange-600 font-bold' : ''}>
-                          {hrs.hours.toFixed(1)}h
-                          {hrs.isOvertime && <span className="text-xs ml-1">(OT)</span>}
-                        </span>
-                      ) : '-'}
-                    </td>
-                    <td className="p-4 text-center">
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold capitalize ${getStatusColor(record.status)}`}>
-                        {record.status.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="p-4 text-sm text-gray-600 max-w-[150px] truncate">{record.notes || '-'}</td>
-                    {isAdminOrManager && (
-                      <td className="p-4 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => { setSelectedRecord(record); setShowEditModal(true); }}
-                            className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition"
-                            title="Edit"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          {isAdmin && (
-                            <button
-                              onClick={() => handleDelete(record)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                              title="Delete"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td colSpan={isAdminOrManager ? 9 : 8} className="p-8 text-center text-gray-500">
-                  No attendance records found. Mark attendance to get started.
-                </td>
+      {loading ? (
+        <SkeletonTable rows={6} cols={6} />
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr className="border-b border-gray-100">
+                <th className="text-left p-4 font-semibold text-gray-700">Staff Member</th>
+                <th className="text-left p-4 font-semibold text-gray-700">Position</th>
+                <th className="text-center p-4 font-semibold text-gray-700">Date</th>
+                <th className="text-center p-4 font-semibold text-gray-700">Check In</th>
+                <th className="text-center p-4 font-semibold text-gray-700">Check Out</th>
+                <th className="text-center p-4 font-semibold text-gray-700">Hours</th>
+                <th className="text-center p-4 font-semibold text-gray-700">Status</th>
+                <th className="text-left p-4 font-semibold text-gray-700">Notes</th>
+                {isAdminOrManager && <th className="text-center p-4 font-semibold text-gray-700">Actions</th>}
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {attendance.length > 0 ? (
+                attendance.map((record: any) => {
+                  const hrs = calculateHours(record.check_in, record.check_out);
+                  return (
+                    <tr key={record.attendance_id} className="border-b border-gray-50 hover:bg-indigo-50/20 transition-colors">
+                      <td className="p-4 font-semibold text-gray-800">{record.full_name}</td>
+                      <td className="p-4 text-gray-600">{record.position || '-'}</td>
+                      <td className="p-4 text-center">{new Date(record.attendance_date).toLocaleDateString()}</td>
+                      <td className="p-4 text-center font-mono text-sm">{record.check_in || '-'}</td>
+                      <td className="p-4 text-center font-mono text-sm">{record.check_out || '-'}</td>
+                      <td className="p-4 text-center font-mono text-sm">
+                        {hrs ? (
+                          <span className={hrs.isOvertime ? 'text-orange-600 font-bold' : ''}>
+                            {hrs.hours.toFixed(1)}h
+                            {hrs.isOvertime && <span className="text-xs ml-1">(OT)</span>}
+                          </span>
+                        ) : '-'}
+                      </td>
+                      <td className="p-4 text-center">
+                        {getStatusBadge(record.status)}
+                      </td>
+                      <td className="p-4 text-sm text-gray-600 max-w-[150px] truncate">{record.notes || '-'}</td>
+                      {isAdminOrManager && (
+                        <td className="p-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => { setSelectedRecord(record); setShowEditModal(true); }}
+                              className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                              title="Edit"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDelete(record)}
+                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                title="Delete"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={isAdminOrManager ? 9 : 8} className="p-8 text-center text-gray-500">
+                    No attendance records found. Mark attendance to get started.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
 
-        <Pagination
-          currentPage={pagination.page}
-          totalPages={pagination.totalPages}
-          onPageChange={(page) => setPagination({ ...pagination, page })}
-          totalItems={pagination.total}
-          itemsPerPage={pagination.limit}
-          onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
-        />
-      </div>
+          <Pagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+            onPageChange={(page) => setPagination({ ...pagination, page })}
+            totalItems={pagination.total}
+            itemsPerPage={pagination.limit}
+            onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
+          />
+        </div>
+      )}
 
       {/* Modals */}
       <MarkAttendanceModal isOpen={showMarkModal} onClose={() => setShowMarkModal(false)} onSuccess={fetchAttendance} />

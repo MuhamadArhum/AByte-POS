@@ -6,6 +6,8 @@ const bcrypt = require('bcryptjs');
 const jwt    = require('jsonwebtoken');
 const { queryDb, tenantStorage } = require('../config/database');
 const { logAction }              = require('../services/auditService');
+const { blacklistToken }         = require('../services/tokenBlacklist');
+const logger                     = require('../config/logger');
 
 const DB_NAME = process.env.DB_NAME || 'abyte_pos';
 
@@ -71,7 +73,7 @@ exports.login = async (req, res) => {
       permissions,
     });
   } catch (err) {
-    console.error('Login error:', err);
+    logger.error('Login error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -101,7 +103,32 @@ exports.verify = async (req, res) => {
       permissions,
     });
   } catch (err) {
-    console.error('Verify error:', err);
+    logger.error('Verify error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Logout ---
+// POST /api/auth/logout
+exports.logout = async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      blacklistToken(token);
+
+      try {
+        tenantStorage.run(DB_NAME, async () => {
+          await logAction(
+            req.user.user_id, req.user.username, 'USER_LOGOUT', 'user', req.user.user_id,
+            {}, req.ip
+          );
+        });
+      } catch { /* audit failure must not block logout */ }
+    }
+    res.json({ message: 'Logged out successfully' });
+  } catch (err) {
+    logger.error('Logout error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };

@@ -87,6 +87,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(() => {
+    // Revoke token server-side (fire-and-forget — don't block logout on network failure)
+    const storedToken = localStorage.getItem('token');
+    if (storedToken) {
+      fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${storedToken}` },
+      }).catch(() => { /* ignore network errors during logout */ });
+    }
+
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('permissions');

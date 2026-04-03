@@ -8,6 +8,7 @@ import AddStaffModal from '../../components/AddStaffModal';
 import StaffDetailsModal from '../../components/StaffDetailsModal';
 import SalaryPaymentModal from '../../components/SalaryPaymentModal';
 import SalaryIncrementModal from '../../components/SalaryIncrementModal';
+import { SkeletonTable } from '../../components/Skeleton';
 
 const Staff = () => {
   const { currencySymbol: currency } = useSettings();
@@ -119,29 +120,32 @@ const Staff = () => {
     }
   };
 
-  if (loading && staff.length === 0) return <div className="p-8">Loading...</div>;
-
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <User className="text-emerald-600" size={20} />
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Staff Management</h1>
-            <p className="text-gray-600 text-sm mt-1">Manage your team members</p>
+      {/* Gradient Header */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-50 via-white to-white border-b border-gray-100 px-8 py-6 -mx-8 -mt-8 mb-8">
+        <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%23000%22 fill-opacity=%221%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]" />
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200">
+              <User size={22} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Staff Management</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Manage your team members</p>
+            </div>
           </div>
+          <button
+            onClick={() => {
+              setStaffToEdit(null);
+              setShowAddModal(true);
+            }}
+            className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-2.5 rounded-xl hover:from-emerald-600 hover:to-emerald-700 shadow-md shadow-emerald-200 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium text-sm"
+          >
+            <Plus size={18} />
+            Add Staff Member
+          </button>
         </div>
-        <button
-          onClick={() => {
-            setStaffToEdit(null);
-            setShowAddModal(true);
-          }}
-          className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg hover:shadow-xl"
-        >
-          <Plus size={20} />
-          Add Staff Member
-        </button>
       </div>
 
       {/* Stats Cards */}
@@ -165,30 +169,30 @@ const Staff = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
-        <div className="flex flex-wrap gap-4 items-center">
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-6">
+        <div className="flex items-center gap-3 flex-wrap">
           {/* Search */}
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
                 type="text"
                 placeholder="Search by name, position, or phone..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition"
               />
             </div>
           </div>
 
           {/* Status Filter */}
           <div className="flex items-center gap-2">
-            <Filter size={20} className="text-gray-600" />
+            <Filter size={16} className="text-gray-400" />
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition"
             >
               <option value="all">All Status</option>
               <option value="1">Active</option>
@@ -201,7 +205,7 @@ const Staff = () => {
             <select
               value={departmentFilter}
               onChange={(e) => { setDepartmentFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition"
             >
               <option value="all">All Departments</option>
               {departments.map(dept => (
@@ -212,7 +216,7 @@ const Staff = () => {
 
           <button
             onClick={handleSearch}
-            className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 transition"
+            className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-2 rounded-xl hover:from-emerald-600 hover:to-emerald-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 font-medium text-sm"
           >
             Apply
           </button>
@@ -220,112 +224,122 @@ const Staff = () => {
       </div>
 
       {/* Staff Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr className="border-b">
-              <th className="text-left p-4 font-semibold text-gray-700">Emp. ID</th>
-              <th className="text-left p-4 font-semibold text-gray-700">Name</th>
-              <th className="text-left p-4 font-semibold text-gray-700">Position</th>
-              <th className="text-left p-4 font-semibold text-gray-700">Department</th>
-              <th className="text-left p-4 font-semibold text-gray-700">Phone</th>
-              <th className="text-right p-4 font-semibold text-gray-700">Salary</th>
-              <th className="text-center p-4 font-semibold text-gray-700">Status</th>
-              <th className="text-center p-4 font-semibold text-gray-700">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {staff.length > 0 ? (
-              staff.map((member: any) => (
-                <tr key={member.staff_id} className="border-b hover:bg-gray-50 transition">
-                  <td className="p-4 text-gray-600 font-mono text-sm">{member.employee_id || '-'}</td>
-                  <td className="p-4 font-semibold text-gray-800">{member.full_name}</td>
-                  <td className="p-4">{member.position}</td>
-                  <td className="p-4 text-gray-600">{member.department || '-'}</td>
-                  <td className="p-4 text-gray-600">{member.phone || '-'}</td>
-                  <td className="p-4 text-right font-medium">
-                    {member.salary ? `${currency}${Number(member.salary).toFixed(0)}` : '-'}
-                  </td>
-                  <td className="p-4 text-center">
-                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                      member.is_active === 1 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {member.is_active === 1 ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => handleViewDetails(member)}
-                        className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg transition"
-                        title="View Details"
-                      >
-                        <Eye size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleEdit(member)}
-                        className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg transition"
-                        title="Edit"
-                      >
-                        <Edit size={18} />
-                      </button>
+      {loading ? (
+        <SkeletonTable rows={6} cols={7} />
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr className="border-b border-gray-100">
+                <th className="text-left p-4 font-semibold text-gray-700">Emp. ID</th>
+                <th className="text-left p-4 font-semibold text-gray-700">Name</th>
+                <th className="text-left p-4 font-semibold text-gray-700">Position</th>
+                <th className="text-left p-4 font-semibold text-gray-700">Department</th>
+                <th className="text-left p-4 font-semibold text-gray-700">Phone</th>
+                <th className="text-right p-4 font-semibold text-gray-700">Salary</th>
+                <th className="text-center p-4 font-semibold text-gray-700">Status</th>
+                <th className="text-center p-4 font-semibold text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {staff.length > 0 ? (
+                staff.map((member: any) => (
+                  <tr key={member.staff_id} className="border-b border-gray-50 hover:bg-emerald-50/20 transition-colors">
+                    <td className="p-4 text-gray-600 font-mono text-sm">{member.employee_id || '-'}</td>
+                    <td className="p-4 font-semibold text-gray-800">{member.full_name}</td>
+                    <td className="p-4">{member.position}</td>
+                    <td className="p-4 text-gray-600">{member.department || '-'}</td>
+                    <td className="p-4 text-gray-600">{member.phone || '-'}</td>
+                    <td className="p-4 text-right font-medium">
+                      {member.salary ? `${currency}${Number(member.salary).toFixed(0)}` : '-'}
+                    </td>
+                    <td className="p-4 text-center">
                       {member.is_active === 1 ? (
-                        <>
-                          <button
-                            onClick={() => handlePaySalary(member)}
-                            className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg transition"
-                            title="Pay Salary"
-                          >
-                            <DollarSign size={18} />
-                          </button>
-                          <button
-                            onClick={() => { setSelectedStaff(member); setShowIncrementModal(true); }}
-                            className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg transition"
-                            title="Salary Increment"
-                          >
-                            <TrendingUp size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(member.staff_id, member.full_name)}
-                            className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition"
-                            title="Deactivate"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                          Active
+                        </span>
                       ) : (
-                        <button
-                          onClick={() => handleReactivate(member.staff_id, member.full_name)}
-                          className="text-green-600 hover:bg-green-50 p-2 rounded-lg transition"
-                          title="Reactivate"
-                        >
-                          <RotateCcw size={18} />
-                        </button>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                          <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                          Inactive
+                        </span>
                       )}
-                    </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => handleViewDetails(member)}
+                          className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                          title="View Details"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleEdit(member)}
+                          className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                          title="Edit"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        {member.is_active === 1 ? (
+                          <>
+                            <button
+                              onClick={() => handlePaySalary(member)}
+                              className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                              title="Pay Salary"
+                            >
+                              <DollarSign size={16} />
+                            </button>
+                            <button
+                              onClick={() => { setSelectedStaff(member); setShowIncrementModal(true); }}
+                              className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                              title="Salary Increment"
+                            >
+                              <TrendingUp size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(member.staff_id, member.full_name)}
+                              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                              title="Deactivate"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => handleReactivate(member.staff_id, member.full_name)}
+                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                            title="Reactivate"
+                          >
+                            <RotateCcw size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center text-gray-500">
+                    No staff members found. Add your first team member to get started.
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={8} className="p-8 text-center text-gray-500">
-                  No staff members found. Add your first team member to get started.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
 
-        {/* Pagination */}
-        <Pagination
-          currentPage={pagination.page}
-          totalPages={pagination.totalPages}
-          onPageChange={(page) => setPagination({ ...pagination, page })}
-          totalItems={pagination.total}
-          itemsPerPage={pagination.limit}
-          onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
-        />
-      </div>
+          {/* Pagination */}
+          <Pagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+            onPageChange={(page) => setPagination({ ...pagination, page })}
+            totalItems={pagination.total}
+            itemsPerPage={pagination.limit}
+            onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
+          />
+        </div>
+      )}
 
       {/* Modals */}
       <AddStaffModal

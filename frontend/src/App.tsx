@@ -61,6 +61,11 @@ import EmployeeLedger from './pages/hr/EmployeeLedger';
 import HolidayCalendar from './pages/hr/HolidayCalendar';
 import LeaveRequests from './pages/hr/LeaveRequests';
 import StaffReports from './pages/hr/StaffReports';
+import Departments from './pages/hr/Departments';
+import SalaryComponents from './pages/hr/SalaryComponents';
+import Appraisals from './pages/hr/Appraisals';
+import ExitManagement from './pages/hr/ExitManagement';
+import LeavePolicies from './pages/hr/LeavePolicies';
 
 // Accounts Module
 import ChartOfAccounts from './pages/accounts/ChartOfAccounts';
@@ -179,6 +184,11 @@ function App() {
                       <Route path="/holidays" element={<PermissionGuard moduleKey="hr.holidays"><HolidayCalendar /></PermissionGuard>} />
                       <Route path="/leave-requests" element={<PermissionGuard moduleKey="hr.leaves"><LeaveRequests /></PermissionGuard>} />
                       <Route path="/staff-reports" element={<PermissionGuard moduleKey="hr.reports"><StaffReports /></PermissionGuard>} />
+                      <Route path="/departments" element={<PermissionGuard moduleKey="hr.departments"><Departments /></PermissionGuard>} />
+                      <Route path="/salary-components" element={<PermissionGuard moduleKey="hr.salary-components"><SalaryComponents /></PermissionGuard>} />
+                      <Route path="/appraisals" element={<PermissionGuard moduleKey="hr.appraisals"><Appraisals /></PermissionGuard>} />
+                      <Route path="/exit-management" element={<PermissionGuard moduleKey="hr.exit"><ExitManagement /></PermissionGuard>} />
+                      <Route path="/leave-policies" element={<PermissionGuard moduleKey="hr.leaves"><LeavePolicies /></PermissionGuard>} />
 
                       {/* Accounts */}
                       <Route path="/chart-of-accounts" element={<PermissionGuard moduleKey="accounts.chart"><ChartOfAccounts /></PermissionGuard>} />

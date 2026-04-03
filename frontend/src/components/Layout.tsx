@@ -49,7 +49,10 @@ import {
   FileStack,
   RefreshCw,
   ClipboardList,
-  PackageOpen
+  PackageOpen,
+  Sliders,
+  Star,
+  LogIn
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -187,7 +190,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: ScrollText, label: 'Employee Ledger', path: '/employee-ledger', moduleKey: 'hr.ledger' },
         { icon: Calendar, label: 'Holidays', path: '/holidays', moduleKey: 'hr.holidays' },
         { icon: FileText, label: 'Leave Requests', path: '/leave-requests', moduleKey: 'hr.leaves' },
+        { icon: BookOpen, label: 'Leave Policies', path: '/leave-policies', moduleKey: 'hr.leaves' },
         { icon: BarChart3, label: 'Staff Reports', path: '/staff-reports', moduleKey: 'hr.reports' },
+        { icon: Building2, label: 'Departments', path: '/departments', moduleKey: 'hr.departments' },
+        { icon: Sliders, label: 'Salary Components', path: '/salary-components', moduleKey: 'hr.salary-components' },
+        { icon: Star, label: 'Appraisals', path: '/appraisals', moduleKey: 'hr.appraisals' },
+        { icon: LogIn, label: 'Exit Management', path: '/exit-management', moduleKey: 'hr.exit' },
       ]
     },
     {
@@ -604,7 +612,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto flex flex-col">
-          {children}
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            className="flex-1 flex flex-col"
+          >
+            {children}
+          </motion.div>
         </main>
       </div>
 

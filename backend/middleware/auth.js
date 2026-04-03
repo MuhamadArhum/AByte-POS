@@ -4,6 +4,7 @@
 
 const jwt = require('jsonwebtoken');
 const { queryDb, tenantStorage } = require('../config/database');
+const { isBlacklisted } = require('../services/tokenBlacklist');
 
 const DB_NAME = process.env.DB_NAME || 'abyte_pos';
 
@@ -15,7 +16,13 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const token   = authHeader.split(' ')[1];
+    const token = authHeader.split(' ')[1];
+
+    // Reject revoked tokens (logged-out sessions)
+    if (isBlacklisted(token)) {
+      return res.status(401).json({ message: 'Token has been revoked. Please login again.' });
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const rows = await queryDb(

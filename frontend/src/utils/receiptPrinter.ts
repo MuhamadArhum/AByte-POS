@@ -820,11 +820,12 @@ export async function printToThermalPrinter(
     footer:       settings?.receipt_footer || 'Thank you for shopping!',
   };
 
-  // ── 1. Local Printer Agent (localhost:3001) — highest priority ──────
+  // ── 1. Local Printer Agent — highest priority ──────────────────────
+  const printerAgentUrl = import.meta.env.VITE_PRINTER_AGENT_URL || 'http://localhost:3001';
   try {
-    const agentRes = await fetch('http://localhost:3001/health', { signal: AbortSignal.timeout(1000) });
+    const agentRes = await fetch(`${printerAgentUrl}/health`, { signal: AbortSignal.timeout(1000) });
     if (agentRes.ok) {
-      const printRes = await fetch('http://localhost:3001/print', {
+      const printRes = await fetch(`${printerAgentUrl}/print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ purpose: 'receipt', receiptData }),

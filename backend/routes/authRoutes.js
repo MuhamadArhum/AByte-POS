@@ -19,4 +19,7 @@ router.post('/login', authController.login);
 // GET /api/auth/verify - Requires valid JWT token (authenticate middleware checks it)
 router.get('/verify', authenticate, authController.verify);
 
+// POST /api/auth/logout - Revokes token server-side (requires auth)
+router.post('/logout', authenticate, authController.logout);
+
 module.exports = router;

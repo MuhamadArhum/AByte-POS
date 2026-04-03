@@ -7,6 +7,7 @@ import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 import IssueLoanModal from '../../components/IssueLoanModal';
 import LoanRepaymentModal from '../../components/LoanRepaymentModal';
+import { SkeletonTable } from '../../components/Skeleton';
 
 const LoanManagement = () => {
   const { currencySymbol: currency } = useSettings();
@@ -68,12 +69,18 @@ const LoanManagement = () => {
   };
 
   const statusBadge = (status: string) => {
-    const map: Record<string, string> = {
-      active: 'bg-green-100 text-green-700',
-      completed: 'bg-emerald-100 text-emerald-700',
-      cancelled: 'bg-red-100 text-red-700'
+    const map: Record<string, { bg: string; text: string; dot: string }> = {
+      active:    { bg: 'bg-blue-100',  text: 'text-blue-700',  dot: 'bg-blue-500'  },
+      completed: { bg: 'bg-green-100', text: 'text-green-700', dot: 'bg-green-500' },
+      cancelled: { bg: 'bg-gray-100',  text: 'text-gray-600',  dot: 'bg-gray-400'  },
     };
-    return <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${map[status] || 'bg-gray-100 text-gray-700'}`}>{status}</span>;
+    const style = map[status] || { bg: 'bg-gray-100', text: 'text-gray-700', dot: 'bg-gray-400' };
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${style.bg} ${style.text}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+        {status}
+      </span>
+    );
   };
 
   const activeTotals = loans.filter(l => l.status === 'active').reduce((acc, l) => ({
@@ -84,17 +91,26 @@ const LoanManagement = () => {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <CreditCard className="text-emerald-600" size={20} />
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Loan Management</h1>
-            <p className="text-gray-600 text-sm mt-1">Manage employee loans and repayments</p>
+      {/* Gradient Header */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-purple-50 via-white to-white border-b border-gray-100 px-8 py-6 -mx-8 -mt-8 mb-8">
+        <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%23000%22 fill-opacity=%221%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]" />
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-200">
+              <DollarSign size={22} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Loan Management</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Manage employee loans and repayments</p>
+            </div>
           </div>
+          <button
+            onClick={() => setShowIssueModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white px-5 py-2.5 rounded-xl hover:from-purple-600 hover:to-purple-700 shadow-md shadow-purple-200 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium text-sm"
+          >
+            <Plus size={18} /> Issue Loan
+          </button>
         </div>
-        <button onClick={() => setShowIssueModal(true)} className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg">
-          <Plus size={20} /> Issue Loan
-        </button>
       </div>
 
       {/* Summary */}
@@ -105,7 +121,7 @@ const LoanManagement = () => {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Active Total</p>
-          <p className="text-3xl font-bold text-emerald-600 mt-2">{currency}{activeTotals.total.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-purple-600 mt-2">{currency}{activeTotals.total.toLocaleString()}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Total Repaid</p>
@@ -118,18 +134,18 @@ const LoanManagement = () => {
       </div>
 
       {/* Filter */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-4">
-          <Filter size={20} className="text-gray-600" />
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-6">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Filter size={16} className="text-gray-400" />
           <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500">
+            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition">
             <option value="all">All Status</option>
             <option value="active">Active</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
           <select value={staffFilter} onChange={(e) => { setStaffFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 min-w-[200px]">
+            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition min-w-[200px]">
             <option value="">All Staff</option>
             {staffList.map(s => <option key={s.staff_id} value={s.staff_id}>{s.employee_id ? `[${s.employee_id}] ` : ''}{s.full_name}</option>)}
           </select>
@@ -137,105 +153,107 @@ const LoanManagement = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr className="border-b">
-              <th className="text-left p-4 font-semibold text-gray-700">Staff</th>
-              <th className="text-right p-4 font-semibold text-gray-700">Loan Amount</th>
-              <th className="text-right p-4 font-semibold text-gray-700">Repaid</th>
-              <th className="text-right p-4 font-semibold text-gray-700">Remaining</th>
-              <th className="text-right p-4 font-semibold text-gray-700">Monthly Ded.</th>
-              <th className="text-center p-4 font-semibold text-gray-700">Date</th>
-              <th className="text-center p-4 font-semibold text-gray-700">Status</th>
-              <th className="text-center p-4 font-semibold text-gray-700">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={8} className="p-8 text-center text-gray-500">Loading...</td></tr>
-            ) : loans.length > 0 ? (
-              loans.map((loan: any) => (
-                <React.Fragment key={loan.loan_id}>
-                  <tr className="border-b hover:bg-gray-50 transition">
-                    <td className="p-4">
-                      <div className="font-semibold text-gray-800">{loan.full_name}</div>
-                      <div className="text-xs text-gray-500">{loan.employee_id || ''} {loan.department ? `- ${loan.department}` : ''}</div>
-                    </td>
-                    <td className="p-4 text-right font-medium">{currency}{Number(loan.loan_amount).toLocaleString()}</td>
-                    <td className="p-4 text-right font-medium text-green-600">{currency}{Number(loan.total_repaid || 0).toLocaleString()}</td>
-                    <td className="p-4 text-right font-bold text-red-600">{currency}{Number(loan.remaining_balance).toLocaleString()}</td>
-                    <td className="p-4 text-right text-gray-600">{Number(loan.monthly_deduction) > 0 ? `${currency}${Number(loan.monthly_deduction).toLocaleString()}` : '-'}</td>
-                    <td className="p-4 text-center text-gray-600">{new Date(loan.loan_date).toLocaleDateString()}</td>
-                    <td className="p-4 text-center">{statusBadge(loan.status)}</td>
-                    <td className="p-4">
-                      <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => toggleRepayments(loan.loan_id)} className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg transition" title="View Repayments">
-                          <Eye size={16} />
-                        </button>
-                        {loan.status === 'active' && (
-                          <>
-                            <button onClick={() => { setSelectedLoan(loan); setShowRepayModal(true); }} className="text-green-600 hover:bg-green-50 p-2 rounded-lg transition" title="Record Repayment">
-                              <DollarSign size={16} />
-                            </button>
-                            <button onClick={() => handleCancel(loan)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition" title="Cancel Loan">
-                              <Ban size={16} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                  {expandedLoan === loan.loan_id && (
-                    <tr key={`rep-${loan.loan_id}`}>
-                      <td colSpan={8} className="p-0">
-                        <div className="bg-gray-50 p-4 border-b-2 border-gray-200">
-                          <h4 className="text-sm font-semibold text-gray-700 mb-3">Repayment History {loan.reason && <span className="font-normal text-gray-500 ml-2">Reason: {loan.reason}</span>}</h4>
-                          {repayments[loan.loan_id]?.length > 0 ? (
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="text-gray-500">
-                                  <th className="text-left py-2 px-3">Date</th>
-                                  <th className="text-right py-2 px-3">Amount</th>
-                                  <th className="text-left py-2 px-3">Method</th>
-                                  <th className="text-left py-2 px-3">Notes</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {repayments[loan.loan_id].map((r: any) => (
-                                  <tr key={r.repayment_id} className="border-t border-gray-200">
-                                    <td className="py-2 px-3">{new Date(r.repayment_date).toLocaleDateString()}</td>
-                                    <td className="py-2 px-3 text-right font-medium text-green-600">{currency}{Number(r.amount).toLocaleString()}</td>
-                                    <td className="py-2 px-3 capitalize">{r.payment_method?.replace('_', ' ')}</td>
-                                    <td className="py-2 px-3 text-gray-500">{r.notes || '-'}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          ) : (
-                            <p className="text-sm text-gray-500">No repayments yet</p>
+      {loading ? (
+        <SkeletonTable rows={6} cols={7} />
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr className="border-b border-gray-100">
+                <th className="text-left p-4 font-semibold text-gray-700">Staff</th>
+                <th className="text-right p-4 font-semibold text-gray-700">Loan Amount</th>
+                <th className="text-right p-4 font-semibold text-gray-700">Repaid</th>
+                <th className="text-right p-4 font-semibold text-gray-700">Remaining</th>
+                <th className="text-right p-4 font-semibold text-gray-700">Monthly Ded.</th>
+                <th className="text-center p-4 font-semibold text-gray-700">Date</th>
+                <th className="text-center p-4 font-semibold text-gray-700">Status</th>
+                <th className="text-center p-4 font-semibold text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loans.length > 0 ? (
+                loans.map((loan: any) => (
+                  <React.Fragment key={loan.loan_id}>
+                    <tr className="border-b border-gray-50 hover:bg-purple-50/20 transition-colors">
+                      <td className="p-4">
+                        <div className="font-semibold text-gray-800">{loan.full_name}</div>
+                        <div className="text-xs text-gray-500">{loan.employee_id || ''} {loan.department ? `- ${loan.department}` : ''}</div>
+                      </td>
+                      <td className="p-4 text-right font-medium">{currency}{Number(loan.loan_amount).toLocaleString()}</td>
+                      <td className="p-4 text-right font-medium text-green-600">{currency}{Number(loan.total_repaid || 0).toLocaleString()}</td>
+                      <td className="p-4 text-right font-bold text-red-600">{currency}{Number(loan.remaining_balance).toLocaleString()}</td>
+                      <td className="p-4 text-right text-gray-600">{Number(loan.monthly_deduction) > 0 ? `${currency}${Number(loan.monthly_deduction).toLocaleString()}` : '-'}</td>
+                      <td className="p-4 text-center text-gray-600">{new Date(loan.loan_date).toLocaleDateString()}</td>
+                      <td className="p-4 text-center">{statusBadge(loan.status)}</td>
+                      <td className="p-4">
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => toggleRepayments(loan.loan_id)} className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all" title="View Repayments">
+                            <Eye size={16} />
+                          </button>
+                          {loan.status === 'active' && (
+                            <>
+                              <button onClick={() => { setSelectedLoan(loan); setShowRepayModal(true); }} className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all" title="Record Repayment">
+                                <DollarSign size={16} />
+                              </button>
+                              <button onClick={() => handleCancel(loan)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Cancel Loan">
+                                <Ban size={16} />
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
                     </tr>
-                  )}
-                </React.Fragment>
-              ))
-            ) : (
-              <tr><td colSpan={8} className="p-8 text-center text-gray-500">No loans found</td></tr>
-            )}
-          </tbody>
-        </table>
+                    {expandedLoan === loan.loan_id && (
+                      <tr key={`rep-${loan.loan_id}`}>
+                        <td colSpan={8} className="p-0">
+                          <div className="bg-gray-50 p-4 border-b-2 border-gray-200">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-3">Repayment History {loan.reason && <span className="font-normal text-gray-500 ml-2">Reason: {loan.reason}</span>}</h4>
+                            {repayments[loan.loan_id]?.length > 0 ? (
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="text-gray-500">
+                                    <th className="text-left py-2 px-3">Date</th>
+                                    <th className="text-right py-2 px-3">Amount</th>
+                                    <th className="text-left py-2 px-3">Method</th>
+                                    <th className="text-left py-2 px-3">Notes</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {repayments[loan.loan_id].map((r: any) => (
+                                    <tr key={r.repayment_id} className="border-t border-gray-200">
+                                      <td className="py-2 px-3">{new Date(r.repayment_date).toLocaleDateString()}</td>
+                                      <td className="py-2 px-3 text-right font-medium text-green-600">{currency}{Number(r.amount).toLocaleString()}</td>
+                                      <td className="py-2 px-3 capitalize">{r.payment_method?.replace('_', ' ')}</td>
+                                      <td className="py-2 px-3 text-gray-500">{r.notes || '-'}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            ) : (
+                              <p className="text-sm text-gray-500">No repayments yet</p>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))
+              ) : (
+                <tr><td colSpan={8} className="p-8 text-center text-gray-500">No loans found</td></tr>
+              )}
+            </tbody>
+          </table>
 
-        <Pagination
-          currentPage={pagination.page}
-          totalPages={pagination.totalPages}
-          onPageChange={(page) => setPagination(p => ({ ...p, page }))}
-          totalItems={pagination.total}
-          itemsPerPage={pagination.limit}
-        onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
-        />
-      </div>
+          <Pagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+            onPageChange={(page) => setPagination(p => ({ ...p, page }))}
+            totalItems={pagination.total}
+            itemsPerPage={pagination.limit}
+            onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
+          />
+        </div>
+      )}
 
       <IssueLoanModal isOpen={showIssueModal} onClose={() => setShowIssueModal(false)} onSuccess={fetchLoans} />
       {selectedLoan && <LoanRepaymentModal isOpen={showRepayModal} onClose={() => { setShowRepayModal(false); setSelectedLoan(null); }} onSuccess={() => { fetchLoans(); if (expandedLoan) { api.get(`/staff/loans/${expandedLoan}/repayments`).then(r => setRepayments(prev => ({ ...prev, [expandedLoan]: r.data.data || [] }))); } }} loan={selectedLoan} />}

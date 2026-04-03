@@ -293,6 +293,17 @@ exports.createJournalEntry = async (req, res) => {
       return res.status(400).json({ message: 'Total debits must equal total credits', field: 'lines' });
     }
 
+    // Validate all accounts are Level 4
+    const accountIds = lines.filter(l => l.account_id).map(l => l.account_id);
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => '?').join(',');
+      const accs = await conn.query(`SELECT account_id, account_name, level FROM accounts WHERE account_id IN (${placeholders})`, accountIds);
+      const nonLevel4 = accs.filter(a => a.level !== 4);
+      if (nonLevel4.length > 0) {
+        return res.status(400).json({ message: `Only Level 4 accounts can be used in entries. Invalid: ${nonLevel4.map(a => a.account_name).join(', ')}` });
+      }
+    }
+
     await conn.beginTransaction();
 
     // Generate entry number
@@ -943,6 +954,12 @@ exports.createPaymentVoucher = async (req, res) => {
       return res.status(400).json({ message: 'Required fields missing' });
     }
 
+    // Validate account is Level 4
+    const [accCheck] = await conn.query('SELECT level, account_name FROM accounts WHERE account_id = ?', [account_id]);
+    if (!accCheck || accCheck.level !== 4) {
+      return res.status(400).json({ message: `Only Level 4 accounts can be used in vouchers. "${accCheck?.account_name || 'Account'}" is Level ${accCheck?.level || '?'}.` });
+    }
+
     await conn.beginTransaction();
 
     // Generate voucher number
@@ -1027,6 +1044,12 @@ exports.createReceiptVoucher = async (req, res) => {
 
     if (!voucher_date || !received_from || !account_id || !amount) {
       return res.status(400).json({ message: 'Required fields missing' });
+    }
+
+    // Validate account is Level 4
+    const [accCheck] = await conn.query('SELECT level, account_name FROM accounts WHERE account_id = ?', [account_id]);
+    if (!accCheck || accCheck.level !== 4) {
+      return res.status(400).json({ message: `Only Level 4 accounts can be used in vouchers. "${accCheck?.account_name || 'Account'}" is Level ${accCheck?.level || '?'}.` });
     }
 
     await conn.beginTransaction();

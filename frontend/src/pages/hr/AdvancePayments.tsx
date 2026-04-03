@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useSettings } from '../../context/SettingsContext';
-import { DollarSign, Plus, Download } from 'lucide-react';
+import { CreditCard, Plus, Download } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { localToday } from '../../utils/dateUtils';
 import { useToast } from '../../components/Toast';
+import { SkeletonTable } from '../../components/Skeleton';
 
 interface AdvancePaymentModalProps {
   isOpen: boolean;
@@ -57,15 +58,20 @@ const AdvancePaymentModal = ({ isOpen, onClose, onSuccess }: AdvancePaymentModal
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-        <h2 className="text-base font-semibold text-gray-800 mb-6">Record Advance Payment</h2>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center">
+            <CreditCard size={18} className="text-orange-600" />
+          </div>
+          <h2 className="text-base font-semibold text-gray-800">Record Advance Payment</h2>
+        </div>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Staff Member *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Staff Member *</label>
               <select value={formData.staff_id} onChange={(e) => setFormData({ ...formData, staff_id: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" required>
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition text-sm" required>
                 <option value="">Select Staff</option>
                 {staffList.map(s => (
                   <option key={s.staff_id} value={s.staff_id}>
@@ -75,38 +81,42 @@ const AdvancePaymentModal = ({ isOpen, onClose, onSuccess }: AdvancePaymentModal
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
-              <input type="number" step="0.01" min="0.01" value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" required />
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Amount *</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{currency}</span>
+                <input type="number" step="0.01" min="0.01" value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  className="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition text-sm" required />
+              </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Date *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Payment Date *</label>
               <input type="date" value={formData.payment_date}
                 onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" required />
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition text-sm" required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Payment Method</label>
               <select value={formData.payment_method} onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500">
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition text-sm">
                 <option value="cash">Cash</option>
                 <option value="bank_transfer">Bank Transfer</option>
                 <option value="cheque">Cheque</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Reason</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Reason</label>
               <textarea value={formData.reason} onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" rows={3} />
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition text-sm" rows={3} />
             </div>
           </div>
           <div className="flex gap-3 mt-6">
-            <button type="button" onClick={onClose} className="flex-1 px-6 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition">
+            <button type="button" onClick={onClose}
+              className="flex-1 px-6 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition text-gray-600 font-medium text-sm">
               Cancel
             </button>
             <button type="submit" disabled={loading}
-              className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition disabled:opacity-50">
+              className="flex-1 px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 shadow-md shadow-orange-200 transition-all duration-200 font-medium text-sm disabled:opacity-50">
               {loading ? 'Recording...' : 'Record Payment'}
             </button>
           </div>
@@ -170,95 +180,110 @@ const AdvancePayments = () => {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <DollarSign className="text-emerald-600" size={20} />
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Advance Payments</h1>
-            <p className="text-gray-600 text-sm mt-1">Manage advance salary payments to staff</p>
+      {/* Gradient Page Header */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-orange-50 via-white to-white border-b border-gray-100 px-8 py-6 -mx-8 -mt-8 mb-8">
+        <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%23000%22 fill-opacity=%221%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')]" />
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-200">
+              <CreditCard size={22} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Advance Payments</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Manage staff advance payments</p>
+            </div>
           </div>
+          <button onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-5 py-2.5 rounded-xl hover:from-orange-600 hover:to-orange-700 shadow-md shadow-orange-200 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium text-sm">
+            <Plus size={16} /> Record Advance
+          </button>
         </div>
-        <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg">
-          <Plus size={20} /> Record Advance
-        </button>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-gray-600 text-sm">Total Advances</p>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200">
+          <p className="text-gray-500 text-sm font-medium">Total Advances</p>
           <p className="text-3xl font-bold text-gray-800 mt-2">{pagination.total}</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-gray-600 text-sm">Total Amount (Filtered)</p>
-          <p className="text-3xl font-bold text-emerald-600 mt-2">{currency}{totalAdvances.toLocaleString()}</p>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200">
+          <p className="text-gray-500 text-sm font-medium">Total Amount (Filtered)</p>
+          <p className="text-3xl font-bold text-orange-600 mt-2">{currency}{totalAdvances.toLocaleString()}</p>
         </div>
       </div>
 
-      {/* Filter */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+      {/* Filter bar */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-6">
         <div className="flex flex-wrap items-center gap-4">
           <select value={staffFilter} onChange={(e) => { setStaffFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 min-w-[200px]">
+            className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition text-sm min-w-[200px]">
             <option value="">All Staff</option>
             {staffList.map(s => <option key={s.staff_id} value={s.staff_id}>{s.employee_id ? `[${s.employee_id}] ` : ''}{s.full_name}</option>)}
           </select>
           {advances.length > 0 && (
-            <button onClick={exportCSV} className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition ml-auto">
-              <Download size={18} /> Export CSV
+            <button onClick={exportCSV}
+              className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 px-3 py-2 rounded-lg transition ml-auto">
+              <Download size={15} /> Export CSV
             </button>
           )}
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr className="border-b">
-              <th className="text-left p-4 font-semibold text-gray-700">Date</th>
-              <th className="text-left p-4 font-semibold text-gray-700">Employee</th>
-              <th className="text-right p-4 font-semibold text-gray-700">Amount</th>
-              <th className="text-center p-4 font-semibold text-gray-700">Method</th>
-              <th className="text-left p-4 font-semibold text-gray-700">Reason</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={5} className="p-8 text-center text-gray-500">Loading...</td></tr>
-            ) : advances.length > 0 ? (
-              advances.map((adv: any) => (
-                <tr key={adv.advance_id} className="border-b hover:bg-gray-50 transition">
-                  <td className="p-4 text-gray-600">{new Date(adv.payment_date).toLocaleDateString()}</td>
-                  <td className="p-4">
-                    <div className="font-semibold text-gray-800">{adv.full_name}</div>
-                    <div className="text-xs text-gray-500">{adv.employee_id || ''} {adv.department ? `- ${adv.department}` : ''}</div>
+      {loading ? (
+        <SkeletonTable rows={5} cols={5} />
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gradient-to-r from-gray-50 to-white">
+              <tr className="border-b border-gray-100">
+                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
+                <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                <th className="text-center px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Method</th>
+                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              {advances.length > 0 ? (
+                advances.map((adv: any) => (
+                  <tr key={adv.advance_id} className="border-b border-gray-50 hover:bg-orange-50/20 transition-colors">
+                    <td className="px-6 py-4 text-gray-500 text-sm">{new Date(adv.payment_date).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-gray-800">{adv.full_name}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">{adv.employee_id || ''} {adv.department ? `- ${adv.department}` : ''}</div>
+                    </td>
+                    <td className="px-6 py-4 text-right font-bold text-orange-600">{currency}{Number(adv.amount).toLocaleString()}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 capitalize">
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                        {(adv.payment_method || '').replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-500 text-sm">{adv.reason || '-'}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
+                    <CreditCard size={32} className="mx-auto mb-3 opacity-30" />
+                    <p className="font-medium">No advance payments found</p>
                   </td>
-                  <td className="p-4 text-right font-bold text-emerald-600">{currency}{Number(adv.amount).toLocaleString()}</td>
-                  <td className="p-4 text-center">
-                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium capitalize">
-                      {(adv.payment_method || '').replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="p-4 text-gray-600">{adv.reason || '-'}</td>
                 </tr>
-              ))
-            ) : (
-              <tr><td colSpan={5} className="p-8 text-center text-gray-500">No advance payments found</td></tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
 
-        <Pagination
-          currentPage={pagination.page}
-          totalPages={pagination.totalPages}
-          onPageChange={(page) => setPagination(p => ({ ...p, page }))}
-          totalItems={pagination.total}
-          itemsPerPage={pagination.limit}
-        onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
-        />
-      </div>
+          <Pagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+            onPageChange={(page) => setPagination(p => ({ ...p, page }))}
+            totalItems={pagination.total}
+            itemsPerPage={pagination.limit}
+            onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
+          />
+        </div>
+      )}
 
       <AdvancePaymentModal isOpen={showModal} onClose={() => setShowModal(false)} onSuccess={fetchAdvances} />
     </div>

@@ -9,12 +9,28 @@
 //   5. requireModule middleware guards plan-based features
 // =============================================================
 
-const express = require('express');
-const cors    = require('cors');
-const helmet  = require('helmet');
-const morgan  = require('morgan');
-const path    = require('path');
+const express   = require('express');
+const cors      = require('cors');
+const helmet    = require('helmet');
+const morgan    = require('morgan');
+const path      = require('path');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+
+const logger = require('./config/logger');
+
+// ── Global Process Error Handlers ────────────────────────────
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Promise Rejection', {
+    reason: reason instanceof Error ? reason.message : String(reason),
+    stack:  reason instanceof Error ? reason.stack : undefined,
+  });
+});
+
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught Exception — shutting down', { error: err.message, stack: err.stack });
+  process.exit(1);
+});
 
 // --- Import Route Files ---
 const authRoutes            = require('./routes/authRoutes');
@@ -60,17 +76,55 @@ const { requireModule } = require('./middleware/moduleGuard');
 
 const app = express();
 
+// ── CORS Configuration ───────────────────────────────────────
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. same-origin, mobile apps, curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: Origin '${origin}' not allowed`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Subdomain'],
+};
+
+// ── Rate Limiters ────────────────────────────────────────────
+// General API limiter: 200 requests per 15 minutes per IP
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests. Please try again later.' },
+});
+
+// Strict limiter for login: 10 attempts per 15 minutes per IP
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many login attempts. Please wait 15 minutes.' },
+});
+
 // ── Global Middleware ────────────────────────────────────────
 app.use(helmet());
-app.use(cors());   // Allow all origins — restrict in production via nginx/reverse proxy
+app.use(cors(corsOptions));
 
-app.use(morgan('dev'));
+app.use(morgan('combined', {
+  stream: { write: (msg) => logger.info(msg.trim()) },
+}));
 app.use(express.json({ limit: '10mb' }));
 
-// Request logger header
-app.use((req, res, next) => {
-  next();
-});
+// Apply rate limiting
+app.use('/api/', apiLimiter);
+app.use('/api/auth/login', authLimiter);
 
 // ── API Routes ───────────────────────────────────────────────
 
@@ -148,20 +202,24 @@ app.use((req, res) => {
 
 // ── Global Error Handler ─────────────────────────────────────
 app.use((err, req, res, next) => {
-  // CORS errors
   if (err.message && err.message.startsWith('CORS')) {
     return res.status(403).json({ message: err.message });
   }
-  console.error('[ERROR]', err.stack);
+  logger.error('Unhandled route error', {
+    error:  err.message,
+    stack:  err.stack,
+    method: req.method,
+    url:    req.originalUrl,
+  });
   res.status(500).json({ message: 'Internal server error' });
 });
 
 // ── Start Server ─────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`\n╔══════════════════════════════════════════╗`);
-  console.log(`║  AByte POS  –  Backend Server            ║`);
-  console.log(`║  Listening on port ${PORT}                  ║`);
-  console.log(`║  DB: ${(process.env.DB_NAME || 'abyte_pos').padEnd(35)}║`);
-  console.log(`╚══════════════════════════════════════════╝\n`);
+  logger.info(`AByte POS backend started`, {
+    port:    PORT,
+    db:      process.env.DB_NAME || 'abyte_pos',
+    origins: allowedOrigins,
+  });
 });
