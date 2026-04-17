@@ -1,29 +1,88 @@
 const { query } = require('../config/database');
 
-// Legacy stubs (kept for backward compatibility)
 exports.getStockSummary = async (req, res) => {
   try {
-    const [row] = await query('SELECT COUNT(*) as total_products, COALESCE(SUM(available_stock),0) as total_stock FROM inventory');
-    res.json({ data: row });
-  } catch (err) { res.status(500).json({ message: 'Server error' }); }
+    const [row] = await query(`
+      SELECT
+        COUNT(p.product_id) as total_products,
+        COALESCE(SUM(i.available_stock), 0) as total_units,
+        COALESCE(SUM(i.available_stock * COALESCE(p.cost_price, 0)), 0) as total_stock_value,
+        COUNT(CASE WHEN COALESCE(i.available_stock, 0) = 0 THEN 1 END) as out_of_stock_count,
+        COUNT(CASE WHEN COALESCE(i.available_stock, 0) > 0
+                    AND COALESCE(i.available_stock, 0) <= COALESCE(p.reorder_level, 10) THEN 1 END) as low_stock_count
+      FROM products p
+      LEFT JOIN inventory i ON p.product_id = i.product_id
+      WHERE p.is_active = 1
+    `);
+    res.json(row || {});
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
 };
+
 exports.getTopProducts = async (req, res) => {
   try {
-    const rows = await query('SELECT p.product_name, COALESCE(i.available_stock,0) as stock FROM products p LEFT JOIN inventory i ON p.product_id=i.product_id ORDER BY stock DESC LIMIT 10');
-    res.json({ data: rows });
-  } catch (err) { res.status(500).json({ message: 'Server error' }); }
+    const { limit = 10, date_from, date_to } = req.query;
+    let dateWhere = '';
+    const params = [];
+    if (date_from) { dateWhere += ' AND s.sale_date >= ?'; params.push(date_from); }
+    if (date_to)   { dateWhere += ' AND s.sale_date <= ?'; params.push(date_to); }
+    params.push(parseInt(limit));
+    const rows = await query(`
+      SELECT p.product_id, p.product_name, c.category_name,
+             SUM(sd.quantity) as units_sold,
+             SUM(sd.total_price) as revenue
+      FROM sale_details sd
+      JOIN products p ON sd.product_id = p.product_id
+      JOIN sales s ON sd.sale_id = s.sale_id
+      LEFT JOIN categories c ON p.category_id = c.category_id
+      WHERE 1=1 ${dateWhere}
+      GROUP BY p.product_id, p.product_name, c.category_name
+      ORDER BY units_sold DESC
+      LIMIT ?
+    `, params);
+    res.json({ data: rows.map(r => ({ ...r, units_sold: Number(r.units_sold), revenue: Number(r.revenue) })) });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
 };
+
 exports.getCategoryBreakdown = async (req, res) => {
   try {
-    const rows = await query('SELECT c.category_name, COUNT(p.product_id) as count FROM categories c LEFT JOIN products p ON c.category_id=p.category_id GROUP BY c.category_id, c.category_name');
-    res.json({ data: rows });
-  } catch (err) { res.status(500).json({ message: 'Server error' }); }
+    const rows = await query(`
+      SELECT c.category_id, c.category_name,
+             COUNT(p.product_id) as product_count,
+             COALESCE(SUM(i.available_stock), 0) as total_stock,
+             COALESCE(SUM(i.available_stock * COALESCE(p.cost_price, 0)), 0) as stock_value
+      FROM categories c
+      LEFT JOIN products p ON c.category_id = p.category_id AND p.is_active = 1
+      LEFT JOIN inventory i ON p.product_id = i.product_id
+      GROUP BY c.category_id, c.category_name
+      ORDER BY stock_value DESC
+    `);
+    res.json({ data: rows.map(r => ({ ...r, product_count: Number(r.product_count), total_stock: Number(r.total_stock), stock_value: Number(r.stock_value) })) });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
 };
+
 exports.getSlowMovers = async (req, res) => {
   try {
-    const rows = await query('SELECT p.product_name, COALESCE(i.available_stock,0) as stock FROM products p LEFT JOIN inventory i ON p.product_id=i.product_id WHERE i.available_stock > 0 ORDER BY stock DESC LIMIT 20');
-    res.json({ data: rows });
-  } catch (err) { res.status(500).json({ message: 'Server error' }); }
+    const { days = 30 } = req.query;
+    const rows = await query(`
+      SELECT
+        p.product_id, p.product_name, c.category_name,
+        COALESCE(i.available_stock, 0) as current_stock,
+        MAX(s.sale_date) as last_sale_date,
+        DATEDIFF(NOW(), MAX(s.sale_date)) as days_since_last_sale,
+        COALESCE(i.available_stock, 0) * COALESCE(p.cost_price, 0) as value_at_risk
+      FROM products p
+      LEFT JOIN inventory i ON p.product_id = i.product_id
+      LEFT JOIN categories c ON p.category_id = c.category_id
+      LEFT JOIN sale_details sd ON p.product_id = sd.product_id
+      LEFT JOIN sales s ON sd.sale_id = s.sale_id
+      WHERE p.is_active = 1 AND COALESCE(i.available_stock, 0) > 0
+      GROUP BY p.product_id, p.product_name, c.category_name, i.available_stock, p.cost_price
+      HAVING last_sale_date IS NULL OR days_since_last_sale >= ?
+      ORDER BY days_since_last_sale DESC, current_stock DESC
+      LIMIT 50
+    `, [parseInt(days)]);
+    res.json({ data: rows.map(r => ({ ...r, current_stock: Number(r.current_stock), value_at_risk: Number(r.value_at_risk) })) });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.itemsLedger = async (req, res) => {

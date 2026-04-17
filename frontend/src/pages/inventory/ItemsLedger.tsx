@@ -16,7 +16,7 @@ const ItemsLedger = () => {
   const [ledger, setLedger]     = useState<any[]>([]);
   const [productInfo, setProductInfo] = useState<any>(null);
   const [loading, setLoading]   = useState(false);
-  const { showToast } = useToast();
+  const { error } = useToast();
 
   const searchProducts = async (q: string) => {
     setProductSearch(q);
@@ -30,7 +30,7 @@ const ItemsLedger = () => {
   };
 
   const fetchLedger = useCallback(async () => {
-    if (!selectedProduct) return showToast('Select a product first', 'error');
+    if (!selectedProduct) return error('Select a product first');
     setLoading(true);
     try {
       const res = await api.get('/inventory-reports/items-ledger', {
@@ -38,7 +38,7 @@ const ItemsLedger = () => {
       });
       setLedger(res.data.ledger || []);
       setProductInfo(res.data.product);
-    } catch { showToast('Failed to load ledger', 'error'); }
+    } catch { error('Failed to load ledger'); }
     finally { setLoading(false); }
   }, [selectedProduct, dateFrom, dateTo]);
 

@@ -1,0 +1,13 @@
+const express = require('express');
+const router = express.Router();
+const emailController = require('../controllers/emailController');
+const { authenticate, authorize } = require('../middleware/auth');
+
+router.use(authenticate);
+
+router.get('/status', emailController.getStatus);
+router.post('/test-connection', authorize('Admin'), emailController.testConnection);
+router.post('/send-test', authorize('Admin'), emailController.sendTest);
+router.post('/low-stock-alert', authorize('Admin', 'Manager'), emailController.sendLowStockAlert);
+
+module.exports = router;

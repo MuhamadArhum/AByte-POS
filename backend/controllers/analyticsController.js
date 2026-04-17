@@ -1,5 +1,90 @@
 const { query } = require('../config/database');
 
+exports.getCustomerAnalytics = async (req, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+
+    const topCustomers = await query(`
+      SELECT
+        COALESCE(customer_name, 'Walk-in') as customer_name,
+        COUNT(*) as total_orders,
+        SUM(net_amount) as total_spent,
+        AVG(net_amount) as avg_order_value,
+        MAX(sale_date) as last_purchase
+      FROM sales
+      WHERE sale_date BETWEEN ? AND ?
+      GROUP BY COALESCE(customer_name, 'Walk-in')
+      ORDER BY total_spent DESC
+      LIMIT 10
+    `, [start_date, end_date]);
+
+    const [customerCounts] = await query(`
+      SELECT
+        COUNT(DISTINCT CASE WHEN customer_name IS NOT NULL AND customer_name != '' THEN customer_name END) as named_customers,
+        COUNT(CASE WHEN customer_name IS NULL OR customer_name = '' THEN 1 END) as walkin_count,
+        COUNT(*) as total_transactions
+      FROM sales
+      WHERE sale_date BETWEEN ? AND ?
+    `, [start_date, end_date]);
+
+    res.json({ top_customers: topCustomers, summary: customerCounts || {} });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getPaymentMethods = async (req, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+
+    const methods = await query(`
+      SELECT
+        COALESCE(payment_method, 'Cash') as payment_method,
+        COUNT(*) as transaction_count,
+        SUM(net_amount) as total_amount,
+        ROUND(SUM(net_amount) * 100.0 / SUM(SUM(net_amount)) OVER (), 1) as percentage
+      FROM sales
+      WHERE sale_date BETWEEN ? AND ?
+      GROUP BY COALESCE(payment_method, 'Cash')
+      ORDER BY total_amount DESC
+    `, [start_date, end_date]);
+
+    res.json({ data: methods });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getHourlySales = async (req, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+
+    const hourly = await query(`
+      SELECT
+        HOUR(sale_date) as hour,
+        COUNT(*) as transaction_count,
+        SUM(net_amount) as total_sales
+      FROM sales
+      WHERE sale_date BETWEEN ? AND ?
+      GROUP BY HOUR(sale_date)
+      ORDER BY hour ASC
+    `, [start_date, end_date]);
+
+    const allHours = Array.from({ length: 24 }, (_, h) => {
+      const found = hourly.find(r => Number(r.hour) === h);
+      const label = h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`;
+      return { hour: h, label, transaction_count: Number(found?.transaction_count || 0), total_sales: Number(found?.total_sales || 0) };
+    });
+
+    res.json({ data: allHours });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 exports.getDashboardStats = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;

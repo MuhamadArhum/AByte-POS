@@ -568,28 +568,127 @@ exports.getSalarySummaryReport = async (req, res) => {
 
 exports.getSalarySheet = async (req, res) => {
   try {
-    const { department } = req.query;
+    const { department, month, year } = req.query;
+    const now = new Date();
+    const m = parseInt(month) || (now.getMonth() + 1);
+    const y = parseInt(year) || now.getFullYear();
+
+    const [{ holidays_count }] = await query(
+      'SELECT COUNT(*) as holidays_count FROM holidays WHERE MONTH(holiday_date) = ? AND YEAR(holiday_date) = ?',
+      [m, y]
+    );
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const working_days = Math.max(daysInMonth - Number(holidays_count), 1);
+
     let sql = `
       SELECT s.staff_id, s.employee_id, s.full_name, s.department, s.position,
              s.salary, s.salary_type,
+             COUNT(CASE WHEN a.status = 'present' THEN 1 END) as present_days,
+             COUNT(CASE WHEN a.status = 'absent'  THEN 1 END) as absent_days,
+             COUNT(CASE WHEN a.status = 'half_day' THEN 1 END) as half_days,
+             COUNT(CASE WHEN a.status = 'leave'   THEN 1 END) as leave_days,
              COALESCE(SUM(CASE WHEN l.status = 'active' THEN l.monthly_deduction ELSE 0 END), 0) as loan_deduction
       FROM staff s
+      LEFT JOIN attendance a ON s.staff_id = a.staff_id
+           AND MONTH(a.attendance_date) = ? AND YEAR(a.attendance_date) = ?
       LEFT JOIN staff_loans l ON s.staff_id = l.staff_id AND l.status = 'active'
       WHERE s.is_active = 1
     `;
-    const params = [];
+    const params = [m, y];
     if (department) { sql += ' AND s.department = ?'; params.push(department); }
-    sql += ' GROUP BY s.staff_id ORDER BY s.full_name';
+    sql += ' GROUP BY s.staff_id ORDER BY s.department, s.full_name';
 
     const data = await query(sql, params);
-    const sheet = data.map(r => ({
-      ...r,
-      salary: Number(r.salary || 0),
-      loan_deduction: Number(r.loan_deduction || 0),
-      net_salary: Number(r.salary || 0) - Number(r.loan_deduction || 0)
-    }));
+    const sheet = data.map(r => {
+      const salary       = Number(r.salary || 0);
+      const daily_rate   = salary / working_days;
+      const absent_days  = Number(r.absent_days  || 0);
+      const half_days    = Number(r.half_days    || 0);
+      const absent_deduction = +(absent_days * daily_rate + half_days * daily_rate * 0.5).toFixed(2);
+      const loan_deduction   = Number(r.loan_deduction || 0);
+      const total_deduction  = +(loan_deduction + absent_deduction).toFixed(2);
+      return {
+        ...r,
+        salary,
+        present_days : Number(r.present_days || 0),
+        absent_days,
+        half_days,
+        leave_days   : Number(r.leave_days   || 0),
+        adjustment   : 0,
+        gross_pay    : salary,
+        loan_deduction,
+        absent_deduction,
+        total_deduction,
+        net_salary   : +(salary - total_deduction).toFixed(2),
+        daily_rate   : +daily_rate.toFixed(2),
+      };
+    });
 
-    res.json({ data: sheet });
+    res.json({
+      data: sheet,
+      meta: { month: m, year: y, holidays: Number(holidays_count), working_days, days_in_month: daysInMonth }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getSalaryVoucher = async (req, res) => {
+  try {
+    const { staff_id, month, year } = req.query;
+    if (!staff_id) return res.status(400).json({ message: 'staff_id required' });
+    const now = new Date();
+    const m = parseInt(month) || (now.getMonth() + 1);
+    const y = parseInt(year) || now.getFullYear();
+
+    const [staff] = await query('SELECT * FROM staff WHERE staff_id = ?', [staff_id]);
+    if (!staff) return res.status(404).json({ message: 'Employee not found' });
+
+    const [{ holidays_count }] = await query(
+      'SELECT COUNT(*) as holidays_count FROM holidays WHERE MONTH(holiday_date) = ? AND YEAR(holiday_date) = ?', [m, y]
+    );
+    const daysInMonth  = new Date(y, m, 0).getDate();
+    const working_days = Math.max(daysInMonth - Number(holidays_count), 1);
+
+    const [att] = await query(`
+      SELECT COUNT(CASE WHEN status='present'  THEN 1 END) as present_days,
+             COUNT(CASE WHEN status='absent'   THEN 1 END) as absent_days,
+             COUNT(CASE WHEN status='half_day' THEN 1 END) as half_days,
+             COUNT(CASE WHEN status='leave'    THEN 1 END) as leave_days
+      FROM attendance WHERE staff_id=? AND MONTH(attendance_date)=? AND YEAR(attendance_date)=?
+    `, [staff_id, m, y]);
+
+    const [loan] = await query(
+      `SELECT COALESCE(SUM(monthly_deduction),0) as loan_deduction FROM staff_loans WHERE staff_id=? AND status='active'`,
+      [staff_id]
+    );
+
+    const salary       = Number(staff.salary || 0);
+    const daily_rate   = salary / working_days;
+    const absent_days  = Number(att?.absent_days || 0);
+    const half_days    = Number(att?.half_days   || 0);
+    const absent_deduction = +(absent_days * daily_rate + half_days * daily_rate * 0.5).toFixed(2);
+    const loan_deduction   = Number(loan?.loan_deduction || 0);
+    const total_deduction  = +(loan_deduction + absent_deduction).toFixed(2);
+
+    res.json({
+      staff: { staff_id: staff.staff_id, employee_id: staff.employee_id, full_name: staff.full_name,
+               department: staff.department, position: staff.position, salary_type: staff.salary_type },
+      month: m, year: y, days_in_month: daysInMonth,
+      holidays: Number(holidays_count), working_days,
+      present_days : Number(att?.present_days || 0),
+      absent_days, half_days,
+      leave_days   : Number(att?.leave_days   || 0),
+      basic_salary : salary,
+      adjustment   : 0,
+      gross_pay    : salary,
+      loan_deduction,
+      absent_deduction,
+      total_deduction,
+      net_pay      : +(salary - total_deduction).toFixed(2),
+      daily_rate   : +daily_rate.toFixed(2),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -734,27 +833,85 @@ exports.getLoans = async (req, res) => {
   }
 };
 
+async function autoPostJournalEntry(conn, { description, entry_date, lines, userId }) {
+  const [lastEntry] = await conn.query('SELECT entry_number FROM journal_entries ORDER BY entry_id DESC LIMIT 1');
+  const lastNum = lastEntry ? parseInt(lastEntry.entry_number.replace(/\D/g, '')) || 0 : 0;
+  const entryNumber = `JV-${String(lastNum + 1).padStart(5, '0')}`;
+  const totalDebit = lines.reduce((s, l) => s + Number(l.debit || 0), 0);
+  const totalCredit = lines.reduce((s, l) => s + Number(l.credit || 0), 0);
+
+  const [entryResult] = await conn.query(
+    'INSERT INTO journal_entries (entry_number, entry_date, description, total_debit, total_credit, created_by, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [entryNumber, entry_date, description, totalDebit, totalCredit, userId, 'draft']
+  );
+  const entryId = entryResult.insertId;
+
+  for (const line of lines) {
+    await conn.query(
+      'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, ?, ?)',
+      [entryId, line.account_id, line.description || description, line.debit || 0, line.credit || 0]
+    );
+  }
+
+  // Fetch account types to compute balance changes
+  const accountIds = [...new Set(lines.map(l => l.account_id))];
+  const accs = await conn.query(`SELECT account_id, account_type FROM accounts WHERE account_id IN (${accountIds.map(() => '?').join(',')})`, accountIds);
+  const typeMap = {};
+  for (const a of accs) typeMap[a.account_id] = a.account_type;
+
+  const caseWhen = lines.map(() => 'WHEN ? THEN current_balance + ?').join(' ');
+  const caseParams = [];
+  for (const line of lines) {
+    const debitIncrease = ['asset', 'expense'].includes(typeMap[line.account_id]);
+    caseParams.push(line.account_id, debitIncrease ? (Number(line.debit) - Number(line.credit)) : (Number(line.credit) - Number(line.debit)));
+  }
+  await conn.query(`UPDATE accounts SET current_balance = CASE account_id ${caseWhen} END WHERE account_id IN (${accountIds.map(() => '?').join(',')})`, [...caseParams, ...accountIds]);
+  await conn.query('UPDATE journal_entries SET status = ?, posted_at = CURRENT_TIMESTAMP WHERE entry_id = ?', ['posted', entryId]);
+  return entryId;
+}
+
 exports.createLoan = async (req, res) => {
+  const conn = await getConnection();
   try {
-    const { staff_id, loan_amount, monthly_deduction, loan_date, reason } = req.body;
+    const { staff_id, loan_amount, monthly_deduction, loan_date, reason, debit_account_id, credit_account_id } = req.body;
     if (!staff_id || !loan_amount || !loan_date) return res.status(400).json({ message: 'Staff, amount and date required' });
     if (Number(loan_amount) <= 0) return res.status(400).json({ message: 'Amount must be positive', field: 'loan_amount' });
 
     const [staff] = await query('SELECT full_name FROM staff WHERE staff_id = ?', [staff_id]);
     if (!staff) return res.status(404).json({ message: 'Staff not found' });
 
-    const result = await query(
-      'INSERT INTO staff_loans (staff_id, loan_amount, remaining_balance, monthly_deduction, loan_date, reason, approved_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [staff_id, loan_amount, loan_amount, monthly_deduction || 0, loan_date, reason || null, req.user.user_id]
+    await conn.beginTransaction();
+
+    const [result] = await conn.query(
+      'INSERT INTO staff_loans (staff_id, loan_amount, remaining_balance, monthly_deduction, loan_date, reason, approved_by, debit_account_id, credit_account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [staff_id, loan_amount, loan_amount, monthly_deduction || 0, loan_date, reason || null, req.user.user_id, debit_account_id || null, credit_account_id || null]
     );
 
+    // Auto-post journal entry if both accounts provided
+    if (debit_account_id && credit_account_id) {
+      const desc = `Loan issued to ${staff.full_name} — ${currency_fmt(loan_amount)}`;
+      await autoPostJournalEntry(conn, {
+        description: desc, entry_date: loan_date, userId: req.user.user_id,
+        lines: [
+          { account_id: debit_account_id,  debit: loan_amount, credit: 0, description: desc },
+          { account_id: credit_account_id, debit: 0, credit: loan_amount, description: desc },
+        ]
+      });
+    }
+
+    await conn.commit();
     await logAction(req.user.user_id, req.user.name, 'LOAN_ISSUED', 'staff_loans', result.insertId, { staff_id, loan_amount, staff_name: staff.full_name }, req.ip);
     res.status(201).json({ message: 'Loan issued', loan_id: result.insertId });
   } catch (err) {
+    await conn.rollback();
     console.error(err);
     res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
   }
 };
+
+const currency_fmt = (v) => Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 exports.repayLoan = async (req, res) => {
   const conn = await getConnection();
@@ -766,7 +923,7 @@ exports.repayLoan = async (req, res) => {
 
     await conn.beginTransaction();
 
-    const [loan] = await conn.query('SELECT * FROM staff_loans WHERE loan_id = ? FOR UPDATE', [loanId]);
+    const [loan] = await conn.query('SELECT l.*, s.full_name FROM staff_loans l JOIN staff s ON l.staff_id = s.staff_id WHERE l.loan_id = ? FOR UPDATE', [loanId]);
     if (!loan) { await conn.rollback(); return res.status(404).json({ message: 'Loan not found' }); }
     if (loan.status !== 'active') { await conn.rollback(); return res.status(400).json({ message: 'Loan is not active' }); }
     if (Number(amount) > Number(loan.remaining_balance)) { await conn.rollback(); return res.status(400).json({ message: 'Amount exceeds remaining balance', field: 'amount' }); }
@@ -782,6 +939,18 @@ exports.repayLoan = async (req, res) => {
       'UPDATE staff_loans SET remaining_balance = ?, status = ? WHERE loan_id = ?',
       [newBalance, newBalance <= 0 ? 'completed' : 'active', loanId]
     );
+
+    // Auto-post reverse journal entry if accounts are linked on the loan
+    if (loan.debit_account_id && loan.credit_account_id) {
+      const desc = `Loan repayment from ${loan.full_name} — ${currency_fmt(amount)}`;
+      await autoPostJournalEntry(conn, {
+        description: desc, entry_date: repayment_date, userId: req.user.user_id,
+        lines: [
+          { account_id: loan.credit_account_id, debit: amount, credit: 0, description: desc },
+          { account_id: loan.debit_account_id,  debit: 0, credit: amount, description: desc },
+        ]
+      });
+    }
 
     await conn.commit();
     await logAction(req.user.user_id, req.user.name, 'LOAN_REPAYMENT', 'staff_loans', loanId, { staff_id: loan.staff_id, amount, remaining: newBalance }, req.ip);

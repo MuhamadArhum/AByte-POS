@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
@@ -85,7 +85,7 @@ const Login = () => {
             <span className="text-xl font-black text-white">A</span>
           </div>
           <div>
-            <p className="text-white font-bold text-lg leading-tight">AByte POS</p>
+            <p className="text-white font-bold text-lg leading-tight">AByte ERP</p>
             <p className="text-emerald-400/70 text-xs">Complete Business Solution</p>
           </div>
         </motion.div>
@@ -169,7 +169,7 @@ const Login = () => {
             <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
               <span className="text-lg font-black text-white">A</span>
             </div>
-            <span className="text-xl font-bold text-gray-800">AByte POS</span>
+            <span className="text-xl font-bold text-gray-800">AByte ERP</span>
           </div>
 
           {/* Heading */}
@@ -275,7 +275,7 @@ const Login = () => {
           </form>
 
           <p className="text-center text-xs text-gray-400 mt-8">
-            Protected by enterprise-grade security &nbsp;&middot;&nbsp; AByte POS &copy; 2025
+            Protected by enterprise-grade security &nbsp;&middot;&nbsp; AByte ERP &copy; 2025
           </p>
         </motion.div>
       </div>

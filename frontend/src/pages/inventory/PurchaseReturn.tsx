@@ -23,7 +23,7 @@ const PurchaseReturn = () => {
   const [page, setPage]           = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const { showToast } = useToast();
+  const { error, success } = useToast();
 
   // Form
   const [mode, setMode]           = useState<'pv' | 'manual'>('manual');
@@ -46,7 +46,7 @@ const PurchaseReturn = () => {
       setReturns(res.data.data || []);
       setTotalPages(res.data.pagination?.totalPages || 1);
       setTotalItems(res.data.pagination?.total || 0);
-    } catch { showToast('Failed to load', 'error'); }
+    } catch { error('Failed to load'); }
     finally { setLoading(false); }
   }, [dateFrom, dateTo, supplierFilter, page]);
 
@@ -68,7 +68,7 @@ const PurchaseReturn = () => {
         quantity_returned: Number(i.quantity_received),
         unit_price: Number(i.unit_price),
       })));
-    } catch { showToast('Failed to load PV items', 'error'); }
+    } catch { error('Failed to load PV items'); }
   };
 
   const searchProducts = async (q: string) => {
@@ -94,7 +94,7 @@ const PurchaseReturn = () => {
   };
 
   const handleSubmit = async () => {
-    if (!items.length) return showToast('Add at least one item', 'error');
+    if (!items.length) return error('Add at least one item');
     setSaving(true);
     try {
       const payload: any = {
@@ -105,16 +105,16 @@ const PurchaseReturn = () => {
       };
       if (mode === 'pv' && selectedPV) payload.pv_id = selectedPV;
       const res = await api.post('/purchase-returns', payload);
-      showToast(`Purchase Return ${res.data.pr_number} created`, 'success');
+      success(`Purchase Return ${res.data.pr_number} created`);
       setShowForm(false); resetForm(); fetchReturns();
-    } catch (err: any) { showToast(err.response?.data?.message || 'Error', 'error'); }
+    } catch (err: any) { error(err.response?.data?.message || 'Error'); }
     finally { setSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('Delete this return? Stock will be restored.')) return;
-    try { await api.delete(`/purchase-returns/${id}`); showToast('Deleted', 'success'); fetchReturns(); }
-    catch (err: any) { showToast(err.response?.data?.message || 'Error', 'error'); }
+    try { await api.delete(`/purchase-returns/${id}`); success('Deleted'); fetchReturns(); }
+    catch (err: any) { error(err.response?.data?.message || 'Error'); }
   };
 
   const openView = async (id: number) => {

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSettings } from '../../context/SettingsContext';
 import { Book, RefreshCw, Printer, Search, ChevronDown, TrendingUp, TrendingDown } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
@@ -156,18 +155,18 @@ const GeneralLedger = () => {
     <p>Code: ${accountInfo.account_code} &nbsp;|&nbsp; Period: ${fromDate} to ${toDate}</p>
     <table>
       <tr><th>Date</th><th>JV #</th><th>Narration</th><th class="right">Debit</th><th class="right">Credit</th><th class="right">Balance</th></tr>
-      <tr class="ob"><td colspan="3">Opening Balance</td><td class="right"></td><td class="right"></td><td class="right">{currency}{fmt(openingBalance)} ${openingBalance >= 0 ? 'Dr' : 'Cr'}</td></tr>
+      <tr class="ob"><td colspan="3">Opening Balance</td><td class="right"></td><td class="right"></td><td class="right">${fmt(openingBalance)} ${openingBalance >= 0 ? 'Dr' : 'Cr'}</td></tr>
       ${rows.map(({ row, runningBalance }) => `
         <tr>
-          <td>{currency}{fmtDate(row.entry_date)}</td>
-          <td>{currency}{row.entry_number}</td>
-          <td>{currency}{row.description || ''}</td>
-          <td class="right">{currency}{Number(row.debit) > 0 ? fmt(row.debit) : ''}</td>
-          <td class="right">{currency}{Number(row.credit) > 0 ? fmt(row.credit) : ''}</td>
-          <td class="right">{currency}{fmt(runningBalance)} ${runningBalance >= 0 ? 'Dr' : 'Cr'}</td>
+          <td>${fmtDate(row.entry_date)}</td>
+          <td>${row.entry_number}</td>
+          <td>${row.description || ''}</td>
+          <td class="right">${Number(row.debit) > 0 ? fmt(row.debit) : ''}</td>
+          <td class="right">${Number(row.credit) > 0 ? fmt(row.credit) : ''}</td>
+          <td class="right">${fmt(runningBalance)} ${runningBalance >= 0 ? 'Dr' : 'Cr'}</td>
         </tr>`).join('')}
-      <tr class="total"><td colspan="3">Total</td><td class="right">{currency}{fmt(totalDebit)}</td><td class="right">{currency}{fmt(totalCredit)}</td><td></td></tr>
-      <tr class="cb"><td colspan="3">Closing Balance</td><td></td><td></td><td class="right">{currency}{fmt(closingBalance)} ${closingBalance >= 0 ? 'Dr' : 'Cr'}</td></tr>
+      <tr class="total"><td colspan="3">Total</td><td class="right">${fmt(totalDebit)}</td><td class="right">${fmt(totalCredit)}</td><td></td></tr>
+      <tr class="cb"><td colspan="3">Closing Balance</td><td></td><td></td><td class="right">${fmt(closingBalance)} ${closingBalance >= 0 ? 'Dr' : 'Cr'}</td></tr>
     </table>
     </body></html>`);
     win.document.close();

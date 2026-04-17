@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
 import {
   Save,
@@ -1511,7 +1511,7 @@ const Settings = () => {
               {/* About */}
               <div className="border-t border-gray-200 pt-8">
                 <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border-2 border-emerald-200 p-6 text-center">
-                  <h3 className="text-base font-semibold text-gray-800 mb-2">AByte POS</h3>
+                  <h3 className="text-base font-semibold text-gray-800 mb-2">AByte ERP</h3>
                   <p className="text-gray-600 mb-1">Enterprise Point of Sale System</p>
                   <p className="text-sm text-gray-500">Version 1.0.0</p>
                 </div>

@@ -1,27 +1,12 @@
-Parent Module = Inventory
-Child Module = Stock Items / Products
-Child Module = Purchase
-Child Module = Issuance
-Child Module = Reports
+HR Modules:
+Ye Main Module HOga Aagy isky Sub Modules HOngy
 
-Sub Childs of Stock Items / Products
-1: Products Form and Products List (iss main user Product add kry ga or category wise add kr skta hai (raw items, semi finish items, finished items))
-2: Deals And Bundle bnanay Liye Aik Sub Module Bnao iska 
-
-Sub Module of Purchase
-1: Purchase Order (2 trha sy PO bany ga aik Automated Low Stock items ka jo raw Material or Semi Finish goods main hongi uska / or user manual bhi bna skta hai)
-2: Purcahse Voucher (Us PO ko Receive Krny k liye ya Manaul PV dalny liye )
-3:Purcahse Return module hoga jis main Returns manage hongi (stock auto update hoga)
-
-Sub Module of Issuance
-1:Stock Issue (Section Wise) iss main Stock Issue form hoga or Issuance List hogi 
-2:Stock Return (Section Wise) iss main Return ki list hogi 
-3:Raw Sale (Section Wise) iss main Raw Sale form hoga or Raw Sale List hogi 
-4: Sections Management (Sections yahan Sy Manage Hongy)
-
-Sub Module of Reports
-1:Items Ledger
-2:Item Wise Purchase
-3:Supplier Wise Purchase & Return
-4:Stock Issuance Reports (Every Thing)
-5: Stock Reconciliation
+1: Employee List (Sary Employee Iss Module main Show Hongy or Aik List Ki Shakal main Hongy Hum Yahan Sy kisi Bhi Employee ka Form Open Kr Skty Usy Delete Kr Skty or Inactive bhi kr Skty hain)
+2: Add Employee (Employee Add Yahan Sy Hoga or Employee ka Account bhi yahan Sy hi link Hoga yani Accounts Module ka Account Yahan Sy Link hoga)
+3: Daily Attendance (Daily Wise Attendance Yahan Sy Dekhi jaye gi, Or Biometric Machine sy Attendance bhi Fetch hogi or yahan sy Mannual Bhi Change kr skty hain kisi bhi Employee ki , iss main Sary Staff ki List Show hogi)
+4: Attendance (iss Module main Hum Sary Staff ki Poray Month ki Attendance Count main Show Krain gy yani Aik Table main sary Staff Ki List hogi or Us main Unki Monthly Kitni Attendance hai wo bhi show ki jaye gi)
+5: Employee Ledger (Iss main hum Employee Ledger Show Hoga Yani Employee k account main kya kya hisab hai or ye Account Wohi Hoga jo Apny Accounts Module main Employees ka Bnain Gy)
+6: Employee Reports (Iss Module main Employee ki Reports Show hingi yani Sary Staff ki List Hogi or us main View ka button hoga jisko Click Krny py User Kisi Bhi Employee ka Complete Report Dekh Skta hai)
+7: Salary Sheet (Iss main Sary Employee ki Salary Sheet Hogi yani Aik table hoga us main Salary Bny Gi or Nicy Department Wise total Aye ga, Attendance Colmumn hoga , Holidays ka column hoga,Basic Salary Columns, Adjustment Column, Gross Pay ,Deduction , net Pay)
+8: Salary Voucher()
+9: Salary Increament()

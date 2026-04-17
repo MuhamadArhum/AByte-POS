@@ -12,10 +12,17 @@ interface Tenant {
   tenant_name: string;
   db_name: string;
   admin_email: string;
+  plan: 'basic' | 'professional' | 'enterprise';
   is_active: number;
   created_at: string;
   stats: { users: number; products: number; sales: number };
 }
+
+const PLAN_COLORS: Record<string, string> = {
+  basic: 'bg-gray-100 text-gray-600',
+  professional: 'bg-blue-100 text-blue-700',
+  enterprise: 'bg-purple-100 text-purple-700',
+};
 
 const Tenants = () => {
   const toast = useToast();
@@ -29,9 +36,9 @@ const Tenants = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const [createForm, setCreateForm] = useState({
-    tenant_code: '', tenant_name: '', admin_name: '', admin_email: '', admin_password: ''
+    tenant_code: '', tenant_name: '', admin_name: '', admin_email: '', admin_password: '', plan: 'basic'
   });
-  const [editForm, setEditForm] = useState({ tenant_name: '', is_active: true });
+  const [editForm, setEditForm] = useState({ tenant_name: '', is_active: true, plan: 'basic' });
   const [newPassword, setNewPassword] = useState('');
 
   useEffect(() => { fetchTenants(); }, []);
@@ -54,7 +61,7 @@ const Tenants = () => {
       await api.post('/tenants', createForm);
       toast.success(`Client "${createForm.tenant_name}" created successfully!`);
       setShowCreateModal(false);
-      setCreateForm({ tenant_code: '', tenant_name: '', admin_name: '', admin_email: '', admin_password: '' });
+      setCreateForm({ tenant_code: '', tenant_name: '', admin_name: '', admin_email: '', admin_password: '', plan: 'basic' });
       fetchTenants();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to create tenant');
@@ -107,7 +114,7 @@ const Tenants = () => {
 
   const openEdit = (tenant: Tenant) => {
     setSelectedTenant(tenant);
-    setEditForm({ tenant_name: tenant.tenant_name, is_active: tenant.is_active === 1 });
+    setEditForm({ tenant_name: tenant.tenant_name, is_active: tenant.is_active === 1, plan: tenant.plan || 'basic' });
     setShowEditModal(true);
   };
 
@@ -176,10 +183,15 @@ const Tenants = () => {
                   <p className="text-xs text-gray-400 font-mono">code: {tenant.tenant_code}</p>
                 </div>
               </div>
-              {tenant.is_active
-                ? <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full">Active</span>
-                : <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs font-semibold rounded-full">Inactive</span>
-              }
+              <div className="flex flex-col items-end gap-1">
+                {tenant.is_active
+                  ? <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full">Active</span>
+                  : <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs font-semibold rounded-full">Inactive</span>
+                }
+                <span className={`px-2 py-0.5 text-xs font-semibold rounded-full capitalize ${PLAN_COLORS[tenant.plan] || PLAN_COLORS.basic}`}>
+                  {tenant.plan || 'basic'}
+                </span>
+              </div>
             </div>
 
             {/* DB Info */}
@@ -254,6 +266,16 @@ const Tenants = () => {
                   className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-emerald-500 outline-none font-mono" required />
                 <p className="text-xs text-gray-400 mt-1">This is the login code for this client. Only a-z, 0-9, underscore.</p>
               </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Plan</label>
+                <select value={createForm.plan}
+                  onChange={e => setCreateForm({ ...createForm, plan: e.target.value })}
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-emerald-500 outline-none">
+                  <option value="basic">Basic</option>
+                  <option value="professional">Professional</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+              </div>
               <div className="border-t border-gray-100 pt-4">
                 <p className="text-sm font-semibold text-gray-600 mb-3">Admin User for this Client</p>
                 <div className="space-y-3">
@@ -307,6 +329,16 @@ const Tenants = () => {
                 <input type="text" value={editForm.tenant_name}
                   onChange={e => setEditForm({ ...editForm, tenant_name: e.target.value })}
                   className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-emerald-500 outline-none" required />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Plan</label>
+                <select value={editForm.plan}
+                  onChange={e => setEditForm({ ...editForm, plan: e.target.value })}
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-emerald-500 outline-none">
+                  <option value="basic">Basic</option>
+                  <option value="professional">Professional</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowEditModal(false)}

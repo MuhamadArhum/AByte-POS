@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, ShoppingCart, Trash2, Minus, Plus, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Truck, MapPin, CheckCircle, Calendar, Eye, Printer, RefreshCw } from 'lucide-react';
-import { printReceipt } from '../../utils/receiptPrinter';
+import { Search, ShoppingCart, Trash2, Minus, Plus, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Truck, MapPin, CheckCircle } from 'lucide-react';
 import CompletedOrdersView from '../../components/CompletedOrdersView';
 import Pagination from '../../components/Pagination';
 import { useCart, Product } from '../../context/CartContext';
@@ -85,6 +84,9 @@ const POS = () => {
   // Completed orders modal (Orders button in header)
   const [showSalesModal, setShowSalesModal] = useState(false);
   const [storeSettings, setStoreSettings] = useState<any>(null);
+
+  // Mobile cart drawer toggle
+  const [showMobileCart, setShowMobileCart] = useState(false);
 
   // Default delivery charges from store settings
   const [defaultDeliveryCharges, setDefaultDeliveryCharges] = useState(0);
@@ -728,88 +730,103 @@ const POS = () => {
   return (
     <div className="flex h-full bg-gray-50 overflow-hidden">
       {/* Left Side: Product Grid */}
-      <div className="flex-1 flex flex-col h-full">
+      <div className="flex-1 flex flex-col h-full min-w-0">
         {/* Header / Search */}
-        <div className="p-4 bg-white border-b border-gray-100 shadow-sm z-10 space-y-3">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center shadow-md">
-                <ShoppingBag size={24} className="text-white" />
+        <div className="p-3 md:p-4 bg-white border-b border-gray-100 shadow-sm z-10 space-y-2 md:space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center shadow-md shrink-0">
+                <ShoppingBag size={18} className="text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">Point of Sale</h1>
-                <p className="text-xs text-gray-500">Cashier: {user?.name}</p>
+                <h1 className="text-base md:text-xl font-semibold text-gray-900 leading-tight">Point of Sale</h1>
+                <p className="text-xs text-gray-500 hidden sm:block">Cashier: {user?.name}</p>
               </div>
             </div>
             <div className="flex-1"></div>
-            <button
-              onClick={() => setShowShortcuts(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium border border-gray-200"
-              title="Keyboard Shortcuts (F1)"
-            >
-              <Keyboard size={18} />
-            </button>
-            <button
-              onClick={() => setShowSalesModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-200"
-            >
-              <FileText size={20} />
-              Orders
-              <span className="text-xs bg-emerald-200 px-1.5 py-0.5 rounded">F5</span>
-            </button>
-            <button
-              onClick={() => setIsDailyReportOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-200"
-            >
-              <BarChart size={20} />
-              Report
-            </button>
-            {(user?.role_name === 'Admin' || user?.role_name === 'Manager') && (
+            <div className="flex items-center gap-1.5 flex-wrap">
               <button
-                onClick={async () => {
-                  try {
-                    const res = await api.get('/register/current');
-                    setRegister(res.data);
-                  } catch (_) {}
-                  setShowCloseModal(true);
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium border border-red-200"
+                onClick={() => setShowShortcuts(true)}
+                className="flex items-center gap-1.5 px-2 py-1.5 md:px-3 md:py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium border border-gray-200"
+                title="Keyboard Shortcuts (F1)"
               >
-                <Lock size={20} />
-                Close
+                <Keyboard size={16} />
+                <span className="hidden md:inline text-sm">Keys</span>
               </button>
-            )}
+              <button
+                onClick={() => setShowSalesModal(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-4 md:py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-200 text-sm"
+              >
+                <FileText size={16} />
+                <span className="hidden sm:inline">Orders</span>
+                <span className="hidden md:inline text-xs bg-emerald-200 px-1.5 py-0.5 rounded">F5</span>
+              </button>
+              <button
+                onClick={() => setIsDailyReportOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-4 md:py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-200 text-sm"
+              >
+                <BarChart size={16} />
+                <span className="hidden sm:inline">Report</span>
+              </button>
+              {(user?.role_name === 'Admin' || user?.role_name === 'Manager') && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await api.get('/register/current');
+                      setRegister(res.data);
+                    } catch (_) {}
+                    setShowCloseModal(true);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-4 md:py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium border border-red-200 text-sm"
+                >
+                  <Lock size={16} />
+                  <span className="hidden sm:inline">Close</span>
+                </button>
+              )}
+              {/* Mobile cart toggle button */}
+              <button
+                onClick={() => setShowMobileCart(true)}
+                className="lg:hidden relative flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 text-white rounded-lg font-medium text-sm"
+              >
+                <ShoppingCart size={16} />
+                {cart.length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-emerald-500 rounded-full text-xs font-black flex items-center justify-center">
+                    {cart.length}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
             <div className="relative group">
-              <Scan className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" size={18} />
+              <Scan className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" size={16} />
               <input
                 id="barcode-input"
                 type="text"
                 placeholder="Scan Barcode (F2)"
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                className="w-full pl-9 pr-4 py-2 md:py-2.5 bg-gray-50 border-2 border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-sm"
                 value={searchBarcode}
                 onChange={(e) => setSearchBarcode(e.target.value)}
               />
             </div>
-            <div className="relative group">
-              <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" size={18} />
+            <div className="relative group hidden sm:block">
+              <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" size={16} />
               <input
                 type="text"
                 placeholder="Item Code"
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                className="w-full pl-9 pr-4 py-2 md:py-2.5 bg-gray-50 border-2 border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-sm"
                 value={searchCode}
                 onChange={(e) => setSearchCode(e.target.value)}
               />
             </div>
             <div className="relative group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" size={18} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" size={16} />
               <input
                 id="search-name-input"
                 type="text"
                 placeholder="Search Name (F3)"
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                className="w-full pl-9 pr-4 py-2 md:py-2.5 bg-gray-50 border-2 border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-sm"
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
                 autoFocus
@@ -819,10 +836,10 @@ const POS = () => {
         </div>
 
         {/* Categories Bar */}
-        <div className="px-4 py-3 bg-white border-b border-gray-100 flex flex-wrap gap-2 shadow-sm">
+        <div className="px-3 md:px-4 py-2 md:py-3 bg-white border-b border-gray-100 flex gap-2 shadow-sm overflow-x-auto scrollbar-hide flex-nowrap">
           <button
             onClick={() => setSelectedCategory('All')}
-            className={`px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+            className={`px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all shrink-0 ${
               selectedCategory === 'All'
               ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-200'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
@@ -834,7 +851,7 @@ const POS = () => {
             <button
               key={cat.category_id}
               onClick={() => setSelectedCategory(cat.category_id.toString())}
-              className={`px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+              className={`px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all shrink-0 ${
                 selectedCategory === cat.category_id.toString()
                 ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-200'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
@@ -846,7 +863,7 @@ const POS = () => {
         </div>
 
         {/* Product Grid */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-3 md:p-4 lg:p-6">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
@@ -856,7 +873,7 @@ const POS = () => {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-2 md:gap-3">
                 {filteredProducts.map(product => (
                   <ProductCard key={product.product_id} product={product} onAddToCart={handleAddProduct} />
                 ))}
@@ -882,11 +899,25 @@ const POS = () => {
         </div>
       </div>
 
+      {/* Mobile Cart Overlay Backdrop */}
+      {showMobileCart && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setShowMobileCart(false)}
+        />
+      )}
+
       {/* ═══ Right Side: Cart Sidebar ═══ */}
-      <div className="w-[500px] bg-gray-50 border-l border-gray-200 flex flex-col h-full shadow-2xl">
+      <div className={`
+        ${showMobileCart
+          ? 'fixed inset-x-0 bottom-0 top-16 z-50 flex flex-col rounded-t-2xl shadow-2xl'
+          : 'hidden lg:flex flex-col'
+        }
+        w-full lg:w-[340px] xl:w-[420px] 2xl:w-[480px] bg-white lg:bg-gray-50 border-l border-gray-200 h-full lg:shadow-2xl
+      `}>
 
         {/* ── Cart Header ── */}
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-3.5 flex items-center justify-between flex-shrink-0">
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-4 py-3 md:px-5 md:py-3.5 flex items-center justify-between flex-shrink-0 rounded-t-2xl lg:rounded-none">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center">
               {orderType === 'delivery'
@@ -905,6 +936,13 @@ const POS = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Close cart on mobile */}
+            <button
+              onClick={() => setShowMobileCart(false)}
+              className="lg:hidden p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+            >
+              <X size={16} />
+            </button>
             {/* Order Type Toggle in header */}
             <div className="flex bg-white/10 rounded-lg p-0.5 gap-0.5">
               <button
@@ -1125,7 +1163,7 @@ const POS = () => {
         )}
 
         {/* ── Cart Items ── */}
-        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+        <div className="flex-1 overflow-y-auto px-3 py-2 md:py-3 space-y-2">
           {cart.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-400 py-12">
               <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
@@ -1405,6 +1443,7 @@ const POS = () => {
           setSelectedPendingSale(null);
           setEditingSaleId(null);
           setEditingTokenNo(null);
+          setShowMobileCart(false);
           resetDelivery();
           const walkin = customers.find(c => c.customer_id === 1);
           setSelectedCustomer(walkin || null);

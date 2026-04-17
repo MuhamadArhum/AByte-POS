@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useSettings } from '../../context/SettingsContext';
-import { DollarSign, Calendar, Play, Download, CheckCircle } from 'lucide-react';
+import { DollarSign, Calendar, Play, Download, CheckCircle, Printer } from 'lucide-react';
 import api from '../../utils/api';
 import { localToday } from '../../utils/dateUtils';
 import { useToast } from '../../components/Toast';
-import { SkeletonTable } from '../../components/Skeleton';
 
 const PayrollProcessing = () => {
   const { currencySymbol: currency } = useSettings();
@@ -20,6 +19,7 @@ const PayrollProcessing = () => {
   });
 
   const [preview, setPreview] = useState<any[]>([]);
+  const [bonusInputs, setBonusInputs] = useState<Record<number, number>>({});
   const [totals, setTotals] = useState({ count: 0, total_base: 0, total_deductions: 0, total_net: 0 });
   const [departments, setDepartments] = useState<string[]>([]);
   const [result, setResult] = useState<any>(null);
@@ -52,7 +52,11 @@ const PayrollProcessing = () => {
     setLoading(true);
     try {
       const res = await api.get('/staff/payroll/preview', { params: formData });
-      setPreview(res.data.preview || []);
+      const previewData = res.data.preview || [];
+      setPreview(previewData);
+      const initBonus: Record<number, number> = {};
+      previewData.forEach((p: any) => { initBonus[p.staff_id] = 0; });
+      setBonusInputs(initBonus);
       setTotals(res.data.totals || { count: 0, total_base: 0, total_deductions: 0, total_net: 0 });
       setStep('preview');
     } catch (err: any) {
@@ -63,22 +67,26 @@ const PayrollProcessing = () => {
   };
 
   const handleProcess = async () => {
-    if (!window.confirm(`Process payroll for ${preview.length} staff members?\nTotal amount: $${totals.total_net.toLocaleString()}`)) return;
+    if (!window.confirm(`Process payroll for ${preview.length} staff members?\nTotal amount: ${currency}${totals.total_net.toLocaleString()}`)) return;
 
     setStep('processing');
     setLoading(true);
 
     try {
-      const payments = preview.map(p => ({
-        staff_id: p.staff_id,
-        payment_date: p.payment_date,
-        from_date: p.from_date,
-        to_date: p.to_date,
-        amount: p.base_salary,
-        deductions: p.deductions,
-        bonuses: p.bonuses,
-        net_amount: p.net_amount
-      }));
+      const payments = preview.map(p => {
+        const extraBonus = bonusInputs[p.staff_id] || 0;
+        const totalBonus = (p.bonuses || 0) + extraBonus;
+        return {
+          staff_id: p.staff_id,
+          payment_date: formData.payment_date,
+          from_date: formData.from_date,
+          to_date: formData.to_date,
+          amount: p.base_salary,
+          deductions: p.deductions,
+          bonuses: totalBonus,
+          net_amount: p.base_salary - p.deductions + totalBonus
+        };
+      });
 
       const res = await api.post('/staff/payroll/process', { payments });
       setResult(res.data);
@@ -110,6 +118,37 @@ const PayrollProcessing = () => {
     const a = document.createElement('a');
     a.href = url; a.download = `payroll_${formData.payment_date}.csv`; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const totalBonusAdded = Object.values(bonusInputs).reduce((a, b) => a + (b || 0), 0);
+
+  const printPayslip = (p: any) => {
+    const bonus = bonusInputs[p.staff_id] || 0;
+    const net = p.base_salary - p.deductions + (p.bonuses || 0) + bonus;
+    const html = `<html><head><title>Payslip</title><style>
+      body{font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px}
+      h2{color:#16a34a;text-align:center}hr{border:1px solid #e5e7eb}
+      table{width:100%;border-collapse:collapse}td{padding:8px 12px}
+      .label{color:#6b7280;font-size:13px}.value{font-weight:600;text-align:right}
+      .total{background:#f0fdf4;font-weight:700;font-size:15px;color:#16a34a}
+      @media print{body{margin:0}}
+    </style></head><body>
+      <h2>Payslip</h2><hr>
+      <p><b>Employee:</b> ${p.full_name}</p>
+      <p><b>ID:</b> ${p.employee_id || '-'} &nbsp; <b>Dept:</b> ${p.department || '-'} &nbsp; <b>Position:</b> ${p.position || '-'}</p>
+      <p><b>Period:</b> ${formData.from_date} to ${formData.to_date} &nbsp; <b>Payment Date:</b> ${formData.payment_date}</p>
+      <hr>
+      <table>
+        <tr><td class="label">Base Salary</td><td class="value">${currency}${p.base_salary.toLocaleString()}</td></tr>
+        ${p.bonuses > 0 ? `<tr><td class="label">Backend Bonuses</td><td class="value" style="color:#16a34a">+${currency}${p.bonuses.toLocaleString()}</td></tr>` : ''}
+        ${bonus > 0 ? `<tr><td class="label">Additional Bonus</td><td class="value" style="color:#16a34a">+${currency}${bonus.toLocaleString()}</td></tr>` : ''}
+        ${p.deductions > 0 ? `<tr><td class="label">Deductions</td><td class="value" style="color:#ef4444">-${currency}${p.deductions.toLocaleString()}</td></tr>` : ''}
+        <tr class="total"><td>Net Payable</td><td class="value">${currency}${net.toLocaleString()}</td></tr>
+      </table>
+      <hr><p style="text-align:center;color:#9ca3af;font-size:12px">Generated by AByte ERP — ${new Date().toLocaleDateString()}</p>
+    </body></html>`;
+    const w = window.open('', '_blank', 'width=700,height=500');
+    if (w) { w.document.write(html); w.document.close(); w.print(); }
   };
 
   const resetFlow = () => {
@@ -215,7 +254,8 @@ const PayrollProcessing = () => {
             </div>
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200">
               <p className="text-gray-500 text-sm font-medium">Total Net Payable</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">{currency}{totals.total_net.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-green-600 mt-2">{currency}{(totals.total_net + totalBonusAdded).toLocaleString()}</p>
+              {totalBonusAdded > 0 && <p className="text-xs text-green-500 mt-1">+{currency}{totalBonusAdded.toLocaleString()} bonus added</p>}
             </div>
           </div>
 
@@ -235,6 +275,7 @@ const PayrollProcessing = () => {
                     <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Deductions</th>
                     <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Bonuses</th>
                     <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Net Amount</th>
+                    <th className="px-6 py-3"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -245,9 +286,28 @@ const PayrollProcessing = () => {
                         <div className="text-xs text-gray-400 mt-0.5">{p.employee_id || ''} {p.department ? `- ${p.department}` : ''}</div>
                       </td>
                       <td className="px-6 py-4 text-right font-medium text-gray-700">{currency}{p.base_salary.toLocaleString()}</td>
-                      <td className="px-6 py-4 text-right font-medium text-red-500">{p.deductions > 0 ? `-$${p.deductions.toLocaleString()}` : '-'}</td>
-                      <td className="px-6 py-4 text-right font-medium text-green-600">{p.bonuses > 0 ? `+$${p.bonuses.toLocaleString()}` : '-'}</td>
-                      <td className="px-6 py-4 text-right font-bold text-green-600">{currency}{p.net_amount.toLocaleString()}</td>
+                      <td className="px-6 py-4 text-right font-medium text-red-500">{p.deductions > 0 ? `-${currency}${p.deductions.toLocaleString()}` : '-'}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <span className="text-gray-400 text-xs">{currency}</span>
+                          <input
+                            type="number" min={0}
+                            value={bonusInputs[p.staff_id] ?? 0}
+                            onChange={e => setBonusInputs(prev => ({ ...prev, [p.staff_id]: Math.max(0, Number(e.target.value)) }))}
+                            className="w-24 px-2 py-1 text-right border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent outline-none"
+                          />
+                        </div>
+                        {p.bonuses > 0 && <div className="text-xs text-green-500 text-right mt-0.5">+{currency}{p.bonuses.toLocaleString()} (backend)</div>}
+                      </td>
+                      <td className="px-6 py-4 text-right font-bold text-green-600">
+                        {currency}{(p.base_salary - p.deductions + (p.bonuses || 0) + (bonusInputs[p.staff_id] || 0)).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <button onClick={() => printPayslip(p)} title="Print Payslip"
+                          className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition">
+                          <Printer size={15} />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

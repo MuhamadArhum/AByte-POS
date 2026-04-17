@@ -1,4 +1,4 @@
-// =============================================================
+﻿// =============================================================
 // tenantController.js - Tenant (Client) Management + Config API
 //
 // Two responsibilities:
@@ -280,7 +280,7 @@ exports.getConfig = async (req, res) => {
     if (!tenantId) {
       // Default tenant — return minimal config
       return res.json({
-        company_name:    'AByte POS',
+        company_name:    'AByte ERP',
         logo_url:        null,
         primary_color:   '#10b981',
         currency_symbol: 'Rs.',
@@ -416,7 +416,7 @@ exports.getPublicConfig = async (req, res) => {
   try {
     const { subdomain } = req.query;
     if (!subdomain) {
-      return res.json({ company_name: 'AByte POS', primary_color: '#10b981' });
+      return res.json({ company_name: 'AByte ERP', primary_color: '#10b981' });
     }
 
     const rows = await masterQuery(

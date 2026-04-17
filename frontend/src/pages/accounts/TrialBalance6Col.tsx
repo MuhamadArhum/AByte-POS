@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useSettings } from '../../context/SettingsContext';
 import { Scale, Download, RefreshCw, Printer, LayoutGrid, Search, ChevronDown, X } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
@@ -322,23 +321,23 @@ const TrialBalance6Col = () => {
       ${displayRows.map(r => {
         const lv = Math.min(r.level, 4);
         return `<tr class="l${lv}">
-          <td class="i${lv}">{currency}{r.account_code} ${r.account_name}</td>
-          <td class="right">{currency}{fmt(r.agg_opening_dr)}</td>
-          <td class="right">{currency}{fmt(r.agg_opening_cr)}</td>
-          <td class="right">{currency}{fmt(r.agg_period_dr)}</td>
-          <td class="right">{currency}{fmt(r.agg_period_cr)}</td>
-          <td class="right">{currency}{fmt(r.agg_closing_dr)}</td>
-          <td class="right">{currency}{fmt(r.agg_closing_cr)}</td>
+          <td class="i${lv}">${r.account_code} ${r.account_name}</td>
+          <td class="right">${fmt(r.agg_opening_dr)}</td>
+          <td class="right">${fmt(r.agg_opening_cr)}</td>
+          <td class="right">${fmt(r.agg_period_dr)}</td>
+          <td class="right">${fmt(r.agg_period_cr)}</td>
+          <td class="right">${fmt(r.agg_closing_dr)}</td>
+          <td class="right">${fmt(r.agg_closing_cr)}</td>
         </tr>`;
       }).join('')}
       <tr class="total-row">
         <td>GRAND TOTAL</td>
-        <td class="right">{currency}{fmtN(totals.opening_dr)}</td>
-        <td class="right">{currency}{fmtN(totals.opening_cr)}</td>
-        <td class="right">{currency}{fmtN(totals.period_dr)}</td>
-        <td class="right">{currency}{fmtN(totals.period_cr)}</td>
-        <td class="right">{currency}{fmtN(totals.closing_dr)}</td>
-        <td class="right">{currency}{fmtN(totals.closing_cr)}</td>
+        <td class="right">${fmtN(totals.opening_dr)}</td>
+        <td class="right">${fmtN(totals.opening_cr)}</td>
+        <td class="right">${fmtN(totals.period_dr)}</td>
+        <td class="right">${fmtN(totals.period_cr)}</td>
+        <td class="right">${fmtN(totals.closing_dr)}</td>
+        <td class="right">${fmtN(totals.closing_cr)}</td>
       </tr>
     </table>
     </body></html>`);

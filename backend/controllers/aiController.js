@@ -1,10 +1,14 @@
-const Groq = require("groq-sdk");
-const { query } = require("../config/database");
+﻿const { query } = require("../config/database");
 
-// Initialize Groq
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+let groq = null;
+
+function getGroqClient() {
+  if (!groq && process.env.GROQ_API_KEY) {
+    const Groq = require("groq-sdk");
+    groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  }
+  return groq;
+}
 
 // ── Comprehensive business context from all modules ────────────────────────
 async function getSystemContext() {
@@ -198,7 +202,7 @@ async function getSystemContext() {
       : 'No register data';
 
     return `
-=== ABYTE POS — LIVE BUSINESS DATA ===
+=== AByte ERP — LIVE BUSINESS DATA ===
 Date: ${new Date().toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
 Time: ${new Date().toLocaleTimeString('en-PK')}
 
@@ -276,7 +280,12 @@ exports.chat = async (req, res) => {
   try {
     const { message, history } = req.body;
 
-    if (!process.env.GROQ_API_KEY) {
+    if (!getGroqClient()) {
+      return res.status(500).json({ error: "Groq API Key not configured. Please add GROQ_API_KEY to .env file." });
+    }
+
+    const groq = getGroqClient();
+    if (!groq) {
       return res.status(500).json({ error: "Groq API Key not configured. Please add GROQ_API_KEY to .env file." });
     }
 
@@ -285,7 +294,7 @@ exports.chat = async (req, res) => {
     const messages = [
       {
         role: "system",
-        content: `You are an AI Business Assistant for AByte POS & ERP system.
+        content: `You are an AI Business Assistant for AByte ERP & ERP system.
 You have access to real-time data from all business modules: Sales, Inventory, HR, Customers, Expenses, and Cash Register.
 
 ${systemContext}

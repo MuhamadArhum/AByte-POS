@@ -17,7 +17,7 @@ const Sections = () => {
   const [editing, setEditing] = useState<Section | null>(null);
   const [form, setForm] = useState({ section_name: '', description: '' });
   const [saving, setSaving] = useState(false);
-  const { showToast } = useToast();
+  const { error, success } = useToast();
 
   const fetchSections = useCallback(async () => {
     setLoading(true);
@@ -26,7 +26,7 @@ const Sections = () => {
       setSections(res.data.data || []);
     } catch (err) {
       console.error('fetchSections error:', err);
-      showToast('Failed to load sections', 'error');
+      error('Failed to load sections');
     } finally {
       setLoading(false);
     }
@@ -39,21 +39,21 @@ const Sections = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.section_name.trim()) return showToast('Section name is required', 'error');
+    if (!form.section_name.trim()) return error('Section name is required');
     setSaving(true);
     try {
       if (editing) {
         await api.put(`/sections/${editing.section_id}`, { ...form, is_active: editing.is_active });
-        showToast('Section updated', 'success');
+        success('Section updated');
       } else {
         await api.post('/sections', form);
-        showToast('Section created', 'success');
+        success('Section created');
       }
       setShowForm(false);
       await fetchSections();
     } catch (err: any) {
       console.error('handleSubmit error:', err);
-      showToast(err.response?.data?.message || 'Error saving section', 'error');
+      error(err.response?.data?.message || 'Error saving section');
     } finally {
       setSaving(false);
     }
@@ -63,10 +63,10 @@ const Sections = () => {
     if (!window.confirm('Delete this section?')) return;
     try {
       await api.delete(`/sections/${id}`);
-      showToast('Section deleted', 'success');
+      success('Section deleted');
       await fetchSections();
     } catch (err: any) {
-      showToast(err.response?.data?.message || 'Cannot delete', 'error');
+      error(err.response?.data?.message || 'Cannot delete');
     }
   };
 
@@ -74,7 +74,7 @@ const Sections = () => {
     try {
       await api.put(`/sections/${s.section_id}`, { section_name: s.section_name, description: s.description, is_active: s.is_active ? 0 : 1 });
       await fetchSections();
-    } catch { showToast('Error', 'error'); }
+    } catch { error('Error'); }
   };
 
   return (

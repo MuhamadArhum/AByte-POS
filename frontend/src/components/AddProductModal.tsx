@@ -28,7 +28,7 @@ interface ProductToEdit {
   barcode?: string;
   sku?: string;
   description?: string;
-  product_type?: 'finished_good' | 'raw_material';
+  product_type?: 'finished_good' | 'raw_material' | 'semi_finished';
 }
 
 interface AddProductModalProps {
@@ -36,7 +36,7 @@ interface AddProductModalProps {
   onClose: () => void;
   onSuccess: () => void;
   productToEdit?: ProductToEdit | null;
-  productType?: 'finished_good' | 'raw_material';
+  productType?: 'finished_good' | 'raw_material' | 'semi_finished';
 }
 
 const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSuccess, productToEdit, productType = 'finished_good' }) => {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import React from 'react';
-import { DollarSign, Plus, CreditCard, Ban, Eye, Filter } from 'lucide-react';
+import { DollarSign, Plus, Ban, Eye, Filter } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
@@ -47,7 +47,7 @@ const LoanManagement = () => {
   };
 
   const handleCancel = async (loan: any) => {
-    if (!window.confirm(`Cancel loan of $${Number(loan.loan_amount).toLocaleString()} for ${loan.full_name}?`)) return;
+    if (!window.confirm(`Cancel loan of ${currency}${Number(loan.loan_amount).toLocaleString()} for ${loan.full_name}?`)) return;
     try {
       await api.put(`/staff/loans/${loan.loan_id}/cancel`);
       toast.success('Loan cancelled');

@@ -9,7 +9,7 @@ import ViewPODetailsModal from '../../components/ViewPODetailsModal';
 
 const PurchaseOrders = () => {
   const navigate = useNavigate();
-  const { showToast } = useToast();
+  const { error, success } = useToast();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
@@ -57,7 +57,7 @@ const PurchaseOrders = () => {
       setEditPO(res.data);
       setShowCreateModal(true);
     } catch {
-      showToast('Failed to load PO details', 'error');
+      error('Failed to load PO details');
     }
   };
 
@@ -66,10 +66,10 @@ const PurchaseOrders = () => {
     setDeletingId(po.po_id);
     try {
       await api.delete(`/purchase-orders/${po.po_id}`);
-      showToast('Purchase order deleted', 'success');
+      success('Purchase order deleted');
       fetchOrders();
     } catch (err: any) {
-      showToast(err?.response?.data?.message || 'Delete failed', 'error');
+      error(err?.response?.data?.message || 'Delete failed');
     } finally { setDeletingId(null); }
   };
 

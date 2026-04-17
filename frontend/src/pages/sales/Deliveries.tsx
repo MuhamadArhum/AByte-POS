@@ -958,7 +958,7 @@ const Deliveries = () => {
 
                 {Math.ceil(total / limit) > 1 && (
                   <div className="px-4 py-3 border-t border-gray-100">
-                    <Pagination page={page} totalPages={Math.ceil(total / limit)} onPageChange={setPage} />
+                    <Pagination currentPage={page} totalPages={Math.ceil(total / limit)} onPageChange={setPage} />
                   </div>
                 )}
               </div>

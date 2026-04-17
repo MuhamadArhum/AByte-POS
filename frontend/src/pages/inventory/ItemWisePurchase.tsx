@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PackageSearch } from 'lucide-react';
 import api from '../../utils/api';
 import { localToday, localMonthStart } from '../../utils/dateUtils';
@@ -13,11 +13,11 @@ const ItemWisePurchase = () => {
   const [dateTo, setDateTo]     = useState(localToday());
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [supplierFilter, setSupplierFilter] = useState('');
-  const { showToast } = useToast();
+  const { error } = useToast();
 
-  useState(() => {
+  useEffect(() => {
     api.get('/suppliers', { params: { limit: 200 } }).then(r => setSuppliers(r.data.data || []));
-  });
+  }, []);
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -27,7 +27,7 @@ const ItemWisePurchase = () => {
       });
       setData(res.data.data || []);
       setTotals(res.data.totals);
-    } catch { showToast('Failed to load report', 'error'); }
+    } catch { error('Failed to load report'); }
     finally { setLoading(false); }
   }, [dateFrom, dateTo, supplierFilter]);
 

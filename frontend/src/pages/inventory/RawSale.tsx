@@ -25,7 +25,7 @@ const RawSale = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const { showToast } = useToast();
+  const { error, success } = useToast();
 
   const [formSection, setFormSection]   = useState('');
   const [formCustomer, setFormCustomer] = useState('');
@@ -45,7 +45,7 @@ const RawSale = () => {
       setSales(res.data.data || []);
       setTotalPages(res.data.pagination?.totalPages || 1);
       setTotalItems(res.data.pagination?.total || 0);
-    } catch { showToast('Failed to load', 'error'); }
+    } catch { error('Failed to load'); }
     finally { setLoading(false); }
   }, [dateFrom, dateTo, sectionFilter, page]);
 
@@ -67,7 +67,7 @@ const RawSale = () => {
   };
 
   const handleSubmit = async () => {
-    if (!items.length) return showToast('Add at least one item', 'error');
+    if (!items.length) return error('Add at least one item');
     setSaving(true);
     try {
       const res = await api.post('/issuance/raw-sales', {
@@ -77,17 +77,17 @@ const RawSale = () => {
         notes: formNotes,
         items
       });
-      showToast(`Raw Sale ${res.data.sale_number} created`, 'success');
+      success(`Raw Sale ${res.data.sale_number} created`);
       setShowForm(false); setItems([]); setFormSection(''); setFormCustomer(''); setFormNotes('');
       fetchSales();
-    } catch (err: any) { showToast(err.response?.data?.message || 'Error', 'error'); }
+    } catch (err: any) { error(err.response?.data?.message || 'Error'); }
     finally { setSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('Delete this sale? Stock will be reversed.')) return;
-    try { await api.delete(`/issuance/raw-sales/${id}`); showToast('Deleted', 'success'); fetchSales(); }
-    catch (err: any) { showToast(err.response?.data?.message || 'Error', 'error'); }
+    try { await api.delete(`/issuance/raw-sales/${id}`); success('Deleted'); fetchSales(); }
+    catch (err: any) { error(err.response?.data?.message || 'Error'); }
   };
 
   const openView = async (id: number) => {

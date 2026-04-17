@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useSettings } from '../../context/SettingsContext';
 import { FileBarChart, Calendar, Download, RefreshCw, Printer, CheckCircle, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
@@ -54,19 +53,17 @@ function flattenForCSV(nodes: BSNode[], sectionLabel: string, rows: any[] = []) 
 }
 
 // Build print HTML for a section tree
-function buildPrintSection(nodes: BSNode[], title: string, total: number): string {
+function buildPrintSection(_: BSNode[], title: string, _total: number): string {
   const renderNode = (n: BSNode): string => {
     const indent = n.level * 16;
     const isParent = n.children.length > 0;
     const style = isParent
       ? `font-weight:600; padding-left:${indent}px`
       : `padding-left:${indent}px`;
-    const val = n.level === 1 ? '' : fmt(Math.abs(n.balance));
-    const sub = n.children.map(renderNode).join('');
     const subtotalRow = isParent && n.level > 1
       ? `<tr style="background:#f3f4f6"><td style="padding-left:${indent + 8}px; font-weight:600; font-style:italic; color:#6b7280">Subtotal ${n.account_name}</td><td style="text-align:right; font-weight:600">{currency}{fmt(Math.abs(n.balance))}</td></tr>`
       : '';
-    return `<tr><td style="${style}">{currency}{n.account_code} - ${n.account_name}</td><td style="text-align:right">{currency}{val}</td></tr>{currency}{sub}${subtotalRow}`;
+    return `<tr><td style="${style}">{currency}{n.account_code} - ${n.account_name}</td><td style="text-align:right"></td></tr>${subtotalRow}`;
   };
 
   return `

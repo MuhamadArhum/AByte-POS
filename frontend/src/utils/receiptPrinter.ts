@@ -1,4 +1,4 @@
-import api from './api';
+﻿import api from './api';
 
 interface ReceiptSale {
   sale_id: number;
@@ -81,7 +81,7 @@ export function generateReceiptHTML(
     showItemDiscounts?: boolean;
   }
 ): string {
-  const storeName = escapeHtml(settings?.store_name || 'AByte POS');
+  const storeName = escapeHtml(settings?.store_name || 'AByte ERP');
   const storeAddress = escapeHtml(settings?.address || '');
   const storePhone = escapeHtml(settings?.phone || '');
   const storeEmail = escapeHtml(settings?.email || '');
@@ -521,7 +521,7 @@ export function generateReceiptHTML(
       Transaction ID: ${sale.sale_id}-${Date.now().toString(36).toUpperCase()}
     </div>
     <div class="software-by">
-      Generated on ${dateStr} at ${timeStr} • Software by AByte POS
+      Generated on ${dateStr} at ${timeStr} • Software by AByte ERP
     </div>
   </div>
 
@@ -666,7 +666,7 @@ export function generatePlainTextReceipt(
   cashierName: string,
   customerName?: string
 ): string {
-  const storeName = settings?.store_name || 'AByte POS';
+  const storeName = settings?.store_name || 'AByte ERP';
   const storeAddress = settings?.address || '';
   const storePhone = settings?.phone || '';
   const cashier = cashierName || 'Staff';
@@ -725,7 +725,7 @@ export function generatePlainTextReceipt(
   
   text += `==============================\n`;
   text += `Thank you for shopping!\n`;
-  text += `Software by AByte POS\n`;
+  text += `Software by AByte ERP\n`;
   text += `==============================\n`;
   
   return text;
@@ -792,7 +792,7 @@ export async function printToThermalPrinter(
   const amountPaid  = parseNumber(sale.amount_paid);
 
   const receiptData = {
-    storeName:      settings?.store_name || 'AByte POS',
+    storeName:      settings?.store_name || 'AByte ERP',
     storeAddress:   settings?.address || '',
     storePhone:     settings?.phone || '',
     storeEmail:     settings?.email || '',

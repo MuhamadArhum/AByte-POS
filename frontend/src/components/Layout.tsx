@@ -37,8 +37,6 @@ import {
   Percent,
   Target,
   Tag,
-  Layers,
-  ClipboardCheck,
   Truck,
   ShoppingBag,
   Boxes,
@@ -103,6 +101,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     'PURCHASE': true,
     'ISSUANCE': true,
     'REPORTS': true,
+    'EMPLOYEES': false,
+    'PAYROLL': false,
+    'HR MANAGEMENT': true,
+    'CONFIGURATION': true,
   });
   const toggleSection = (key: string) =>
     setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
@@ -137,6 +139,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: Percent, label: 'Price Rules', path: '/price-rules', moduleKey: 'sales.pricerules' },
         { icon: Target, label: 'Sales Targets', path: '/sales-targets', moduleKey: 'sales.targets' },
         { icon: PieChart, label: 'Sales Reports', path: '/sales-reports', moduleKey: 'sales.reports' },
+        { icon: TrendingUp, label: 'Sales Analytics', path: '/sales-analytics', moduleKey: 'sales.reports' },
         { icon: Users, label: 'Customers', path: '/customers', moduleKey: 'sales.customers' },
       ]
     },
@@ -179,23 +182,31 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       moduleKey: 'hr',
       color: 'cyan',
       children: [
-        { icon: User, label: 'Staff', path: '/staff', moduleKey: 'hr.staff' },
-        { icon: ScrollText, label: 'Attendance', path: '/attendance', moduleKey: 'hr.attendance' },
-        { icon: ScrollText, label: 'Daily Attendance', path: '/daily-attendance', moduleKey: 'hr.daily-attendance' },
-        { icon: DollarSign, label: 'Salary Sheet', path: '/salary-sheet', moduleKey: 'hr.salary-sheet' },
-        { icon: DollarSign, label: 'Payroll Processing', path: '/payroll', moduleKey: 'hr.payroll' },
-        { icon: DollarSign, label: 'Advance Payments', path: '/advance-payments', moduleKey: 'hr.advances' },
-        { icon: DollarSign, label: 'Loans', path: '/loans', moduleKey: 'hr.loans' },
-        { icon: TrendingUp, label: 'Increments', path: '/increments', moduleKey: 'hr.increments' },
-        { icon: ScrollText, label: 'Employee Ledger', path: '/employee-ledger', moduleKey: 'hr.ledger' },
-        { icon: Calendar, label: 'Holidays', path: '/holidays', moduleKey: 'hr.holidays' },
-        { icon: FileText, label: 'Leave Requests', path: '/leave-requests', moduleKey: 'hr.leaves' },
-        { icon: BookOpen, label: 'Leave Policies', path: '/leave-policies', moduleKey: 'hr.leaves' },
-        { icon: BarChart3, label: 'Staff Reports', path: '/staff-reports', moduleKey: 'hr.reports' },
-        { icon: Building2, label: 'Departments', path: '/departments', moduleKey: 'hr.departments' },
-        { icon: Sliders, label: 'Salary Components', path: '/salary-components', moduleKey: 'hr.salary-components' },
-        { icon: Star, label: 'Appraisals', path: '/appraisals', moduleKey: 'hr.appraisals' },
-        { icon: LogIn, label: 'Exit Management', path: '/exit-management', moduleKey: 'hr.exit' },
+        // ── EMPLOYEES ──
+        { icon: Users,       label: 'EMPLOYEES',        isSection: true } as any,
+        { icon: User,        label: 'Employee List',     path: '/staff',            moduleKey: 'hr.staff' },
+        { icon: Calendar,    label: 'Daily Attendance',  path: '/daily-attendance', moduleKey: 'hr.daily-attendance' },
+        { icon: ScrollText,  label: 'Attendance',        path: '/attendance',       moduleKey: 'hr.attendance' },
+        { icon: BookOpen,    label: 'Employee Ledger',   path: '/employee-ledger',  moduleKey: 'hr.ledger' },
+        { icon: BarChart3,   label: 'Employee Reports',  path: '/staff-reports',    moduleKey: 'hr.reports' },
+        // ── PAYROLL ──
+        { icon: DollarSign,  label: 'PAYROLL',           isSection: true } as any,
+        { icon: FileText,    label: 'Salary Sheet',      path: '/salary-sheet',     moduleKey: 'hr.salary-sheet' },
+        { icon: Receipt,     label: 'Salary Voucher',    path: '/salary-voucher',   moduleKey: 'hr.salary-sheet' },
+        { icon: DollarSign,  label: 'Payroll Processing',path: '/payroll',          moduleKey: 'hr.payroll' },
+        { icon: TrendingUp,  label: 'Salary Increment',  path: '/increments',       moduleKey: 'hr.increments' },
+        // ── HR MANAGEMENT ──
+        { icon: Users,       label: 'HR MANAGEMENT',     isSection: true } as any,
+        { icon: CreditCard,  label: 'Loans',             path: '/loans',            moduleKey: 'hr.loans' },
+        { icon: FileText,    label: 'Leave Requests',    path: '/leave-requests',   moduleKey: 'hr.leaves' },
+        { icon: BookOpen,    label: 'Leave Policies',    path: '/leave-policies',   moduleKey: 'hr.leaves' },
+        { icon: Calendar,    label: 'Holidays',          path: '/holidays',         moduleKey: 'hr.holidays' },
+        // ── CONFIGURATION ──
+        { icon: Settings,    label: 'CONFIGURATION',     isSection: true } as any,
+        { icon: Building2,   label: 'Departments',       path: '/departments',      moduleKey: 'hr.departments' },
+        { icon: Sliders,     label: 'Salary Components', path: '/salary-components',moduleKey: 'hr.salary-components' },
+        { icon: Star,        label: 'Appraisals',        path: '/appraisals',       moduleKey: 'hr.appraisals' },
+        { icon: LogIn,       label: 'Exit Management',   path: '/exit-management',  moduleKey: 'hr.exit' },
       ]
     },
     {
@@ -224,9 +235,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       moduleKey: 'system',
       color: 'gray',
       children: [
+        { icon: Building2, label: 'Client Tenants', path: '/tenants', moduleKey: 'system.tenants' },
         { icon: Store, label: 'Stores', path: '/stores', moduleKey: 'system.stores' },
         { icon: ScrollText, label: 'Audit Log', path: '/audit-log', moduleKey: 'system.audit' },
         { icon: Database, label: 'Backup', path: '/backup', moduleKey: 'system.backup' },
+        { icon: Bell, label: 'Email Notifications', path: '/email-settings', moduleKey: 'system.settings' },
         { icon: Settings, label: 'Settings', path: '/settings', moduleKey: 'system.settings' },
       ]
     }

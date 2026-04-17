@@ -54,6 +54,7 @@ import Attendance from './pages/hr/Attendance';
 import DailyAttendance from './pages/hr/DailyAttendance';
 import SalarySheet from './pages/hr/SalarySheet';
 import PayrollProcessing from './pages/hr/PayrollProcessing';
+import SalaryVoucher from './pages/hr/SalaryVoucher';
 import AdvancePayments from './pages/hr/AdvancePayments';
 import LoanManagement from './pages/hr/LoanManagement';
 import IncrementHistory from './pages/hr/IncrementHistory';
@@ -80,12 +81,15 @@ import PaymentVouchers from './pages/accounts/PaymentVouchers';
 import ReceiptVouchers from './pages/accounts/ReceiptVouchers';
 import Analytics from './pages/accounts/Analytics';
 import Reports from './pages/accounts/Reports';
+import SalesAnalytics from './pages/SalesAnalytics';
 
 // System Module
 import Stores from './pages/system/Stores';
 import AuditLog from './pages/system/AuditLog';
 import Backup from './pages/system/Backup';
 import SettingsPage from './pages/system/Settings';
+import EmailSettings from './pages/system/EmailSettings';
+import Tenants from './pages/system/Tenants';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
@@ -142,6 +146,7 @@ function App() {
                       <Route path="/sales-targets" element={<PermissionGuard moduleKey="sales.targets"><SalesTargets /></PermissionGuard>} />
                       <Route path="/deliveries" element={<PermissionGuard moduleKey="sales.deliveries"><Deliveries /></PermissionGuard>} />
                       <Route path="/sales-reports" element={<PermissionGuard moduleKey="sales.reports"><SalesReports /></PermissionGuard>} />
+                      <Route path="/sales-analytics" element={<PermissionGuard moduleKey="sales.reports"><SalesAnalytics /></PermissionGuard>} />
 
                       {/* Inventory */}
                       <Route path="/inventory" element={<PermissionGuard moduleKey="inventory.products"><Inventory /></PermissionGuard>} />
@@ -176,6 +181,7 @@ function App() {
                       <Route path="/attendance" element={<PermissionGuard moduleKey="hr.attendance"><Attendance /></PermissionGuard>} />
                       <Route path="/daily-attendance" element={<PermissionGuard moduleKey="hr.daily-attendance"><DailyAttendance /></PermissionGuard>} />
                       <Route path="/salary-sheet" element={<PermissionGuard moduleKey="hr.salary-sheet"><SalarySheet /></PermissionGuard>} />
+                      <Route path="/salary-voucher" element={<PermissionGuard moduleKey="hr.salary-sheet"><SalaryVoucher /></PermissionGuard>} />
                       <Route path="/payroll" element={<PermissionGuard moduleKey="hr.payroll"><PayrollProcessing /></PermissionGuard>} />
                       <Route path="/advance-payments" element={<PermissionGuard moduleKey="hr.advances"><AdvancePayments /></PermissionGuard>} />
                       <Route path="/loans" element={<PermissionGuard moduleKey="hr.loans"><LoanManagement /></PermissionGuard>} />
@@ -206,9 +212,11 @@ function App() {
 
                       {/* System */}
                       <Route path="/stores" element={<PermissionGuard moduleKey="system.stores"><Stores /></PermissionGuard>} />
+                      <Route path="/tenants" element={<PermissionGuard moduleKey="system.tenants"><Tenants /></PermissionGuard>} />
                       <Route path="/audit-log" element={<PermissionGuard moduleKey="system.audit"><AuditLog /></PermissionGuard>} />
                       <Route path="/backup" element={<PermissionGuard moduleKey="system.backup"><Backup /></PermissionGuard>} />
                       <Route path="/settings" element={<PermissionGuard moduleKey="system.settings"><SettingsPage /></PermissionGuard>} />
+                      <Route path="/email-settings" element={<PermissionGuard moduleKey="system.settings"><EmailSettings /></PermissionGuard>} />
                     </Routes>
                   </Layout>
                 </ProtectedRoute>

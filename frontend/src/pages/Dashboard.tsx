@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   DollarSign, ShoppingBag, ShoppingCart, AlertTriangle, TrendingUp,
   TrendingDown, Plus, Users, Package, CreditCard, ArrowRight,
-  Clock, CheckCircle, Box, Activity, RefreshCw
+  Clock, CheckCircle, Box, RefreshCw
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -222,7 +222,7 @@ const Dashboard = () => {
             { label: 'This Week',  value: stats.weekRevenue,  icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600' },
             { label: 'This Month', value: stats.monthRevenue, icon: DollarSign, color: 'bg-blue-50    text-blue-600' },
             { label: 'Avg Order',  value: stats.orderCount > 0 ? stats.totalSales / stats.orderCount : 0, icon: CreditCard, color: 'bg-orange-50 text-orange-600', gradient: true },
-          ].map((item, i) => (
+          ].map((item) => (
             <motion.div
               key={item.label}
               whileHover={{ y: -2 }}

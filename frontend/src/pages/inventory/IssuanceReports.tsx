@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ClipboardList } from 'lucide-react';
 import api from '../../utils/api';
 import { localToday, localMonthStart } from '../../utils/dateUtils';
@@ -15,11 +15,11 @@ const IssuanceReports = () => {
   const [dateTo, setDateTo]     = useState(localToday());
   const [sections, setSections] = useState<Section[]>([]);
   const [sectionFilter, setSectionFilter] = useState('');
-  const { showToast } = useToast();
+  const { error } = useToast();
 
-  useState(() => {
+  useEffect(() => {
     api.get('/sections').then(r => setSections(r.data.data || []));
-  });
+  }, []);
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -29,7 +29,7 @@ const IssuanceReports = () => {
       });
       setSummary(res.data.summary);
       setTopIssued(res.data.top_issued_products || []);
-    } catch { showToast('Failed to load report', 'error'); }
+    } catch { error('Failed to load report'); }
     finally { setLoading(false); }
   }, [dateFrom, dateTo, sectionFilter]);
 

@@ -96,7 +96,12 @@
       "Bash(head -5 grep -n \"currencySymbol: currency\\\\|useSettings\" \"F:/AByte-POS/frontend/src/pages/inventory/Inventory.tsx\")",
       "Bash(python3 -c \":*)",
       "Bash(cp:*)",
-      "Bash(node -e \":*)"
+      "Bash(node -e \":*)",
+      "Bash(npx tsc *)",
+      "Bash(node server.js)",
+      "Bash(echo \"Backend starting with PID: $!\")",
+      "Bash(sort -t: -k2 -n)",
+      "PowerShell(Stop-Process *)"
     ]
   }
 }

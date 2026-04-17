@@ -24,7 +24,7 @@ interface HistoryEntry {
 }
 
 export default function OpeningStock() {
-  const { showToast } = useToast();
+  const { error, success } = useToast();
   const [products, setProducts]     = useState<Product[]>([]);
   const [loading, setLoading]       = useState(true);
   const [saving, setSaving]         = useState(false);
@@ -43,7 +43,7 @@ export default function OpeningStock() {
     try {
       const res = await api.get('/opening-stock');
       setProducts(res.data.data || []);
-    } catch { showToast('Failed to load products', 'error'); }
+    } catch { error('Failed to load products'); }
     finally { setLoading(false); }
   };
 
@@ -52,7 +52,7 @@ export default function OpeningStock() {
     try {
       const res = await api.get('/opening-stock/history');
       setHistory(res.data.data || []);
-    } catch { showToast('Failed to load history', 'error'); }
+    } catch { error('Failed to load history'); }
     finally { setHistLoading(false); }
   };
 
@@ -64,7 +64,7 @@ export default function OpeningStock() {
   const handleChange = (productId: number, field: 'qty' | 'cost', value: string) => {
     setEntries(prev => ({
       ...prev,
-      [productId]: { qty: '', cost: '', ...prev[productId], [field]: value },
+      [productId]: { ...prev[productId], [field]: value },
     }));
   };
 
@@ -77,16 +77,16 @@ export default function OpeningStock() {
         unit_cost: Number(v.cost) || 0,
       }));
 
-    if (!items.length) { showToast('Enter at least one product quantity', 'error'); return; }
+    if (!items.length) { error('Enter at least one product quantity'); return; }
 
     setSaving(true);
     try {
       await api.post('/opening-stock', { entry_date: entryDate, notes, items });
-      showToast(`Opening stock saved for ${items.length} product(s)`, 'success');
+      success(`Opening stock saved for ${items.length} product(s)`);
       setEntries({});
       loadProducts();
     } catch (err: any) {
-      showToast(err?.response?.data?.message || 'Save failed', 'error');
+      error(err?.response?.data?.message || 'Save failed');
     } finally { setSaving(false); }
   };
 

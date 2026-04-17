@@ -45,7 +45,6 @@ const Customers = () => {
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
-  const { currencySymbol: currency } = useSettings();
     try {
       const res = await api.get('/customers', {
         params: {

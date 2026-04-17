@@ -25,7 +25,7 @@ const PurchaseVoucher = () => {
   const [page, setPage]           = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const { showToast } = useToast();
+  const { error, success } = useToast();
 
   // Form state
   const [mode, setMode]             = useState<'po' | 'manual'>('manual');
@@ -53,7 +53,7 @@ const PurchaseVoucher = () => {
       setVouchers(res.data.data || []);
       setTotalPages(res.data.pagination?.totalPages || 1);
       setTotalItems(res.data.pagination?.total || 0);
-    } catch { showToast('Failed to load', 'error'); }
+    } catch { error('Failed to load'); }
     finally { setLoading(false); }
   }, [dateFrom, dateTo, supplierFilter, page]);
 
@@ -77,7 +77,7 @@ const PurchaseVoucher = () => {
         quantity_received: Number(i.pending_qty) || 1,
         unit_price: Number(i.cost_price) || 0,
       })));
-    } catch { showToast('Failed to load PO items', 'error'); }
+    } catch { error('Failed to load PO items'); }
   };
 
   const searchProducts = async (q: string) => {
@@ -130,7 +130,7 @@ const PurchaseVoucher = () => {
       })));
       setProductSearch(''); setProductResults([]);
       setShowForm(true);
-    } catch { showToast('Failed to load voucher', 'error'); }
+    } catch { error('Failed to load voucher'); }
   };
 
   const itemsTotal      = items.reduce((s, i) => s + i.quantity_received * i.unit_price, 0);
@@ -142,7 +142,7 @@ const PurchaseVoucher = () => {
   const grandTotal      = taxable + taxAmount;
 
   const handleSubmit = async () => {
-    if (!items.length) return showToast('Add at least one item', 'error');
+    if (!items.length) return error('Add at least one item');
     setSaving(true);
     try {
       const payload: any = {
@@ -160,20 +160,20 @@ const PurchaseVoucher = () => {
 
       if (editingPV) {
         await api.put(`/purchase-vouchers/${editingPV.pv_id}`, payload);
-        showToast(`Voucher ${editingPV.pv_number} updated`, 'success');
+        success(`Voucher ${editingPV.pv_number} updated`);
       } else {
         const res = await api.post('/purchase-vouchers', payload);
-        showToast(`Purchase Voucher ${res.data.pv_number} created`, 'success');
+        success(`Purchase Voucher ${res.data.pv_number} created`);
       }
       setShowForm(false); resetForm(); fetchVouchers();
-    } catch (err: any) { showToast(err.response?.data?.message || 'Error', 'error'); }
+    } catch (err: any) { error(err.response?.data?.message || 'Error'); }
     finally { setSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('Delete this voucher? Stock will be reversed.')) return;
-    try { await api.delete(`/purchase-vouchers/${id}`); showToast('Deleted', 'success'); fetchVouchers(); }
-    catch (err: any) { showToast(err.response?.data?.message || 'Error', 'error'); }
+    try { await api.delete(`/purchase-vouchers/${id}`); success('Deleted'); fetchVouchers(); }
+    catch (err: any) { error(err.response?.data?.message || 'Error'); }
   };
 
   const openView = async (id: number) => {
@@ -185,7 +185,7 @@ const PurchaseVoucher = () => {
     try {
       const res = await api.get(`/purchase-vouchers/${pv.pv_id}`);
       printGRN(res.data);
-    } catch { showToast('Failed to load for print', 'error'); }
+    } catch { error('Failed to load for print'); }
   };
 
   const fmt = (n: any) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });

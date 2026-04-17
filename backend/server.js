@@ -1,5 +1,5 @@
-// =============================================================
-// server.js - Main Entry Point for AByte POS Backend
+﻿// =============================================================
+// server.js - Main Entry Point for AByte ERP Backend
 //
 // Multi-tenant SaaS flow:
 //   1. Frontend sends X-Tenant-Subdomain header (set from window.location.hostname)
@@ -70,6 +70,7 @@ const salesTargetRoutes     = require('./routes/salesTargetRoutes');
 const deliveryRoutes        = require('./routes/deliveryRoutes');
 const permissionRoutes      = require('./routes/permissionRoutes');
 const tenantRoutes          = require('./routes/tenantRoutes');
+const emailRoutes           = require('./routes/emailRoutes');
 
 // --- Module Guard (plan-based access) ---
 const { requireModule } = require('./middleware/moduleGuard');
@@ -147,6 +148,7 @@ app.use('/api/backup',          backupRoutes);
 app.use('/api/permissions',     permissionRoutes);
 app.use('/api/stores',          storeRoutes);
 app.use('/api/analytics',       analyticsRoutes);
+app.use('/api/email',           emailRoutes);
 
 // Sales module (basic+)
 app.use('/api/sales',           salesRoutes);
@@ -214,10 +216,35 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Internal server error' });
 });
 
+// ── Scheduled Backup (daily at 2:00 AM) ─────────────────────
+const cron = require('node-cron');
+cron.schedule('0 2 * * *', async () => {
+  try {
+    logger.info('[Backup] Running scheduled daily backup...');
+    const backupService = require('./services/backupService');
+    const result = await backupService.createBackup(null, 'scheduled');
+    logger.info('[Backup] Scheduled backup completed', { filename: result.filename });
+
+    // Send email notification if configured
+    try {
+      const emailService = require('./services/emailService');
+      if (emailService.isConfigured() && process.env.BACKUP_NOTIFY_EMAIL) {
+        await emailService.sendBackupNotification({
+          to: process.env.BACKUP_NOTIFY_EMAIL,
+          filename: result.filename,
+          status: 'completed',
+        });
+      }
+    } catch {}
+  } catch (err) {
+    logger.error('[Backup] Scheduled backup failed', { error: err.message });
+  }
+});
+
 // ── Start Server ─────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  logger.info(`AByte POS backend started`, {
+  logger.info(`AByte ERP backend started`, {
     port:    PORT,
     db:      process.env.DB_NAME || 'abyte_pos',
     origins: allowedOrigins,

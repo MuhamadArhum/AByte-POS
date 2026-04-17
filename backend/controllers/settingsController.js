@@ -1,4 +1,4 @@
-const { query } = require('../config/database');
+﻿const { query } = require('../config/database');
 const { logAction } = require('../services/auditService');
 const bcrypt = require('bcryptjs');
 const net = require('net');
@@ -9,7 +9,7 @@ exports.getSettings = async (req, res) => {
     const rows = await query('SELECT * FROM store_settings WHERE setting_id = 1');
     if (rows.length === 0) {
       return res.json({
-        store_name: 'AByte POS',
+        store_name: 'AByte ERP',
         address: '',
         phone: '',
         receipt_footer: 'Thank you!'
@@ -383,7 +383,7 @@ function buildEscPosReceipt(data, paperWidth) {
   r += ESC + 'a\x01';                           // Center
   r += ESC + '!\x10';                           // Double height
   r += ESC + 'E\x01';                           // Bold on
-  r += (data.storeName || 'AByte POS') + '\n';
+  r += (data.storeName || 'AByte ERP') + '\n';
   r += ESC + '!\x00';                           // Normal size
   r += ESC + 'E\x00';                           // Bold off
   if (data.storeAddress) r += data.storeAddress + '\n';
@@ -452,7 +452,7 @@ function buildEscPosDocument(data, paperWidth, docType) {
   r += ESC + '@';
   r += ESC + 'a\x01'; // Center
   r += ESC + '!\x10'; r += ESC + 'E\x01';
-  r += (data.storeName || 'AByte POS') + '\n';
+  r += (data.storeName || 'AByte ERP') + '\n';
   r += ESC + '!\x00'; r += ESC + 'E\x00';
   if (data.storeAddress) r += data.storeAddress + '\n';
   if (data.storePhone) r += 'Tel: ' + data.storePhone + '\n';

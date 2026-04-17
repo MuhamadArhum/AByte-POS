@@ -22,11 +22,11 @@ interface InventoryItem {
   description?: string;
   image_url?: string;
   has_variants?: number;
-  product_type?: 'finished_good' | 'raw_material';
+  product_type?: 'finished_good' | 'raw_material' | 'semi_finished';
 }
 
 interface InventoryProps {
-  productType?: 'finished_good' | 'raw_material';
+  productType?: 'finished_good' | 'raw_material' | 'semi_finished';
 }
 
 interface Category {

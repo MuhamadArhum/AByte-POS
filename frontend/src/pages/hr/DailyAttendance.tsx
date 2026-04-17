@@ -28,16 +28,24 @@ const DailyAttendance = () => {
     }
   };
 
-  const quickMark = async (staffId: number, status: string) => {
+  const quickMark = async (staffId: number, status: string, attendanceId: number | null) => {
     setMarkingId(staffId);
     try {
-      await api.post('/staff/attendance', {
-        staff_id: staffId,
-        attendance_date: date,
-        status,
-        check_in: status === 'present' ? '09:00' : null,
-        check_out: null
-      });
+      if (attendanceId) {
+        await api.put(`/staff/attendance/${attendanceId}`, {
+          status,
+          check_in: status === 'present' ? '09:00' : null,
+          check_out: null
+        });
+      } else {
+        await api.post('/staff/attendance', {
+          staff_id: staffId,
+          attendance_date: date,
+          status,
+          check_in: status === 'present' ? '09:00' : null,
+          check_out: null
+        });
+      }
       toast.success(`Marked as ${status.replace('_', ' ')}`);
       fetchDaily();
     } catch (err: any) {
@@ -208,20 +216,22 @@ const DailyAttendance = () => {
                     </td>
                     <td className="p-4 text-center">{getStatusBadge(row.status)}</td>
                     <td className="p-4 text-center">
-                      {!row.status ? (
-                        <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => quickMark(row.staff_id, 'present')} disabled={isMarking}
-                            className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200 transition disabled:opacity-50" title="Present">P</button>
-                          <button onClick={() => quickMark(row.staff_id, 'absent')} disabled={isMarking}
-                            className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium hover:bg-red-200 transition disabled:opacity-50" title="Absent">A</button>
-                          <button onClick={() => quickMark(row.staff_id, 'leave')} disabled={isMarking}
-                            className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-medium hover:bg-emerald-200 transition disabled:opacity-50" title="Leave">L</button>
-                          <button onClick={() => quickMark(row.staff_id, 'half_day')} disabled={isMarking}
-                            className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium hover:bg-yellow-200 transition disabled:opacity-50" title="Half Day">H</button>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400">-</span>
-                      )}
+                      <div className="flex items-center justify-center gap-1">
+                        {[
+                          { status: 'present', label: 'P', active: 'bg-green-500 text-white', idle: 'bg-green-100 text-green-700 hover:bg-green-200' },
+                          { status: 'absent', label: 'A', active: 'bg-red-500 text-white', idle: 'bg-red-100 text-red-700 hover:bg-red-200' },
+                          { status: 'leave', label: 'L', active: 'bg-emerald-500 text-white', idle: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' },
+                          { status: 'half_day', label: 'H', active: 'bg-yellow-500 text-white', idle: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' },
+                        ].map(btn => (
+                          <button key={btn.status}
+                            onClick={() => quickMark(row.staff_id, btn.status, row.attendance_id ?? null)}
+                            disabled={isMarking}
+                            title={btn.status.replace('_', ' ')}
+                            className={`px-2 py-1 rounded text-xs font-medium transition disabled:opacity-50 ${row.status === btn.status ? btn.active : btn.idle}`}>
+                            {btn.label}
+                          </button>
+                        ))}
+                      </div>
                     </td>
                   </tr>
                 );

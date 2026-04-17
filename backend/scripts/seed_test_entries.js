@@ -1,4 +1,4 @@
-// =============================================================
+﻿// =============================================================
 // seed_test_entries.js
 // Creates Level 4 accounts + 100 test entries (JV, CPV, CRV)
 // Run: node scripts/seed_test_entries.js
@@ -357,7 +357,7 @@ async function createReceiptVouchers(accounts) {
 // ── Main ──────────────────────────────────────────────────────
 (async () => {
   console.log('╔══════════════════════════════════════════════╗');
-  console.log('║  AByte POS — Accounts Test Data Seeder      ║');
+  console.log('║  AByte ERP — Accounts Test Data Seeder      ║');
   console.log('║  40 JVs + 30 CPVs + 30 CRVs = 100 entries  ║');
   console.log('╚══════════════════════════════════════════════╝');
 

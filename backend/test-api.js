@@ -1,5 +1,5 @@
-// =============================================================
-// test-api.js — AByte POS Automated API Test Suite
+﻿// =============================================================
+// test-api.js — AByte ERP Automated API Test Suite
 //
 // Usage:
 //   node test-api.js
@@ -168,7 +168,7 @@ const created = {
 // ════════════════════════════════════════════════════════════
 async function runTests() {
   console.log(`\n${C.bold}${C.white}╔══════════════════════════════════════════════╗`);
-  console.log(`║      AByte POS — Automated API Test Suite    ║`);
+  console.log(`║      AByte ERP — Automated API Test Suite    ║`);
   console.log(`╚══════════════════════════════════════════════╝${C.reset}`);
   console.log(`${C.gray}  Base URL : ${BASE_URL}`);
   console.log(`  Username : ${USERNAME}`);
@@ -208,7 +208,7 @@ async function runTests() {
     body => body.business_name !== undefined);
 
   await test('Settings', 'PUT  /settings — update business name', 'PUT', '/settings',
-    { business_name: 'AByte POS Test' }, 200);
+    { business_name: 'AByte ERP Test' }, 200);
 
   await test('Settings', 'GET  /settings/printers', 'GET', '/settings/printers', null, 200);
 
