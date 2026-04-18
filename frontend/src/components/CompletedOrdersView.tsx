@@ -352,7 +352,7 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
 
   // ── Render content ───────────────────────────────────────────────────────
   const content = (
-    <div className={isOverlay ? 'flex flex-col h-full' : 'space-y-4'}>
+    <div className={isOverlay ? 'flex flex-col h-full overflow-hidden' : 'space-y-4'}>
 
       {/* Overlay header */}
       {isOverlay && (
@@ -465,17 +465,20 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
         </div>
       </div>
 
-      {/* Table area */}
-      <div className={isOverlay ? 'flex-1 overflow-auto px-4 sm:px-6 py-3' : ''}>
+      {/* Table area
+          KEY: flex-1 min-h-0 lets the div shrink in a flex-col parent so
+          overflow-y-auto actually triggers. Without min-h-0 the div expands
+          to its content height and never scrolls.                           */}
+      <div className={isOverlay ? 'flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-3' : ''}>
         {loading ? (
-          <div className="flex items-center justify-center h-48">
+          <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-3"></div>
               <p className="text-gray-500 font-medium text-sm">Loading orders...</p>
             </div>
           </div>
         ) : sales.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
             <div className="bg-gray-100 p-6 rounded-full mb-3"><Archive size={48} className="opacity-30" /></div>
             <p className="text-base font-semibold text-gray-500">No Completed Orders Found</p>
             <p className="text-sm text-gray-400 mt-1">
@@ -486,173 +489,170 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
           </div>
         ) : (
           <>
-            {/* Responsive table wrapper */}
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="overflow-x-auto w-full">
-                <table className="min-w-full text-left border-collapse text-sm" style={{ minWidth: '780px' }}>
-                  <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
+            {/* Table: overflow-x-auto on the outer container so the border-radius
+                wraps correctly and horizontal scroll is not clipped.          */}
+            <div className="border border-gray-200 rounded-xl shadow-sm overflow-x-auto">
+              <table className="w-full text-left border-collapse text-sm" style={{ minWidth: '860px' }}>
+                <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide sticky top-0 z-10">
+                  <tr>
+                    <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">
+                      <div className="flex items-center gap-1"><Package size={13} /> Invoice</div>
+                    </th>
+                    <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">
+                      <div className="flex items-center gap-1"><Calendar size={13} /> Date &amp; Time</div>
+                    </th>
+                    <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">
+                      <div className="flex items-center gap-1"><User size={13} /> Customer</div>
+                    </th>
+                    {showTypeFilter && (
+                      <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">Type</th>
+                    )}
+                    <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap bg-gray-50">Sub Total</th>
+                    <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap bg-gray-50">Tax</th>
+                    <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap bg-gray-50">Service</th>
+                    <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap bg-gray-50">Delivery</th>
+                    <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap bg-gray-50">
+                      <div className="flex items-center justify-end gap-1"><DollarSign size={13} /> Grand Total</div>
+                    </th>
+                    <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">
+                      <div className="flex items-center gap-1"><CreditCard size={13} /> Payment</div>
+                    </th>
+                    <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">Status</th>
+                    <th className="px-3 py-3 font-bold border-b border-gray-200 text-center whitespace-nowrap bg-gray-50">Actions</th>
+                  </tr>
+                </thead>
+
+                {/* Summary footer — fixed colSpan: 3 base + 1 optional type + 8 data = 11 or 12 */}
+                {summary && (
+                  <tfoot className="bg-emerald-50 border-t-2 border-emerald-200">
                     <tr>
-                      <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap">
-                        <div className="flex items-center gap-1"><Package size={13} /> Invoice</div>
-                      </th>
-                      <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap">
-                        <div className="flex items-center gap-1"><Calendar size={13} /> Date &amp; Time</div>
-                      </th>
-                      <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap">
-                        <div className="flex items-center gap-1"><User size={13} /> Customer</div>
-                      </th>
-                      {showTypeFilter && (
-                        <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap hidden md:table-cell">Type</th>
-                      )}
-                      {/* Sub Total hidden on small screens */}
-                      <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap hidden lg:table-cell">Sub Total</th>
-                      <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap hidden xl:table-cell">Tax</th>
-                      <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap hidden xl:table-cell">Service</th>
-                      <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap hidden lg:table-cell">Delivery</th>
-                      <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1"><DollarSign size={13} /> Total</div>
-                      </th>
-                      <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap hidden sm:table-cell">
-                        <div className="flex items-center gap-1"><CreditCard size={13} /> Payment</div>
-                      </th>
-                      <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap hidden sm:table-cell">Status</th>
-                      <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap">Actions</th>
+                      <td className="px-3 py-2.5 font-bold text-emerald-800 text-xs" colSpan={showTypeFilter ? 4 : 3}>
+                        {summary.order_count} orders
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-bold text-gray-700 text-xs">
+                        {cs} {sales.reduce((s, r) => s + parseFloat(r.sub_total || 0), 0).toFixed(0)}
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-bold text-blue-700 text-xs">
+                        {cs} {sales.reduce((s, r) => s + parseFloat(r.tax_amount || 0), 0).toFixed(0)}
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-bold text-purple-700 text-xs">
+                        {cs} {sales.reduce((s, r) => s + parseFloat(r.additional_charges_amount || 0), 0).toFixed(0)}
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-bold text-blue-700 text-xs">
+                        {cs} {sales.reduce((s, r) => s + parseFloat(r.delivery_charges || 0), 0).toFixed(0)}
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-bold text-emerald-800">
+                        {cs} {summary.total_amount.toFixed(0)}
+                      </td>
+                      <td colSpan={3}></td>
                     </tr>
-                  </thead>
+                  </tfoot>
+                )}
 
-                  {/* Summary footer */}
-                  {summary && (
-                    <tfoot className="bg-emerald-50 border-t-2 border-emerald-200">
-                      <tr>
-                        <td className="px-3 py-2.5 font-bold text-emerald-800 text-xs" colSpan={showTypeFilter ? 3 : 3}>
-                          Total: {summary.order_count} orders
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {sales.map(sale => {
+                    const isDelivery = sale.token_no?.startsWith('DL-');
+                    return (
+                      <tr key={sale.sale_id} className="hover:bg-emerald-50/40 transition-colors">
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <span className="font-bold text-emerald-700 text-xs">
+                            {sale.invoice_no || `#${sale.sale_id}`}
+                          </span>
+                          {sale.token_no && <TokenBadge token={sale.token_no} />}
                         </td>
-                        <td className="px-3 py-2.5 text-right font-bold text-gray-700 text-xs hidden lg:table-cell">
-                          {cs} {sales.reduce((s, r) => s + parseFloat(r.sub_total || 0), 0).toFixed(2)}
+                        <td className="px-3 py-2.5 text-gray-500 text-xs whitespace-nowrap">
+                          {new Date(sale.sale_date).toLocaleString('en-US', {
+                            month: 'short', day: 'numeric', year: '2-digit',
+                            hour: '2-digit', minute: '2-digit'
+                          })}
                         </td>
-                        <td className="px-3 py-2.5 text-right font-bold text-blue-700 text-xs hidden xl:table-cell">
-                          {cs} {sales.reduce((s, r) => s + parseFloat(r.tax_amount || 0), 0).toFixed(2)}
+                        <td className="px-3 py-2.5 text-gray-700 font-medium text-xs whitespace-nowrap">
+                          <div className="max-w-[130px] truncate">{sale.customer_name || 'Walk-in'}</div>
                         </td>
-                        <td className="px-3 py-2.5 text-right font-bold text-purple-700 text-xs hidden xl:table-cell">
-                          {cs} {sales.reduce((s, r) => s + parseFloat(r.additional_charges_amount || 0), 0).toFixed(2)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-bold text-blue-700 text-xs hidden lg:table-cell">
-                          {cs} {sales.reduce((s, r) => s + parseFloat(r.delivery_charges || 0), 0).toFixed(2)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-bold text-emerald-800 text-sm">
-                          {cs} {summary.total_amount.toFixed(2)}
-                        </td>
-                        <td colSpan={showTypeFilter ? 3 : 2} className="hidden sm:table-cell"></td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  )}
-
-                  <tbody className="divide-y divide-gray-100">
-                    {sales.map(sale => {
-                      const isDelivery = sale.token_no?.startsWith('DL-');
-                      return (
-                        <tr key={sale.sale_id} className="hover:bg-emerald-50/30 transition-colors">
-                          <td className="px-3 py-3 whitespace-nowrap">
-                            <span className="font-bold text-emerald-700 text-xs">
-                              {sale.invoice_no || `#${sale.sale_id}`}
-                            </span>
-                            {sale.token_no && <TokenBadge token={sale.token_no} />}
-                          </td>
-                          <td className="px-3 py-3 text-gray-500 text-xs whitespace-nowrap">
-                            {new Date(sale.sale_date).toLocaleString('en-US', {
-                              month: 'short', day: 'numeric', year: '2-digit',
-                              hour: '2-digit', minute: '2-digit'
-                            })}
-                          </td>
-                          <td className="px-3 py-3 text-gray-700 font-medium text-xs max-w-[120px] truncate">
-                            {sale.customer_name || 'Walk-in'}
-                          </td>
-                          {showTypeFilter && (
-                            <td className="px-3 py-3 hidden md:table-cell">
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${
-                                isDelivery ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-orange-50 text-orange-700 border-orange-200'
-                              }`}>
-                                {isDelivery ? 'DL' : 'WI'}
-                              </span>
-                            </td>
-                          )}
-                          <td className="px-3 py-3 text-right text-gray-600 text-xs whitespace-nowrap hidden lg:table-cell">
-                            {cs} {parseFloat(sale.sub_total || 0).toFixed(0)}
-                          </td>
-                          <td className="px-3 py-3 text-right text-blue-600 text-xs whitespace-nowrap hidden xl:table-cell">
-                            {parseFloat(sale.tax_amount || 0) > 0
-                              ? `${cs} ${parseFloat(sale.tax_amount).toFixed(0)}`
-                              : <span className="text-gray-300">—</span>}
-                          </td>
-                          <td className="px-3 py-3 text-right text-purple-600 text-xs whitespace-nowrap hidden xl:table-cell">
-                            {parseFloat(sale.additional_charges_amount || 0) > 0
-                              ? `${cs} ${parseFloat(sale.additional_charges_amount).toFixed(0)}`
-                              : <span className="text-gray-300">—</span>}
-                          </td>
-                          <td className="px-3 py-3 text-right text-blue-600 text-xs whitespace-nowrap hidden lg:table-cell">
-                            {parseFloat(sale.delivery_charges || 0) > 0
-                              ? `${cs} ${parseFloat(sale.delivery_charges).toFixed(0)}`
-                              : <span className="text-gray-300">—</span>}
-                          </td>
-                          <td className="px-3 py-3 text-right font-bold text-emerald-600 whitespace-nowrap">
-                            {cs} {parseFloat(sale.total_amount || 0).toFixed(0)}
-                          </td>
-                          <td className="px-3 py-3 hidden sm:table-cell whitespace-nowrap">
-                            <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full font-semibold capitalize border border-emerald-200">
-                              {sale.payment_method}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 hidden sm:table-cell">
-                            <span className={`px-2 py-1 text-xs rounded-full font-semibold capitalize border ${
-                              sale.status === 'refunded'
-                                ? 'bg-red-50 text-red-700 border-red-200'
-                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        {showTypeFilter && (
+                          <td className="px-3 py-2.5">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${
+                              isDelivery ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-orange-50 text-orange-700 border-orange-200'
                             }`}>
-                              {sale.status}
+                              {isDelivery ? 'DL' : 'WI'}
                             </span>
                           </td>
-                          <td className="px-3 py-3">
-                            <div className="flex items-center justify-end gap-1">
-                              <button
-                                onClick={() => setPreviewId(sale.sale_id)}
-                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                                title="View Bill"
-                              >
-                                <Eye size={15} />
-                              </button>
-                              <button
-                                onClick={() => setPreviewId(sale.sale_id)}
-                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                                title="Print Receipt"
-                              >
-                                <Printer size={15} />
-                              </button>
-                              <button
-                                onClick={() => handleRefundClick(sale.sale_id)}
-                                disabled={sale.status === 'refunded'}
-                                className={`p-1.5 rounded-lg transition-all ${
-                                  sale.status === 'refunded'
-                                    ? 'text-gray-300 cursor-not-allowed'
-                                    : 'text-red-500 hover:bg-red-50'
-                                }`}
-                                title={sale.status === 'refunded' ? 'Already Refunded' : 'Refund Order'}
-                              >
-                                <RotateCcw size={15} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                        )}
+                        <td className="px-3 py-2.5 text-right text-gray-600 text-xs whitespace-nowrap">
+                          {cs} {parseFloat(sale.sub_total || 0).toFixed(0)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-blue-600 text-xs whitespace-nowrap">
+                          {parseFloat(sale.tax_amount || 0) > 0
+                            ? `${cs} ${parseFloat(sale.tax_amount).toFixed(0)}`
+                            : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-purple-600 text-xs whitespace-nowrap">
+                          {parseFloat(sale.additional_charges_amount || 0) > 0
+                            ? `${cs} ${parseFloat(sale.additional_charges_amount).toFixed(0)}`
+                            : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-blue-600 text-xs whitespace-nowrap">
+                          {parseFloat(sale.delivery_charges || 0) > 0
+                            ? `${cs} ${parseFloat(sale.delivery_charges).toFixed(0)}`
+                            : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-bold text-emerald-700 whitespace-nowrap">
+                          {cs} {parseFloat(sale.total_amount || 0).toFixed(0)}
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full font-semibold capitalize border border-emerald-200">
+                            {sale.payment_method?.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span className={`px-2 py-1 text-xs rounded-full font-semibold capitalize border ${
+                            sale.status === 'refunded'
+                              ? 'bg-red-50 text-red-700 border-red-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}>
+                            {sale.status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => setPreviewId(sale.sale_id)}
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-all"
+                              title="View Bill"
+                            >
+                              <Eye size={15} />
+                            </button>
+                            <button
+                              onClick={() => setPreviewId(sale.sale_id)}
+                              className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-all"
+                              title="Print Receipt"
+                            >
+                              <Printer size={15} />
+                            </button>
+                            <button
+                              onClick={() => handleRefundClick(sale.sale_id)}
+                              disabled={sale.status === 'refunded'}
+                              className={`p-1.5 rounded-lg transition-all ${
+                                sale.status === 'refunded'
+                                  ? 'text-gray-300 cursor-not-allowed'
+                                  : 'text-red-500 hover:bg-red-100'
+                              }`}
+                              title={sale.status === 'refunded' ? 'Already Refunded' : 'Refund Order'}
+                            >
+                              <RotateCcw size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
             {/* Pagination */}
             {totalPages > 0 && (
-              <div className={`bg-white rounded-xl p-3 border border-gray-200 ${isOverlay ? 'mt-3' : 'mt-4'}`}>
+              <div className="mt-3 bg-white rounded-xl p-3 border border-gray-200">
                 <Pagination
                   currentPage={page}
                   totalPages={totalPages}
@@ -688,8 +688,8 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
   // ── Full-screen overlay wrapper (for POS) ─────────────────────────────────
   if (isOverlay) {
     return (
-      <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-0">
-        <div className="bg-white w-full h-full flex flex-col overflow-hidden">
+      <div className="fixed inset-0 z-50">
+        <div className="bg-white w-full h-full flex flex-col">
           {content}
         </div>
       </div>
