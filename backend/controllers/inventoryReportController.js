@@ -16,7 +16,7 @@ exports.getStockSummary = async (req, res) => {
         COALESCE(SUM(i.available_stock * COALESCE(p.cost_price, 0)), 0) as total_stock_value,
         COUNT(CASE WHEN COALESCE(i.available_stock, 0) = 0 THEN 1 END) as out_of_stock_count,
         COUNT(CASE WHEN COALESCE(i.available_stock, 0) > 0
-                    AND COALESCE(i.available_stock, 0) <= COALESCE(p.reorder_level, 10) THEN 1 END) as low_stock_count
+                    AND COALESCE(i.available_stock, 0) <= COALESCE(p.min_stock_level, 10) THEN 1 END) as low_stock_count
       FROM products p
       LEFT JOIN inventory i ON p.product_id = i.product_id
       WHERE p.is_active = 1
@@ -234,7 +234,7 @@ exports.issuanceSummary = async (req, res) => {
     const { w: rw, p: rp } = buildWhere('return_date');
     const { w: sw, p: sp } = buildWhere('sale_date');
     const [[issueStats], [returnStats], [saleStats]] = await Promise.all([
-      query('SELECT COUNT(*) as cnt, COALESCE(SUM(total_cost),0) as total FROM stock_issues ' + iw, ip),
+      query('SELECT COUNT(DISTINCT si.issue_id) as cnt, COALESCE(SUM(sii.quantity * sii.unit_cost),0) as total FROM stock_issues si LEFT JOIN stock_issue_items sii ON si.issue_id = sii.issue_id ' + iw, ip),
       query('SELECT COUNT(*) as cnt FROM stock_issue_returns ' + rw, rp),
       query('SELECT COUNT(*) as cnt, COALESCE(SUM(total_amount),0) as total FROM raw_sales ' + sw, sp),
     ]);
@@ -261,7 +261,7 @@ exports.stockReconciliation = async (req, res) => {
     const rows = await query(
       'SELECT p.product_id, p.product_name, p.product_type, p.barcode,' +
       ' COALESCE(inv.available_stock, 0) as current_stock,' +
-      ' COALESCE(inv.min_stock_level, 0) as min_stock,' +
+      ' COALESCE(p.min_stock_level, 0) as min_stock,' +
       ' p.cost_price,' +
       ' (SELECT COALESCE(SUM(pvi.quantity_received),0) FROM inv_purchase_voucher_items pvi WHERE pvi.product_id = p.product_id) as total_purchased,' +
       ' (SELECT COALESCE(SUM(pri.quantity_returned),0) FROM purchase_return_items pri WHERE pri.product_id = p.product_id) as total_purchase_returns,' +

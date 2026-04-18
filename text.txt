@@ -1,12 +1,2 @@
-HR Modules:
-Ye Main Module HOga Aagy isky Sub Modules HOngy
-
-1: Employee List (Sary Employee Iss Module main Show Hongy or Aik List Ki Shakal main Hongy Hum Yahan Sy kisi Bhi Employee ka Form Open Kr Skty Usy Delete Kr Skty or Inactive bhi kr Skty hain)
-2: Add Employee (Employee Add Yahan Sy Hoga or Employee ka Account bhi yahan Sy hi link Hoga yani Accounts Module ka Account Yahan Sy Link hoga)
-3: Daily Attendance (Daily Wise Attendance Yahan Sy Dekhi jaye gi, Or Biometric Machine sy Attendance bhi Fetch hogi or yahan sy Mannual Bhi Change kr skty hain kisi bhi Employee ki , iss main Sary Staff ki List Show hogi)
-4: Attendance (iss Module main Hum Sary Staff ki Poray Month ki Attendance Count main Show Krain gy yani Aik Table main sary Staff Ki List hogi or Us main Unki Monthly Kitni Attendance hai wo bhi show ki jaye gi)
-5: Employee Ledger (Iss main hum Employee Ledger Show Hoga Yani Employee k account main kya kya hisab hai or ye Account Wohi Hoga jo Apny Accounts Module main Employees ka Bnain Gy)
-6: Employee Reports (Iss Module main Employee ki Reports Show hingi yani Sary Staff ki List Hogi or us main View ka button hoga jisko Click Krny py User Kisi Bhi Employee ka Complete Report Dekh Skta hai)
-7: Salary Sheet (Iss main Sary Employee ki Salary Sheet Hogi yani Aik table hoga us main Salary Bny Gi or Nicy Department Wise total Aye ga, Attendance Colmumn hoga , Holidays ka column hoga,Basic Salary Columns, Adjustment Column, Gross Pay ,Deduction , net Pay)
-8: Salary Voucher()
-9: Salary Increament()
+Sale Module main Done Orders main Table Responsive ni aaa raha View Thik Kro isko 
+Or By Default Date TOday main honi Chaye or Shift Wise Sale Honi Chaye Yani Agr Shift aik Din main 2 open hui hain to Current open Shift ki Sale show honi Chaye or Agr Close hai last Closed ki By Desfult Sale Show honi Chaye Sb main 

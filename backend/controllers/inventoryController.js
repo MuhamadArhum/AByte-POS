@@ -33,9 +33,9 @@ exports.getAll = async (req, res) => {
     if (stock_status === 'out_of_stock') {
       conditions.push('COALESCE(i.available_stock, 0) = 0');
     } else if (stock_status === 'low_stock') {
-      conditions.push('COALESCE(i.available_stock, 0) > 0 AND COALESCE(i.available_stock, 0) <= COALESCE(p.reorder_level, 10)');
+      conditions.push('COALESCE(i.available_stock, 0) > 0 AND COALESCE(i.available_stock, 0) <= COALESCE(p.min_stock_level, 10)');
     } else if (stock_status === 'in_stock') {
-      conditions.push('COALESCE(i.available_stock, 0) > COALESCE(p.reorder_level, 10)');
+      conditions.push('COALESCE(i.available_stock, 0) > COALESCE(p.min_stock_level, 10)');
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -57,7 +57,7 @@ exports.getAll = async (req, res) => {
 
       const rows = await query(
         `SELECT i.*, p.product_name, p.sku, p.barcode, p.price, p.cost_price,
-                p.product_type, p.reorder_level, p.has_variants,
+                p.product_type, p.min_stock_level, p.has_variants,
                 c.category_name
          ${baseSql}
          ORDER BY p.product_name
@@ -73,7 +73,7 @@ exports.getAll = async (req, res) => {
 
     const rows = await query(
       `SELECT i.*, p.product_name, p.sku, p.barcode, p.price, p.cost_price,
-              p.product_type, p.reorder_level, p.has_variants,
+              p.product_type, p.min_stock_level, p.has_variants,
               c.category_name
        ${baseSql}
        ORDER BY p.product_name`,
@@ -128,7 +128,7 @@ exports.getLowStock = async (req, res) => {
     const { product_type } = req.query;
     const conditions = [
       'p.is_active = 1',
-      'COALESCE(i.available_stock, 0) <= COALESCE(p.reorder_level, 10)',
+      'COALESCE(i.available_stock, 0) <= COALESCE(p.min_stock_level, 10)',
     ];
     const params = [];
     if (product_type) { conditions.push('p.product_type = ?'); params.push(product_type); }

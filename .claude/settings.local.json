@@ -103,7 +103,16 @@
       "Bash(sort -t: -k2 -n)",
       "PowerShell(Stop-Process *)",
       "Bash(cat .env)",
-      "Bash(cat .env.example)"
+      "Bash(cat .env.example)",
+      "Bash(sed 's/ .*//')",
+      "Bash(pkill -f \"node server.js\")",
+      "Bash(taskkill /PID 10484 /F)",
+      "Bash(echo \"exit code: $?\")",
+      "Bash(read pid *)",
+      "Bash(npx vite *)",
+      "Bash(python3 -c \"import sys,json;r=json.load\\(sys.stdin\\);print\\('total:',r.get\\('pagination',{}\\).get\\('total'\\),'data_len:',len\\(r.get\\('data',[]\\)\\)\\)\")",
+      "Bash(git commit *)",
+      "Bash(git add *)"
     ]
   }
 }
