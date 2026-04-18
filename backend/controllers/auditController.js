@@ -1,3 +1,10 @@
+// =============================================================
+// auditController.js - Audit Log Controller
+// Returns and exports the system audit trail (who did what and when).
+// Admin/Manager only.
+// Used by: /api/audit routes
+// =============================================================
+
 const { query } = require('../config/database');
 
 // Build WHERE clause from query params (shared by getLogs and exportLogs)

@@ -161,9 +161,9 @@ const PayrollProcessing = () => {
   const steps = ['setup', 'preview', 'processing', 'complete'];
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Gradient Page Header */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-green-50 via-white to-white border-b border-gray-100 px-8 py-6 -mx-8 -mt-8 mb-8">
+      <div className="relative overflow-hidden bg-gradient-to-r from-green-50 via-white to-white border-b border-gray-100 px-4 md:px-8 py-4 md:py-6 -mx-4 md:-mx-8 -mt-4 md:-mt-8 mb-6 md:mb-8">
         <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%23000%22 fill-opacity=%221%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')]" />
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -179,17 +179,17 @@ const PayrollProcessing = () => {
       </div>
 
       {/* Progress Steps */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-8">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 md:p-6 mb-6 md:mb-8">
         <div className="flex items-center justify-between">
           {steps.map((s, idx) => (
             <div key={s} className="flex items-center">
-              <div className={`flex items-center gap-2 ${step === s ? 'text-emerald-600' : idx < steps.indexOf(step) ? 'text-emerald-600' : 'text-gray-400'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm ${step === s ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-md shadow-emerald-200' : idx < steps.indexOf(step) ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+              <div className={`flex items-center gap-1.5 md:gap-2 ${step === s ? 'text-emerald-600' : idx < steps.indexOf(step) ? 'text-emerald-600' : 'text-gray-400'}`}>
+                <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center font-semibold text-sm ${step === s ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-md shadow-emerald-200' : idx < steps.indexOf(step) ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
                   {idx + 1}
                 </div>
-                <span className="font-medium capitalize hidden sm:inline">{s}</span>
+                <span className="font-medium capitalize hidden sm:inline text-sm">{s}</span>
               </div>
-              {idx < 3 && <div className={`w-16 h-1 mx-4 rounded-full ${idx < steps.indexOf(step) ? 'bg-green-400' : 'bg-gray-200'}`}></div>}
+              {idx < 3 && <div className={`w-6 md:w-16 h-1 mx-1 md:mx-4 rounded-full ${idx < steps.indexOf(step) ? 'bg-green-400' : 'bg-gray-200'}`}></div>}
             </div>
           ))}
         </div>

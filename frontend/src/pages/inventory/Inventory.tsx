@@ -152,26 +152,27 @@ const Inventory = ({ productType }: InventoryProps = {}) => {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-wrap justify-between items-start gap-3 mb-6 md:mb-8">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
+          <h1 className="text-lg md:text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-2">
             <Package className="text-emerald-600" size={20} />
             {productType === 'raw_material' ? 'Raw Materials' : productType === 'finished_good' ? 'Finished Goods' : 'Inventory'}
           </h1>
-          <p className="text-gray-500 mt-1">
+          <p className="text-gray-500 mt-0.5 text-sm hidden sm:block">
             {productType === 'raw_material' ? 'Manage raw materials and input stock' : productType === 'finished_good' ? 'Products available for sale' : 'Track stock, manage products'}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 flex-shrink-0">
           <button onClick={exportCSV}
-            className="bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg font-medium hover:bg-gray-50 flex items-center gap-2 transition-colors">
-            <Download size={18} /> Export CSV
+            className="bg-white border border-gray-200 text-gray-700 px-3 md:px-4 py-2 md:py-2.5 rounded-lg font-medium hover:bg-gray-50 flex items-center gap-1.5 transition-colors text-sm">
+            <Download size={16} /> <span className="hidden sm:inline">Export CSV</span>
           </button>
           <button onClick={() => { setEditProduct(null); setIsAddModalOpen(true); }}
-            className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-emerald-700 flex items-center gap-2 transition-colors">
-            <Plus size={20} /> {productType === 'raw_material' ? 'Add Raw Material' : productType === 'finished_good' ? 'Add Finished Good' : 'Add Product'}
+            className="bg-emerald-600 text-white px-3 md:px-5 py-2 md:py-2.5 rounded-lg font-medium hover:bg-emerald-700 flex items-center gap-1.5 transition-colors text-sm">
+            <Plus size={18} /> <span className="hidden sm:inline">{productType === 'raw_material' ? 'Add Raw Material' : productType === 'finished_good' ? 'Add Finished Good' : 'Add Product'}</span>
+            <span className="sm:hidden">Add</span>
           </button>
         </div>
       </div>
@@ -185,7 +186,7 @@ const Inventory = ({ productType }: InventoryProps = {}) => {
       />
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-emerald-50 rounded-xl"><Package size={24} className="text-emerald-600" /></div>

@@ -1,3 +1,10 @@
+// =============================================================
+// inventoryController.js - Inventory Stock Controller
+// Returns current stock levels, low-stock alerts, stats, and allows
+// manual stock updates.
+// Used by: /api/inventory routes
+// =============================================================
+
 const { query } = require('../config/database');
 const { logAction } = require('../services/auditService');
 

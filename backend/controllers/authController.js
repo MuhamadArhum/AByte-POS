@@ -108,6 +108,72 @@ exports.verify = async (req, res) => {
   }
 };
 
+// --- Update Own Profile ---
+// PUT /api/auth/profile
+// Body: { name?, email?, current_password?, new_password? }
+exports.updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const { name, email, current_password, new_password } = req.body;
+
+    const rows = await queryDb(DB_NAME, 'SELECT * FROM users WHERE user_id = ?', [userId]);
+    if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
+    const user = rows[0];
+
+    const updates = [];
+    const params  = [];
+
+    if (name && name.trim()) {
+      updates.push('name = ?');
+      params.push(name.trim());
+    }
+
+    if (email && email.trim()) {
+      const conflict = await queryDb(
+        DB_NAME,
+        'SELECT user_id FROM users WHERE email = ? AND user_id != ?',
+        [email.trim(), userId]
+      );
+      if (conflict.length > 0) return res.status(400).json({ message: 'Email already in use by another account' });
+      updates.push('email = ?');
+      params.push(email.trim());
+    }
+
+    if (new_password) {
+      if (!current_password) return res.status(400).json({ message: 'Current password is required to set a new password' });
+      const isMatch = await bcrypt.compare(current_password, user.password_hash);
+      if (!isMatch) return res.status(400).json({ message: 'Current password is incorrect' });
+      if (new_password.length < 8) return res.status(400).json({ message: 'New password must be at least 8 characters' });
+      const salt = await bcrypt.genSalt(10);
+      const hash = await bcrypt.hash(new_password, salt);
+      updates.push('password_hash = ?');
+      params.push(hash);
+    }
+
+    if (updates.length === 0) return res.status(400).json({ message: 'No changes provided' });
+
+    params.push(userId);
+    await queryDb(DB_NAME, `UPDATE users SET ${updates.join(', ')} WHERE user_id = ?`, params);
+
+    const [updated] = await queryDb(
+      DB_NAME,
+      'SELECT user_id, username, name, email, role_name FROM users WHERE user_id = ?',
+      [userId]
+    );
+
+    try {
+      tenantStorage.run(DB_NAME, async () => {
+        await logAction(userId, user.username, 'PROFILE_UPDATED', 'user', userId, { name, email }, req.ip);
+      });
+    } catch { /* audit failure must not block update */ }
+
+    res.json({ message: 'Profile updated successfully', user: updated });
+  } catch (err) {
+    logger.error('Profile update error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // --- Logout ---
 // POST /api/auth/logout
 exports.logout = async (req, res) => {

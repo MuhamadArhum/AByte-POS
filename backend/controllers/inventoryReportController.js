@@ -1,3 +1,10 @@
+// =============================================================
+// inventoryReportController.js - Inventory Reports Controller
+// Generates stock summary, top products, category breakdown, slow movers,
+// items ledger, item-wise purchase, and issuance summary reports.
+// Used by: /api/inventory-reports routes
+// =============================================================
+
 const { query } = require('../config/database');
 
 exports.getStockSummary = async (req, res) => {

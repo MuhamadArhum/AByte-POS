@@ -1,3 +1,10 @@
+// =============================================================
+// accountingController.js - Accounting & Chart of Accounts Controller
+// Manages account groups, chart of accounts, journal entries, general ledger,
+// trial balance, profit & loss, and balance sheet.
+// Used by: /api/accounting routes
+// =============================================================
+
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 

@@ -1,3 +1,10 @@
+// =============================================================
+// emailController.js - Email Service Controller
+// Manages SMTP connection status, connection testing, and sending
+// alerts/notifications.
+// Used by: /api/email routes
+// =============================================================
+
 const emailService = require('../services/emailService');
 
 exports.getStatus = async (req, res) => {

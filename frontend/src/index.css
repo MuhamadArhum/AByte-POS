@@ -355,6 +355,244 @@ textarea {
   backdrop-filter: blur(2px);
 }
 
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE SYSTEM — Mobile-first overrides
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Page padding: p-8 → p-4 on mobile ── */
+@media (max-width: 767px) {
+  .p-8  { padding: 1rem !important; }
+  .p-6  { padding: 0.875rem !important; }
+  .px-8 { padding-left: 1rem !important; padding-right: 1rem !important; }
+  .py-8 { padding-top: 1rem !important;  padding-bottom: 1rem !important; }
+  .-mx-8 { margin-left: -1rem !important; margin-right: -1rem !important; }
+  .-mt-8 { margin-top: -1rem !important; }
+  .px-6 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+}
+
+/* ── All tables: horizontal scroll on mobile ── */
+@media (max-width: 767px) {
+  .overflow-hidden:has(table),
+  .overflow-x-auto,
+  div:has(> table) {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 560px;
+  }
+
+  /* Tighter table cells on mobile */
+  th, td {
+    padding: 0.625rem 0.75rem !important;
+    font-size: 12px !important;
+    white-space: nowrap;
+  }
+}
+
+/* ── Stat card grids: 4-col → 2-col on mobile ── */
+@media (max-width: 767px) {
+  .grid.grid-cols-4,
+  .grid.md\:grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.75rem !important;
+  }
+
+  .grid.grid-cols-3,
+  .grid.md\:grid-cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.75rem !important;
+  }
+
+  /* lg:grid-cols-2 → 1 col on mobile */
+  .grid.lg\:grid-cols-2,
+  .grid.lg\:grid-cols-3 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+    gap: 0.75rem !important;
+  }
+
+  /* lg:col-span-2 → full on mobile */
+  .lg\:col-span-2 {
+    grid-column: span 1 / span 1 !important;
+  }
+}
+
+/* ── Modals: full-screen bottom sheet on mobile ── */
+@media (max-width: 640px) {
+  /* Large modals slide up from bottom */
+  .fixed.inset-0 > .bg-white.rounded-2xl,
+  .fixed.inset-0 > .bg-white.rounded-xl,
+  .fixed.inset-0 > .bg-white.rounded-3xl {
+    position: fixed !important;
+    inset: auto 0 0 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92vh !important;
+    border-radius: 1.5rem 1.5rem 0 0 !important;
+    overflow-y: auto !important;
+    margin: 0 !important;
+  }
+
+  /* Prevent body scroll when modal open */
+  body.modal-open {
+    overflow: hidden;
+  }
+
+  /* Smaller modal padding */
+  .fixed.inset-0 > .bg-white .p-6 { padding: 1rem !important; }
+  .fixed.inset-0 > .bg-white .p-8 { padding: 1rem !important; }
+}
+
+/* ── Headings: smaller on mobile ── */
+@media (max-width: 767px) {
+  h1.text-3xl, h1.text-2xl { font-size: 1.25rem !important; }
+  .text-3xl.font-bold      { font-size: 1.5rem   !important; }
+  .text-xl.font-bold,
+  .text-xl.font-semibold   { font-size: 1rem     !important; }
+}
+
+/* ── Button rows: wrap on mobile ── */
+@media (max-width: 640px) {
+  /* Full-width buttons inside modals */
+  .fixed.inset-0 button[type="submit"],
+  .fixed.inset-0 button[type="button"].w-full {
+    width: 100% !important;
+  }
+}
+
+/* ── Page action bars: stack on mobile ── */
+@media (max-width: 640px) {
+  /* Page-level action rows (title + add button) — stack vertically */
+  .page-action-bar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
+  }
+  .page-action-bar button,
+  .page-action-bar a {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* ── Charts: proper height on mobile ── */
+@media (max-width: 767px) {
+  .h-72 { height: 220px !important; }
+  .h-64 { height: 180px !important; }
+  .h-80 { height: 240px !important; }
+}
+
+/* ── Gradient headers: compact on mobile ── */
+@media (max-width: 767px) {
+  .relative.overflow-hidden.bg-gradient-to-r {
+    padding-left: 1rem   !important;
+    padding-right: 1rem  !important;
+    padding-top: 1rem    !important;
+    padding-bottom: 1rem !important;
+  }
+}
+
+/* ── Stat card text: smaller on mobile ── */
+@media (max-width: 640px) {
+  .text-3xl.font-bold { font-size: 1.5rem !important; }
+  .text-2xl.font-bold { font-size: 1.25rem !important; }
+  /* Tighten stat card internal padding */
+  .rounded-2xl.p-6 { padding: 1rem !important; }
+  .rounded-xl.p-5  { padding: 0.875rem !important; }
+}
+
+/* ── Sidebar responsive width fix ── */
+@media (max-width: 768px) {
+  /* Ensure main content fills full width on mobile (sidebar is hidden) */
+  .flex.h-screen > .flex-1 {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+/* ── Full-height pages: compensate for mobile header height ── */
+@media (max-width: 767px) {
+  /* Mobile header is h-14 (56px), desktop is h-16 (64px) */
+  [class*="calc(100vh-64px)"] {
+    height: calc(100vh - 56px) !important;
+  }
+}
+
+/* ── Gradient page headers with buttons: wrap on mobile ── */
+@media (max-width: 640px) {
+  /* Inside gradient banners */
+  .bg-gradient-to-r .flex.items-center.justify-between,
+  .bg-gradient-to-r .relative.flex.items-center.justify-between {
+    flex-wrap: wrap !important;
+    gap: 0.75rem !important;
+  }
+  /* Make action buttons full-width inside gradient banners */
+  .bg-gradient-to-r .flex.items-center.justify-between > button,
+  .bg-gradient-to-r .relative.flex.items-center.justify-between > button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* ── Two-panel layouts: stack on mobile ── */
+@media (max-width: 1023px) {
+  /* Panels with fixed width siblings (like w-96) */
+  .flex.gap-6 > .w-96 {
+    width: 100% !important;
+  }
+}
+
+/* ── Filter bars: wrap on mobile ── */
+@media (max-width: 640px) {
+  .flex.items-center.gap-3.flex-wrap select,
+  .flex.items-center.gap-3.flex-wrap input[type="text"],
+  .flex.items-center.gap-3.flex-wrap input[type="date"] {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+}
+
+/* ── Page-level headers (title + buttons): wrap on very small screens ── */
+@media (max-width: 540px) {
+  /* Target common flex justify-between rows that contain h1 or heading text */
+  .flex.justify-between.items-center.mb-8,
+  .flex.justify-between.items-center.mb-6,
+  .flex.items-center.justify-between.mb-8,
+  .flex.items-center.justify-between.mb-6 {
+    flex-wrap: wrap !important;
+    gap: 0.75rem !important;
+  }
+  /* Button rows in page headers */
+  .flex.justify-between.items-center.mb-8 > .flex.gap-3,
+  .flex.justify-between.items-center.mb-6 > .flex.gap-3,
+  .flex.items-center.justify-between.mb-8 > .flex.gap-3,
+  .flex.items-center.justify-between.mb-6 > .flex.gap-3 {
+    width: 100% !important;
+  }
+  .flex.justify-between.items-center.mb-8 > .flex.gap-3 button,
+  .flex.justify-between.items-center.mb-6 > .flex.gap-3 button,
+  .flex.items-center.justify-between.mb-8 > .flex.gap-3 button,
+  .flex.items-center.justify-between.mb-6 > .flex.gap-3 button {
+    flex: 1 !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+    padding: 0.5rem 0.75rem !important;
+  }
+}
+
+/* ── Hide secondary columns on small screens ── */
+@media (max-width: 640px) {
+  .hidden-mobile { display: none !important; }
+}
+
+/* ── Responsive print ── */
+@media print {
+  aside, header, .no-print { display: none !important; }
+  main { overflow: visible !important; }
+  body { background: white !important; }
+}
+
 /* ── Animated background gradient ── */
 @keyframes gradientShift {
   0%   { background-position: 0% 50%; }

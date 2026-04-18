@@ -1,4 +1,11 @@
-﻿const { query } = require("../config/database");
+﻿// =============================================================
+// aiController.js - AI Chat Assistant Controller
+// Handles AI-powered business chat using Groq (Llama model).
+// Builds full business context from DB before sending to AI.
+// Used by: /api/ai routes
+// =============================================================
+
+const { query } = require("../config/database");
 
 let groq = null;
 

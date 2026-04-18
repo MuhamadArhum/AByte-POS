@@ -1,3 +1,10 @@
+// =============================================================
+// analyticsController.js - Analytics & Dashboard Stats Controller
+// Provides sales trends, category breakdowns, customer analytics,
+// payment method stats, and hourly sales data.
+// Used by: /api/analytics routes
+// =============================================================
+
 const { query } = require('../config/database');
 
 exports.getCustomerAnalytics = async (req, res) => {

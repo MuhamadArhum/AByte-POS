@@ -620,45 +620,45 @@ const Deliveries = () => {
 
       {/* ── Sticky Header ─────────────────────────────────────────────────── */}
       <div className="bg-white border-b-2 border-gray-200 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-[1920px] mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-2.5 rounded-xl shadow-lg">
-                <Truck size={26} className="text-white" />
+        <div className="max-w-[1920px] mx-auto px-3 md:px-6 py-3 md:py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-2 md:p-2.5 rounded-xl shadow-lg">
+                <Truck size={20} className="text-white md:hidden" />
+                <Truck size={26} className="text-white hidden md:block" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold tracking-tight text-gray-900">Deliveries</h1>
-                <p className="text-sm text-gray-500">Assign riders · Track shipments · Update status</p>
+                <h1 className="text-base md:text-xl font-semibold tracking-tight text-gray-900">Deliveries</h1>
+                <p className="text-xs md:text-sm text-gray-500 hidden sm:block">Assign riders · Track shipments · Update status</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate('/pos')}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm"
+                className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 md:py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm"
               >
-                <ShoppingCart size={16} /> New Sale
-                <ExternalLink size={13} className="opacity-70" />
+                <ShoppingCart size={15} /> <span className="hidden sm:inline">New Sale</span>
               </button>
               <button
                 onClick={() => { fetchDeliveries(); fetchStats(); }}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
+                className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 md:py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
               >
-                <RefreshCw size={16} /> Refresh
+                <RefreshCw size={15} /> <span className="hidden sm:inline">Refresh</span>
               </button>
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-3 mt-4">
+          <div className="flex gap-2 md:gap-3 mt-3 md:mt-4">
             <button
               onClick={() => { setView('running'); setPage(1); }}
-              className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 text-sm ${
+              className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-6 py-2 md:py-2.5 rounded-xl font-semibold transition-all duration-200 text-sm ${
                 view === 'running'
                   ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
               }`}
             >
-              <Navigation size={16} /> Running Orders
+              <Navigation size={15} /> Running Orders
               {!statsLoading && runningCount > 0 && (
                 <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                   view === 'running' ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-700'
@@ -689,7 +689,7 @@ const Deliveries = () => {
       </div>
 
       {/* ── Body ──────────────────────────────────────────────────────────── */}
-      <div className="max-w-[1920px] mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-[1920px] mx-auto px-3 md:px-6 py-3 md:py-6 space-y-4 md:space-y-6">
 
         {/* Stats row */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">

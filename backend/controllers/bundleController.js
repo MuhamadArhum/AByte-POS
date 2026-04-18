@@ -1,3 +1,10 @@
+// =============================================================
+// bundleController.js - Product Bundle Controller
+// Manages combo product bundles with automatic discount detection
+// at checkout.
+// Used by: /api/bundles routes
+// =============================================================
+
 const { query, getConnection } = require('../config/database');
 const auditService = require('../services/auditService');
 

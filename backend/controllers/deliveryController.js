@@ -1,3 +1,10 @@
+// =============================================================
+// deliveryController.js - Delivery Management Controller
+// Manages delivery orders, status tracking (pending/dispatched/delivered),
+// and delivery stats.
+// Used by: /api/deliveries routes
+// =============================================================
+
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 

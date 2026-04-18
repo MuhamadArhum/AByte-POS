@@ -1,3 +1,9 @@
+// =============================================================
+// creditSaleController.js - Credit Sales (Udhar) Controller
+// Manages sales on credit, overdue tracking, and payment recording.
+// Used by: /api/credit-sales routes
+// =============================================================
+
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 

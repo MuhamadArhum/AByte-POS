@@ -55,6 +55,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import AIWidget from './AIWidget';
+import ProfileModal from './ProfileModal';
 
 interface MenuItem {
   icon: any;
@@ -71,6 +72,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const { user, logout, hasPermission } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -510,36 +512,46 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* Top Navbar */}
-        <header className="h-16 bg-white/90 backdrop-blur-xl border-b border-gray-200/70 flex items-center justify-between px-6 shadow-sm z-40 relative">
-          <div className="flex items-center gap-4">
+        <header className="h-14 md:h-16 bg-white/90 backdrop-blur-xl border-b border-gray-200/70 flex items-center justify-between px-3 md:px-6 shadow-sm z-40 relative">
+          <div className="flex items-center gap-2 md:gap-4 min-w-0">
+            {/* Mobile menu toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+              className="md:hidden p-2 text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all flex-shrink-0"
             >
-              <Menu size={24} />
+              <Menu size={20} />
             </button>
-            <div className="flex items-center gap-2.5">
-              <div className="hidden md:flex flex-col">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-base font-bold text-gray-900 leading-tight">
-                    {filteredMenu.flatMap(m => [m, ...(m.children || [])]).find(m => m.path === location.pathname)?.label || 'Dashboard'}
-                  </h1>
-                </div>
-                <p className="text-xs text-gray-400">AByte ERP &mdash; Complete Business Management</p>
+
+            {/* Mobile logo */}
+            <div className="md:hidden flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                <span className="text-xs font-black text-white">A</span>
               </div>
+              <span className="text-sm font-bold text-gray-800 truncate max-w-[120px]">
+                {filteredMenu.flatMap(m => [m, ...(m.children || [])]).find(m => m.path === location.pathname)?.label || 'AByte ERP'}
+              </span>
+            </div>
+
+            {/* Desktop page title */}
+            <div className="hidden md:flex flex-col">
+              <h1 className="text-base font-bold text-gray-900 leading-tight">
+                {filteredMenu.flatMap(m => [m, ...(m.children || [])]).find(m => m.path === location.pathname)?.label || 'Dashboard'}
+              </h1>
+              <p className="text-xs text-gray-400">AByte ERP &mdash; Complete Business Management</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 md:gap-3 flex-shrink-0">
             {/* Notifications */}
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => { setIsNotificationOpen(!isNotificationOpen); setIsProfileOpen(false); }}
-                className="relative p-2.5 text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                className="relative p-2 md:p-2.5 text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
               >
-                <Bell size={22} />
+                <Bell size={18} className="md:hidden" />
+                <Bell size={22} className="hidden md:block" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                  <span className="absolute top-0.5 right-0.5 md:top-1 md:right-1 w-4 h-4 md:w-5 md:h-5 bg-red-500 text-white text-[9px] md:text-xs rounded-full flex items-center justify-center font-bold">
                     {unreadCount}
                   </span>
                 )}
@@ -547,7 +559,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
               {/* Notification Dropdown */}
               {isNotificationOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 w-72 md:w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
                     <h3 className="text-sm font-semibold text-gray-800">Notifications</h3>
                     {unreadCount > 0 && (
@@ -556,10 +568,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                       </span>
                     )}
                   </div>
-                  <div className="divide-y divide-gray-50 max-h-72 overflow-y-auto">
+                  <div className="divide-y divide-gray-50 max-h-64 md:max-h-72 overflow-y-auto">
                     {notifications.map((n) => (
-                      <div
-                        key={n.id}
+                      <div key={n.id}
                         className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer ${!n.read ? 'bg-emerald-50/40' : ''}`}
                       >
                         <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${!n.read ? 'bg-emerald-500' : 'bg-gray-300'}`} />
@@ -584,16 +595,16 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             <div className="relative" ref={profileRef}>
               <button
                 onClick={() => { setIsProfileOpen(!isProfileOpen); setIsNotificationOpen(false); }}
-                className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-xl transition-all border border-transparent hover:border-gray-200"
+                className="flex items-center gap-2 md:gap-3 px-1.5 md:px-3 py-1.5 md:py-2 hover:bg-gray-50 rounded-xl transition-all border border-transparent hover:border-gray-200"
               >
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-md text-sm">
+                <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-md text-sm flex-shrink-0">
                   {user?.name?.charAt(0)?.toUpperCase() || 'A'}
                 </div>
                 <div className="text-left hidden lg:block">
                   <p className="text-sm font-semibold text-gray-800 leading-tight">{user?.name || 'User'}</p>
                   <p className="text-xs text-emerald-600 font-medium capitalize">{user?.role_name || user?.role}</p>
                 </div>
-                <ChevronDown size={15} className={`text-gray-400 transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 hidden sm:block ${isProfileOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Profile Dropdown */}
@@ -615,6 +626,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
                   {/* Menu Items */}
                   <div className="py-2">
+                    <button
+                      onClick={() => { setIsProfileOpen(false); setIsProfileModalOpen(true); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                    >
+                      <User size={16} className="text-gray-400" />
+                      My Profile
+                    </button>
                     <Link
                       to="/settings"
                       onClick={() => setIsProfileOpen(false)}
@@ -735,6 +753,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
       {/* AI Widget */}
       <AIWidget />
+
+      {/* Profile Modal */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+      />
     </div>
   );
 };

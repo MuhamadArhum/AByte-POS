@@ -39,6 +39,7 @@ interface AuthContextType {
   tenantConfig:    TenantConfig | null;
   login:           (token: string, user: User, permissions: string[] | null) => void;
   logout:          () => void;
+  updateUser:      (patch: Partial<User>) => void;
   setTenantConfig: (config: TenantConfig) => void;
   isAuthenticated: boolean;
   isLoading:       boolean;
@@ -86,6 +87,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPermissions(newPermissions);
   }, []);
 
+  const updateUser = useCallback((patch: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...patch };
+      localStorage.setItem('user', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   const logout = useCallback(() => {
     // Revoke token server-side (fire-and-forget — don't block logout on network failure)
     const storedToken = localStorage.getItem('token');
@@ -129,6 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     tenantConfig,
     login,
     logout,
+    updateUser,
     setTenantConfig: saveTenantConfig,
     isAuthenticated: !!token,
     isLoading,
@@ -137,7 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     hasModule,
     currentPlan,
     currencySymbol,
-  }), [user, token, tenantConfig, login, logout, saveTenantConfig, isLoading, permissions, hasPermission, hasModule, currencySymbol]);
+  }), [user, token, tenantConfig, login, logout, updateUser, saveTenantConfig, isLoading, permissions, hasPermission, hasModule, currencySymbol]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -145,25 +145,25 @@ const Customers = () => {
   }
 
   return (
-    <div className="p-8 h-[calc(100vh-64px)] overflow-hidden flex flex-col">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 md:p-8 h-[calc(100vh-56px)] md:h-[calc(100vh-64px)] overflow-hidden flex flex-col">
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-4 md:mb-6">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-gray-900">Customers</h1>
-          <p className="text-gray-600">Manage customer profiles and history</p>
+          <h1 className="text-lg md:text-xl font-semibold tracking-tight text-gray-900">Customers</h1>
+          <p className="text-gray-600 text-sm hidden sm:block">Manage customer profiles and history</p>
         </div>
         <button
           onClick={() => {
             setEditingCustomer(null);
             setIsModalOpen(true);
           }}
-          className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-emerald-700 flex items-center gap-2 shadow-sm transition-colors"
+          className="bg-emerald-600 text-white px-3 md:px-4 py-2 rounded-lg font-medium hover:bg-emerald-700 flex items-center gap-2 shadow-sm transition-colors text-sm"
         >
-          <Plus size={20} />
+          <Plus size={18} />
           Add Customer
         </button>
       </div>
 
-      <div className="flex gap-6 flex-1 overflow-hidden">
+      <div className="flex flex-col lg:flex-row gap-4 md:gap-6 flex-1 overflow-hidden">
         {/* Left Side: Customer List */}
         <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
           <div className="p-4 border-b border-gray-100">
@@ -236,7 +236,7 @@ const Customers = () => {
         </div>
 
         {/* Right Side: Customer Details */}
-        <div className="w-96 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
+        <div className="w-full lg:w-96 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden lg:flex-shrink-0">
           {selectedCustomer ? (
             <>
               <div className="p-6 border-b border-gray-100 bg-emerald-50/50 text-center">

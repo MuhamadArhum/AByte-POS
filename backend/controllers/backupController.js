@@ -1,3 +1,10 @@
+// =============================================================
+// backupController.js - Database Backup & Restore Controller
+// Creates, lists, downloads, restores, and deletes database backups
+// via backupService. Admin only.
+// Used by: /api/backup routes
+// =============================================================
+
 const path = require('path');
 const { query } = require('../config/database');
 const { logAction } = require('../services/auditService');

@@ -101,7 +101,9 @@
       "Bash(node server.js)",
       "Bash(echo \"Backend starting with PID: $!\")",
       "Bash(sort -t: -k2 -n)",
-      "PowerShell(Stop-Process *)"
+      "PowerShell(Stop-Process *)",
+      "Bash(cat .env)",
+      "Bash(cat .env.example)"
     ]
   }
 }

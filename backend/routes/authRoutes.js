@@ -22,4 +22,7 @@ router.get('/verify', authenticate, authController.verify);
 // POST /api/auth/logout - Revokes token server-side (requires auth)
 router.post('/logout', authenticate, authController.logout);
 
+// PUT /api/auth/profile - Update own profile (any authenticated user)
+router.put('/profile', authenticate, authController.updateProfile);
+
 module.exports = router;
