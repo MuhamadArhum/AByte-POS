@@ -83,7 +83,7 @@ const POS = () => {
 
   // Completed orders modal (Orders button in header)
   const [showSalesModal, setShowSalesModal] = useState(false);
-  const [storeSettings, setStoreSettings] = useState<any>(null);
+  const [, setStoreSettings] = useState<any>(null);
 
   // Mobile cart drawer toggle
   const [showMobileCart, setShowMobileCart] = useState(false);
@@ -360,7 +360,7 @@ const POS = () => {
       // Auto-select Walk-in Customer (ID 1) if none selected
       const list = Array.isArray(customerList) ? customerList : [];
       const walkin = list.find((c: any) => c.customer_id === 1);
-      setSelectedCustomer(prev => prev ? prev : (walkin || null));
+      setSelectedCustomer((prev: any) => prev ? prev : (walkin || null));
     } catch (error) {
       console.error("Failed to fetch customers", error);
     }

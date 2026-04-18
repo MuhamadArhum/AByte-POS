@@ -94,7 +94,6 @@ const CashRegister = () => {
           limit: itemsPerPage
         }
       });
-  const { currencySymbol: currency } = useSettings();
       if (res.data.pagination) {
         setHistory(res.data.registers);
         setTotalItems(res.data.pagination.total);

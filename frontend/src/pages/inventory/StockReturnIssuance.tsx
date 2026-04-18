@@ -41,7 +41,7 @@ const StockReturnIssuance = () => {
       setReturns(res.data.data || []);
       setTotalPages(res.data.pagination?.totalPages || 1);
       setTotalItems(res.data.pagination?.total || 0);
-    } catch { showToast('Failed to load', 'error'); }
+    } catch { showToast('error', 'Failed to load'); }
     finally { setLoading(false); }
   }, [dateFrom, dateTo, sectionFilter, page]);
 
@@ -63,14 +63,14 @@ const StockReturnIssuance = () => {
   };
 
   const handleSubmit = async () => {
-    if (!formSection) return showToast('Select a section', 'error');
-    if (!items.length) return showToast('Add at least one item', 'error');
+    if (!formSection) return showToast('error', 'Select a section');
+    if (!items.length) return showToast('error', 'Add at least one item');
     setSaving(true);
     try {
       const res = await api.post('/issuance/returns', {
         section_id: formSection, return_date: formDate, notes: formNotes, items
       });
-      showToast(`Return ${res.data.return_number} created`, 'success');
+      showToast('success', `Return ${res.data.return_number} created`);
       setShowForm(false); setItems([]); setFormSection(''); setFormNotes('');
       fetchReturns();
     } catch (err: any) { showToast(err.response?.data?.message || 'Error', 'error'); }

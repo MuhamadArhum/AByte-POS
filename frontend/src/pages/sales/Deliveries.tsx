@@ -4,7 +4,7 @@ import {
   Truck, Search, X, Edit2, Trash2, CheckCircle,
   Clock, MapPin, Phone, User, Calendar, DollarSign, Loader2,
   RefreshCw, Package, XCircle, Navigation, ChevronRight,
-  Save, ShoppingCart, CreditCard, ExternalLink,
+  Save, ShoppingCart, CreditCard,
   Eye, Printer,
 } from 'lucide-react';
 import { printReceipt } from '../../utils/receiptPrinter';
@@ -958,7 +958,7 @@ const Deliveries = () => {
 
                 {Math.ceil(total / limit) > 1 && (
                   <div className="px-4 py-3 border-t border-gray-100">
-                    <Pagination currentPage={page} totalPages={Math.ceil(total / limit)} onPageChange={setPage} />
+                    <Pagination currentPage={page} totalPages={Math.ceil(total / limit)} onPageChange={setPage} totalItems={total} itemsPerPage={limit} />
                   </div>
                 )}
               </div>

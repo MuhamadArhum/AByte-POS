@@ -19,7 +19,7 @@ const SupplierWisePurchase = () => {
         params: { from_date: dateFrom, to_date: dateTo }
       });
       setData(res.data.data || []);
-    } catch { showToast('Failed to load report', 'error'); }
+    } catch { showToast('error', 'Failed to load report'); }
     finally { setLoading(false); }
   }, [dateFrom, dateTo]);
 

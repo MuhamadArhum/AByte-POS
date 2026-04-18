@@ -185,8 +185,6 @@ const Returns = () => {
           limit: itemsPerPage
         }
       });
-  const { currencySymbol: currency } = useSettings();
-      
       if (res.data.pagination) {
         setRecentReturns(res.data.data);
         setTotalItems(res.data.pagination.total);

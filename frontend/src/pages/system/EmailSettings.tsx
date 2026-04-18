@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { Mail, CheckCircle, XCircle, Send, AlertTriangle, Loader2, Bell } from 'lucide-react';
+import { Mail, CheckCircle, Send, AlertTriangle, Loader2, Bell } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 

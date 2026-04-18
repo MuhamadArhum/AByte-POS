@@ -45,7 +45,7 @@ const StockIssue = () => {
       setIssues(res.data.data || []);
       setTotalPages(res.data.pagination?.totalPages || 1);
       setTotalItems(res.data.pagination?.total || 0);
-    } catch { showToast('Failed to load', 'error'); }
+    } catch { showToast('error', 'Failed to load'); }
     finally { setLoading(false); }
   }, [dateFrom, dateTo, sectionFilter, page]);
 
@@ -64,7 +64,7 @@ const StockIssue = () => {
   };
 
   const addItem = (p: Product) => {
-    if (items.find(i => i.product_id === p.product_id)) { showToast('Already added', 'error'); return; }
+    if (items.find(i => i.product_id === p.product_id)) { showToast('error', 'Already added'); return; }
     setItems(prev => [...prev, { product_id: p.product_id, product_name: p.product_name, quantity: 1, unit_cost: Number(p.cost_price || 0) }]);
     setProductSearch(''); setProductResults([]);
   };
@@ -111,17 +111,17 @@ const StockIssue = () => {
   };
 
   const handleSubmit = async () => {
-    if (!formSection) return showToast('Select a section', 'error');
-    if (!items.length) return showToast('Add at least one item', 'error');
+    if (!formSection) return showToast('error', 'Select a section');
+    if (!items.length) return showToast('error', 'Add at least one item');
     setSaving(true);
     try {
       const payload = { section_id: formSection, issue_date: formDate, notes: formNotes, items };
       if (editingId) {
         const res = await api.put(`/issuance/issues/${editingId}`, payload);
-        showToast(`Stock Issue ${res.data.issue_number} updated`, 'success');
+        showToast('success', `Stock Issue ${res.data.issue_number} updated`);
       } else {
         const res = await api.post('/issuance/issues', payload);
-        showToast(`Stock Issue ${res.data.issue_number} created`, 'success');
+        showToast('success', `Stock Issue ${res.data.issue_number} created`);
       }
       setShowForm(false);
       fetchIssues();
@@ -131,7 +131,7 @@ const StockIssue = () => {
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('Delete this issue? Stock will be reversed.')) return;
-    try { await api.delete(`/issuance/issues/${id}`); showToast('Deleted', 'success'); fetchIssues(); }
+    try { await api.delete(`/issuance/issues/${id}`); showToast('success', 'Deleted'); fetchIssues(); }
     catch (err: any) { showToast(err.response?.data?.message || 'Error', 'error'); }
   };
 
@@ -144,7 +144,7 @@ const StockIssue = () => {
     try {
       const res = await api.get(`/issuance/issues/${id}`);
       printChallan(res.data);
-    } catch { showToast('Failed to load for print', 'error'); }
+    } catch { showToast('error', 'Failed to load for print'); }
   };
 
   const fmt = (n: any) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });

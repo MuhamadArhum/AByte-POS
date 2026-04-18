@@ -420,7 +420,6 @@ const SalesTargets = () => {
 
   const fetchTargets = useCallback(async () => {
     setManageLoading(true);
-  const { currencySymbol: currency } = useSettings();
     try {
       const params: any = { page: pagination.page, limit: pagination.limit };
       if (filterUserId) params.user_id = filterUserId;

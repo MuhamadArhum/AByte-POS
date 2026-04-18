@@ -4,7 +4,7 @@ import {
   Legend, ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 import {
-  TrendingUp, ShoppingCart, DollarSign, Users, CreditCard, Clock, Package
+  TrendingUp, ShoppingCart, DollarSign, Users, Clock, Package
 } from 'lucide-react';
 import DateRangeFilter from '../components/DateRangeFilter';
 import api from '../utils/api';

@@ -17,7 +17,7 @@ const StockReconciliation = () => {
       const res = await api.get('/inventory-reports/stock-reconciliation');
       setData(res.data.data || []);
       setFiltered(res.data.data || []);
-    } catch { showToast('Failed to load', 'error'); }
+    } catch { showToast('error', 'Failed to load'); }
     finally { setLoading(false); }
   }, []);
 

@@ -70,7 +70,6 @@ const Quotations = () => {
 
   const fetchQuotations = useCallback(async () => {
     setLoading(true);
-  const { currencySymbol: currency } = useSettings();
     try {
       const params: Record<string, string | number> = { page, limit };
       if (search) params.search = search;

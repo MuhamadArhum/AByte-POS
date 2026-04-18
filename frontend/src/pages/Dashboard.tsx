@@ -6,13 +6,12 @@ import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DollarSign, ShoppingBag, ShoppingCart, AlertTriangle, TrendingUp,
-  TrendingDown, Plus, Users, Package, CreditCard, ArrowRight,
+  TrendingDown, Plus, Package, CreditCard, ArrowRight,
   Clock, CheckCircle, Box, RefreshCw, Truck, UserCheck, UserX,
-  Bell, Activity, Zap
+  Bell, Activity
 } from 'lucide-react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { SkeletonStatCard } from '../components/Skeleton';
 
