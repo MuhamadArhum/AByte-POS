@@ -71,7 +71,6 @@ const StatCard = ({ icon: Icon, label, value, prefix = '', decimals = 0, badge, 
         {link.label} <ArrowRight size={11} />
       </Link>
     )}
-    {/* subtle glow */}
     {gradient && <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-2xl pointer-events-none" />}
   </motion.div>
 );
@@ -258,10 +257,108 @@ const Dashboard = () => {
         </motion.div>
       )}
 
-      {/* Alerts + Attendance Row */}
+      {/* ── ROW 3: Chart + Quick Actions ── */}
       {!loading && (
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 0.4 }}
+          className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+        >
+          {/* Chart */}
+          <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-base font-semibold text-gray-800">Revenue Overview</h2>
+              <select
+                value={chartPeriod}
+                onChange={e => setChartPeriod(e.target.value as any)}
+                className="bg-gray-50 border border-gray-200 rounded-lg text-sm px-3 py-1.5 outline-none focus:ring-2 focus:ring-emerald-500/20"
+              >
+                <option value="week">Last 7 Days</option>
+                <option value="month">Last 30 Days</option>
+                <option value="year">Last Year</option>
+              </select>
+            </div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={chartPeriod}
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="h-72 w-full"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%"  stopColor="#10B981" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11 }} tickFormatter={v => `${currency}${v}`} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px -5px rgb(0 0 0 / 0.15)', padding: '12px 16px' }}
+                      formatter={(value: any, name: any) =>
+                        name === 'sales' ? [`${currency}${Number(value).toFixed(2)}`, 'Revenue'] : [value, 'Orders']
+                      }
+                    />
+                    <Area type="monotone" dataKey="sales" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorSales)" dot={false} activeDot={{ r: 5, fill: '#10B981' }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Quick Actions + Tip */}
+          <div className="space-y-5">
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+              <h2 className="text-sm font-semibold text-gray-700 mb-4">Quick Actions</h2>
+              <div className="grid grid-cols-3 gap-2">
+                {quickActions.map((action, i) => {
+                  const Icon = action.icon;
+                  return (
+                    <motion.div key={i} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
+                      <Link
+                        to={action.path}
+                        className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition-all group text-center"
+                      >
+                        <div className={`w-10 h-10 ${action.color} rounded-xl flex items-center justify-center mb-2 shadow-sm group-hover:shadow-md transition-shadow`}>
+                          <Icon size={18} />
+                        </div>
+                        <span className="text-xs font-medium text-gray-700">{action.label}</span>
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <motion.div
+              whileHover={{ scale: 1.01 }}
+              className="bg-gradient-to-br from-emerald-600 to-teal-700 p-5 rounded-2xl text-white shadow-lg relative overflow-hidden"
+            >
+              <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
+              <div className="absolute -bottom-8 -left-4 w-32 h-32 bg-teal-400/20 rounded-full blur-3xl" />
+              <div className="relative">
+                <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                  <Package size={18} />
+                </div>
+                <p className="text-sm font-semibold mb-1">Pro Tip</p>
+                <p className="text-emerald-100 text-xs mb-4 leading-relaxed">
+                  Monitor low stock items regularly to prevent running out of best-sellers.
+                </p>
+                <Link to="/inventory" className="inline-flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+                  Check Inventory <ArrowRight size={13} />
+                </Link>
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── ROW 4: Alerts + Attendance ── */}
+      {!loading && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38, duration: 0.4 }}
           className="grid grid-cols-1 lg:grid-cols-2 gap-6"
         >
           {/* Low Stock Alert */}
@@ -371,105 +468,7 @@ const Dashboard = () => {
         </motion.div>
       )}
 
-      {/* Chart + Quick Actions */}
-      {!loading && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38, duration: 0.4 }}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-        >
-          {/* Chart */}
-          <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-base font-semibold text-gray-800">Revenue Overview</h2>
-              <select
-                value={chartPeriod}
-                onChange={e => setChartPeriod(e.target.value as any)}
-                className="bg-gray-50 border border-gray-200 rounded-lg text-sm px-3 py-1.5 outline-none focus:ring-2 focus:ring-emerald-500/20"
-              >
-                <option value="week">Last 7 Days</option>
-                <option value="month">Last 30 Days</option>
-                <option value="year">Last Year</option>
-              </select>
-            </div>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={chartPeriod}
-                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="h-72 w-full"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%"  stopColor="#10B981" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11 }} tickFormatter={v => `${currency}${v}`} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px -5px rgb(0 0 0 / 0.15)', padding: '12px 16px' }}
-                      formatter={(value: any, name: any) =>
-                        name === 'sales' ? [`${currency}${Number(value).toFixed(2)}`, 'Revenue'] : [value, 'Orders']
-                      }
-                    />
-                    <Area type="monotone" dataKey="sales" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorSales)" dot={false} activeDot={{ r: 5, fill: '#10B981' }} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-
-          {/* Quick Actions + Tip */}
-          <div className="space-y-5">
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-              <h2 className="text-sm font-semibold text-gray-700 mb-4">Quick Actions</h2>
-              <div className="grid grid-cols-3 gap-2">
-                {quickActions.map((action, i) => {
-                  const Icon = action.icon;
-                  return (
-                    <motion.div key={i} whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
-                      <Link
-                        to={action.path}
-                        className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/40 transition-all group text-center"
-                      >
-                        <div className={`w-10 h-10 ${action.color} rounded-xl flex items-center justify-center mb-2 shadow-sm group-hover:shadow-md transition-shadow`}>
-                          <Icon size={18} />
-                        </div>
-                        <span className="text-xs font-medium text-gray-700">{action.label}</span>
-                      </Link>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <motion.div
-              whileHover={{ scale: 1.01 }}
-              className="bg-gradient-to-br from-emerald-600 to-teal-700 p-5 rounded-2xl text-white shadow-lg relative overflow-hidden"
-            >
-              <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
-              <div className="absolute -bottom-8 -left-4 w-32 h-32 bg-teal-400/20 rounded-full blur-3xl" />
-              <div className="relative">
-                <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center mb-3">
-                  <Package size={18} />
-                </div>
-                <p className="text-sm font-semibold mb-1">Pro Tip</p>
-                <p className="text-emerald-100 text-xs mb-4 leading-relaxed">
-                  Monitor low stock items regularly to prevent running out of best-sellers.
-                </p>
-                <Link to="/inventory" className="inline-flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
-                  Check Inventory <ArrowRight size={13} />
-                </Link>
-              </div>
-            </motion.div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Recent Orders + Top Products */}
+      {/* ── ROW 5: Recent Orders + Top Products ── */}
       {!loading && (
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.46, duration: 0.4 }}
