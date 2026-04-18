@@ -5,6 +5,7 @@
  *  - POS.tsx           (full-screen overlay, onClose + showTypeFilter)
  */
 import React, { useState, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import {
   Search, Package, Calendar, User, DollarSign, CreditCard,
   Eye, Printer, RotateCcw, Archive, X, Lock, EyeOff, RefreshCw,
@@ -686,13 +687,17 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
   );
 
   // ── Full-screen overlay wrapper (for POS) ─────────────────────────────────
+  // Portal to document.body so framer-motion transforms on parent Layout
+  // motion.div do NOT create a new fixed-positioning containing block.
+  // Without portal, fixed inset-0 only covers the content column, not sidebar.
   if (isOverlay) {
-    return (
-      <div className="fixed inset-0 z-50">
+    return ReactDOM.createPortal(
+      <div className="fixed inset-0 z-[9999]">
         <div className="bg-white w-full h-full flex flex-col">
           {content}
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
