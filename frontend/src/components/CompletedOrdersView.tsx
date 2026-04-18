@@ -7,13 +7,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Search, Package, Calendar, User, DollarSign, CreditCard,
-  Eye, Printer, RotateCcw, Archive, X, Lock, EyeOff, RefreshCw
+  Eye, Printer, RotateCcw, Archive, X, Lock, EyeOff, RefreshCw,
+  Clock, CheckCircle, AlertCircle
 } from 'lucide-react';
 import DateRangeFilter from './DateRangeFilter';
 import Pagination from './Pagination';
 import api from '../utils/api';
 import { printReceipt } from '../utils/receiptPrinter';
-import { localToday, localMonthStart } from '../utils/dateUtils';
+import { localToday } from '../utils/dateUtils';
 
 // ─── Bill Preview Modal ─────────────────────────────────────────────────────
 const BillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: () => void }) => {
@@ -41,10 +42,10 @@ const BillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: () => 
   const cs = settings?.currency_symbol || 'Rs.';
   const items: any[] = sale.items || [];
   const subtotal = items.reduce((s: number, i: any) => s + parseFloat(i.unit_price) * parseFloat(i.quantity), 0);
-  const taxPercent   = parseFloat(sale.tax_percent || 0);
+  const taxPercent        = parseFloat(sale.tax_percent || 0);
   const additionalPercent = parseFloat(sale.additional_charges_percent || 0);
-  const discount     = parseFloat(sale.discount || 0);
-  const grandTotal   = parseFloat(sale.total_amount || 0);
+  const discount          = parseFloat(sale.discount || 0);
+  const grandTotal        = parseFloat(sale.total_amount || 0);
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={onClose}>
@@ -121,9 +122,9 @@ const BillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: () => 
 const PasswordModal = ({ title, correctPassword, onSuccess, onClose }: {
   title: string; correctPassword: string; onSuccess: () => void; onClose: () => void;
 }) => {
-  const [input, setInput]       = useState('');
-  const [show, setShow]         = useState(false);
-  const [error, setError]       = useState('');
+  const [input, setInput] = useState('');
+  const [show, setShow]   = useState(false);
+  const [error, setError] = useState('');
   const verify = () => { if (input === correctPassword) onSuccess(); else { setError('Incorrect password.'); setInput(''); } };
 
   return (
@@ -159,20 +160,29 @@ const TokenBadge = ({ token }: { token: string }) => {
   const isDelivery = token.startsWith('DL-');
   return (
     <span className={`ml-1.5 px-1.5 py-0.5 rounded text-xs font-bold border ${
-      isDelivery
-        ? 'bg-blue-50 text-blue-700 border-blue-200'
-        : 'bg-amber-50 text-amber-700 border-amber-200'
+      isDelivery ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'
     }`}>{token}</span>
   );
 };
 
+// ─── Shift info type ────────────────────────────────────────────────────────
+interface ShiftInfo {
+  register_id: number;
+  status: 'open' | 'closed';
+  opened_at: string;   // ISO datetime
+  closed_at: string | null;
+  opened_by_name?: string;
+  label: string;
+}
+
+// ─── Format datetime for display ───────────────────────────────────────────
+const fmtDt = (iso: string) =>
+  new Date(iso).toLocaleString('en-PK', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
 // ─── Main component ─────────────────────────────────────────────────────────
 interface CompletedOrdersViewProps {
-  /** When provided, wraps the view in a full-screen overlay with a close button */
   onClose?: () => void;
-  /** Show Walk-in / Delivery / All category filter (used from POS) */
   showTypeFilter?: boolean;
-  /** Optional page title shown in overlay header */
   title?: string;
 }
 
@@ -183,51 +193,112 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
 }) => {
   const isOverlay = Boolean(onClose);
 
-  // Filters
+  // View mode: 'shift' uses register boundaries; 'date' uses manual date range
+  const [viewMode, setViewMode] = useState<'shift' | 'date'>('shift');
+  const [shiftInfo, setShiftInfo]     = useState<ShiftInfo | null>(null);
+  const [shiftLoading, setShiftLoading] = useState(true);
+
+  // Date range (used when viewMode === 'date')
   const [typeFilter, setTypeFilter] = useState<'all' | 'walkin' | 'delivery'>('all');
-  const [search,     setSearch]     = useState('');
-  const [dateFrom,   setDateFrom]   = useState(localMonthStart);
-  const [dateTo,     setDateTo]     = useState(localToday);
+  const [search,   setSearch]   = useState('');
+  const [dateFrom, setDateFrom] = useState(localToday);
+  const [dateTo,   setDateTo]   = useState(localToday);
 
   // Data
-  const [sales,         setSales]         = useState<any[]>([]);
-  const [loading,       setLoading]       = useState(false);
-  const [page,          setPage]          = useState(1);
-  const [perPage,       setPerPage]       = useState(15);
-  const [totalItems,    setTotalItems]    = useState(0);
-  const [totalPages,    setTotalPages]    = useState(0);
-  const [summary,       setSummary]       = useState<{ order_count: number; total_amount: number } | null>(null);
-  const [cs,            setCs]            = useState('Rs.');
+  const [sales,      setSales]      = useState<any[]>([]);
+  const [loading,    setLoading]    = useState(false);
+  const [page,       setPage]       = useState(1);
+  const [perPage,    setPerPage]    = useState(15);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [summary,    setSummary]    = useState<{ order_count: number; total_amount: number } | null>(null);
+  const [cs,         setCs]         = useState('Rs.');
 
   // Modals
-  const [previewId,     setPreviewId]     = useState<number | null>(null);
-  const [unlocked,      setUnlocked]      = useState(false);
-  const [pwModal,       setPwModal]       = useState<{ type: 'unlock' | 'refund'; refundId?: number } | null>(null);
-  const [passwords,     setPasswords]     = useState({ view_completed: '', refund: '' });
+  const [previewId,  setPreviewId]  = useState<number | null>(null);
+  const [unlocked,   setUnlocked]   = useState(false);
+  const [pwModal,    setPwModal]    = useState<{ type: 'unlock' | 'refund'; refundId?: number } | null>(null);
+  const [passwords,  setPasswords]  = useState({ view_completed: '', refund: '' });
 
+  // ── Fetch settings ──────────────────────────────────────────────────────
   useEffect(() => {
     api.get('/settings').then(res => {
       setCs(res.data.currency_symbol || 'Rs.');
       setPasswords({ view_completed: res.data.view_completed_orders_password || '', refund: res.data.refund_password || '' });
-      // If password-protected, show unlock prompt when opening in overlay mode
-      if (isOverlay && res.data.view_completed_orders_password) {
-        setPwModal({ type: 'unlock' });
-      }
+      if (isOverlay && res.data.view_completed_orders_password) setPwModal({ type: 'unlock' });
     }).catch(() => {});
   }, [isOverlay]);
 
+  // ── Fetch current shift info on mount ───────────────────────────────────
+  useEffect(() => {
+    const loadShift = async () => {
+      setShiftLoading(true);
+      try {
+        // Try open register first
+        const res = await api.get('/register/current');
+        const reg = res.data;
+        setShiftInfo({
+          register_id: reg.register_id,
+          status: 'open',
+          opened_at: reg.opened_at,
+          closed_at: null,
+          opened_by_name: reg.opened_by_name,
+          label: 'Current Shift (Open)',
+        });
+      } catch {
+        // No open register — get last closed shift
+        try {
+          const hist = await api.get('/register/history', { params: { page: 1, limit: 1 } });
+          const regs: any[] = hist.data.registers || [];
+          if (regs.length > 0) {
+            const last = regs[0];
+            setShiftInfo({
+              register_id: last.register_id,
+              status: 'closed',
+              opened_at: last.opened_at,
+              closed_at: last.closed_at,
+              opened_by_name: last.opened_by_name,
+              label: 'Last Shift (Closed)',
+            });
+          } else {
+            // No register at all — fall back to date mode showing today
+            setViewMode('date');
+          }
+        } catch {
+          setViewMode('date');
+        }
+      } finally {
+        setShiftLoading(false);
+      }
+    };
+    loadShift();
+  }, []);
+
+  // ── Build API params based on view mode ─────────────────────────────────
+  const buildParams = useCallback((): Record<string, any> => {
+    const base: Record<string, any> = {
+      page, limit: perPage,
+      status: 'completed,refunded',
+    };
+    if (search.trim()) base.search = search.trim();
+    if (showTypeFilter && typeFilter !== 'all') base.order_type = typeFilter;
+
+    if (viewMode === 'shift' && shiftInfo) {
+      // Pass exact datetimes for shift-level accuracy
+      base.shift_start = shiftInfo.opened_at;
+      base.shift_end   = shiftInfo.closed_at || new Date().toISOString();
+    } else {
+      base.date_from = dateFrom;
+      base.date_to   = dateTo;
+    }
+    return base;
+  }, [page, perPage, search, viewMode, shiftInfo, dateFrom, dateTo, typeFilter, showTypeFilter]);
+
+  // ── Fetch sales ──────────────────────────────────────────────────────────
   const fetchSales = useCallback(async () => {
     setLoading(true);
     try {
-      const params: any = {
-        page, limit: perPage,
-        status: 'completed,refunded',
-        date_from: dateFrom,
-        date_to: dateTo,
-      };
-      if (search.trim())               params.search     = search.trim();
-      if (showTypeFilter && typeFilter !== 'all') params.order_type = typeFilter;
-      const res = await api.get('/sales', { params });
+      const res = await api.get('/sales', { params: buildParams() });
       setSales(res.data.data || res.data);
       if (res.data.pagination) {
         setTotalItems(res.data.pagination.total);
@@ -236,14 +307,16 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
       if (res.data.summary) setSummary(res.data.summary);
     } catch { /* silent */ }
     finally { setLoading(false); }
-  }, [page, perPage, search, dateFrom, dateTo, typeFilter, showTypeFilter]);
+  }, [buildParams]);
 
+  // Trigger fetch after shift loaded (or when mode/filters change)
   useEffect(() => {
+    if (shiftLoading) return;
     if (!passwords.view_completed || unlocked || !isOverlay) fetchSales();
-  }, [fetchSales, unlocked, passwords.view_completed, isOverlay]);
+  }, [fetchSales, unlocked, passwords.view_completed, isOverlay, shiftLoading]);
 
   // Reset page on filter change
-  useEffect(() => { setPage(1); }, [search, dateFrom, dateTo, typeFilter]);
+  useEffect(() => { setPage(1); }, [search, dateFrom, dateTo, typeFilter, viewMode, shiftInfo]);
 
   const handleRefund = async (saleId: number) => {
     if (!confirm(`Refund Order #${saleId}? Stock will be restored.`)) return;
@@ -256,15 +329,36 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
     else handleRefund(saleId);
   };
 
-  // ── Render content ─────────────────────────────────────────────────────────
+  // ── Shift info banner ───────────────────────────────────────────────────
+  const shiftBanner = shiftInfo && viewMode === 'shift' && (
+    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border ${
+      shiftInfo.status === 'open'
+        ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+        : 'bg-gray-100 border-gray-300 text-gray-600'
+    }`}>
+      {shiftInfo.status === 'open'
+        ? <CheckCircle size={14} className="text-emerald-600 shrink-0" />
+        : <AlertCircle size={14} className="text-gray-400 shrink-0" />}
+      <span>{shiftInfo.label}</span>
+      <span className="text-gray-400 font-normal">
+        {fmtDt(shiftInfo.opened_at)}
+        {shiftInfo.closed_at ? ` → ${fmtDt(shiftInfo.closed_at)}` : ' → Now'}
+      </span>
+      {shiftInfo.opened_by_name && (
+        <span className="ml-1 text-gray-400 font-normal hidden sm:inline">· {shiftInfo.opened_by_name}</span>
+      )}
+    </div>
+  );
+
+  // ── Render content ───────────────────────────────────────────────────────
   const content = (
-    <div className={isOverlay ? 'flex flex-col h-full' : 'space-y-5'}>
+    <div className={isOverlay ? 'flex flex-col h-full' : 'space-y-4'}>
 
       {/* Overlay header */}
       {isOverlay && (
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50 shrink-0">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-200 bg-gray-50 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center">
+            <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center shrink-0">
               <Package size={18} className="text-white" />
             </div>
             <div>
@@ -284,50 +378,87 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
       )}
 
       {/* Filters bar */}
-      <div className={`flex flex-wrap items-center gap-3 ${isOverlay ? 'px-6 py-3 border-b border-gray-100 bg-white shrink-0' : ''}`}>
-        {/* Type filter tabs (POS only) */}
-        {showTypeFilter && (
+      <div className={`space-y-2 ${isOverlay ? 'px-4 sm:px-6 py-3 border-b border-gray-100 bg-white shrink-0' : ''}`}>
+
+        {/* Row 1: View mode toggle + type filter */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Shift / Date toggle */}
           <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
-            {([
-              ['all',      'All Orders'],
-              ['walkin',   'Walk-In (WI)'],
-              ['delivery', 'Delivery (DL)'],
-            ] as const).map(([tab, label]) => (
-              <button
-                key={tab}
-                onClick={() => setTypeFilter(tab)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  typeFilter === tab
-                    ? tab === 'delivery'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : tab === 'walkin'
-                      ? 'bg-orange-500 text-white shadow-sm'
-                      : 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+            <button
+              onClick={() => setViewMode('shift')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                viewMode === 'shift' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Clock size={13} /> Shift View
+            </button>
+            <button
+              onClick={() => setViewMode('date')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                viewMode === 'date' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Calendar size={13} /> Date Range
+            </button>
+          </div>
+
+          {/* Type filter tabs (POS only) */}
+          {showTypeFilter && (
+            <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+              {([
+                ['all',      'All'],
+                ['walkin',   'Walk-In'],
+                ['delivery', 'Delivery'],
+              ] as const).map(([tab, label]) => (
+                <button
+                  key={tab}
+                  onClick={() => setTypeFilter(tab)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    typeFilter === tab
+                      ? tab === 'delivery' ? 'bg-blue-600 text-white shadow-sm'
+                        : tab === 'walkin'   ? 'bg-orange-500 text-white shadow-sm'
+                        : 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Refresh */}
+          {!isOverlay && (
+            <button onClick={fetchSales} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200" title="Refresh">
+              <RefreshCw size={15} />
+            </button>
+          )}
+        </div>
+
+        {/* Row 2: Shift banner OR date range */}
+        {viewMode === 'shift' ? (
+          shiftLoading
+            ? <div className="flex items-center gap-2 text-xs text-gray-400 py-1"><div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-emerald-500"></div> Loading shift info...</div>
+            : shiftBanner
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <DateRangeFilter
+              standalone={false}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onFromChange={d => setDateFrom(d)}
+              onToChange={d => setDateTo(d)}
+            />
           </div>
         )}
 
-        {/* Date range */}
-        <DateRangeFilter
-          standalone={false}
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          onFromChange={d => setDateFrom(d)}
-          onToChange={d => setDateTo(d)}
-        />
-
-        {/* Search */}
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        {/* Row 3: Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           <input
             type="text"
             placeholder="Invoice No, Customer, Order ID..."
-            className="w-full pl-11 pr-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm text-sm"
+            className="w-full pl-9 pr-4 py-2 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-sm"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -335,77 +466,84 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
       </div>
 
       {/* Table area */}
-      <div className={isOverlay ? 'flex-1 overflow-auto px-6 py-4' : ''}>
+      <div className={isOverlay ? 'flex-1 overflow-auto px-4 sm:px-6 py-3' : ''}>
         {loading ? (
-          <div className="flex items-center justify-center h-[50vh]">
+          <div className="flex items-center justify-center h-48">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-4"></div>
-              <p className="text-gray-500 font-medium">Loading orders...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-3"></div>
+              <p className="text-gray-500 font-medium text-sm">Loading orders...</p>
             </div>
           </div>
         ) : sales.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[50vh] text-gray-400">
-            <div className="bg-gray-100 p-8 rounded-full mb-4"><Archive size={64} className="opacity-30" /></div>
-            <p className="text-xl font-semibold text-gray-500">No Completed Orders Found</p>
-            <p className="text-sm text-gray-400 mt-2">Try adjusting the date range or search</p>
+          <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+            <div className="bg-gray-100 p-6 rounded-full mb-3"><Archive size={48} className="opacity-30" /></div>
+            <p className="text-base font-semibold text-gray-500">No Completed Orders Found</p>
+            <p className="text-sm text-gray-400 mt-1">
+              {viewMode === 'shift' && shiftInfo
+                ? `No orders in ${shiftInfo.label.toLowerCase()}`
+                : 'Try adjusting the date range or search'}
+            </p>
           </div>
         ) : (
           <>
-            <div className="bg-white border-2 border-gray-200 rounded-xl shadow-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 text-sm uppercase tracking-wider">
+            {/* Responsive table wrapper */}
+            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+              <div className="overflow-x-auto w-full">
+                <table className="min-w-full text-left border-collapse text-sm" style={{ minWidth: '780px' }}>
+                  <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
                     <tr>
-                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
-                        <div className="flex items-center gap-2"><Package size={16} /> Invoice No</div>
+                      <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap">
+                        <div className="flex items-center gap-1"><Package size={13} /> Invoice</div>
                       </th>
-                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
-                        <div className="flex items-center gap-2"><Calendar size={16} /> Date &amp; Time</div>
+                      <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap">
+                        <div className="flex items-center gap-1"><Calendar size={13} /> Date &amp; Time</div>
                       </th>
-                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
-                        <div className="flex items-center gap-2"><User size={16} /> Customer</div>
+                      <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap">
+                        <div className="flex items-center gap-1"><User size={13} /> Customer</div>
                       </th>
                       {showTypeFilter && (
-                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200">Type</th>
+                        <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap hidden md:table-cell">Type</th>
                       )}
-                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Sub Total</th>
-                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Tax</th>
-                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Service</th>
-                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Delivery</th>
-                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">
-                        <div className="flex items-center justify-end gap-2"><DollarSign size={16} /> Grand Total</div>
+                      {/* Sub Total hidden on small screens */}
+                      <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap hidden lg:table-cell">Sub Total</th>
+                      <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap hidden xl:table-cell">Tax</th>
+                      <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap hidden xl:table-cell">Service</th>
+                      <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap hidden lg:table-cell">Delivery</th>
+                      <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1"><DollarSign size={13} /> Total</div>
                       </th>
-                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
-                        <div className="flex items-center gap-2"><CreditCard size={16} /> Payment</div>
+                      <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap hidden sm:table-cell">
+                        <div className="flex items-center gap-1"><CreditCard size={13} /> Payment</div>
                       </th>
-                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200">Status</th>
-                      <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Actions</th>
+                      <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap hidden sm:table-cell">Status</th>
+                      <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
 
                   {/* Summary footer */}
                   {summary && (
-                    <tfoot className="bg-gradient-to-r from-emerald-50 to-emerald-100 border-t-2 border-emerald-300">
+                    <tfoot className="bg-emerald-50 border-t-2 border-emerald-200">
                       <tr>
-                        <td className="px-4 py-3 font-bold text-emerald-800 text-sm" colSpan={showTypeFilter ? 4 : 3}>
+                        <td className="px-3 py-2.5 font-bold text-emerald-800 text-xs" colSpan={showTypeFilter ? 3 : 3}>
                           Total: {summary.order_count} orders
                         </td>
-                        <td className="px-4 py-3 text-right font-bold text-gray-700 text-sm">
+                        <td className="px-3 py-2.5 text-right font-bold text-gray-700 text-xs hidden lg:table-cell">
                           {cs} {sales.reduce((s, r) => s + parseFloat(r.sub_total || 0), 0).toFixed(2)}
                         </td>
-                        <td className="px-4 py-3 text-right font-bold text-blue-700 text-sm">
+                        <td className="px-3 py-2.5 text-right font-bold text-blue-700 text-xs hidden xl:table-cell">
                           {cs} {sales.reduce((s, r) => s + parseFloat(r.tax_amount || 0), 0).toFixed(2)}
                         </td>
-                        <td className="px-4 py-3 text-right font-bold text-purple-700 text-sm">
+                        <td className="px-3 py-2.5 text-right font-bold text-purple-700 text-xs hidden xl:table-cell">
                           {cs} {sales.reduce((s, r) => s + parseFloat(r.additional_charges_amount || 0), 0).toFixed(2)}
                         </td>
-                        <td className="px-4 py-3 text-right font-bold text-blue-700 text-sm">
+                        <td className="px-3 py-2.5 text-right font-bold text-blue-700 text-xs hidden lg:table-cell">
                           {cs} {sales.reduce((s, r) => s + parseFloat(r.delivery_charges || 0), 0).toFixed(2)}
                         </td>
-                        <td className="px-4 py-3 text-right font-bold text-emerald-800 text-base">
+                        <td className="px-3 py-2.5 text-right font-bold text-emerald-800 text-sm">
                           {cs} {summary.total_amount.toFixed(2)}
                         </td>
-                        <td colSpan={3}></td>
+                        <td colSpan={showTypeFilter ? 3 : 2} className="hidden sm:table-cell"></td>
+                        <td></td>
                       </tr>
                     </tfoot>
                   )}
@@ -414,95 +552,93 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                     {sales.map(sale => {
                       const isDelivery = sale.token_no?.startsWith('DL-');
                       return (
-                        <tr key={sale.sale_id} className="hover:bg-gradient-to-r hover:from-emerald-50/30 hover:to-emerald-50/30 transition-all duration-150">
-                          <td className="px-4 py-4">
-                            <span className="font-bold text-emerald-700">
+                        <tr key={sale.sale_id} className="hover:bg-emerald-50/30 transition-colors">
+                          <td className="px-3 py-3 whitespace-nowrap">
+                            <span className="font-bold text-emerald-700 text-xs">
                               {sale.invoice_no || `#${sale.sale_id}`}
                             </span>
                             {sale.token_no && <TokenBadge token={sale.token_no} />}
                           </td>
-                          <td className="px-4 py-4 text-gray-600 text-sm">
+                          <td className="px-3 py-3 text-gray-500 text-xs whitespace-nowrap">
                             {new Date(sale.sale_date).toLocaleString('en-US', {
-                              month: 'short', day: 'numeric', year: 'numeric',
+                              month: 'short', day: 'numeric', year: '2-digit',
                               hour: '2-digit', minute: '2-digit'
                             })}
                           </td>
-                          <td className="px-4 py-4 text-gray-700 font-medium">
-                            {sale.customer_name || 'Walk-in Customer'}
+                          <td className="px-3 py-3 text-gray-700 font-medium text-xs max-w-[120px] truncate">
+                            {sale.customer_name || 'Walk-in'}
                           </td>
                           {showTypeFilter && (
-                            <td className="px-4 py-4">
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
-                                isDelivery
-                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                  : 'bg-orange-50 text-orange-700 border-orange-200'
+                            <td className="px-3 py-3 hidden md:table-cell">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${
+                                isDelivery ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-orange-50 text-orange-700 border-orange-200'
                               }`}>
-                                {isDelivery ? 'Delivery' : 'Walk-in'}
+                                {isDelivery ? 'DL' : 'WI'}
                               </span>
                             </td>
                           )}
-                          <td className="px-4 py-4 text-right text-gray-700">
-                            {cs} {parseFloat(sale.sub_total || 0).toFixed(2)}
+                          <td className="px-3 py-3 text-right text-gray-600 text-xs whitespace-nowrap hidden lg:table-cell">
+                            {cs} {parseFloat(sale.sub_total || 0).toFixed(0)}
                           </td>
-                          <td className="px-4 py-4 text-right text-blue-600">
+                          <td className="px-3 py-3 text-right text-blue-600 text-xs whitespace-nowrap hidden xl:table-cell">
                             {parseFloat(sale.tax_amount || 0) > 0
-                              ? `${cs} ${parseFloat(sale.tax_amount).toFixed(2)}`
+                              ? `${cs} ${parseFloat(sale.tax_amount).toFixed(0)}`
                               : <span className="text-gray-300">—</span>}
                           </td>
-                          <td className="px-4 py-4 text-right text-purple-600">
+                          <td className="px-3 py-3 text-right text-purple-600 text-xs whitespace-nowrap hidden xl:table-cell">
                             {parseFloat(sale.additional_charges_amount || 0) > 0
-                              ? `${cs} ${parseFloat(sale.additional_charges_amount).toFixed(2)}`
+                              ? `${cs} ${parseFloat(sale.additional_charges_amount).toFixed(0)}`
                               : <span className="text-gray-300">—</span>}
                           </td>
-                          <td className="px-4 py-4 text-right text-blue-600">
+                          <td className="px-3 py-3 text-right text-blue-600 text-xs whitespace-nowrap hidden lg:table-cell">
                             {parseFloat(sale.delivery_charges || 0) > 0
-                              ? `${cs} ${parseFloat(sale.delivery_charges).toFixed(2)}`
+                              ? `${cs} ${parseFloat(sale.delivery_charges).toFixed(0)}`
                               : <span className="text-gray-300">—</span>}
                           </td>
-                          <td className="px-4 py-4 text-right font-bold text-lg text-emerald-600">
-                            {cs} {parseFloat(sale.total_amount || 0).toFixed(2)}
+                          <td className="px-3 py-3 text-right font-bold text-emerald-600 whitespace-nowrap">
+                            {cs} {parseFloat(sale.total_amount || 0).toFixed(0)}
                           </td>
-                          <td className="px-4 py-4">
-                            <span className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 text-xs rounded-full font-bold capitalize border border-emerald-200 shadow-sm">
+                          <td className="px-3 py-3 hidden sm:table-cell whitespace-nowrap">
+                            <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full font-semibold capitalize border border-emerald-200">
                               {sale.payment_method}
                             </span>
                           </td>
-                          <td className="px-4 py-4">
-                            <span className={`px-3 py-1.5 text-xs rounded-full font-bold capitalize border shadow-sm ${
+                          <td className="px-3 py-3 hidden sm:table-cell">
+                            <span className={`px-2 py-1 text-xs rounded-full font-semibold capitalize border ${
                               sale.status === 'refunded'
-                                ? 'bg-gradient-to-r from-red-50 to-red-100 text-red-700 border-red-200'
-                                : 'bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 border-emerald-200'
+                                ? 'bg-red-50 text-red-700 border-red-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             }`}>
                               {sale.status}
                             </span>
                           </td>
-                          <td className="px-4 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
+                          <td className="px-3 py-3">
+                            <div className="flex items-center justify-end gap-1">
                               <button
                                 onClick={() => setPreviewId(sale.sale_id)}
-                                className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-transparent hover:border-emerald-200"
+                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
                                 title="View Bill"
                               >
-                                <Eye size={18} />
+                                <Eye size={15} />
                               </button>
                               <button
                                 onClick={() => setPreviewId(sale.sale_id)}
-                                className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-transparent hover:border-emerald-200"
+                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
                                 title="Print Receipt"
                               >
-                                <Printer size={18} />
+                                <Printer size={15} />
                               </button>
                               <button
                                 onClick={() => handleRefundClick(sale.sale_id)}
                                 disabled={sale.status === 'refunded'}
-                                className={`p-2 transition-all rounded-lg border ${
+                                className={`p-1.5 rounded-lg transition-all ${
                                   sale.status === 'refunded'
-                                    ? 'text-gray-300 cursor-not-allowed border-transparent'
-                                    : 'text-red-600 hover:bg-red-50 border-transparent hover:border-red-200'
+                                    ? 'text-gray-300 cursor-not-allowed'
+                                    : 'text-red-500 hover:bg-red-50'
                                 }`}
                                 title={sale.status === 'refunded' ? 'Already Refunded' : 'Refund Order'}
                               >
-                                <RotateCcw size={18} />
+                                <RotateCcw size={15} />
                               </button>
                             </div>
                           </td>
@@ -516,7 +652,7 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
 
             {/* Pagination */}
             {totalPages > 0 && (
-              <div className={`bg-white rounded-xl p-4 border border-gray-200 ${isOverlay ? 'mt-4' : 'mt-6'}`}>
+              <div className={`bg-white rounded-xl p-3 border border-gray-200 ${isOverlay ? 'mt-3' : 'mt-4'}`}>
                 <Pagination
                   currentPage={page}
                   totalPages={totalPages}

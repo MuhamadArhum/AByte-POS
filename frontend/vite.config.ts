@@ -66,13 +66,8 @@ export default defineConfig({
             './src/pages/sales/SalesReports',
             './src/pages/sales/Quotations',
             './src/pages/sales/CreditSales',
-            './src/pages/sales/Layaway',
-            './src/pages/sales/Coupons',
-            './src/pages/sales/GiftCards',
             './src/pages/sales/PriceRules',
             './src/pages/sales/SalesTargets',
-            './src/pages/sales/Invoices',
-            './src/pages/sales/LoyaltyProgram',
           ],
           // Inventory pages
           'pages-inventory': [

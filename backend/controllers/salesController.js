@@ -515,7 +515,7 @@ exports.getToday = async (req, res) => {
 // --- Get All Sales ---
 exports.getAll = async (req, res) => {
   try {
-    const { page, limit, search, status, date_from, date_to, order_type } = req.query;
+    const { page, limit, search, status, date_from, date_to, order_type, shift_start, shift_end } = req.query;
     let sql = `
       SELECT s.*, c.customer_name, u.name as cashier_name,
              COALESCE(d.delivery_charges, 0) AS delivery_charges
@@ -545,8 +545,12 @@ exports.getAll = async (req, res) => {
       }
     }
 
-    if (date_from) { sql += ' AND s.sale_date >= ?'; params.push(date_from); }
-    if (date_to)   { sql += ' AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY)'; params.push(date_to); }
+    // shift_start/shift_end = exact datetime filter (for shift-wise view)
+    // takes priority over date_from/date_to when provided
+    if (shift_start) { sql += ' AND s.sale_date >= ?'; params.push(shift_start); }
+    else if (date_from) { sql += ' AND s.sale_date >= ?'; params.push(date_from); }
+    if (shift_end)   { sql += ' AND s.sale_date <= ?'; params.push(shift_end); }
+    else if (date_to) { sql += ' AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY)'; params.push(date_to); }
 
     if (search) {
       sql += ' AND (s.sale_id LIKE ? OR c.customer_name LIKE ? OR s.invoice_no LIKE ? OR s.token_no LIKE ?)';
@@ -582,8 +586,10 @@ exports.getAll = async (req, res) => {
         }
       }
 
-      if (date_from) { countSql += ' AND s.sale_date >= ?'; countParams.push(date_from); }
-      if (date_to)   { countSql += ' AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY)'; countParams.push(date_to); }
+      if (shift_start) { countSql += ' AND s.sale_date >= ?'; countParams.push(shift_start); }
+      else if (date_from) { countSql += ' AND s.sale_date >= ?'; countParams.push(date_from); }
+      if (shift_end)   { countSql += ' AND s.sale_date <= ?'; countParams.push(shift_end); }
+      else if (date_to) { countSql += ' AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY)'; countParams.push(date_to); }
 
       if (search) {
         countSql += ' AND (s.sale_id LIKE ? OR c.customer_name LIKE ? OR s.invoice_no LIKE ? OR s.token_no LIKE ?)';
