@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { X, User, Briefcase, DollarSign, Calendar, Mail, Phone, MapPin } from 'lucide-react';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
@@ -301,7 +301,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: AddStaffModa
             </div>
 
             {/* Job Information */}
-            <div className="border-l-4 border-green-500 pl-4">
+            <div className="border-l-4 border-emerald-500 pl-4">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Job Information</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

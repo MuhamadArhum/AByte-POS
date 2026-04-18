@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { X, Plus, Trash2, ChevronRight, ChevronLeft } from 'lucide-react';
 import api from '../utils/api';
@@ -522,7 +522,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
               <button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50"
               >
                 {loading ? 'Saving...' : isEdit ? 'Update Purchase Order' : 'Create Purchase Order'}
               </button>

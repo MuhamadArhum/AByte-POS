@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { FileText, Plus, Search, X, Send, Check, XCircle, ShoppingCart, Trash2, Eye, Printer, Pencil } from 'lucide-react';
 import api from '../../utils/api';
@@ -26,7 +26,7 @@ interface Quotation {
 const STATUS_BADGES: Record<string, { label: string; bg: string; text: string }> = {
   draft: { label: 'Draft', bg: 'bg-gray-100', text: 'text-gray-700' },
   sent: { label: 'Sent', bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  accepted: { label: 'Accepted', bg: 'bg-green-100', text: 'text-green-700' },
+  accepted: { label: 'Accepted', bg: 'bg-emerald-100', text: 'text-emerald-700' },
   rejected: { label: 'Rejected', bg: 'bg-red-100', text: 'text-red-700' },
   expired: { label: 'Expired', bg: 'bg-yellow-100', text: 'text-yellow-700' },
   converted: { label: 'Converted', bg: 'bg-emerald-100', text: 'text-emerald-700' },
@@ -221,7 +221,7 @@ const Quotations = () => {
         {[
           { label: 'Total', value: stats.total, bg: 'bg-emerald-50', iconColor: 'text-emerald-600' },
           { label: 'Draft', value: stats.draft, bg: 'bg-gray-50', iconColor: 'text-gray-600' },
-          { label: 'Sent/Accepted', value: stats.active, bg: 'bg-green-50', iconColor: 'text-green-600' },
+          { label: 'Sent/Accepted', value: stats.active, bg: 'bg-emerald-50', iconColor: 'text-emerald-600' },
           { label: 'Converted', value: stats.converted, bg: 'bg-emerald-50', iconColor: 'text-emerald-600' },
         ].map((s) => (
           <div key={s.label} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
@@ -281,7 +281,7 @@ const Quotations = () => {
                           {(q.status === 'draft' || q.status === 'sent') && <button onClick={() => openEdit(q)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="Edit"><Pencil size={16} /></button>}
                           {q.status === 'draft' && <button onClick={() => handleStatusChange(q.quotation_id, 'sent')} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Send"><Send size={16} /></button>}
                           {q.status === 'sent' && <>
-                            <button onClick={() => handleStatusChange(q.quotation_id, 'accepted')} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg" title="Accept"><Check size={16} /></button>
+                            <button onClick={() => handleStatusChange(q.quotation_id, 'accepted')} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Accept"><Check size={16} /></button>
                             <button onClick={() => handleStatusChange(q.quotation_id, 'rejected')} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg" title="Reject"><XCircle size={16} /></button>
                           </>}
                           {q.status === 'accepted' && <button onClick={() => handleConvert(q.quotation_id)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Convert to Sale"><ShoppingCart size={16} /></button>}

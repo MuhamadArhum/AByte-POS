@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import {
   BookOpen, Plus, Edit, Trash2, Search, X, Lock,
   ChevronDown, ChevronRight, Building2, CreditCard,
@@ -29,7 +29,7 @@ const TYPE_CONFIG: Record<string, { label: string; Icon: any; color: string; bg:
   asset:     { label: 'Assets',          Icon: Building2,   color: 'text-emerald-700', bg: 'bg-emerald-50',  border: 'border-emerald-300', badge: 'bg-emerald-100 text-emerald-700', btnClass: 'bg-emerald-600 hover:bg-emerald-700' },
   liability: { label: 'Liabilities',     Icon: CreditCard,  color: 'text-red-700',     bg: 'bg-red-50',      border: 'border-red-300',     badge: 'bg-red-100 text-red-700',         btnClass: 'bg-red-600 hover:bg-red-700' },
   equity:    { label: 'Equity',          Icon: Landmark,    color: 'text-purple-700',  bg: 'bg-purple-50',   border: 'border-purple-300',  badge: 'bg-purple-100 text-purple-700',   btnClass: 'bg-purple-600 hover:bg-purple-700' },
-  revenue:   { label: 'Revenue/Income',  Icon: TrendingUp,  color: 'text-green-700',   bg: 'bg-green-50',    border: 'border-green-300',   badge: 'bg-green-100 text-green-700',     btnClass: 'bg-green-600 hover:bg-green-700' },
+  revenue:   { label: 'Revenue/Income',  Icon: TrendingUp,  color: 'text-emerald-700',   bg: 'bg-emerald-50',    border: 'border-green-300',   badge: 'bg-emerald-100 text-emerald-700',     btnClass: 'bg-emerald-600 hover:bg-emerald-700' },
   expense:   { label: 'Expenses',        Icon: TrendingDown,color: 'text-orange-700',  bg: 'bg-orange-50',   border: 'border-orange-300',  badge: 'bg-orange-100 text-orange-700',   btnClass: 'bg-orange-600 hover:bg-orange-700' },
 };
 

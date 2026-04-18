@@ -282,23 +282,26 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           {/* Parent Menu Item */}
           <button
             onClick={() => toggleMenu(menuKey)}
-            className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${isParentActive
-                ? 'bg-emerald-50 text-emerald-700 font-semibold'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden ${isParentActive
+                ? 'bg-emerald-500/12 text-emerald-400 font-semibold border border-emerald-500/20'
+                : isExpanded
+                  ? 'bg-white/5 text-white border border-white/8'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent'
               }`}
           >
+            {isParentActive && <span className="absolute left-0 top-2 bottom-2 w-0.5 bg-emerald-400 rounded-r-full" />}
             <div className="flex items-center gap-3">
               <Icon
-                size={20}
-                className={`flex-shrink-0 ${isParentActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-emerald-600'
+                size={18}
+                className={`flex-shrink-0 ${isParentActive ? 'text-emerald-400' : 'text-slate-500 group-hover:text-emerald-400'
                   }`}
               />
               <span className="text-sm font-medium">{item.label}</span>
             </div>
             {isExpanded ? (
-              <ChevronUp size={16} className="text-gray-400" />
+              <ChevronUp size={13} className={isParentActive || isExpanded ? 'text-emerald-500/60' : 'text-slate-600'} />
             ) : (
-              <ChevronDown size={16} className="text-gray-400" />
+              <ChevronDown size={13} className="text-slate-600" />
             )}
           </button>
 
@@ -310,7 +313,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.2 }}
-                className="ml-4 space-y-1 border-l-2 border-gray-100 pl-2"
+                className="ml-4 space-y-0.5 border-l border-slate-700/60 pl-2"
               >
                 {(() => {
                   let currentSection = '';
@@ -322,12 +325,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                         <button
                           key={childIndex}
                           onClick={() => toggleSection(child.label)}
-                          className="w-full flex items-center justify-between pt-2 pb-1 px-2 group"
+                          className="w-full flex items-center justify-between pt-3 pb-1 px-2 group"
                         >
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 group-hover:text-gray-600 transition-colors">{child.label}</span>
+                          <span className="text-[9px] font-bold uppercase tracking-widest text-slate-600 group-hover:text-slate-400 transition-colors">{child.label}</span>
                           <ChevronDown
-                            size={12}
-                            className={`text-gray-400 group-hover:text-gray-600 transition-transform duration-200 ${secCollapsed ? '' : 'rotate-180'}`}
+                            size={10}
+                            className={`text-slate-600 group-hover:text-slate-400 transition-transform duration-200 ${secCollapsed ? '' : 'rotate-180'}`}
                           />
                         </button>
                       );
@@ -339,14 +342,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                       <Link
                         key={childIndex}
                         to={child.path!}
-                        className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group ${isChildActive
-                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium shadow-md'
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group ${isChildActive
+                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium shadow-md shadow-emerald-900/40'
+                            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                           }`}
                       >
                         <ChildIcon
-                          size={18}
-                          className={`flex-shrink-0 ${isChildActive ? 'text-white' : 'text-gray-400 group-hover:text-emerald-600'
+                          size={16}
+                          className={`flex-shrink-0 ${isChildActive ? 'text-white' : 'text-slate-500 group-hover:text-emerald-400'
                             }`}
                         />
                         <span className="text-sm">{child.label}</span>
@@ -367,25 +370,25 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         <Link
           key={index}
           to={item.path}
-          className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group relative overflow-hidden ${isActive
-              ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold shadow-lg shadow-emerald-200 scale-105'
-              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 hover:scale-105'
+          className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200 group relative overflow-hidden ${isActive
+              ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold shadow-lg shadow-emerald-900/40'
+              : 'text-slate-400 hover:bg-white/5 hover:text-white'
             } ${isCollapsed ? 'justify-center' : ''}`}
           title={isCollapsed ? item.label : ''}
         >
           {isActive && !isCollapsed && (
             <motion.div
               layoutId="activeTab"
-              className="absolute left-0 top-0 bottom-0 w-1.5 bg-white rounded-r-full"
+              className="absolute left-0 top-0 bottom-0 w-1 bg-white/60 rounded-r-full"
               transition={{ type: "spring", duration: 0.5 }}
             />
           )}
 
           <Icon
-            size={22}
+            size={20}
             className={`flex-shrink-0 transition-transform duration-200 ${isActive
                 ? 'text-white scale-110'
-                : 'text-gray-400 group-hover:text-emerald-600 group-hover:scale-110'
+                : 'text-slate-500 group-hover:text-emerald-400 group-hover:scale-110'
               }`}
           />
           {!isCollapsed && (
@@ -395,7 +398,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           )}
 
           {!isActive && (
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 -z-10 rounded-xl" />
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/8 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 -z-10 rounded-xl" />
           )}
         </Link>
       );
@@ -405,31 +408,40 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100 font-sans overflow-hidden">
+    <div className="flex h-screen font-sans overflow-hidden animated-bg">
       {/* Sidebar */}
       <aside
-        className={`${isCollapsed ? 'w-20' : 'w-72'} bg-white border-r-2 border-gray-200/50 flex flex-col shadow-xl z-20 transition-all duration-300 ease-in-out relative hidden md:flex`}
+        style={{ background: 'linear-gradient(160deg, #0a1628 0%, #0f172a 40%, #111827 100%)' }}
+        className={`${isCollapsed ? 'w-20' : 'w-72'} flex flex-col shadow-2xl z-20 transition-all duration-300 ease-in-out relative hidden md:flex border-r border-white/[0.06]`}
       >
+        {/* Ambient glow top */}
+        <div className="absolute top-0 left-0 right-0 h-40 bg-emerald-500/5 blur-3xl pointer-events-none" />
+        {/* Dot grid pattern */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{
+          backgroundImage: 'radial-gradient(circle, #10b981 1px, transparent 1px)',
+          backgroundSize: '24px 24px'
+        }} />
+
         {/* Logo Section */}
-        <div className="h-20 flex items-center justify-between px-5 border-b-2 border-gray-100 bg-gradient-to-r from-emerald-50/50 to-teal-50/50">
+        <div className="h-16 flex items-center justify-between px-4 border-b border-white/[0.06] relative z-10">
           {!isCollapsed && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="flex items-center gap-3 overflow-hidden whitespace-nowrap"
             >
-              <div className="w-11 h-11 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-lg flex-shrink-0 ring-4 ring-emerald-100">
+              <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center text-white text-lg font-black shadow-lg shadow-emerald-900/50 flex-shrink-0">
                 A
               </div>
               <div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">AByte</span>
-                <p className="text-xs text-gray-500 font-medium">ERP</p>
+                <p className="text-white font-bold text-base leading-tight">AByte <span className="text-emerald-400">ERP</span></p>
+                <p className="text-[10px] text-slate-500 font-medium">Business Solution</p>
               </div>
             </motion.div>
           )}
           {isCollapsed && (
             <div className="w-full flex justify-center">
-              <div className="w-11 h-11 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-lg ring-4 ring-emerald-100">
+              <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center text-white text-lg font-black shadow-lg shadow-emerald-900/50">
                 A
               </div>
             </div>
@@ -438,9 +450,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           {/* Toggle Button */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-2 rounded-xl bg-white text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-200 absolute -right-4 top-24 border-2 border-gray-200 shadow-lg z-30 hover:scale-110"
+            className="p-1.5 rounded-lg bg-white/8 text-slate-400 hover:text-white hover:bg-white/15 transition-all duration-200 absolute -right-3.5 top-20 border border-white/10 shadow-lg z-30"
           >
-            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
           </button>
         </div>
 
@@ -449,49 +461,56 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mx-4 mt-4 p-4 bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-100 rounded-xl shadow-sm"
+            className="mx-3 mt-3 p-3.5 bg-white/[0.06] border border-white/[0.08] rounded-xl relative z-10 backdrop-blur-sm"
           >
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-2 ring-white">
-                {user?.name?.charAt(0) || 'A'}
+              <div className="relative flex-shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-base shadow-lg shadow-emerald-900/50 ring-2 ring-white/10">
+                  {user?.name?.charAt(0) || 'A'}
+                </div>
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 border-2 border-slate-900 rounded-full" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-800 truncate">{user?.name || 'User'}</p>
-                <p className="text-xs text-emerald-600 font-semibold capitalize">{user?.role_name || user?.role || 'Staff'}</p>
+                <p className="text-sm font-bold text-white truncate">{user?.name || 'User'}</p>
+                <p className="text-xs text-emerald-400 font-medium capitalize">{user?.role_name || user?.role || 'Staff'}</p>
+              </div>
+              <div className="flex-shrink-0">
+                <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-wide bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">Online</span>
               </div>
             </div>
           </motion.div>
         )}
 
         {/* Navigation Menu */}
-        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent relative z-10">
           {filteredMenu.map((item, index) => renderMenuItem(item, index))}
         </nav>
 
         {/* Bottom Section */}
         {!isCollapsed && (
-          <div className="p-4 border-t-2 border-gray-100 bg-gray-50/50">
-            <div className="space-y-2">
-              <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all">
-                <HelpCircle size={18} />
+          <div className="p-3 border-t border-white/[0.06] relative z-10">
+            <div className="space-y-1">
+              <Link to="/help" className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-500 hover:text-emerald-400 hover:bg-white/5 rounded-lg transition-all">
+                <HelpCircle size={15} />
                 <span>Help & Support</span>
-              </button>
+              </Link>
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-all font-medium"
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-400/80 hover:bg-red-500/10 hover:text-red-300 rounded-lg transition-all font-medium"
               >
-                <LogOut size={18} />
-                <span>Logout</span>
+                <LogOut size={15} />
+                <span>Sign Out</span>
               </button>
             </div>
+            <p className="text-[10px] text-slate-700 text-center mt-3">AByte ERP v1.0 &copy; 2025</p>
           </div>
         )}
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* Top Navbar */}
-        <header className="h-20 bg-white border-b-2 border-gray-200/50 flex items-center justify-between px-8 shadow-sm z-10">
+        <header className="h-16 bg-white/90 backdrop-blur-xl border-b border-gray-200/70 flex items-center justify-between px-6 shadow-sm z-40 relative">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -499,9 +518,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             >
               <Menu size={24} />
             </button>
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">AByte ERP</h1>
-              <p className="text-sm text-gray-500">Complete Business Management</p>
+            <div className="flex items-center gap-2.5">
+              <div className="hidden md:flex flex-col">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base font-bold text-gray-900 leading-tight">
+                    {filteredMenu.flatMap(m => [m, ...(m.children || [])]).find(m => m.path === location.pathname)?.label || 'Dashboard'}
+                  </h1>
+                </div>
+                <p className="text-xs text-gray-400">AByte ERP &mdash; Complete Business Management</p>
+              </div>
             </div>
           </div>
 
@@ -624,13 +649,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto flex flex-col">
+        <main className="flex-1 overflow-y-auto flex flex-col relative">
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="flex-1 flex flex-col"
+            className="flex-1 flex flex-col relative z-10"
           >
             {children}
           </motion.div>
@@ -655,50 +680,51 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-0 bottom-0 w-72 bg-white shadow-2xl z-40 flex flex-col md:hidden"
+              style={{ background: 'linear-gradient(180deg, #0f172a 0%, #111827 100%)' }}
+              className="fixed left-0 top-0 bottom-0 w-72 shadow-2xl z-40 flex flex-col md:hidden border-r border-white/5"
             >
               {/* Logo */}
-              <div className="h-20 flex items-center gap-3 px-5 border-b-2 border-gray-100 bg-gradient-to-r from-emerald-50/50 to-teal-50/50">
-                <div className="w-11 h-11 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-lg flex-shrink-0">
+              <div className="h-16 flex items-center gap-3 px-4 border-b border-white/8">
+                <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center text-white text-lg font-black shadow-lg flex-shrink-0">
                   A
                 </div>
                 <div>
-                  <span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">AByte</span>
-                  <p className="text-xs text-gray-500 font-medium">Point of Sale</p>
+                  <p className="text-white font-bold text-base leading-tight">AByte <span className="text-emerald-400">ERP</span></p>
+                  <p className="text-[10px] text-slate-500 font-medium">Business Solution</p>
                 </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="ml-auto p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="ml-auto p-1.5 hover:bg-white/10 rounded-lg transition-colors"
                 >
-                  <ChevronLeft size={20} className="text-gray-500" />
+                  <ChevronLeft size={18} className="text-slate-400" />
                 </button>
               </div>
 
               {/* User card */}
-              <div className="mx-4 mt-4 p-3 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-xl">
+              <div className="mx-3 mt-3 p-3 bg-white/5 border border-white/8 rounded-xl">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-md">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-md ring-2 ring-white/10">
                     {user?.name?.charAt(0) || 'A'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-800 truncate">{user?.name || 'User'}</p>
-                    <p className="text-xs text-emerald-600 font-semibold capitalize">{user?.role_name || 'Staff'}</p>
+                    <p className="text-sm font-bold text-white truncate">{user?.name || 'User'}</p>
+                    <p className="text-xs text-emerald-400 font-medium capitalize">{user?.role_name || 'Staff'}</p>
                   </div>
                 </div>
               </div>
 
               {/* Nav */}
-              <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
+              <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
                 {filteredMenu.map((item, index) => renderMenuItem(item, index))}
               </nav>
 
               {/* Bottom */}
-              <div className="p-4 border-t-2 border-gray-100">
+              <div className="p-3 border-t border-white/8">
                 <button
                   onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-all font-medium"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-lg transition-all font-medium"
                 >
-                  <LogOut size={18} />
+                  <LogOut size={16} />
                   <span>Logout</span>
                 </button>
               </div>

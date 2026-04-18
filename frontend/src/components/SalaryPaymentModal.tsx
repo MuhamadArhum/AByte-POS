@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { X, DollarSign, Calendar, Minus, Plus, FileText } from 'lucide-react';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
@@ -202,7 +202,7 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
             </div>
 
             {/* Payment Details */}
-            <div className="border-l-4 border-green-500 pl-4">
+            <div className="border-l-4 border-emerald-500 pl-4">
               <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <DollarSign size={20} />
                 Payment Details

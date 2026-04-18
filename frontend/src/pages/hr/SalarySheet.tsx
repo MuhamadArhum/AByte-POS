@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { FileText, Download, Filter, Printer, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '../../utils/api';
@@ -295,7 +295,7 @@ const SalarySheet = () => {
                           <td className="px-4 py-3 text-center text-purple-600 font-medium">{meta.holidays || 0}</td>
                           <td className="px-4 py-3 text-right font-medium text-gray-700">{currency}{fmt(n(r.salary))}</td>
                           <td className="px-4 py-3 text-right text-gray-400">
-                            {n(r.adjustment) !== 0 ? <span className={n(r.adjustment) > 0 ? 'text-green-600' : 'text-red-500'}>{n(r.adjustment) > 0 ? '+' : ''}{currency}{fmt(Math.abs(n(r.adjustment)))}</span> : '-'}
+                            {n(r.adjustment) !== 0 ? <span className={n(r.adjustment) > 0 ? 'text-emerald-600' : 'text-red-500'}>{n(r.adjustment) > 0 ? '+' : ''}{currency}{fmt(Math.abs(n(r.adjustment)))}</span> : '-'}
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-700">{currency}{fmt(n(r.gross_pay))}</td>
                           <td className="px-4 py-3 text-right text-red-500 font-medium">

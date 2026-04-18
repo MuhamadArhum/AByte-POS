@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { Plus, Eye, Trash2, X, Search, ShoppingCart, Printer, Pencil } from 'lucide-react';
 import api from '../../utils/api';
 import { printGRN } from '../../utils/printUtils';
@@ -523,7 +523,7 @@ const PurchaseVoucher = () => {
                       <button onClick={() => openView(v.pv_id)} title="View"
                         className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition"><Eye size={15} /></button>
                       <button onClick={() => handlePrint(v)} title="Print GRN"
-                        className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition"><Printer size={15} /></button>
+                        className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"><Printer size={15} /></button>
                       <button onClick={() => openEdit(v)} title="Edit"
                         className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition"><Pencil size={15} /></button>
                       <button onClick={() => handleDelete(v.pv_id)} title="Delete"

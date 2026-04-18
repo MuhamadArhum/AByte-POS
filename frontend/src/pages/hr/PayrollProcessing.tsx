@@ -167,7 +167,7 @@ const PayrollProcessing = () => {
         <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%23000%22 fill-opacity=%221%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')]" />
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-200">
+            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200">
               <DollarSign size={22} className="text-white" />
             </div>
             <div>
@@ -183,8 +183,8 @@ const PayrollProcessing = () => {
         <div className="flex items-center justify-between">
           {steps.map((s, idx) => (
             <div key={s} className="flex items-center">
-              <div className={`flex items-center gap-2 ${step === s ? 'text-green-600' : idx < steps.indexOf(step) ? 'text-green-600' : 'text-gray-400'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm ${step === s ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-md shadow-green-200' : idx < steps.indexOf(step) ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+              <div className={`flex items-center gap-2 ${step === s ? 'text-emerald-600' : idx < steps.indexOf(step) ? 'text-emerald-600' : 'text-gray-400'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm ${step === s ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-md shadow-emerald-200' : idx < steps.indexOf(step) ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
                   {idx + 1}
                 </div>
                 <span className="font-medium capitalize hidden sm:inline">{s}</span>
@@ -199,29 +199,29 @@ const PayrollProcessing = () => {
       {step === 'setup' && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
           <h2 className="text-base font-semibold text-gray-800 mb-6 flex items-center gap-2">
-            <span className="w-6 h-6 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-xs font-bold">1</span>
+            <span className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center text-xs font-bold">1</span>
             Payroll Configuration
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">From Date *</label>
               <input type="date" value={formData.from_date} onChange={(e) => setFormData({ ...formData, from_date: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition" />
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">To Date *</label>
               <input type="date" value={formData.to_date} onChange={(e) => setFormData({ ...formData, to_date: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition" />
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Date *</label>
               <input type="date" value={formData.payment_date} onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition" />
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Department Filter</label>
               <select value={formData.department} onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition">
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
                 <option value="">All Departments</option>
                 {departments.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
@@ -229,7 +229,7 @@ const PayrollProcessing = () => {
           </div>
           <div className="flex justify-end mt-8">
             <button onClick={handlePreview} disabled={loading}
-              className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-3 rounded-xl hover:from-green-600 hover:to-green-700 shadow-md shadow-green-200 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium disabled:opacity-50 disabled:hover:translate-y-0">
+              className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-8 py-3 rounded-xl hover:from-emerald-600 hover:to-emerald-700 shadow-md shadow-emerald-200 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium disabled:opacity-50 disabled:hover:translate-y-0">
               <Calendar size={18} /> {loading ? 'Loading...' : 'Generate Preview'}
             </button>
           </div>
@@ -246,7 +246,7 @@ const PayrollProcessing = () => {
             </div>
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200">
               <p className="text-gray-500 text-sm font-medium">Total Base Salary</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">{currency}{totals.total_base.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-emerald-600 mt-2">{currency}{totals.total_base.toLocaleString()}</p>
             </div>
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200">
               <p className="text-gray-500 text-sm font-medium">Total Deductions</p>
@@ -254,14 +254,14 @@ const PayrollProcessing = () => {
             </div>
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200">
               <p className="text-gray-500 text-sm font-medium">Total Net Payable</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">{currency}{(totals.total_net + totalBonusAdded).toLocaleString()}</p>
+              <p className="text-3xl font-bold text-emerald-600 mt-2">{currency}{(totals.total_net + totalBonusAdded).toLocaleString()}</p>
               {totalBonusAdded > 0 && <p className="text-xs text-green-500 mt-1">+{currency}{totalBonusAdded.toLocaleString()} bonus added</p>}
             </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
             <div className="px-6 py-4 bg-gradient-to-r from-green-50 to-white border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800">Payroll Preview <span className="text-green-600">({preview.length} staff)</span></h3>
+              <h3 className="font-semibold text-gray-800">Payroll Preview <span className="text-emerald-600">({preview.length} staff)</span></h3>
               <button onClick={exportCSV} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition">
                 <Download size={15} /> Export CSV
               </button>
@@ -280,7 +280,7 @@ const PayrollProcessing = () => {
                 </thead>
                 <tbody>
                   {preview.map((p: any) => (
-                    <tr key={p.staff_id} className="border-b border-gray-50 hover:bg-green-50/20 transition-colors">
+                    <tr key={p.staff_id} className="border-b border-gray-50 hover:bg-emerald-50/20 transition-colors">
                       <td className="px-6 py-4">
                         <div className="font-semibold text-gray-800">{p.full_name}</div>
                         <div className="text-xs text-gray-400 mt-0.5">{p.employee_id || ''} {p.department ? `- ${p.department}` : ''}</div>
@@ -294,17 +294,17 @@ const PayrollProcessing = () => {
                             type="number" min={0}
                             value={bonusInputs[p.staff_id] ?? 0}
                             onChange={e => setBonusInputs(prev => ({ ...prev, [p.staff_id]: Math.max(0, Number(e.target.value)) }))}
-                            className="w-24 px-2 py-1 text-right border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent outline-none"
+                            className="w-24 px-2 py-1 text-right border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 focus:border-transparent outline-none"
                           />
                         </div>
                         {p.bonuses > 0 && <div className="text-xs text-green-500 text-right mt-0.5">+{currency}{p.bonuses.toLocaleString()} (backend)</div>}
                       </td>
-                      <td className="px-6 py-4 text-right font-bold text-green-600">
+                      <td className="px-6 py-4 text-right font-bold text-emerald-600">
                         {currency}{(p.base_salary - p.deductions + (p.bonuses || 0) + (bonusInputs[p.staff_id] || 0)).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <button onClick={() => printPayslip(p)} title="Print Payslip"
-                          className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition">
+                          className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition">
                           <Printer size={15} />
                         </button>
                       </td>
@@ -321,7 +321,7 @@ const PayrollProcessing = () => {
               Back
             </button>
             <button onClick={handleProcess} disabled={loading || preview.length === 0}
-              className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-3 rounded-xl hover:from-green-600 hover:to-green-700 shadow-md shadow-green-200 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium disabled:opacity-50 disabled:hover:translate-y-0">
+              className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-8 py-3 rounded-xl hover:from-emerald-600 hover:to-emerald-700 shadow-md shadow-emerald-200 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium disabled:opacity-50 disabled:hover:translate-y-0">
               <Play size={18} /> Process Payroll
             </button>
           </div>
@@ -331,7 +331,7 @@ const PayrollProcessing = () => {
       {/* Step 3: Processing */}
       {step === 'processing' && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
-          <div className="animate-spin w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full mx-auto mb-6"></div>
+          <div className="animate-spin w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-6"></div>
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Processing Payroll...</h3>
           <p className="text-gray-500">Please wait while we process salary payments.</p>
         </div>
@@ -340,14 +340,14 @@ const PayrollProcessing = () => {
       {/* Step 4: Complete */}
       {step === 'complete' && result && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="text-green-600 w-12 h-12" />
+          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="text-emerald-600 w-12 h-12" />
           </div>
           <h3 className="text-xl font-bold text-gray-800 mb-2">Payroll Processed Successfully!</h3>
           <p className="text-gray-500 mb-8">All salary payments have been recorded.</p>
-          <div className="text-left max-w-md mx-auto bg-green-50 border border-green-100 rounded-2xl p-6 mb-8">
+          <div className="text-left max-w-md mx-auto bg-emerald-50 border border-green-100 rounded-2xl p-6 mb-8">
             <p className="text-gray-700 mb-2 flex items-center gap-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+              <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
               <span className="font-semibold">Successful Payments:</span> {result.successCount}
             </p>
             {result.errors && result.errors.length > 0 && (
@@ -358,7 +358,7 @@ const PayrollProcessing = () => {
             )}
           </div>
           <button onClick={resetFlow}
-            className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-3 rounded-xl hover:from-green-600 hover:to-green-700 shadow-md shadow-green-200 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium mx-auto">
+            className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-8 py-3 rounded-xl hover:from-emerald-600 hover:to-emerald-700 shadow-md shadow-emerald-200 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium mx-auto">
             Process New Payroll
           </button>
         </div>

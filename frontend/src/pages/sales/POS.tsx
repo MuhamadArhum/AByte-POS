@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, ShoppingCart, Trash2, Minus, Plus, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Truck, MapPin, CheckCircle } from 'lucide-react';
 import CompletedOrdersView from '../../components/CompletedOrdersView';
@@ -1274,13 +1274,13 @@ const POS = () => {
               </div>
             )}
             {appliedBundles.length > 0 && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-2 space-y-0.5">
-                <div className="flex items-center justify-between text-sm font-bold text-green-700">
+              <div className="bg-emerald-50 border border-green-200 rounded-lg p-2 space-y-0.5">
+                <div className="flex items-center justify-between text-sm font-bold text-emerald-700">
                   <span>🎁 Bundle Savings</span>
                   <span>- Rs. {bundleDiscount.toFixed(2)}</span>
                 </div>
                 {appliedBundles.map((bundle, idx) => (
-                  <div key={idx} className="text-xs text-green-600 flex justify-between">
+                  <div key={idx} className="text-xs text-emerald-600 flex justify-between">
                     <span className="flex-1 truncate">{bundle.bundle_name}</span>
                     <span className="font-semibold ml-2">- Rs. {bundle.discount_amount.toFixed(2)}</span>
                   </div>

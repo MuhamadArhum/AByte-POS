@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { Percent, Plus, Search, Edit2, Trash2, X, Tag, Clock, ShoppingBag, Layers } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
@@ -64,7 +64,7 @@ const RULE_TYPE_BADGE_CLASSES: Record<string, string> = {
   buy_x_get_y: 'bg-emerald-100 text-emerald-700',
   quantity_discount: 'bg-emerald-100 text-emerald-700',
   time_based: 'bg-orange-100 text-orange-700',
-  category_discount: 'bg-green-100 text-green-700',
+  category_discount: 'bg-emerald-100 text-emerald-700',
 };
 
 const RULE_TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -288,7 +288,7 @@ const RuleModal = ({
                 onClick={() => updateField('rule_type', 'category_discount')}
                 className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all text-sm font-medium ${
                   formData.rule_type === 'category_discount'
-                    ? 'border-green-500 bg-green-50 text-green-700'
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                     : 'border-gray-200 text-gray-500 hover:border-gray-300'
                 }`}
               >

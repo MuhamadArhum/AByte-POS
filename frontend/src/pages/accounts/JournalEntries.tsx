@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { FileText, Plus, Send, Trash2, ChevronDown, Search, Lock, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import Pagination from '../../components/Pagination';
@@ -439,7 +439,7 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Status</span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${entry.status === 'posted' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${entry.status === 'posted' ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>
               {entry.status}
             </span>
           </div>
@@ -533,7 +533,7 @@ const JournalEntries = () => {
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
       draft: 'bg-yellow-100 text-yellow-700',
-      posted: 'bg-green-100 text-green-700',
+      posted: 'bg-emerald-100 text-emerald-700',
       reversed: 'bg-red-100 text-red-700'
     };
     return <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${map[status]}`}>{status}</span>;
@@ -596,7 +596,7 @@ const JournalEntries = () => {
                     <div className="flex items-center justify-center gap-1">
                       {entry.status === 'draft' && (
                         <button onClick={() => handlePost(entry)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition" title="Post Entry">
+                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Post Entry">
                           <Send size={16} />
                         </button>
                       )}

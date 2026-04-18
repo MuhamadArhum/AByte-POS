@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { BarChart3, Download, Users, DollarSign, TrendingUp, Printer, Calendar } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
@@ -102,7 +102,7 @@ const StaffReports = () => {
   };
 
   const attendancePctColor = (pct: number) => {
-    if (pct >= 90) return 'text-green-600 bg-green-50';
+    if (pct >= 90) return 'text-emerald-600 bg-emerald-50';
     if (pct >= 70) return 'text-yellow-600 bg-yellow-50';
     return 'text-red-600 bg-red-50';
   };
@@ -243,7 +243,7 @@ const StaffReports = () => {
               </div>
               <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                 <p className="text-sm text-gray-500">Perfect Attendance</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-2xl font-bold text-emerald-600">
                   {attendanceData.filter(r => Number(r.attendance_percentage) === 100).length}
                 </p>
               </div>
@@ -271,13 +271,13 @@ const StaffReports = () => {
                     <tr key={row.staff_id} className="border-b hover:bg-gray-50 transition">
                       <td className="p-4 font-medium text-gray-800">{row.full_name}</td>
                       <td className="p-4 text-gray-600">{row.department || '-'}</td>
-                      <td className="p-4 text-center text-green-600 font-medium">{row.days_present}</td>
+                      <td className="p-4 text-center text-emerald-600 font-medium">{row.days_present}</td>
                       <td className="p-4 text-center text-red-600 font-medium">{row.days_absent}</td>
                       <td className="p-4 text-center text-amber-600 font-medium">{row.days_half_day}</td>
                       <td className="p-4 text-center text-emerald-600 font-medium">{row.days_leave}</td>
                       <td className="p-4 text-center">
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          Number(row.leave_balance) > 5 ? 'bg-green-100 text-green-700' :
+                          Number(row.leave_balance) > 5 ? 'bg-emerald-100 text-emerald-700' :
                           Number(row.leave_balance) > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
                         }`}>
                           {row.leave_balance}
@@ -341,7 +341,7 @@ const StaffReports = () => {
               </div>
               <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                 <p className="text-sm text-gray-500">Total Net Paid</p>
-                <p className="text-2xl font-bold text-green-600">{currency}{salaryTotals.total_net_paid.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-emerald-600">{currency}{salaryTotals.total_net_paid.toFixed(2)}</p>
               </div>
               <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                 <p className="text-sm text-gray-500">Total Deductions</p>
@@ -379,11 +379,11 @@ const StaffReports = () => {
                       <td className="p-4 text-center">{row.paid_count}</td>
                       <td className="p-4 text-right">{currency}{Number(row.total_base).toFixed(2)}</td>
                       <td className="p-4 text-right text-red-600">{currency}{Number(row.total_deductions).toFixed(2)}</td>
-                      <td className="p-4 text-right text-green-600">{currency}{Number(row.total_bonuses).toFixed(2)}</td>
+                      <td className="p-4 text-right text-emerald-600">{currency}{Number(row.total_bonuses).toFixed(2)}</td>
                       <td className="p-4 text-right font-medium text-emerald-600">{currency}{Number(row.total_net_paid).toFixed(2)}</td>
                       <td className="p-4 text-right">{currency}{Number(row.total_expected).toFixed(2)}</td>
                       <td className="p-4 text-right">
-                        <span className={`font-medium ${Number(row.pending_amount) > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                        <span className={`font-medium ${Number(row.pending_amount) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
                           ${Number(row.pending_amount).toFixed(2)}
                         </span>
                       </td>
@@ -396,7 +396,7 @@ const StaffReports = () => {
                     <td className="p-4 text-center">{salaryTotals.paid_count}</td>
                     <td className="p-4 text-right">{currency}{salaryTotals.total_base.toFixed(2)}</td>
                     <td className="p-4 text-right text-red-600">{currency}{salaryTotals.total_deductions.toFixed(2)}</td>
-                    <td className="p-4 text-right text-green-600">{currency}{salaryTotals.total_bonuses.toFixed(2)}</td>
+                    <td className="p-4 text-right text-emerald-600">{currency}{salaryTotals.total_bonuses.toFixed(2)}</td>
                     <td className="p-4 text-right text-emerald-600">{currency}{salaryTotals.total_net_paid.toFixed(2)}</td>
                     <td className="p-4 text-right">{currency}{salaryTotals.total_expected.toFixed(2)}</td>
                     <td className="p-4 text-right text-amber-600">{currency}{salaryTotals.pending_amount.toFixed(2)}</td>

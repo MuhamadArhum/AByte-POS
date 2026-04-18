@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { X, Calendar, Clock, User, CheckCircle } from 'lucide-react';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
@@ -143,18 +143,18 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
   if (!isOpen) return null;
 
   const inputClass = (field: string) =>
-    `w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${formErrors[field] ? 'border-red-500' : 'border-gray-200'}`;
+    `w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${formErrors[field] ? 'border-red-500' : 'border-gray-200'}`;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-600 to-green-700 p-6 text-white flex items-center justify-between">
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
             <CheckCircle size={28} />
             <div>
               <h2 className="text-base font-semibold">Mark Attendance</h2>
-              <p className="text-green-100 text-sm mt-1">Record staff attendance</p>
+              <p className="text-emerald-100 text-sm mt-1">Record staff attendance</p>
             </div>
           </div>
           <button onClick={handleClose} className="text-white hover:bg-white/20 p-2 rounded-lg transition">
@@ -172,7 +172,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
               }}
               className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${
                 !bulkMode
-                  ? 'bg-green-600 text-white'
+                  ? 'bg-emerald-600 text-white'
                   : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
               }`}
             >
@@ -185,7 +185,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
               }}
               className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${
                 bulkMode
-                  ? 'bg-green-600 text-white'
+                  ? 'bg-emerald-600 text-white'
                   : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
               }`}
             >
@@ -248,7 +248,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
                   name="status"
                   value={formData.status}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 >
                   <option value="present">Present</option>
                   <option value="absent">Absent</option>
@@ -302,7 +302,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
                   value={formData.notes}
                   onChange={handleChange}
                   rows={3}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   placeholder="Any additional notes..."
                 />
               </div>
@@ -327,7 +327,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
                   name="attendance_date"
                   value={formData.attendance_date}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
 
@@ -339,7 +339,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
                 <select
                   value={bulkStatus}
                   onChange={(e) => setBulkStatus(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 >
                   <option value="present">Present</option>
                   <option value="absent">Absent</option>
@@ -381,7 +381,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Saving...' : 'Mark Attendance'}
             </button>
@@ -389,7 +389,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
             <button
               onClick={handleBulkMark}
               disabled={loading}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Processing...' : `Mark All as ${bulkStatus}`}
             </button>

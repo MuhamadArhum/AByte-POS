@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { X, Package } from 'lucide-react';
 import api from '../utils/api';
 
@@ -105,12 +105,12 @@ const ReceiveStockModal = ({ isOpen, onClose, onSuccess, poId, poNumber }: Recei
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-600 to-green-700 p-6 text-white flex items-center justify-between">
+        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Package size={28} />
             <div>
               <h2 className="text-base font-semibold">Receive Stock</h2>
-              <p className="text-green-100 text-sm mt-1">PO Number: {poNumber}</p>
+              <p className="text-emerald-100 text-sm mt-1">PO Number: {poNumber}</p>
             </div>
           </div>
           <button onClick={handleClose} className="text-white hover:bg-white/20 p-2 rounded-lg transition">
@@ -162,7 +162,7 @@ const ReceiveStockModal = ({ isOpen, onClose, onSuccess, poId, poNumber }: Recei
                             max={item.quantity_ordered}
                             value={receivedQuantities[item.po_item_id] || 0}
                             onChange={(e) => handleQuantityChange(item.po_item_id, Number(e.target.value))}
-                            className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                           />
                         </td>
                         <td className="p-4 text-right text-gray-700">
@@ -195,7 +195,7 @@ const ReceiveStockModal = ({ isOpen, onClose, onSuccess, poId, poNumber }: Recei
           <button
             onClick={handleSubmit}
             disabled={loading || fetchingItems || items.length === 0}
-            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Processing...' : 'Confirm & Update Inventory'}
           </button>

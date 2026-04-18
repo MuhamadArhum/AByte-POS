@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { Plus, Eye, Edit, Trash2, DollarSign, User, Search, Filter, RotateCcw, TrendingUp } from 'lucide-react';
 import Pagination from '../../components/Pagination';
@@ -156,7 +156,7 @@ const Staff = () => {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Active Staff</p>
-          <p className="text-3xl font-bold text-green-600 mt-2">
+          <p className="text-3xl font-bold text-emerald-600 mt-2">
             {staff.filter((s: any) => s.is_active === 1).length}
           </p>
         </div>
@@ -255,8 +255,8 @@ const Staff = () => {
                     </td>
                     <td className="p-4 text-center">
                       {member.is_active === 1 ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                           Active
                         </span>
                       ) : (
@@ -309,7 +309,7 @@ const Staff = () => {
                         ) : (
                           <button
                             onClick={() => handleReactivate(member.staff_id, member.full_name)}
-                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                            className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
                             title="Reactivate"
                           >
                             <RotateCcw size={16} />

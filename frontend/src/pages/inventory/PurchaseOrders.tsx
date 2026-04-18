@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Plus, Eye, FileText, Search, Filter, Info, Pencil, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Pagination from '../../components/Pagination';
@@ -80,7 +80,7 @@ const PurchaseOrders = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'received':  return 'bg-green-100 text-green-700';
+      case 'received':  return 'bg-emerald-100 text-emerald-700';
       case 'pending':   return 'bg-yellow-100 text-yellow-700';
       case 'draft':     return 'bg-gray-100 text-gray-700';
       case 'cancelled': return 'bg-red-100 text-red-700';

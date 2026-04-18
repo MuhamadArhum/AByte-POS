@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { LogOut, Plus, Check, Filter } from 'lucide-react';
 import Pagination from '../../components/Pagination';
@@ -132,7 +132,7 @@ const ReviewExitModal = ({ exitReq, onClose, onSuccess }: any) => {
                 <button key={s} type="button" onClick={() => setForm({ ...form, status: s })}
                   className={`flex-1 py-2 rounded-xl text-xs font-semibold capitalize border-2 transition ${
                     form.status === s
-                      ? s === 'approved' || s === 'completed' ? 'bg-green-600 text-white border-green-600' : 'bg-red-600 text-white border-red-600'
+                      ? s === 'approved' || s === 'completed' ? 'bg-emerald-600 text-white border-green-600' : 'bg-red-600 text-white border-red-600'
                       : 'border-gray-200 text-gray-500 hover:border-gray-300'
                   }`}>{s}</button>
               ))}
@@ -194,7 +194,7 @@ const ExitManagement = () => {
   const statusBadge = (status: string) => {
     const map: Record<string, { bg: string; text: string; dot: string }> = {
       pending:   { bg: 'bg-yellow-100', text: 'text-yellow-700', dot: 'bg-yellow-500' },
-      approved:  { bg: 'bg-green-100',  text: 'text-green-700',  dot: 'bg-green-500' },
+      approved:  { bg: 'bg-emerald-100',  text: 'text-emerald-700',  dot: 'bg-emerald-500' },
       rejected:  { bg: 'bg-red-100',    text: 'text-red-700',    dot: 'bg-red-500' },
       completed: { bg: 'bg-gray-100',   text: 'text-gray-700',   dot: 'bg-gray-400' },
     };

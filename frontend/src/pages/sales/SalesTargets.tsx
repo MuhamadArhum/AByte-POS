@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { Target, Plus, TrendingUp, Award, Users, Edit2, Trash2, X, BarChart3, Printer } from 'lucide-react';
 import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
@@ -299,25 +299,25 @@ const TargetModal = ({
 };
 
 const getProgressBarClass = (pct: number): string => {
-  if (pct >= 80) return 'bg-green-500';
+  if (pct >= 80) return 'bg-emerald-500';
   if (pct >= 50) return 'bg-yellow-500';
   return 'bg-red-500';
 };
 
 const getProgressBgClass = (pct: number): string => {
-  if (pct >= 80) return 'bg-green-100';
+  if (pct >= 80) return 'bg-emerald-100';
   if (pct >= 50) return 'bg-yellow-100';
   return 'bg-red-100';
 };
 
 const getAchievementTextClass = (pct: number): string => {
-  if (pct >= 80) return 'text-green-700';
+  if (pct >= 80) return 'text-emerald-700';
   if (pct >= 50) return 'text-yellow-700';
   return 'text-red-700';
 };
 
 const getAchievementBadgeClass = (pct: number): string => {
-  if (pct >= 80) return 'bg-green-100 text-green-700';
+  if (pct >= 80) return 'bg-emerald-100 text-emerald-700';
   if (pct >= 50) return 'bg-yellow-100 text-yellow-700';
   return 'bg-red-100 text-red-700';
 };
@@ -589,15 +589,15 @@ const SalesTargets = () => {
             {/* Top Performer */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Award size={20} className="text-green-600" />
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <Award size={20} className="text-emerald-600" />
                 </div>
                 <p className="text-gray-600 text-sm font-medium">Top Performer</p>
               </div>
               {stats.top_performer ? (
                 <>
                   <p className="text-lg font-bold text-gray-800 truncate">{stats.top_performer.name}</p>
-                  <p className="text-sm text-green-600 font-semibold">{stats.top_performer.percentage.toFixed(1)}%</p>
+                  <p className="text-sm text-emerald-600 font-semibold">{stats.top_performer.percentage.toFixed(1)}%</p>
                 </>
               ) : (
                 <p className="text-gray-400 text-sm">No data</p>
@@ -795,7 +795,7 @@ const SalesTargets = () => {
                       </td>
                       <td className="p-4 text-center">
                         {t.is_active ? (
-                          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700">
+                          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
                             Active
                           </span>
                         ) : (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { FileText, Plus, Check, X, Filter, MessageSquare } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
@@ -32,7 +32,7 @@ const ReviewModal = ({ request, action, onClose, onSuccess }: {
 
   return (
     <ModalWrapper open onClose={onClose} maxWidth="max-w-md">
-      <div className={`px-6 py-4 rounded-t-2xl flex items-center gap-3 ${isApprove ? 'bg-gradient-to-r from-green-500 to-green-600' : 'bg-gradient-to-r from-red-500 to-red-600'}`}>
+      <div className={`px-6 py-4 rounded-t-2xl flex items-center gap-3 ${isApprove ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-red-600'}`}>
         <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
           {isApprove ? <Check size={18} className="text-white" /> : <X size={18} className="text-white" />}
         </div>
@@ -65,7 +65,7 @@ const ReviewModal = ({ request, action, onClose, onSuccess }: {
             Cancel
           </button>
           <button onClick={handleSubmit} disabled={loading}
-            className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition ${isApprove ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700' : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'}`}>
+            className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 transition ${isApprove ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700' : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'}`}>
             {loading ? 'Saving...' : isApprove ? 'Approve' : 'Reject'}
           </button>
         </div>
@@ -220,7 +220,7 @@ const LeaveRequests = () => {
   const statusBadge = (status: string) => {
     const map: Record<string, { bg: string; text: string; dot: string }> = {
       pending:  { bg: 'bg-amber-100',  text: 'text-amber-700',  dot: 'bg-amber-500'  },
-      approved: { bg: 'bg-green-100',  text: 'text-green-700',  dot: 'bg-green-500'  },
+      approved: { bg: 'bg-emerald-100',  text: 'text-emerald-700',  dot: 'bg-emerald-500'  },
       rejected: { bg: 'bg-red-100',    text: 'text-red-700',    dot: 'bg-red-500'    },
     };
     const style = map[status] || { bg: 'bg-gray-100', text: 'text-gray-700', dot: 'bg-gray-400' };
@@ -281,7 +281,7 @@ const LeaveRequests = () => {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Approved</p>
-          <p className="text-3xl font-bold text-green-600 mt-2">{requests.filter(r => r.status === 'approved').length}</p>
+          <p className="text-3xl font-bold text-emerald-600 mt-2">{requests.filter(r => r.status === 'approved').length}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Rejected</p>
@@ -344,7 +344,7 @@ const LeaveRequests = () => {
                       {req.status === 'pending' ? (
                         <div className="flex items-center justify-center gap-1">
                           <button onClick={() => handleReview(req, 'approved')}
-                            className="flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-xs font-medium hover:from-green-600 hover:to-green-700 transition-all shadow-sm" title="Approve">
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg text-xs font-medium hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-sm" title="Approve">
                             <Check size={13} /> Approve
                           </button>
                           <button onClick={() => handleReview(req, 'rejected')}

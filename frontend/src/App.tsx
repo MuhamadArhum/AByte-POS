@@ -5,6 +5,10 @@ import PermissionGuard from './components/PermissionGuard';
 // Root Pages
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import NotFound from './pages/NotFound';
+import HelpSupport from './pages/HelpSupport';
 
 // Sales Module
 import POS from './pages/sales/POS';
@@ -124,6 +128,8 @@ function App() {
         <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               path="/*"
               element={
@@ -217,11 +223,13 @@ function App() {
                       <Route path="/backup" element={<PermissionGuard moduleKey="system.backup"><Backup /></PermissionGuard>} />
                       <Route path="/settings" element={<PermissionGuard moduleKey="system.settings"><SettingsPage /></PermissionGuard>} />
                       <Route path="/email-settings" element={<PermissionGuard moduleKey="system.settings"><EmailSettings /></PermissionGuard>} />
+                      <Route path="/help" element={<HelpSupport />} />
                     </Routes>
                   </Layout>
                 </ProtectedRoute>
               }
             />
+          <Route path="*" element={<NotFound />} />
           </Routes>
         </Router>
       </CartProvider>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, Search, XCircle, CheckCircle, Bell, Package } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
@@ -211,13 +211,13 @@ const StockAlerts = () => {
                         {alert.is_active ? (
                           <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">Active</span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Resolved</span>
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">Resolved</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-gray-500 text-xs">
                         {new Date(alert.created_at).toLocaleDateString()}
                         {alert.resolved_at && (
-                          <div className="text-green-600 mt-0.5">
+                          <div className="text-emerald-600 mt-0.5">
                             Resolved: {new Date(alert.resolved_at).toLocaleDateString()}
                           </div>
                         )}
@@ -226,7 +226,7 @@ const StockAlerts = () => {
                         {alert.is_active ? (
                           <button
                             onClick={() => handleResolve(alert.alert_id)}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
                             title="Resolve Alert"
                           >
                             <CheckCircle size={14} />

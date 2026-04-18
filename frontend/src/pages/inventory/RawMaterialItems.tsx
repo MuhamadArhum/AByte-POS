@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit, Trash2, Package, AlertTriangle, XCircle, X, Save, FlaskConical } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
@@ -262,7 +262,7 @@ const RawMaterialItems = () => {
                         {Number(item.cost_price) > 0 ? `Rs. ${Number(item.cost_price).toFixed(2)}` : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${isOut ? 'bg-red-100 text-red-700' : isLow ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${isOut ? 'bg-red-100 text-red-700' : isLow ? 'bg-yellow-100 text-yellow-700' : 'bg-emerald-100 text-emerald-700'}`}>
                           {stock} {item.unit}
                         </span>
                       </td>

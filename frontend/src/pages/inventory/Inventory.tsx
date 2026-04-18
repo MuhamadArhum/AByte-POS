@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { Plus, Search, Edit, Trash2, Barcode, Package, DollarSign, AlertTriangle, XCircle, Download } from 'lucide-react';
 import api from '../../utils/api';
@@ -289,7 +289,7 @@ const Inventory = ({ productType }: InventoryProps = {}) => {
                       </td>
                       <td className="px-4 py-3 text-right">
                         {margin ? (
-                          <span className={`text-xs font-medium ${Number(margin) > 30 ? 'text-green-600' : Number(margin) > 10 ? 'text-yellow-600' : 'text-red-600'}`}>
+                          <span className={`text-xs font-medium ${Number(margin) > 30 ? 'text-emerald-600' : Number(margin) > 10 ? 'text-yellow-600' : 'text-red-600'}`}>
                             {margin}%
                           </span>
                         ) : <span className="text-gray-300">-</span>}
@@ -298,7 +298,7 @@ const Inventory = ({ productType }: InventoryProps = {}) => {
                         <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
                           stock === 0 ? 'bg-red-100 text-red-700' :
                           stock < 10 ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-green-100 text-green-700'
+                          'bg-emerald-100 text-emerald-700'
                         }`}>
                           {stock} units
                         </span>

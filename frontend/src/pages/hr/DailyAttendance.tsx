@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, MinusCircle, Download, UserCheck } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
@@ -102,7 +102,7 @@ const DailyAttendance = () => {
   const getStatusBadge = (status: string | null) => {
     if (!status) return <span className="px-2 py-1 bg-gray-100 text-gray-500 rounded-full text-xs font-medium">Unmarked</span>;
     const map: Record<string, { bg: string; icon: any }> = {
-      present: { bg: 'bg-green-100 text-green-700', icon: <CheckCircle size={14} className="inline mr-1" /> },
+      present: { bg: 'bg-emerald-100 text-emerald-700', icon: <CheckCircle size={14} className="inline mr-1" /> },
       absent: { bg: 'bg-red-100 text-red-700', icon: <XCircle size={14} className="inline mr-1" /> },
       half_day: { bg: 'bg-yellow-100 text-yellow-700', icon: <AlertCircle size={14} className="inline mr-1" /> },
       leave: { bg: 'bg-emerald-100 text-emerald-700', icon: <MinusCircle size={14} className="inline mr-1" /> },
@@ -124,7 +124,7 @@ const DailyAttendance = () => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <Calendar className="text-green-600" size={20} />
+          <Calendar className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Daily Attendance</h1>
             <p className="text-gray-600 text-sm mt-1">All employees attendance for a specific day</p>
@@ -135,7 +135,7 @@ const DailyAttendance = () => {
             <Download size={18} /> Export
           </button>
           {summary.unmarked > 0 && (
-            <button onClick={markAllPresent} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-xl hover:bg-green-700 transition shadow">
+            <button onClick={markAllPresent} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl hover:bg-emerald-700 transition shadow">
               <UserCheck size={18} /> Mark All Present ({summary.unmarked})
             </button>
           )}
@@ -143,7 +143,7 @@ const DailyAttendance = () => {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg"
+            className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-lg"
           />
         </div>
       </div>
@@ -152,7 +152,7 @@ const DailyAttendance = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
         {[
           { label: 'Total', value: summary.total, color: 'text-gray-800' },
-          { label: 'Present', value: summary.present, color: 'text-green-600' },
+          { label: 'Present', value: summary.present, color: 'text-emerald-600' },
           { label: 'Absent', value: summary.absent, color: 'text-red-600' },
           { label: 'Half Day', value: summary.half_day, color: 'text-yellow-600' },
           { label: 'Leave', value: summary.leave, color: 'text-emerald-600' },
@@ -218,7 +218,7 @@ const DailyAttendance = () => {
                     <td className="p-4 text-center">
                       <div className="flex items-center justify-center gap-1">
                         {[
-                          { status: 'present', label: 'P', active: 'bg-green-500 text-white', idle: 'bg-green-100 text-green-700 hover:bg-green-200' },
+                          { status: 'present', label: 'P', active: 'bg-emerald-500 text-white', idle: 'bg-emerald-100 text-emerald-700 hover:bg-green-200' },
                           { status: 'absent', label: 'A', active: 'bg-red-500 text-white', idle: 'bg-red-100 text-red-700 hover:bg-red-200' },
                           { status: 'leave', label: 'L', active: 'bg-emerald-500 text-white', idle: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' },
                           { status: 'half_day', label: 'H', active: 'bg-yellow-500 text-white', idle: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' },

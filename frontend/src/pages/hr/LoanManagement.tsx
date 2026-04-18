@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import React from 'react';
 import { DollarSign, Plus, Ban, Eye, Filter } from 'lucide-react';
@@ -71,7 +71,7 @@ const LoanManagement = () => {
   const statusBadge = (status: string) => {
     const map: Record<string, { bg: string; text: string; dot: string }> = {
       active:    { bg: 'bg-blue-100',  text: 'text-blue-700',  dot: 'bg-blue-500'  },
-      completed: { bg: 'bg-green-100', text: 'text-green-700', dot: 'bg-green-500' },
+      completed: { bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' },
       cancelled: { bg: 'bg-gray-100',  text: 'text-gray-600',  dot: 'bg-gray-400'  },
     };
     const style = map[status] || { bg: 'bg-gray-100', text: 'text-gray-700', dot: 'bg-gray-400' };
@@ -125,7 +125,7 @@ const LoanManagement = () => {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Total Repaid</p>
-          <p className="text-3xl font-bold text-green-600 mt-2">{currency}{activeTotals.repaid.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-emerald-600 mt-2">{currency}{activeTotals.repaid.toLocaleString()}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Outstanding</p>
@@ -180,7 +180,7 @@ const LoanManagement = () => {
                         <div className="text-xs text-gray-500">{loan.employee_id || ''} {loan.department ? `- ${loan.department}` : ''}</div>
                       </td>
                       <td className="p-4 text-right font-medium">{currency}{Number(loan.loan_amount).toLocaleString()}</td>
-                      <td className="p-4 text-right font-medium text-green-600">{currency}{Number(loan.total_repaid || 0).toLocaleString()}</td>
+                      <td className="p-4 text-right font-medium text-emerald-600">{currency}{Number(loan.total_repaid || 0).toLocaleString()}</td>
                       <td className="p-4 text-right font-bold text-red-600">{currency}{Number(loan.remaining_balance).toLocaleString()}</td>
                       <td className="p-4 text-right text-gray-600">{Number(loan.monthly_deduction) > 0 ? `${currency}${Number(loan.monthly_deduction).toLocaleString()}` : '-'}</td>
                       <td className="p-4 text-center text-gray-600">{new Date(loan.loan_date).toLocaleDateString()}</td>
@@ -222,7 +222,7 @@ const LoanManagement = () => {
                                   {repayments[loan.loan_id].map((r: any) => (
                                     <tr key={r.repayment_id} className="border-t border-gray-200">
                                       <td className="py-2 px-3">{new Date(r.repayment_date).toLocaleDateString()}</td>
-                                      <td className="py-2 px-3 text-right font-medium text-green-600">{currency}{Number(r.amount).toLocaleString()}</td>
+                                      <td className="py-2 px-3 text-right font-medium text-emerald-600">{currency}{Number(r.amount).toLocaleString()}</td>
                                       <td className="py-2 px-3 capitalize">{r.payment_method?.replace('_', ' ')}</td>
                                       <td className="py-2 px-3 text-gray-500">{r.notes || '-'}</td>
                                     </tr>

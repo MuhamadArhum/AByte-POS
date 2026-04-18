@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { TrendingUp, Download, RefreshCw, Printer } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
@@ -223,7 +223,7 @@ const ProfitLoss = () => {
             </div>
 
             {/* Net Profit/Loss */}
-            <div className={`flex justify-between items-center py-4 mt-6 border-t-4 ${data.net_profit >= 0 ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'} px-4 rounded-lg`}>
+            <div className={`flex justify-between items-center py-4 mt-6 border-t-4 ${data.net_profit >= 0 ? 'border-emerald-500 bg-emerald-50' : 'border-red-500 bg-red-50'} px-4 rounded-lg`}>
               <span className={`font-bold text-xl ${data.net_profit >= 0 ? 'text-green-900' : 'text-red-900'}`}>
                 {data.net_profit >= 0 ? 'NET PROFIT' : 'NET LOSS'}
               </span>

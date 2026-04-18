@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Building2, Plus, Pencil, Trash2, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import api from '../../utils/api';
@@ -145,8 +145,8 @@ const Departments = () => {
                     {d.head_of_dept && <p className="text-xs text-gray-500 mt-0.5">Head: {d.head_of_dept}</p>}
                   </div>
                 </div>
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${d.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${d.is_active ? 'bg-green-500' : 'bg-gray-400'}`} />
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${d.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${d.is_active ? 'bg-emerald-500' : 'bg-gray-400'}`} />
                   {d.is_active ? 'Active' : 'Inactive'}
                 </span>
               </div>

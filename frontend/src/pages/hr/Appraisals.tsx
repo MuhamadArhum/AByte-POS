@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Star, Plus, Pencil, Trash2, Filter } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
@@ -9,7 +9,7 @@ import ModalWrapper from '../../components/ModalWrapper';
 
 const RATINGS = [
   { value: 'excellent',        label: 'Excellent',          color: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
-  { value: 'good',             label: 'Good',               color: 'bg-green-100 text-green-700',     dot: 'bg-green-500' },
+  { value: 'good',             label: 'Good',               color: 'bg-emerald-100 text-emerald-700',     dot: 'bg-emerald-500' },
   { value: 'satisfactory',     label: 'Satisfactory',       color: 'bg-blue-100 text-blue-700',       dot: 'bg-blue-500' },
   { value: 'needs_improvement',label: 'Needs Improvement',  color: 'bg-yellow-100 text-yellow-700',   dot: 'bg-yellow-500' },
   { value: 'poor',             label: 'Poor',               color: 'bg-red-100 text-red-700',         dot: 'bg-red-500' },

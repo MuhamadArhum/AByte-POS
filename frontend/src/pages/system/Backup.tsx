@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { Database, Download, Trash2, Upload, Loader2, AlertTriangle, Check, HardDrive, Clock, Shield, FileArchive } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
@@ -185,11 +185,11 @@ const Backup = () => {
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-green-50 rounded-xl">
-              <Shield size={24} className="text-green-600" />
+            <div className="p-3 bg-emerald-50 rounded-xl">
+              <Shield size={24} className="text-emerald-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-green-600">{allStats.completedCount}</p>
+              <p className="text-2xl font-bold text-emerald-600">{allStats.completedCount}</p>
               <p className="text-sm text-gray-500">Successful</p>
             </div>
           </div>

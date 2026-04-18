@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { Lock, Mail, Loader2, Eye, EyeOff, ShoppingCart, BarChart3, Users, Package, Shield, Zap } from 'lucide-react';
@@ -59,18 +59,23 @@ const Login = () => {
         {/* Background decorations */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
-            animate={{ scale: [1, 1.15, 1], rotate: [0, 45, 0] }}
-            transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute -top-32 -right-32 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl"
+            animate={{ scale: [1, 1.2, 1], rotate: [0, 60, 0] }}
+            transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-emerald-500/12 rounded-full blur-3xl"
           />
           <motion.div
-            animate={{ scale: [1, 1.2, 1], rotate: [0, -30, 0] }}
-            transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
-            className="absolute -bottom-40 -left-20 w-[500px] h-[500px] bg-teal-500/8 rounded-full blur-3xl"
+            animate={{ scale: [1, 1.25, 1], rotate: [0, -40, 0] }}
+            transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
+            className="absolute -bottom-48 -left-24 w-[600px] h-[600px] bg-teal-500/10 rounded-full blur-3xl"
+          />
+          <motion.div
+            animate={{ opacity: [0.3, 0.7, 0.3] }}
+            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute top-1/3 left-1/2 -translate-x-1/2 w-64 h-64 bg-emerald-600/8 rounded-full blur-2xl"
           />
           <div className="absolute inset-0" style={{
-            backgroundImage: 'radial-gradient(circle, rgba(16,185,129,0.06) 1px, transparent 1px)',
-            backgroundSize: '32px 32px'
+            backgroundImage: 'radial-gradient(circle, rgba(16,185,129,0.07) 1px, transparent 1px)',
+            backgroundSize: '28px 28px'
           }} />
         </div>
 
@@ -122,17 +127,36 @@ const Login = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.4 + i * 0.1 }}
-                  className="bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/8 transition-colors"
+                  className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-4 hover:bg-white/[0.07] hover:border-emerald-500/20 transition-all duration-300 group"
                 >
-                  <div className="w-9 h-9 bg-emerald-500/20 rounded-xl flex items-center justify-center mb-3">
-                    <Icon size={18} className="text-emerald-400" />
+                  <div className="w-9 h-9 bg-emerald-500/15 border border-emerald-500/20 rounded-xl flex items-center justify-center mb-3 group-hover:bg-emerald-500/25 transition-colors">
+                    <Icon size={17} className="text-emerald-400" />
                   </div>
-                  <p className="text-white font-semibold text-sm">{f.label}</p>
+                  <p className="text-white/90 font-semibold text-sm">{f.label}</p>
                   <p className="text-slate-500 text-xs mt-0.5">{f.desc}</p>
                 </motion.div>
               );
             })}
           </div>
+
+          {/* Stats row */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.9 }}
+            className="flex items-center gap-6 mt-8 pt-6 border-t border-white/[0.07]"
+          >
+            {[
+              { value: '10K+', label: 'Transactions' },
+              { value: '99.9%', label: 'Uptime' },
+              { value: '5★', label: 'Rated' },
+            ].map(s => (
+              <div key={s.label}>
+                <p className="text-white font-black text-lg leading-tight">{s.value}</p>
+                <p className="text-slate-500 text-xs">{s.label}</p>
+              </div>
+            ))}
+          </motion.div>
         </div>
 
         {/* Bottom — Footer */}
@@ -151,11 +175,12 @@ const Login = () => {
       </div>
 
       {/* ===== RIGHT PANEL — Form ===== */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-gray-50 relative overflow-hidden">
+      <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 via-gray-50 to-emerald-50/30 relative overflow-hidden">
 
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 right-0 w-72 h-72 bg-emerald-100/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-          <div className="absolute bottom-0 left-0 w-56 h-56 bg-teal-100/40 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4" />
+          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-200/25 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-teal-200/20 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-100/15 rounded-full blur-3xl" />
         </div>
 
         <motion.div
@@ -164,6 +189,9 @@ const Login = () => {
           transition={{ duration: 0.6, ease: 'easeOut' }}
           className="w-full max-w-md relative z-10"
         >
+          {/* Form card */}
+          <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-gray-200/60 border border-white/60 p-8">
+
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
             <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -173,9 +201,13 @@ const Login = () => {
           </div>
 
           {/* Heading */}
-          <div className="mb-8">
-            <h2 className="text-3xl font-black text-gray-900">Welcome back</h2>
-            <p className="text-gray-500 mt-1.5 text-sm">Sign in to your account to continue</p>
+          <div className="mb-7">
+            <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200/60 rounded-full px-3 py-1 mb-4">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="text-emerald-700 text-xs font-semibold">Secure Login</span>
+            </div>
+            <h2 className="text-2xl font-black text-gray-900">Welcome back</h2>
+            <p className="text-gray-400 mt-1 text-sm">Sign in to your AByte ERP account</p>
           </div>
 
           {/* Error message */}
@@ -224,7 +256,10 @@ const Login = () => {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-semibold text-gray-700">Password</label>
+                <Link to="/forgot-password" className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold transition">Forgot password?</Link>
+              </div>
               <div className="relative group">
                 <Lock
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors duration-200"
@@ -274,8 +309,13 @@ const Login = () => {
 
           </form>
 
-          <p className="text-center text-xs text-gray-400 mt-8">
-            Protected by enterprise-grade security &nbsp;&middot;&nbsp; AByte ERP &copy; 2025
+          <p className="text-center text-xs text-gray-400 mt-6">
+            Protected by enterprise-grade security
+          </p>
+          </div>{/* end card */}
+
+          <p className="text-center text-xs text-gray-400 mt-4">
+            AByte ERP &copy; 2025 &nbsp;&middot;&nbsp; All rights reserved
           </p>
         </motion.div>
       </div>

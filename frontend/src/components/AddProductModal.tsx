@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { X, Loader2, Save, Package, DollarSign, Boxes, Barcode, Tag, FileText, AlertCircle, PackagePlus } from 'lucide-react';
 import api from '../utils/api';
 
@@ -290,7 +290,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
                       onBlur={() => setTouched({ ...touched, price: true })}
-                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all shadow-sm ${
+                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm ${
                         touched.price && !validatePrice(price) ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
                       }`}
                       placeholder="0.00"

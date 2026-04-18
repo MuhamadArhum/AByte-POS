@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { Sliders, Plus, Pencil, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -124,8 +124,8 @@ const SalaryComponents = () => {
 
   const renderGroup = (items: any[], type: 'allowance' | 'deduction') => (
     <div>
-      <div className={`flex items-center gap-2 mb-4 ${type === 'allowance' ? 'text-green-700' : 'text-red-700'}`}>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${type === 'allowance' ? 'bg-green-100' : 'bg-red-100'}`}>
+      <div className={`flex items-center gap-2 mb-4 ${type === 'allowance' ? 'text-emerald-700' : 'text-red-700'}`}>
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${type === 'allowance' ? 'bg-emerald-100' : 'bg-red-100'}`}>
           {type === 'allowance' ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
         </div>
         <h2 className="font-semibold">{type === 'allowance' ? 'Allowances' : 'Deductions'}</h2>

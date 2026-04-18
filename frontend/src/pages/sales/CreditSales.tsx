@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { CreditCard, Search, DollarSign, AlertTriangle, Clock, CheckCircle, X, Printer, Loader2 } from 'lucide-react';
 import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
@@ -21,7 +21,7 @@ interface CreditSale {
 const STATUS_BADGES: Record<string, { label: string; bg: string; text: string }> = {
   pending: { label: 'Pending', bg: 'bg-yellow-100', text: 'text-yellow-700' },
   partial: { label: 'Partial', bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  paid: { label: 'Paid', bg: 'bg-green-100', text: 'text-green-700' },
+  paid: { label: 'Paid', bg: 'bg-emerald-100', text: 'text-emerald-700' },
   overdue: { label: 'Overdue', bg: 'bg-red-100', text: 'text-red-700' },
 };
 
@@ -169,8 +169,8 @@ const CreditSales = () => {
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-green-50 rounded-xl"><CheckCircle size={24} className="text-green-600" /></div>
-            <div><p className="text-2xl font-bold text-green-600">{currency}{Number(stats.collected_this_month).toFixed(2)}</p><p className="text-sm text-gray-500">Collected This Month</p></div>
+            <div className="p-3 bg-emerald-50 rounded-xl"><CheckCircle size={24} className="text-emerald-600" /></div>
+            <div><p className="text-2xl font-bold text-emerald-600">{currency}{Number(stats.collected_this_month).toFixed(2)}</p><p className="text-sm text-gray-500">Collected This Month</p></div>
           </div>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
@@ -223,14 +223,14 @@ const CreditSales = () => {
                       <td className="px-4 py-3 font-mono font-medium">#{cs.sale_id}</td>
                       <td className="px-4 py-3 text-gray-700 font-medium">{cs.customer_name}</td>
                       <td className="px-4 py-3 text-right">{currency}{Number(cs.total_amount).toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right text-green-600 font-medium">{currency}{Number(cs.paid_amount).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right text-emerald-600 font-medium">{currency}{Number(cs.paid_amount).toFixed(2)}</td>
                       <td className="px-4 py-3 text-right font-bold text-rose-600">{currency}{Number(cs.balance_due).toFixed(2)}</td>
                       <td className="px-4 py-3 text-xs text-gray-500">{new Date(cs.due_date).toLocaleDateString()}</td>
                       <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>{badge.label}</span></td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           {cs.status !== 'paid' && (
-                            <button onClick={() => openPayment(cs)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
+                            <button onClick={() => openPayment(cs)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors">
                               <DollarSign size={14} /> Record Payment
                             </button>
                           )}
@@ -285,7 +285,7 @@ const CreditSales = () => {
             </div>
             <div className="flex justify-end gap-3 p-6 border-t">
               <button onClick={() => setPaymentModal(null)} className="px-4 py-2 text-gray-700 border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handlePayment} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Record Payment</button>
+              <button onClick={handlePayment} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Record Payment</button>
             </div>
           </div>
         </div>

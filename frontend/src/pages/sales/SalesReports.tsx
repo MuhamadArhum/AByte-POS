@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Download } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
@@ -46,7 +46,7 @@ const SalesReports = () => {
 
   useEffect(() => { fetchReports(); }, []);
 
-  const METHOD_COLORS: Record<string, string> = { Cash: 'bg-green-500', Card: 'bg-emerald-500', Online: 'bg-emerald-500', Split: 'bg-orange-500' };
+  const METHOD_COLORS: Record<string, string> = { Cash: 'bg-emerald-500', Card: 'bg-emerald-500', Online: 'bg-emerald-500', Split: 'bg-orange-500' };
 
   const exportCSV = (data: any[], filename: string) => {
     if (!data.length) return;
@@ -87,10 +87,10 @@ const SalesReports = () => {
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-xl ${comparison.change_percent >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-                  {comparison.change_percent >= 0 ? <TrendingUp size={24} className="text-green-600" /> : <TrendingDown size={24} className="text-red-600" />}
+                <div className={`p-3 rounded-xl ${comparison.change_percent >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                  {comparison.change_percent >= 0 ? <TrendingUp size={24} className="text-emerald-600" /> : <TrendingDown size={24} className="text-red-600" />}
                 </div>
-                <div><p className={`text-2xl font-bold ${comparison.change_percent >= 0 ? 'text-green-600' : 'text-red-600'}`}>{comparison.change_percent > 0 ? '+' : ''}{comparison.change_percent}%</p><p className="text-sm text-gray-500">vs Previous Period</p></div>
+                <div><p className={`text-2xl font-bold ${comparison.change_percent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{comparison.change_percent > 0 ? '+' : ''}{comparison.change_percent}%</p><p className="text-sm text-gray-500">vs Previous Period</p></div>
               </div>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Plus, Calendar, TrendingUp, Users, CheckCircle, XCircle, Edit, Trash2, Download } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import Pagination from '../../components/Pagination';
@@ -127,7 +127,7 @@ const Attendance = () => {
 
   const getStatusBadge = (status: string) => {
     const map: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-      present:  { bg: 'bg-green-100',  text: 'text-green-700',  dot: 'bg-green-500',  label: 'Present'  },
+      present:  { bg: 'bg-emerald-100',  text: 'text-emerald-700',  dot: 'bg-emerald-500',  label: 'Present'  },
       absent:   { bg: 'bg-red-100',    text: 'text-red-700',    dot: 'bg-red-500',    label: 'Absent'   },
       half_day: { bg: 'bg-amber-100',  text: 'text-amber-700',  dot: 'bg-amber-500',  label: 'Half Day' },
       leave:    { bg: 'bg-blue-100',   text: 'text-blue-700',   dot: 'bg-blue-500',   label: 'On Leave' },
@@ -187,10 +187,10 @@ const Attendance = () => {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-2">
-            <CheckCircle className="text-green-600" size={20} />
+            <CheckCircle className="text-emerald-600" size={20} />
             <p className="text-gray-600 text-sm">Present</p>
           </div>
-          <p className="text-3xl font-bold text-green-600">{summary.present}</p>
+          <p className="text-3xl font-bold text-emerald-600">{summary.present}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-2">

@@ -534,14 +534,15 @@ const Settings = () => {
   };
 
   const tabs = [
-    { id: 'store', name: 'Store Info', icon: Building2 },
-    { id: 'receipt', name: 'Receipt & Invoice', icon: Receipt },
-    { id: 'pos', name: 'POS Settings', icon: ShoppingCart },
-    { id: 'users', name: 'Users', icon: Users, adminOnly: true },
-    { id: 'printer', name: 'Printer', icon: Printer, adminOnly: true },
-    { id: 'security', name: 'Security', icon: Shield },
-    { id: 'system', name: 'System', icon: Server, adminOnly: true },
-    { id: 'access', name: 'Access Control', icon: Lock, adminOnly: true },
+    { id: 'store',      name: 'Store Info',       icon: Building2 },
+    { id: 'appearance', name: 'Appearance',        icon: Tag },
+    { id: 'receipt',    name: 'Receipt & Invoice', icon: Receipt },
+    { id: 'pos',        name: 'POS Settings',      icon: ShoppingCart },
+    { id: 'users',      name: 'Users',             icon: Users,   adminOnly: true },
+    { id: 'printer',    name: 'Printer',           icon: Printer, adminOnly: true },
+    { id: 'security',   name: 'Security',          icon: Shield },
+    { id: 'system',     name: 'System',            icon: Server,  adminOnly: true },
+    { id: 'access',     name: 'Access Control',    icon: Lock,    adminOnly: true },
   ];
 
   return (
@@ -670,6 +671,113 @@ const Settings = () => {
                 </button>
               </div>
             </form>
+          )}
+
+          {/* ========== APPEARANCE TAB ========== */}
+          {activeTab === 'appearance' && (
+            <div className="space-y-8">
+              <h2 className="text-base font-semibold text-gray-800">Appearance & Branding</h2>
+
+              {/* Logo & Brand */}
+              <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 space-y-5">
+                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2"><Building2 size={15} /> Logo & Brand Identity</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Logo URL</label>
+                    <input type="url" value={form.logo_url || ''} onChange={e => setForm({ ...form, logo_url: e.target.value })}
+                      placeholder="https://your-domain.com/logo.png"
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition" />
+                    <p className="text-xs text-gray-400 mt-1">Used on receipts, invoices, and reports</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Favicon URL</label>
+                    <input type="url" value={form.favicon_url || ''} onChange={e => setForm({ ...form, favicon_url: e.target.value })}
+                      placeholder="https://your-domain.com/favicon.ico"
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition" />
+                    <p className="text-xs text-gray-400 mt-1">Browser tab icon (32×32 px recommended)</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Store Tagline</label>
+                  <input type="text" value={form.tagline || ''} onChange={e => setForm({ ...form, tagline: e.target.value })}
+                    placeholder="e.g. Quality Products, Best Prices"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition" />
+                </div>
+                {form.logo_url && (
+                  <div className="p-4 bg-white border border-gray-200 rounded-xl">
+                    <p className="text-xs text-gray-500 mb-2 font-medium">Logo Preview</p>
+                    <img src={form.logo_url} alt="Logo preview" className="h-12 object-contain" onError={e => (e.currentTarget.style.display = 'none')} />
+                  </div>
+                )}
+              </div>
+
+              {/* Theme Colors */}
+              <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 space-y-5">
+                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2"><Tag size={15} /> Theme Color</h3>
+                <p className="text-sm text-gray-500">Select a primary color for your ERP interface accents and buttons.</p>
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { name: 'Emerald',  value: 'emerald', hex: '#10b981' },
+                    { name: 'Blue',     value: 'blue',    hex: '#3b82f6' },
+                    { name: 'Violet',   value: 'violet',  hex: '#8b5cf6' },
+                    { name: 'Rose',     value: 'rose',    hex: '#f43f5e' },
+                    { name: 'Orange',   value: 'orange',  hex: '#f97316' },
+                    { name: 'Cyan',     value: 'cyan',    hex: '#06b6d4' },
+                    { name: 'Slate',    value: 'slate',   hex: '#64748b' },
+                  ].map(color => {
+                    const selected = (form.theme_color || 'emerald') === color.value;
+                    return (
+                      <button key={color.value} type="button"
+                        onClick={() => setForm({ ...form, theme_color: color.value })}
+                        className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border-2 transition-all text-sm font-medium ${selected ? 'border-gray-800 bg-white shadow-md' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                        <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: color.hex }} />
+                        {color.name}
+                        {selected && <CheckCircle size={14} className="text-gray-700" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-400">Note: Theme color changes apply after refresh. Current theme is always Emerald — additional colors require CSS variable support.</p>
+              </div>
+
+              {/* Date & Number Format */}
+              <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 space-y-5">
+                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2"><Globe size={15} /> Regional Format</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Currency Symbol</label>
+                    <input type="text" value={form.currency_symbol || ''} onChange={e => setForm({ ...form, currency_symbol: e.target.value })}
+                      placeholder="Rs, $, €, £"
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Currency Position</label>
+                    <select value={form.currency_position || 'before'} onChange={e => setForm({ ...form, currency_position: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition">
+                      <option value="before">Before amount (Rs 100)</option>
+                      <option value="after">After amount (100 Rs)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Date Format</label>
+                    <select value={form.date_format || 'DD/MM/YYYY'} onChange={e => setForm({ ...form, date_format: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition">
+                      <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                      <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                      <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button onClick={handleSaveSettings} disabled={saving}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 font-semibold shadow-md transition disabled:opacity-50">
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                  Save Appearance
+                </button>
+              </div>
+            </div>
           )}
 
           {/* ========== RECEIPT & INVOICE TAB ========== */}
@@ -1454,9 +1562,9 @@ const Settings = () => {
                       </div>
                       <p className="text-2xl font-bold text-gray-800">{systemInfo.users}</p>
                     </div>
-                    <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+                    <div className="p-4 bg-emerald-50 rounded-xl border border-green-200">
                       <div className="flex items-center gap-2 mb-2">
-                        <Package size={18} className="text-green-600" />
+                        <Package size={18} className="text-emerald-600" />
                         <span className="text-sm font-medium text-gray-600">Products</span>
                       </div>
                       <p className="text-2xl font-bold text-gray-800">{systemInfo.products}</p>

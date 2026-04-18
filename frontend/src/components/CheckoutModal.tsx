@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { X, CreditCard, Banknote, Smartphone, Check, Loader2, Printer, Tag, Star, BookOpen, Percent } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -571,7 +571,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700 flex items-center gap-1"><Tag size={14} /> Coupon Code</label>
               {appliedCoupon ? (
-                <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-2">
+                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2">
                   <div>
                     <span className="font-bold text-green-700">{couponCode}</span>
                     <span className="text-green-600 text-sm ml-2">-Rs. {couponDiscount.toFixed(2)} off</span>

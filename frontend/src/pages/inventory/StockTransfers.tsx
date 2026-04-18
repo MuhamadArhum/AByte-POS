@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeftRight, Plus, Search, X, Check, Ban, Clock, CheckCircle, XCircle } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
@@ -33,7 +33,7 @@ interface ProductOption {
 
 const STATUS_BADGES: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-700',
-  completed: 'bg-green-100 text-green-700',
+  completed: 'bg-emerald-100 text-emerald-700',
   cancelled: 'bg-red-100 text-red-700',
 };
 
@@ -211,9 +211,9 @@ const StockTransfers = () => {
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-green-50 rounded-xl"><CheckCircle size={24} className="text-green-600" /></div>
+            <div className="p-3 bg-emerald-50 rounded-xl"><CheckCircle size={24} className="text-emerald-600" /></div>
             <div>
-              <p className="text-2xl font-bold text-green-600">{getStatusCount('completed')}</p>
+              <p className="text-2xl font-bold text-emerald-600">{getStatusCount('completed')}</p>
               <p className="text-sm text-gray-500">Completed</p>
             </div>
           </div>
@@ -288,7 +288,7 @@ const StockTransfers = () => {
                         <div className="flex gap-1">
                           <button
                             onClick={() => handleApprove(t.transfer_id)}
-                            className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                             title="Approve"
                           >
                             <Check size={16} />

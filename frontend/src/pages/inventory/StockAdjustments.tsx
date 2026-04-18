@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { ClipboardList, Plus, Search, X, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
@@ -30,7 +30,7 @@ interface ProductOption {
 }
 
 const TYPE_BADGES: Record<string, string> = {
-  addition: 'bg-green-100 text-green-700',
+  addition: 'bg-emerald-100 text-emerald-700',
   subtraction: 'bg-red-100 text-red-700',
   correction: 'bg-emerald-100 text-emerald-700',
   damage: 'bg-orange-100 text-orange-700',
@@ -225,11 +225,11 @@ const StockAdjustments = () => {
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-green-50 rounded-xl">
-              <TrendingUp size={24} className="text-green-600" />
+            <div className="p-3 bg-emerald-50 rounded-xl">
+              <TrendingUp size={24} className="text-emerald-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-green-600">{additionsCount}</p>
+              <p className="text-2xl font-bold text-emerald-600">{additionsCount}</p>
               <p className="text-sm text-gray-500">Additions</p>
             </div>
           </div>
@@ -331,7 +331,7 @@ const StockAdjustments = () => {
                     </td>
                     <td className="p-4 text-right text-gray-600">{adj.quantity_before}</td>
                     <td className="p-4 text-right font-medium">
-                      <span className={['subtraction', 'damage', 'theft', 'expired'].includes(adj.adjustment_type) ? 'text-red-600' : 'text-green-600'}>
+                      <span className={['subtraction', 'damage', 'theft', 'expired'].includes(adj.adjustment_type) ? 'text-red-600' : 'text-emerald-600'}>
                         {['subtraction', 'damage', 'theft', 'expired'].includes(adj.adjustment_type) ? '-' : adj.adjustment_type === 'correction' ? '=' : '+'}
                         {adj.quantity_adjusted}
                       </span>

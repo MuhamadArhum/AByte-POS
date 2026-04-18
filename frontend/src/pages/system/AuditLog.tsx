@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from 'react';
+﻿import { useState, useEffect, Fragment } from 'react';
 import { ScrollText, Clock, User, ChevronDown, ChevronRight, Download } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
@@ -51,8 +51,8 @@ const ACTION_COLORS: Record<string, string> = {
   STAFF_CREATED: 'bg-emerald-100 text-emerald-700',
   STAFF_UPDATED: 'bg-emerald-100 text-emerald-700',
   STAFF_DEACTIVATED: 'bg-red-100 text-red-700',
-  SALARY_PAID: 'bg-green-100 text-green-700',
-  SALARY_INCREMENT: 'bg-green-100 text-green-700',
+  SALARY_PAID: 'bg-emerald-100 text-emerald-700',
+  SALARY_INCREMENT: 'bg-emerald-100 text-emerald-700',
   LOAN_ISSUED: 'bg-amber-100 text-amber-700',
   LOAN_REPAYMENT: 'bg-amber-100 text-amber-700',
   LOAN_CANCELLED: 'bg-red-100 text-red-700',
@@ -110,7 +110,7 @@ function FieldDiffTable({ oldValues, newValues }: { oldValues: Record<string, un
             <td className="px-3 py-2 bg-red-50 text-red-700 font-mono">
               {oldValues[key] != null ? String(oldValues[key]) : <span className="italic text-gray-400">empty</span>}
             </td>
-            <td className="px-3 py-2 bg-green-50 text-green-700 font-mono">
+            <td className="px-3 py-2 bg-emerald-50 text-emerald-700 font-mono">
               {newValues[key] != null ? String(newValues[key]) : <span className="italic text-gray-400">empty</span>}
             </td>
           </tr>

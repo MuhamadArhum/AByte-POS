@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { Store, Plus, Pencil, Trash2, Search, MapPin, Phone, Mail, X, Building2, User } from 'lucide-react';
 import api from '../../utils/api';
 
@@ -291,11 +291,11 @@ const Stores = () => {
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-green-50 rounded-xl">
-              <Store size={24} className="text-green-600" />
+            <div className="p-3 bg-emerald-50 rounded-xl">
+              <Store size={24} className="text-emerald-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-green-600">{activeCount}</p>
+              <p className="text-2xl font-bold text-emerald-600">{activeCount}</p>
               <p className="text-sm text-gray-500">Active</p>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { BookOpen, Search, Download, DollarSign, CreditCard, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
@@ -177,12 +177,12 @@ const EmployeeLedger = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <ArrowUpCircle className="text-green-600" size={20} />
+                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                  <ArrowUpCircle className="text-emerald-600" size={20} />
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Total Earned</p>
-                  <p className="text-xl font-bold text-green-600">{currency}{data.totals.totalEarned.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <p className="text-xl font-bold text-emerald-600">{currency}{data.totals.totalEarned.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
               </div>
             </div>
@@ -226,7 +226,7 @@ const EmployeeLedger = () => {
             <h3 className="text-sm font-semibold text-gray-800 mb-3">Attendance Summary</h3>
             <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
               {[
-                { label: 'Present', value: data.attendance_summary.present, bg: 'bg-green-50 border-green-200', text: 'text-green-600' },
+                { label: 'Present', value: data.attendance_summary.present, bg: 'bg-emerald-50 border-green-200', text: 'text-emerald-600' },
                 { label: 'Absent', value: data.attendance_summary.absent, bg: 'bg-red-50 border-red-200', text: 'text-red-600' },
                 { label: 'Half Day', value: data.attendance_summary.half_day, bg: 'bg-yellow-50 border-yellow-200', text: 'text-yellow-600' },
                 { label: 'Leave', value: data.attendance_summary.leave, bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-600' },
@@ -263,7 +263,7 @@ const EmployeeLedger = () => {
                       <td className="p-4 text-gray-600">{new Date(entry.date).toLocaleDateString()}</td>
                       <td className="p-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          entry.type === 'Salary' ? 'bg-green-100 text-green-700' :
+                          entry.type === 'Salary' ? 'bg-emerald-100 text-emerald-700' :
                           entry.type === 'Loan' ? 'bg-red-100 text-red-700' :
                           'bg-emerald-100 text-emerald-700'
                         }`}>
@@ -274,7 +274,7 @@ const EmployeeLedger = () => {
                       <td className="p-4 text-right font-medium text-red-600">
                         {entry.debit > 0 ? `${currency}${entry.debit.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                       </td>
-                      <td className="p-4 text-right font-medium text-green-600">
+                      <td className="p-4 text-right font-medium text-emerald-600">
                         {entry.credit > 0 ? `${currency}${entry.credit.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                       </td>
                     </tr>
