@@ -5,20 +5,22 @@
 -- Usage: mysql -u root -p abyte_master < master_schema.sql
 -- ============================================================
 
--- Plans
-CREATE TABLE IF NOT EXISTS plans (
-    plan_id INT PRIMARY KEY AUTO_INCREMENT,
-    plan_name VARCHAR(50) NOT NULL UNIQUE,
-    display_name VARCHAR(100) NOT NULL,
-    monthly_price DECIMAL(10,2) DEFAULT 0,
+-- Modules (available modules with pricing)
+CREATE TABLE IF NOT EXISTS modules (
+    module_id INT PRIMARY KEY AUTO_INCREMENT,
+    module_key VARCHAR(50) NOT NULL UNIQUE,
+    module_name VARCHAR(100) NOT NULL,
+    price_pkr DECIMAL(10,2) NOT NULL DEFAULT 0,
+    description TEXT,
     is_active TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT IGNORE INTO plans (plan_name, display_name, monthly_price) VALUES
-('basic', 'Basic', 0),
-('professional', 'Professional', 5000),
-('enterprise', 'Enterprise', 10000);
+INSERT IGNORE INTO modules (module_key, module_name, price_pkr, description) VALUES
+('sales',     'Sale',        2250, 'POS, Orders, Returns, Credit Sales, Quotations, Deliveries'),
+('inventory', 'Inventory',   2250, 'Products, Stock, Purchase Orders, GRN, Suppliers'),
+('accounts',  'Accounts',    2999, 'Journal Entries, Vouchers, Bank Accounts, Ledger'),
+('hr',        'HR & Payroll',2999, 'Staff, Attendance, Salary, Leaves, Loans');
 
 -- Tenants (Clients)
 CREATE TABLE IF NOT EXISTS tenants (
@@ -36,6 +38,16 @@ CREATE TABLE IF NOT EXISTS tenants (
     INDEX idx_tenant_code (tenant_code),
     INDEX idx_subdomain (subdomain),
     INDEX idx_active (is_active)
+);
+
+-- Super Admins
+CREATE TABLE IF NOT EXISTS super_admins (
+    admin_id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tenant Configs (branding, tax, receipt settings)

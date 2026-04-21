@@ -112,7 +112,10 @@
       "Bash(npx vite *)",
       "Bash(python3 -c \"import sys,json;r=json.load\\(sys.stdin\\);print\\('total:',r.get\\('pagination',{}\\).get\\('total'\\),'data_len:',len\\(r.get\\('data',[]\\)\\)\\)\")",
       "Bash(git commit *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(npm install *)",
+      "Bash(npx tailwindcss *)",
+      "PowerShell(Move-Item *)"
     ]
   }
 }

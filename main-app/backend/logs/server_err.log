@@ -1,0 +1,477 @@
+SqlError: (conn:124, no: 1054, SQLState: 42S22) Unknown column 'p.reorder_level' in 'SELECT'
+sql: SELECT i.*, p.product_name, p.sku, p.barcode, p.price, p.cost_price,
+                p.product_type, p.reorder_level, p.has_variants,
+                c.category_name
+         
+      FROM inventory i
+      JOIN products p ON i.product_id = p.product_id
+    ...
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at PacketNodeEncoded.readError (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet.js:588:19)
+    at Query.handleErrorPacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:92:24)
+    at Query.readResponsePacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:70:21)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:135:20)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+    at Readable.push (node:internal/streams/readable:394:5) {
+  sqlMessage: "Unknown column 'p.reorder_level' in 'SELECT'",
+  sql: 'SELECT i.*, p.product_name, p.sku, p.barcode, p.price, p.cost_price,\n' +
+    '                p.product_type, p.reorder_level, p.has_variants,\n' +
+    '                c.category_name\n' +
+    '         \n' +
+    '      FROM inventory i\n' +
+    '      JOIN products p ON i.product_id = p.product_id\n' +
+    '    ...',
+  fatal: false,
+  errno: 1054,
+  sqlState: '42S22',
+  code: 'ER_BAD_FIELD_ERROR'
+}
+SqlError: (conn:126, no: 1054, SQLState: 42S22) Unknown column 'p.reorder_level' in 'WHERE'
+sql: SELECT COUNT(*) as total 
+      FROM inventory i
+      JOIN products p ON i.product_id = p.product_id
+      LEFT JOIN categories c ON p.category_id = c.category_id
+      WHERE p.is_active = 1 AND COALESCE(i.available_stock, 0) > 0 AND COALESCE(i.available_...
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at PacketNodeEncoded.readError (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet.js:588:19)
+    at Query.handleErrorPacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:92:24)
+    at Query.readResponsePacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:70:21)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:135:20)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+    at Readable.push (node:internal/streams/readable:394:5) {
+  sqlMessage: "Unknown column 'p.reorder_level' in 'WHERE'",
+  sql: 'SELECT COUNT(*) as total \n' +
+    '      FROM inventory i\n' +
+    '      JOIN products p ON i.product_id = p.product_id\n' +
+    '      LEFT JOIN categories c ON p.category_id = c.category_id\n' +
+    '      WHERE p.is_active = 1 AND COALESCE(i.available_stock, 0) > 0 AND COALESCE(i.available_...',
+  fatal: false,
+  errno: 1054,
+  sqlState: '42S22',
+  code: 'ER_BAD_FIELD_ERROR'
+}
+Error fetching AI context: SqlError: (conn:139, no: 1054, SQLState: 42S22) Unknown column 'p.reorder_level' in 'SELECT'
+sql: 
+        SELECT p.product_name,
+               i.available_stock,
+               COALESCE(p.reorder_level, 10) as reorder_level
+        FROM inventory i
+        JOIN products  p ON i.product_id = p.product_id
+        WHERE i.available_stock <= COALESCE(p.r... - parameters:[]
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at PacketNodeEncoded.readError (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet.js:588:19)
+    at Query.handleErrorPacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:92:24)
+    at Query.readResponsePacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:70:21)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:135:20)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+    at Readable.push (node:internal/streams/readable:394:5) {
+  sqlMessage: "Unknown column 'p.reorder_level' in 'SELECT'",
+  sql: '\n' +
+    '        SELECT p.product_name,\n' +
+    '               i.available_stock,\n' +
+    '               COALESCE(p.reorder_level, 10) as reorder_level\n' +
+    '        FROM inventory i\n' +
+    '        JOIN products  p ON i.product_id = p.product_id\n' +
+    '        WHERE i.available_stock <= COALESCE(p.r... - parameters:[]',
+  fatal: false,
+  errno: 1054,
+  sqlState: '42S22',
+  code: 'ER_BAD_FIELD_ERROR'
+}
+AI Chat Error: {
+  message: '401 {"error":{"message":"Invalid API Key","type":"invalid_request_error","code":"invalid_api_key"}}',
+  status: 401
+}
+Error fetching AI context: SqlError: (conn:129, no: 1054, SQLState: 42S22) Unknown column 'profit' in 'SELECT'
+sql: 
+        SELECT COUNT(*) as count,
+               COALESCE(SUM(total_amount), 0) as total,
+               COALESCE(SUM(profit), 0) as profit
+        FROM sales
+        WHERE YEAR(sale_date)  = YEAR(CURDATE())
+          AND MONTH(sale_date) = MONTH(CURDATE(... - parameters:[]
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at PacketNodeEncoded.readError (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet.js:588:19)
+    at Query.handleErrorPacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:92:24)
+    at Query.readResponsePacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:70:21)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:135:20)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+    at Readable.push (node:internal/streams/readable:394:5) {
+  sqlMessage: "Unknown column 'profit' in 'SELECT'",
+  sql: '\n' +
+    '        SELECT COUNT(*) as count,\n' +
+    '               COALESCE(SUM(total_amount), 0) as total,\n' +
+    '               COALESCE(SUM(profit), 0) as profit\n' +
+    '        FROM sales\n' +
+    '        WHERE YEAR(sale_date)  = YEAR(CURDATE())\n' +
+    '          AND MONTH(sale_date) = MONTH(CURDATE(... - parameters:[]',
+  fatal: false,
+  errno: 1054,
+  sqlState: '42S22',
+  code: 'ER_BAD_FIELD_ERROR'
+}
+AI Chat Error: {
+  message: '401 {"error":{"message":"Invalid API Key","type":"invalid_request_error","code":"invalid_api_key"}}',
+  status: 401
+}
+getAll tenants error: SqlError: (conn:136, no: 1146, SQLState: 42S02) Table 'abyte_pos.tenants' doesn't exist
+sql: 
+      SELECT
+        t.tenant_id, t.tenant_code, t.tenant_name, t.db_name,
+        t.is_active, t.admin_email, t.plan, t.subdomain, t.trial_ends_at,
+        t.created_at,
+        c.company_name, c.logo_url, c.tax_rate, c.currency_symbol
+      FROM tenants... - parameters:[]
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at PacketNodeEncoded.readError (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet.js:588:19)
+    at Query.handleErrorPacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:92:24)
+    at Query.readResponsePacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:70:21)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:135:20)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+    at Readable.push (node:internal/streams/readable:394:5) {
+  sqlMessage: "Table 'abyte_pos.tenants' doesn't exist",
+  sql: '\n' +
+    '      SELECT\n' +
+    '        t.tenant_id, t.tenant_code, t.tenant_name, t.db_name,\n' +
+    '        t.is_active, t.admin_email, t.plan, t.subdomain, t.trial_ends_at,\n' +
+    '        t.created_at,\n' +
+    '        c.company_name, c.logo_url, c.tax_rate, c.currency_symbol\n' +
+    '      FROM tenants... - parameters:[]',
+  fatal: false,
+  errno: 1146,
+  sqlState: '42S02',
+  code: 'ER_NO_SUCH_TABLE'
+}
+getAll tenants error: SqlError: (conn:123, no: 1146, SQLState: 42S02) Table 'abyte_pos.tenants' doesn't exist
+sql: 
+      SELECT
+        t.tenant_id, t.tenant_code, t.tenant_name, t.db_name,
+        t.is_active, t.admin_email, t.plan, t.subdomain, t.trial_ends_at,
+        t.created_at,
+        c.company_name, c.logo_url, c.tax_rate, c.currency_symbol
+      FROM tenants... - parameters:[]
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at PacketNodeEncoded.readError (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet.js:588:19)
+    at Query.handleErrorPacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:92:24)
+    at Query.readResponsePacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:70:21)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:135:20)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+    at Readable.push (node:internal/streams/readable:394:5) {
+  sqlMessage: "Table 'abyte_pos.tenants' doesn't exist",
+  sql: '\n' +
+    '      SELECT\n' +
+    '        t.tenant_id, t.tenant_code, t.tenant_name, t.db_name,\n' +
+    '        t.is_active, t.admin_email, t.plan, t.subdomain, t.trial_ends_at,\n' +
+    '        t.created_at,\n' +
+    '        c.company_name, c.logo_url, c.tax_rate, c.currency_symbol\n' +
+    '      FROM tenants... - parameters:[]',
+  fatal: false,
+  errno: 1146,
+  sqlState: '42S02',
+  code: 'ER_NO_SUCH_TABLE'
+}
+Create backup error: Error: Backup failed. Ensure mariadb-dump or mysqldump is available in PATH.
+    at D:\AByte-POS\backend\services\backupService.js:53:27
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+Create backup error: Error: Backup failed. Ensure mariadb-dump or mysqldump is available in PATH.
+    at D:\AByte-POS\backend\services\backupService.js:53:27
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+Create backup error: Error: Backup failed. Ensure mariadb-dump or mysqldump is available in PATH.
+    at D:\AByte-POS\backend\services\backupService.js:53:27
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+SqlError: Error in results, duplicate field name `address`.
+(see option `checkDuplicate`)
+sql: SELECT c.*, COALESCE(c.address, ca.address_text) AS address
+       FROM customers c
+       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1
+       WHERE c.customer_id = ? - parameters:['2']
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at Query.throwUnexpectedError (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\command.js:39:24)
+    at Query.checkDuplicates (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:449:16)
+    at Query.setParser (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:414:14)
+    at Query.readColumn (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:372:12)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:145:26)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3) {
+  sqlMessage: 'Error in results, duplicate field name `address`.\n' +
+    '(see option `checkDuplicate`)',
+  sql: 'SELECT c.*, COALESCE(c.address, ca.address_text) AS address\n' +
+    '       FROM customers c\n' +
+    '       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1\n' +
+    "       WHERE c.customer_id = ? - parameters:['2']",
+  fatal: false,
+  errno: 45040,
+  sqlState: '42000',
+  code: 'ER_DUPLICATE_FIELD'
+}
+SqlError: Error in results, duplicate field name `address`.
+(see option `checkDuplicate`)
+sql: SELECT c.*, COALESCE(c.address, ca.address_text) AS address
+       FROM customers c
+       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1
+       WHERE c.customer_id = ? - parameters:['6']
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at Query.throwUnexpectedError (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\command.js:39:24)
+    at Query.checkDuplicates (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:449:16)
+    at Query.setParser (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:414:14)
+    at Query.readColumn (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:372:12)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:145:26)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3) {
+  sqlMessage: 'Error in results, duplicate field name `address`.\n' +
+    '(see option `checkDuplicate`)',
+  sql: 'SELECT c.*, COALESCE(c.address, ca.address_text) AS address\n' +
+    '       FROM customers c\n' +
+    '       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1\n' +
+    "       WHERE c.customer_id = ? - parameters:['6']",
+  fatal: false,
+  errno: 45040,
+  sqlState: '42000',
+  code: 'ER_DUPLICATE_FIELD'
+}
+SqlError: Error in results, duplicate field name `address`.
+(see option `checkDuplicate`)
+sql: SELECT c.*, COALESCE(c.address, ca.address_text) AS address
+       FROM customers c
+       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1
+       WHERE c.customer_id = ? - parameters:['5']
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at Query.throwUnexpectedError (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\command.js:39:24)
+    at Query.checkDuplicates (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:449:16)
+    at Query.setParser (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:414:14)
+    at Query.readColumn (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:372:12)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:145:26)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3) {
+  sqlMessage: 'Error in results, duplicate field name `address`.\n' +
+    '(see option `checkDuplicate`)',
+  sql: 'SELECT c.*, COALESCE(c.address, ca.address_text) AS address\n' +
+    '       FROM customers c\n' +
+    '       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1\n' +
+    "       WHERE c.customer_id = ? - parameters:['5']",
+  fatal: false,
+  errno: 45040,
+  sqlState: '42000',
+  code: 'ER_DUPLICATE_FIELD'
+}
+SqlError: Error in results, duplicate field name `address`.
+(see option `checkDuplicate`)
+sql: SELECT c.*, COALESCE(c.address, ca.address_text) AS address
+       FROM customers c
+       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1
+       WHERE c.customer_id = ? - parameters:['8']
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at Query.throwUnexpectedError (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\command.js:39:24)
+    at Query.checkDuplicates (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:449:16)
+    at Query.setParser (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:414:14)
+    at Query.readColumn (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:372:12)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:145:26)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3) {
+  sqlMessage: 'Error in results, duplicate field name `address`.\n' +
+    '(see option `checkDuplicate`)',
+  sql: 'SELECT c.*, COALESCE(c.address, ca.address_text) AS address\n' +
+    '       FROM customers c\n' +
+    '       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1\n' +
+    "       WHERE c.customer_id = ? - parameters:['8']",
+  fatal: false,
+  errno: 45040,
+  sqlState: '42000',
+  code: 'ER_DUPLICATE_FIELD'
+}
+SqlError: Error in results, duplicate field name `address`.
+(see option `checkDuplicate`)
+sql: SELECT c.*, COALESCE(c.address, ca.address_text) AS address
+       FROM customers c
+       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1
+       WHERE c.customer_id = ? - parameters:['6']
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at Query.throwUnexpectedError (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\command.js:39:24)
+    at Query.checkDuplicates (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:449:16)
+    at Query.setParser (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:414:14)
+    at Query.readColumn (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:372:12)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:145:26)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3) {
+  sqlMessage: 'Error in results, duplicate field name `address`.\n' +
+    '(see option `checkDuplicate`)',
+  sql: 'SELECT c.*, COALESCE(c.address, ca.address_text) AS address\n' +
+    '       FROM customers c\n' +
+    '       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1\n' +
+    "       WHERE c.customer_id = ? - parameters:['6']",
+  fatal: false,
+  errno: 45040,
+  sqlState: '42000',
+  code: 'ER_DUPLICATE_FIELD'
+}
+SqlError: Error in results, duplicate field name `address`.
+(see option `checkDuplicate`)
+sql: SELECT c.*, COALESCE(c.address, ca.address_text) AS address
+       FROM customers c
+       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1
+       WHERE c.customer_id = ? - parameters:['4']
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at Query.throwUnexpectedError (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\command.js:39:24)
+    at Query.checkDuplicates (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:449:16)
+    at Query.setParser (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:414:14)
+    at Query.readColumn (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:372:12)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:145:26)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3) {
+  sqlMessage: 'Error in results, duplicate field name `address`.\n' +
+    '(see option `checkDuplicate`)',
+  sql: 'SELECT c.*, COALESCE(c.address, ca.address_text) AS address\n' +
+    '       FROM customers c\n' +
+    '       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1\n' +
+    "       WHERE c.customer_id = ? - parameters:['4']",
+  fatal: false,
+  errno: 45040,
+  sqlState: '42000',
+  code: 'ER_DUPLICATE_FIELD'
+}
+SqlError: Error in results, duplicate field name `address`.
+(see option `checkDuplicate`)
+sql: SELECT c.*, COALESCE(c.address, ca.address_text) AS address
+       FROM customers c
+       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1
+       WHERE c.customer_id = ? - parameters:['9']
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at Query.throwUnexpectedError (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\command.js:39:24)
+    at Query.checkDuplicates (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:449:16)
+    at Query.setParser (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:414:14)
+    at Query.readColumn (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:372:12)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:145:26)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3) {
+  sqlMessage: 'Error in results, duplicate field name `address`.\n' +
+    '(see option `checkDuplicate`)',
+  sql: 'SELECT c.*, COALESCE(c.address, ca.address_text) AS address\n' +
+    '       FROM customers c\n' +
+    '       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1\n' +
+    "       WHERE c.customer_id = ? - parameters:['9']",
+  fatal: false,
+  errno: 45040,
+  sqlState: '42000',
+  code: 'ER_DUPLICATE_FIELD'
+}
+SqlError: Error in results, duplicate field name `address`.
+(see option `checkDuplicate`)
+sql: SELECT c.*, COALESCE(c.address, ca.address_text) AS address
+       FROM customers c
+       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1
+       WHERE c.customer_id = ? - parameters:['7']
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at Query.throwUnexpectedError (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\command.js:39:24)
+    at Query.checkDuplicates (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:449:16)
+    at Query.setParser (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:414:14)
+    at Query.readColumn (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:372:12)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:145:26)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3) {
+  sqlMessage: 'Error in results, duplicate field name `address`.\n' +
+    '(see option `checkDuplicate`)',
+  sql: 'SELECT c.*, COALESCE(c.address, ca.address_text) AS address\n' +
+    '       FROM customers c\n' +
+    '       LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1\n' +
+    "       WHERE c.customer_id = ? - parameters:['7']",
+  fatal: false,
+  errno: 45040,
+  sqlState: '42000',
+  code: 'ER_DUPLICATE_FIELD'
+}
+getAll tenants error: SqlError: (conn:124, no: 1146, SQLState: 42S02) Table 'abyte_pos.tenants' doesn't exist
+sql: 
+      SELECT
+        t.tenant_id, t.tenant_code, t.tenant_name, t.db_name,
+        t.is_active, t.admin_email, t.plan, t.subdomain, t.trial_ends_at,
+        t.created_at,
+        c.company_name, c.logo_url, c.tax_rate, c.currency_symbol
+      FROM tenants... - parameters:[]
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at PacketNodeEncoded.readError (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet.js:588:19)
+    at Query.handleErrorPacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:92:24)
+    at Query.readResponsePacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:70:21)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:135:20)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+    at Readable.push (node:internal/streams/readable:394:5) {
+  sqlMessage: "Table 'abyte_pos.tenants' doesn't exist",
+  sql: '\n' +
+    '      SELECT\n' +
+    '        t.tenant_id, t.tenant_code, t.tenant_name, t.db_name,\n' +
+    '        t.is_active, t.admin_email, t.plan, t.subdomain, t.trial_ends_at,\n' +
+    '        t.created_at,\n' +
+    '        c.company_name, c.logo_url, c.tax_rate, c.currency_symbol\n' +
+    '      FROM tenants... - parameters:[]',
+  fatal: false,
+  errno: 1146,
+  sqlState: '42S02',
+  code: 'ER_NO_SUCH_TABLE'
+}
+getAll tenants error: SqlError: (conn:133, no: 1146, SQLState: 42S02) Table 'abyte_pos.tenants' doesn't exist
+sql: 
+      SELECT
+        t.tenant_id, t.tenant_code, t.tenant_name, t.db_name,
+        t.is_active, t.admin_email, t.plan, t.subdomain, t.trial_ends_at,
+        t.created_at,
+        c.company_name, c.logo_url, c.tax_rate, c.currency_symbol
+      FROM tenants... - parameters:[]
+    at module.exports.createError (D:\AByte-POS\backend\node_modules\mariadb\lib\misc\errors.js:66:10)
+    at PacketNodeEncoded.readError (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet.js:588:19)
+    at Query.handleErrorPacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:92:24)
+    at Query.readResponsePacket (D:\AByte-POS\backend\node_modules\mariadb\lib\cmd\parser.js:70:21)
+    at PacketInputStream.receivePacketBasic (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:85:9)
+    at PacketInputStream.onData (D:\AByte-POS\backend\node_modules\mariadb\lib\io\packet-input-stream.js:135:20)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+    at Readable.push (node:internal/streams/readable:394:5) {
+  sqlMessage: "Table 'abyte_pos.tenants' doesn't exist",
+  sql: '\n' +
+    '      SELECT\n' +
+    '        t.tenant_id, t.tenant_code, t.tenant_name, t.db_name,\n' +
+    '        t.is_active, t.admin_email, t.plan, t.subdomain, t.trial_ends_at,\n' +
+    '        t.created_at,\n' +
+    '        c.company_name, c.logo_url, c.tax_rate, c.currency_symbol\n' +
+    '      FROM tenants... - parameters:[]',
+  fatal: false,
+  errno: 1146,
+  sqlState: '42S02',
+  code: 'ER_NO_SUCH_TABLE'
+}
