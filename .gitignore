@@ -12,5 +12,8 @@ main-app/frontend/tsconfig.tsbuildinfo
 
 # Admin Panel
 admin-panel/backend/node_modules/
+admin-panel/backend/.env.production
+admin-panel/backend/logs/
 admin-panel/frontend/node_modules/
 admin-panel/frontend/dist/
+admin-panel/frontend/.env.production

@@ -223,3 +223,118 @@ exports.getModules = async (_req, res) => {
     data: Object.entries(MODULES).map(([key, m]) => ({ key, ...m }))
   });
 };
+
+// GET /api/tenants/activity — Login activity summary for all tenants
+exports.getActivity = async (req, res) => {
+  try {
+    const tenants = await query(`
+      SELECT t.tenant_id, t.tenant_code, t.db_name, t.is_active,
+             COALESCE(tc.company_name, t.tenant_name) AS display_name
+      FROM tenants t
+      LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id
+      ORDER BY t.created_at DESC
+    `);
+
+    const results = await Promise.all(tenants.map(async (t) => {
+      try {
+        const [todayCount] = await tenantQuery(t.db_name,
+          `SELECT COUNT(*) AS cnt FROM \`${t.db_name}\`.audit_logs
+           WHERE action = 'USER_LOGIN' AND DATE(created_at) = CURDATE()`
+        );
+        const [weekCount] = await tenantQuery(t.db_name,
+          `SELECT COUNT(*) AS cnt FROM \`${t.db_name}\`.audit_logs
+           WHERE action = 'USER_LOGIN' AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)`
+        );
+        const [lastLogin] = await tenantQuery(t.db_name,
+          `SELECT user_name, ip_address, created_at
+           FROM \`${t.db_name}\`.audit_logs
+           WHERE action = 'USER_LOGIN'
+           ORDER BY created_at DESC LIMIT 1`
+        );
+        const [totalLogins] = await tenantQuery(t.db_name,
+          `SELECT COUNT(*) AS cnt FROM \`${t.db_name}\`.audit_logs WHERE action = 'USER_LOGIN'`
+        );
+
+        return {
+          tenant_id:    t.tenant_id,
+          tenant_code:  t.tenant_code,
+          display_name: t.display_name,
+          is_active:    t.is_active,
+          today_logins: todayCount?.cnt || 0,
+          week_logins:  weekCount?.cnt  || 0,
+          total_logins: totalLogins?.cnt || 0,
+          last_login:   lastLogin || null,
+        };
+      } catch {
+        return {
+          tenant_id:    t.tenant_id,
+          tenant_code:  t.tenant_code,
+          display_name: t.display_name,
+          is_active:    t.is_active,
+          today_logins: 0,
+          week_logins:  0,
+          total_logins: 0,
+          last_login:   null,
+        };
+      }
+    }));
+
+    res.json({ data: results });
+  } catch (err) {
+    logger.error('getActivity error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /api/tenants/:id/activity — Detailed login history for one tenant
+exports.getTenantActivity = async (req, res) => {
+  try {
+    const tenants = await query(
+      `SELECT t.tenant_id, t.db_name, t.is_active,
+              COALESCE(tc.company_name, t.tenant_name) AS display_name
+       FROM tenants t LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id
+       WHERE t.tenant_id = ?`,
+      [req.params.id]
+    );
+    if (tenants.length === 0) return res.status(404).json({ message: 'Tenant not found' });
+
+    const { db_name } = tenants[0];
+
+    const logs = await tenantQuery(db_name,
+      `SELECT log_id, user_name, ip_address, created_at
+       FROM \`${db_name}\`.audit_logs
+       WHERE action = 'USER_LOGIN'
+       ORDER BY created_at DESC
+       LIMIT 100`
+    );
+
+    const [todayCount] = await tenantQuery(db_name,
+      `SELECT COUNT(*) AS cnt FROM \`${db_name}\`.audit_logs
+       WHERE action = 'USER_LOGIN' AND DATE(created_at) = CURDATE()`
+    );
+    const [weekCount] = await tenantQuery(db_name,
+      `SELECT COUNT(*) AS cnt FROM \`${db_name}\`.audit_logs
+       WHERE action = 'USER_LOGIN' AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)`
+    );
+
+    // Daily breakdown for last 7 days
+    const daily = await tenantQuery(db_name,
+      `SELECT DATE(created_at) AS day, COUNT(*) AS cnt
+       FROM \`${db_name}\`.audit_logs
+       WHERE action = 'USER_LOGIN' AND created_at >= DATE_SUB(NOW(), INTERVAL 6 DAY)
+       GROUP BY DATE(created_at)
+       ORDER BY day ASC`
+    );
+
+    res.json({
+      tenant:       tenants[0],
+      today_logins: todayCount?.cnt || 0,
+      week_logins:  weekCount?.cnt  || 0,
+      daily_chart:  daily,
+      logs,
+    });
+  } catch (err) {
+    logger.error('getTenantActivity error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
