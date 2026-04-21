@@ -1,15 +1,13 @@
-// masterDatabase.js - Stub for single-client mode
-// In SaaS multi-tenant mode, this connects to the abyte_master DB.
-// In single-client mode, it routes to the same local DB.
+const { queryDb, getPool } = require('./database');
 
-const { query, getConnection } = require('./database');
+const MASTER_DB = process.env.MASTER_DB_NAME || 'abyte_master';
 
 async function masterQuery(sql, params) {
-  return query(sql, params);
+  return queryDb(MASTER_DB, sql, params);
 }
 
 async function masterGetConnection() {
-  return getConnection();
+  return getPool(MASTER_DB).getConnection();
 }
 
 module.exports = { masterQuery, masterGetConnection };

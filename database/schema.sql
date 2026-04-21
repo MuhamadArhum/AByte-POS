@@ -1,8 +1,9 @@
--- AByte POS Database Schema (Reference Only)
--- To setup database, run: npm run seed
--- Last updated: 2026-02-24 (matches production DB)
-CREATE DATABASE IF NOT EXISTS abyte_pos;
-USE abyte_pos;
+-- ============================================================
+-- AByte POS - Complete Database Schema
+-- Last updated: 2026-04-21
+-- Usage: mysql -u root -p <db_name> < schema.sql
+-- Note: CREATE DATABASE and USE are handled by the app
+-- ============================================================
 
 -- ============================================================
 -- LEVEL 0: No foreign key dependencies
@@ -15,6 +16,17 @@ CREATE TABLE IF NOT EXISTS roles (
 );
 
 INSERT IGNORE INTO roles (role_name) VALUES ('Admin'), ('Manager'), ('Cashier');
+
+-- Role Permissions
+CREATE TABLE IF NOT EXISTS role_permissions (
+    permission_id INT PRIMARY KEY AUTO_INCREMENT,
+    role_name VARCHAR(50) NOT NULL,
+    module_key VARCHAR(100) NOT NULL,
+    is_allowed TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_role_module (role_name, module_key),
+    INDEX idx_role (role_name)
+);
 
 -- Categories
 CREATE TABLE IF NOT EXISTS categories (
@@ -48,7 +60,31 @@ INSERT IGNORE INTO expense_categories (category_name, description) VALUES
 ('Marketing', 'Advertising and promotional expenses'),
 ('Maintenance', 'Equipment and store maintenance'),
 ('Supplies', 'Office and store supplies'),
+('Stationery', 'Stationery and printing'),
+('Transport', 'Transport and fuel costs'),
 ('Other', 'Miscellaneous expenses');
+
+-- Account Groups
+CREATE TABLE IF NOT EXISTS account_groups (
+    group_id INT PRIMARY KEY AUTO_INCREMENT,
+    group_name VARCHAR(100) NOT NULL,
+    group_type ENUM('asset','liability','equity','revenue','expense') NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_group_type (group_type)
+);
+
+INSERT IGNORE INTO account_groups (group_id, group_name, group_type, description) VALUES
+(1, 'Current Assets', 'asset', 'Cash, inventory, accounts receivable'),
+(2, 'Fixed Assets', 'asset', 'Property, equipment, vehicles'),
+(3, 'Current Liabilities', 'liability', 'Accounts payable, short-term loans'),
+(4, 'Long-term Liabilities', 'liability', 'Long-term loans, mortgages'),
+(5, 'Equity', 'equity', 'Owner equity, retained earnings'),
+(6, 'Sales Revenue', 'revenue', 'Product and service sales'),
+(7, 'Other Revenue', 'revenue', 'Interest, gains'),
+(8, 'Cost of Goods Sold', 'expense', 'Direct costs'),
+(9, 'Operating Expenses', 'expense', 'Salaries, rent, utilities'),
+(10, 'Other Expenses', 'expense', 'Interest, losses');
 
 -- ============================================================
 -- LEVEL 1: Depends on Level 0
@@ -75,6 +111,46 @@ CREATE TABLE IF NOT EXISTS variant_values (
     FOREIGN KEY (variant_type_id) REFERENCES variant_types(variant_type_id) ON DELETE CASCADE
 );
 
+-- Chart of Accounts
+CREATE TABLE IF NOT EXISTS accounts (
+    account_id INT PRIMARY KEY AUTO_INCREMENT,
+    account_code VARCHAR(20) NOT NULL UNIQUE,
+    account_name VARCHAR(200) NOT NULL,
+    group_id INT NOT NULL,
+    parent_account_id INT NULL,
+    account_type ENUM('asset','liability','equity','revenue','expense') NOT NULL,
+    is_active TINYINT(1) DEFAULT 1,
+    opening_balance DECIMAL(15,2) DEFAULT 0,
+    current_balance DECIMAL(15,2) DEFAULT 0,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (group_id) REFERENCES account_groups(group_id),
+    FOREIGN KEY (parent_account_id) REFERENCES accounts(account_id) ON DELETE SET NULL,
+    INDEX idx_account_code (account_code),
+    INDEX idx_account_type (account_type),
+    INDEX idx_active (is_active)
+);
+
+INSERT IGNORE INTO accounts (account_code, account_name, group_id, account_type, opening_balance) VALUES
+('1001', 'Cash in Hand', 1, 'asset', 0),
+('1002', 'Cash at Bank', 1, 'asset', 0),
+('1003', 'Accounts Receivable', 1, 'asset', 0),
+('1004', 'Inventory', 1, 'asset', 0),
+('1101', 'Furniture & Fixtures', 2, 'asset', 0),
+('1102', 'Equipment', 2, 'asset', 0),
+('2001', 'Accounts Payable', 3, 'liability', 0),
+('2002', 'Short-term Loans', 3, 'liability', 0),
+('3001', 'Owner Capital', 5, 'equity', 0),
+('3002', 'Retained Earnings', 5, 'equity', 0),
+('4001', 'Product Sales', 6, 'revenue', 0),
+('4002', 'Service Revenue', 6, 'revenue', 0),
+('5001', 'Cost of Goods Sold', 8, 'expense', 0),
+('6001', 'Salaries Expense', 9, 'expense', 0),
+('6002', 'Rent Expense', 9, 'expense', 0),
+('6003', 'Utilities Expense', 9, 'expense', 0),
+('6004', 'Office Supplies', 9, 'expense', 0);
+
 -- ============================================================
 -- LEVEL 2: Depends on Level 1
 -- ============================================================
@@ -87,7 +163,12 @@ CREATE TABLE IF NOT EXISTS customers (
     email VARCHAR(150),
     company VARCHAR(150),
     tax_id VARCHAR(50),
+    address_1 TEXT,
+    address_2 TEXT,
+    address_3 TEXT,
+    address_4 TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE INDEX idx_customer_phone (phone_number),
     INDEX idx_customer_name (customer_name),
     FULLTEXT INDEX idx_customer_search (customer_name)
@@ -100,10 +181,16 @@ CREATE TABLE IF NOT EXISTS products (
     product_id INT PRIMARY KEY AUTO_INCREMENT,
     product_name VARCHAR(200) NOT NULL,
     category_id INT,
+    product_type ENUM('finished_good','raw_material','semi_finished') NOT NULL DEFAULT 'finished_good',
     price DECIMAL(10, 2) NOT NULL,
+    cost_price DECIMAL(15, 2) DEFAULT NULL,
     stock_quantity INT NOT NULL DEFAULT 0,
+    min_stock_level INT DEFAULT NULL,
     has_variants TINYINT(1) DEFAULT 0,
+    sku VARCHAR(100) DEFAULT NULL,
     barcode VARCHAR(100) UNIQUE,
+    description TEXT,
+    is_active TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories(category_id),
@@ -149,6 +236,120 @@ CREATE TABLE IF NOT EXISTS stores (
 INSERT IGNORE INTO stores (store_id, store_name, store_code, is_active)
 VALUES (1, 'Main Store', 'MAIN', 1);
 
+-- Sections (departments for stock issuance)
+CREATE TABLE IF NOT EXISTS sections (
+    section_id INT PRIMARY KEY AUTO_INCREMENT,
+    section_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Store Settings
+CREATE TABLE IF NOT EXISTS store_settings (
+    setting_id INT PRIMARY KEY AUTO_INCREMENT,
+    store_name VARCHAR(255) DEFAULT 'AByte POS Store',
+    address TEXT,
+    phone VARCHAR(50),
+    email VARCHAR(100),
+    website VARCHAR(100),
+    receipt_header TEXT,
+    receipt_footer TEXT DEFAULT 'Thank you for shopping with us!',
+    tax_rate DECIMAL(5,2) DEFAULT 0,
+    currency_symbol VARCHAR(10) DEFAULT 'Rs.',
+    receipt_logo TEXT,
+    low_stock_threshold INT DEFAULT 10,
+    default_payment_method ENUM('cash','card','online') DEFAULT 'cash',
+    auto_print_receipt TINYINT(1) DEFAULT 0,
+    barcode_prefix VARCHAR(10) DEFAULT '',
+    invoice_prefix VARCHAR(20) DEFAULT 'INV-',
+    date_format VARCHAR(20) DEFAULT 'DD/MM/YYYY',
+    timezone VARCHAR(50) DEFAULT 'Asia/Karachi',
+    business_hours_open TIME DEFAULT '09:00:00',
+    business_hours_close TIME DEFAULT '21:00:00',
+    allow_negative_stock TINYINT(1) DEFAULT 0,
+    discount_requires_approval TINYINT(1) DEFAULT 0,
+    max_cashier_discount DECIMAL(5,2) DEFAULT 50.00,
+    session_timeout_minutes INT DEFAULT 480,
+    receipt_show_store_name TINYINT(1) DEFAULT 1,
+    receipt_show_address TINYINT(1) DEFAULT 1,
+    receipt_show_phone TINYINT(1) DEFAULT 1,
+    receipt_show_tax TINYINT(1) DEFAULT 1,
+    receipt_paper_width ENUM('58mm','80mm') DEFAULT '80mm',
+    printer_type ENUM('none','network','usb') DEFAULT 'none',
+    printer_ip VARCHAR(100) DEFAULT NULL,
+    printer_port INT DEFAULT 9100,
+    printer_name VARCHAR(255) DEFAULT NULL,
+    printer_paper_width INT DEFAULT 80,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT IGNORE INTO store_settings (setting_id, store_name, receipt_footer)
+VALUES (1, 'AByte POS Store', 'Thank you for shopping with us!');
+
+-- Printers
+CREATE TABLE IF NOT EXISTS printers (
+    printer_id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    type ENUM('network','usb') NOT NULL,
+    ip_address VARCHAR(100) DEFAULT NULL,
+    port INT DEFAULT 9100,
+    printer_share_name VARCHAR(255) DEFAULT NULL,
+    paper_width INT DEFAULT 80,
+    purpose VARCHAR(50) NOT NULL DEFAULT 'receipt',
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Backups
+CREATE TABLE IF NOT EXISTS backups (
+    backup_id INT PRIMARY KEY AUTO_INCREMENT,
+    filename VARCHAR(255) NOT NULL,
+    file_size BIGINT,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    type ENUM('manual', 'scheduled') DEFAULT 'manual',
+    status ENUM('completed', 'failed') DEFAULT 'completed',
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- Expenses
+CREATE TABLE IF NOT EXISTS expenses (
+    expense_id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(100) NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    category_id INT,
+    expense_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    description TEXT,
+    user_id INT,
+    FOREIGN KEY (category_id) REFERENCES expense_categories(category_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    INDEX idx_expense_date (expense_date),
+    INDEX idx_expense_category (category_id)
+);
+
+-- Audit Logs
+CREATE TABLE IF NOT EXISTS audit_logs (
+    log_id INT PRIMARY KEY AUTO_INCREMENT,
+    action VARCHAR(100) NOT NULL,
+    entity_type VARCHAR(50),
+    entity_id INT,
+    user_id INT,
+    user_name VARCHAR(100),
+    details TEXT,
+    ip_address VARCHAR(45),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_audit_action (action),
+    INDEX idx_audit_entity (entity_type, entity_id),
+    INDEX idx_audit_created (created_at)
+);
+
+-- ============================================================
+-- HR MODULE
+-- ============================================================
+
 -- Staff / Employees
 CREATE TABLE IF NOT EXISTS staff (
     staff_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -186,7 +387,7 @@ CREATE TABLE IF NOT EXISTS staff_loans (
     approved_by INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
-    FOREIGN KEY (approved_by) REFERENCES users(user_id),
+    FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL,
     INDEX idx_loan_staff (staff_id),
     INDEX idx_loan_status (status)
 );
@@ -219,11 +420,11 @@ CREATE TABLE IF NOT EXISTS salary_increments (
     approved_by INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
-    FOREIGN KEY (approved_by) REFERENCES users(user_id),
+    FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL,
     INDEX idx_increment_staff (staff_id)
 );
 
--- Advance Payments (advance salary)
+-- Advance Payments
 CREATE TABLE IF NOT EXISTS advance_payments (
     advance_id INT PRIMARY KEY AUTO_INCREMENT,
     staff_id INT NOT NULL,
@@ -274,174 +475,49 @@ CREATE TABLE IF NOT EXISTS leave_requests (
     INDEX idx_leave_dates (from_date, to_date)
 );
 
--- Store Settings (single row with setting_id=1)
-CREATE TABLE IF NOT EXISTS store_settings (
-    setting_id INT PRIMARY KEY AUTO_INCREMENT,
-    store_name VARCHAR(255) DEFAULT 'AByte POS Store',
-    address TEXT,
-    phone VARCHAR(50),
-    email VARCHAR(100),
-    website VARCHAR(100),
-    receipt_header TEXT,
-    receipt_footer TEXT DEFAULT 'Thank you for shopping with us!',
-    tax_rate DECIMAL(5,2) DEFAULT 0,
-    currency_symbol VARCHAR(10) DEFAULT 'Rs.',
-    receipt_logo TEXT,
-    low_stock_threshold INT DEFAULT 10,
-    default_payment_method ENUM('cash','card','online') DEFAULT 'cash',
-    auto_print_receipt TINYINT(1) DEFAULT 0,
-    barcode_prefix VARCHAR(10) DEFAULT '',
-    invoice_prefix VARCHAR(20) DEFAULT 'INV-',
-    date_format VARCHAR(20) DEFAULT 'DD/MM/YYYY',
-    timezone VARCHAR(50) DEFAULT 'Asia/Karachi',
-    business_hours_open TIME DEFAULT '09:00:00',
-    business_hours_close TIME DEFAULT '21:00:00',
-    allow_negative_stock TINYINT(1) DEFAULT 0,
-    discount_requires_approval TINYINT(1) DEFAULT 0,
-    max_cashier_discount DECIMAL(5,2) DEFAULT 50.00,
-    session_timeout_minutes INT DEFAULT 480,
-    receipt_show_store_name TINYINT(1) DEFAULT 1,
-    receipt_show_address TINYINT(1) DEFAULT 1,
-    receipt_show_phone TINYINT(1) DEFAULT 1,
-    receipt_show_tax TINYINT(1) DEFAULT 1,
-    receipt_paper_width ENUM('58mm','80mm') DEFAULT '80mm',
-    printer_type ENUM('none','network','usb') DEFAULT 'none',
-    printer_ip VARCHAR(100) DEFAULT NULL,
-    printer_port INT DEFAULT 9100,
-    printer_name VARCHAR(255) DEFAULT NULL,
-    printer_paper_width INT DEFAULT 80,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
-INSERT IGNORE INTO store_settings (setting_id, store_name, receipt_footer)
-VALUES (1, 'AByte POS Store', 'Thank you for shopping with us!');
-
--- Printers (multi-printer support)
-CREATE TABLE IF NOT EXISTS printers (
-    printer_id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(255) NOT NULL,
-    type ENUM('network','usb') NOT NULL,
-    ip_address VARCHAR(100) DEFAULT NULL,
-    port INT DEFAULT 9100,
-    printer_share_name VARCHAR(255) DEFAULT NULL,
-    paper_width INT DEFAULT 80,
-    purpose VARCHAR(50) NOT NULL DEFAULT 'receipt',
-    is_active TINYINT(1) DEFAULT 1,
+-- Attendance
+CREATE TABLE IF NOT EXISTS attendance (
+    attendance_id INT PRIMARY KEY AUTO_INCREMENT,
+    staff_id INT NOT NULL,
+    attendance_date DATE NOT NULL,
+    check_in TIME,
+    check_out TIME,
+    status ENUM('present', 'absent', 'half_day', 'leave', 'holiday') DEFAULT 'present',
+    notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_attendance (staff_id, attendance_date),
+    INDEX idx_attendance_date (attendance_date),
+    INDEX idx_attendance_staff (staff_id)
 );
 
--- Backups
-CREATE TABLE IF NOT EXISTS backups (
-    backup_id INT PRIMARY KEY AUTO_INCREMENT,
-    filename VARCHAR(255) NOT NULL,
-    file_size BIGINT,
-    created_by INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    type ENUM('manual', 'scheduled') DEFAULT 'manual',
-    status ENUM('completed', 'failed') DEFAULT 'completed',
-    FOREIGN KEY (created_by) REFERENCES users(user_id)
-);
-
-
--- Expenses
-CREATE TABLE IF NOT EXISTS expenses (
-    expense_id INT PRIMARY KEY AUTO_INCREMENT,
-    title VARCHAR(100) NOT NULL,
+-- Salary Payments
+CREATE TABLE IF NOT EXISTS salary_payments (
+    payment_id INT PRIMARY KEY AUTO_INCREMENT,
+    staff_id INT NOT NULL,
+    payment_date DATE NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
-    category VARCHAR(50),
-    expense_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    description TEXT,
-    user_id INT,
-    FOREIGN KEY (user_id) REFERENCES users(user_id),
-    INDEX idx_expense_date (expense_date),
-    INDEX idx_expense_category (category)
-);
-
--- Audit Logs
-CREATE TABLE IF NOT EXISTS audit_logs (
-    log_id INT PRIMARY KEY AUTO_INCREMENT,
-    action VARCHAR(100) NOT NULL,
-    entity_type VARCHAR(50),
-    entity_id INT,
-    user_id INT,
-    user_name VARCHAR(100),
-    details TEXT,
-    ip_address VARCHAR(45),
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    deductions DECIMAL(10, 2) DEFAULT 0.00,
+    bonuses DECIMAL(10, 2) DEFAULT 0.00,
+    net_amount DECIMAL(10, 2) NOT NULL,
+    payment_method ENUM('cash', 'bank_transfer', 'cheque') DEFAULT 'bank_transfer',
+    notes TEXT,
+    paid_by INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(user_id),
-    INDEX idx_audit_action (action),
-    INDEX idx_audit_entity (entity_type, entity_id),
-    INDEX idx_audit_created (created_at)
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
+    FOREIGN KEY (paid_by) REFERENCES users(user_id),
+    INDEX idx_payment_date (payment_date),
+    INDEX idx_payment_staff (staff_id)
 );
 
 -- ============================================================
 -- ACCOUNTING MODULE
 -- ============================================================
 
--- Account Groups (asset, liability, equity, revenue, expense)
-CREATE TABLE IF NOT EXISTS account_groups (
-    group_id INT PRIMARY KEY AUTO_INCREMENT,
-    group_name VARCHAR(100) NOT NULL,
-    group_type ENUM('asset','liability','equity','revenue','expense') NOT NULL,
-    description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_group_type (group_type)
-);
-
-INSERT IGNORE INTO account_groups (group_id, group_name, group_type, description) VALUES
-(1, 'Current Assets', 'asset', 'Cash, inventory, accounts receivable'),
-(2, 'Fixed Assets', 'asset', 'Property, equipment, vehicles'),
-(3, 'Current Liabilities', 'liability', 'Accounts payable, short-term loans'),
-(4, 'Long-term Liabilities', 'liability', 'Long-term loans, mortgages'),
-(5, 'Equity', 'equity', 'Owner equity, retained earnings'),
-(6, 'Sales Revenue', 'revenue', 'Product and service sales'),
-(7, 'Other Revenue', 'revenue', 'Interest, gains'),
-(8, 'Cost of Goods Sold', 'expense', 'Direct costs'),
-(9, 'Operating Expenses', 'expense', 'Salaries, rent, utilities'),
-(10, 'Other Expenses', 'expense', 'Interest, losses');
-
--- Chart of Accounts
-CREATE TABLE IF NOT EXISTS accounts (
-    account_id INT PRIMARY KEY AUTO_INCREMENT,
-    account_code VARCHAR(20) NOT NULL UNIQUE,
-    account_name VARCHAR(200) NOT NULL,
-    group_id INT NOT NULL,
-    parent_account_id INT NULL,
-    account_type ENUM('asset','liability','equity','revenue','expense') NOT NULL,
-    is_active TINYINT(1) DEFAULT 1,
-    opening_balance DECIMAL(15,2) DEFAULT 0,
-    current_balance DECIMAL(15,2) DEFAULT 0,
-    description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (group_id) REFERENCES account_groups(group_id),
-    FOREIGN KEY (parent_account_id) REFERENCES accounts(account_id) ON DELETE SET NULL,
-    INDEX idx_account_code (account_code),
-    INDEX idx_account_type (account_type),
-    INDEX idx_active (is_active)
-);
-
-INSERT IGNORE INTO accounts (account_code, account_name, group_id, account_type, opening_balance) VALUES
-('1001', 'Cash in Hand', 1, 'asset', 0),
-('1002', 'Cash at Bank', 1, 'asset', 0),
-('1003', 'Accounts Receivable', 1, 'asset', 0),
-('1004', 'Inventory', 1, 'asset', 0),
-('1101', 'Furniture & Fixtures', 2, 'asset', 0),
-('1102', 'Equipment', 2, 'asset', 0),
-('2001', 'Accounts Payable', 3, 'liability', 0),
-('2002', 'Short-term Loans', 3, 'liability', 0),
-('3001', 'Owner Capital', 5, 'equity', 0),
-('3002', 'Retained Earnings', 5, 'equity', 0),
-('4001', 'Product Sales', 6, 'revenue', 0),
-('4002', 'Service Revenue', 6, 'revenue', 0),
-('5001', 'Cost of Goods Sold', 8, 'expense', 0),
-('6001', 'Salaries Expense', 9, 'expense', 0),
-('6002', 'Rent Expense', 9, 'expense', 0),
-('6003', 'Utilities Expense', 9, 'expense', 0),
-('6004', 'Office Supplies', 9, 'expense', 0);
-
--- Journal Entries (double-entry accounting)
+-- Journal Entries
 CREATE TABLE IF NOT EXISTS journal_entries (
     entry_id INT PRIMARY KEY AUTO_INCREMENT,
     entry_number VARCHAR(50) NOT NULL UNIQUE,
@@ -543,31 +619,290 @@ CREATE TABLE IF NOT EXISTS receipt_vouchers (
 );
 
 -- ============================================================
--- LEVEL 3: Depends on Level 2
+-- INVENTORY MODULE
 -- ============================================================
 
--- Customer Addresses (multiple addresses per customer)
-CREATE TABLE IF NOT EXISTS customer_addresses (
-    address_id INT PRIMARY KEY AUTO_INCREMENT,
-    customer_id INT NOT NULL,
-    address_text TEXT NOT NULL,
-    label VARCHAR(50) DEFAULT 'Default',
-    is_default TINYINT(1) DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE,
-    INDEX idx_address_customer (customer_id)
-);
-
--- Inventory
+-- Inventory (global stock + avg cost)
 CREATE TABLE IF NOT EXISTS inventory (
     inventory_id INT PRIMARY KEY AUTO_INCREMENT,
     product_id INT NOT NULL UNIQUE,
     available_stock INT NOT NULL DEFAULT 0,
+    avg_cost DECIMAL(15,4) NOT NULL DEFAULT 0,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
 
--- Product Variants (e.g. T-Shirt - Large/Red)
+-- Store Inventory (stock per store)
+CREATE TABLE IF NOT EXISTS store_inventory (
+    store_inventory_id INT PRIMARY KEY AUTO_INCREMENT,
+    store_id INT NOT NULL,
+    product_id INT NOT NULL,
+    available_stock INT NOT NULL DEFAULT 0,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (store_id) REFERENCES stores(store_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_store_product (store_id, product_id),
+    INDEX idx_store_inv_store (store_id),
+    INDEX idx_store_inv_product (product_id)
+);
+
+-- Stock Layers (FIFO cost tracking)
+CREATE TABLE IF NOT EXISTS stock_layers (
+    layer_id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT NOT NULL,
+    pv_id INT NULL,
+    source_type ENUM('purchase','opening','adjustment') NOT NULL DEFAULT 'purchase',
+    ref_date DATE NOT NULL,
+    qty_original DECIMAL(15,3) NOT NULL,
+    qty_remaining DECIMAL(15,3) NOT NULL,
+    unit_cost DECIMAL(15,4) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_sl_product (product_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE
+);
+
+-- Opening Stock Entries
+CREATE TABLE IF NOT EXISTS opening_stock_entries (
+    entry_id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT NOT NULL,
+    quantity DECIMAL(15,3) NOT NULL,
+    unit_cost DECIMAL(15,4) NOT NULL DEFAULT 0,
+    entry_date DATE NOT NULL,
+    notes VARCHAR(255),
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(user_id)
+);
+
+-- Stock Alerts
+CREATE TABLE IF NOT EXISTS stock_alerts (
+    alert_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    alert_type ENUM('low_stock', 'out_of_stock', 'overstock') NOT NULL,
+    threshold_value INT,
+    current_stock INT,
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMP NULL,
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    INDEX idx_alert_active (is_active),
+    INDEX idx_alert_product (product_id)
+);
+
+-- Stock Adjustments
+CREATE TABLE IF NOT EXISTS stock_adjustments (
+    adjustment_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    variant_id INT NULL,
+    store_id INT DEFAULT 1,
+    adjustment_type ENUM('addition','subtraction','correction','damage','theft','return','opening_stock','expired') NOT NULL,
+    quantity_before INT NOT NULL,
+    quantity_adjusted INT NOT NULL,
+    quantity_after INT NOT NULL,
+    reason TEXT,
+    reference_number VARCHAR(100),
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    FOREIGN KEY (store_id) REFERENCES stores(store_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    INDEX idx_adj_product (product_id),
+    INDEX idx_adj_type (adjustment_type),
+    INDEX idx_adj_date (created_at)
+);
+
+-- Stock Issues (issue stock to section)
+CREATE TABLE IF NOT EXISTS stock_issues (
+    issue_id INT PRIMARY KEY AUTO_INCREMENT,
+    issue_number VARCHAR(30) NOT NULL UNIQUE,
+    section_id INT NOT NULL,
+    issue_date DATE NOT NULL,
+    notes TEXT,
+    status ENUM('draft','issued') DEFAULT 'issued',
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (section_id) REFERENCES sections(section_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id)
+);
+
+-- Stock Issue Items
+CREATE TABLE IF NOT EXISTS stock_issue_items (
+    item_id INT PRIMARY KEY AUTO_INCREMENT,
+    issue_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity DECIMAL(10,3) NOT NULL,
+    unit_cost DECIMAL(10,2) DEFAULT 0,
+    FOREIGN KEY (issue_id) REFERENCES stock_issues(issue_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- Stock Issue Returns
+CREATE TABLE IF NOT EXISTS stock_issue_returns (
+    return_id INT PRIMARY KEY AUTO_INCREMENT,
+    return_number VARCHAR(30) NOT NULL UNIQUE,
+    section_id INT NOT NULL,
+    return_date DATE NOT NULL,
+    notes TEXT,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (section_id) REFERENCES sections(section_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id)
+);
+
+-- Stock Issue Return Items
+CREATE TABLE IF NOT EXISTS stock_issue_return_items (
+    item_id INT PRIMARY KEY AUTO_INCREMENT,
+    return_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity DECIMAL(10,3) NOT NULL,
+    FOREIGN KEY (return_id) REFERENCES stock_issue_returns(return_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- Stock Transfers (between stores)
+CREATE TABLE IF NOT EXISTS stock_transfers (
+    transfer_id INT PRIMARY KEY AUTO_INCREMENT,
+    from_store_id INT NOT NULL,
+    to_store_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    transfer_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('pending', 'completed', 'cancelled') DEFAULT 'pending',
+    notes TEXT,
+    created_by INT NOT NULL,
+    FOREIGN KEY (from_store_id) REFERENCES stores(store_id),
+    FOREIGN KEY (to_store_id) REFERENCES stores(store_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    INDEX idx_transfer_from (from_store_id),
+    INDEX idx_transfer_to (to_store_id),
+    INDEX idx_transfer_date (transfer_date)
+);
+
+-- Purchase Orders
+CREATE TABLE IF NOT EXISTS purchase_orders (
+    po_id INT PRIMARY KEY AUTO_INCREMENT,
+    po_number VARCHAR(50) NOT NULL UNIQUE,
+    supplier_id INT NOT NULL,
+    order_date DATE NOT NULL,
+    expected_date DATE,
+    received_date DATE,
+    status ENUM('draft', 'pending', 'received', 'cancelled') DEFAULT 'pending',
+    total_amount DECIMAL(15, 2) NOT NULL,
+    additional_charges DECIMAL(15, 2) DEFAULT 0,
+    notes TEXT,
+    created_by INT NOT NULL,
+    store_id INT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    FOREIGN KEY (store_id) REFERENCES stores(store_id),
+    INDEX idx_po_number (po_number),
+    INDEX idx_po_status (status),
+    INDEX idx_po_supplier (supplier_id),
+    INDEX idx_po_store (store_id)
+);
+
+-- Purchase Order Items
+CREATE TABLE IF NOT EXISTS purchase_order_items (
+    po_item_id INT PRIMARY KEY AUTO_INCREMENT,
+    po_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity_ordered INT NOT NULL,
+    quantity_received INT DEFAULT 0,
+    unit_cost DECIMAL(10, 2) NOT NULL,
+    total_cost DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (po_id) REFERENCES purchase_orders(po_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    INDEX idx_po_item_po (po_id),
+    INDEX idx_po_item_product (product_id)
+);
+
+-- Purchase Vouchers / GRN (Goods Received Notes)
+CREATE TABLE IF NOT EXISTS inv_purchase_vouchers (
+    pv_id INT PRIMARY KEY AUTO_INCREMENT,
+    pv_number VARCHAR(30) NOT NULL UNIQUE,
+    po_id INT,
+    supplier_id INT,
+    voucher_date DATE NOT NULL,
+    total_amount DECIMAL(15,2) DEFAULT 0,
+    discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+    discount_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+    tax_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+    tax_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+    notes TEXT,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (po_id) REFERENCES purchase_orders(po_id),
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id)
+);
+
+-- Purchase Voucher Items
+CREATE TABLE IF NOT EXISTS inv_purchase_voucher_items (
+    item_id INT PRIMARY KEY AUTO_INCREMENT,
+    pv_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity_received DECIMAL(10,3) NOT NULL,
+    unit_price DECIMAL(10,2) NOT NULL,
+    total_price DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (pv_id) REFERENCES inv_purchase_vouchers(pv_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- Purchase Returns (return to supplier)
+CREATE TABLE IF NOT EXISTS purchase_returns (
+    pr_id INT PRIMARY KEY AUTO_INCREMENT,
+    pr_number VARCHAR(30) NOT NULL UNIQUE,
+    pv_id INT,
+    supplier_id INT,
+    return_date DATE NOT NULL,
+    total_amount DECIMAL(15,2) DEFAULT 0,
+    notes TEXT,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (pv_id) REFERENCES inv_purchase_vouchers(pv_id),
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id)
+);
+
+-- Purchase Return Items
+CREATE TABLE IF NOT EXISTS purchase_return_items (
+    item_id INT PRIMARY KEY AUTO_INCREMENT,
+    pr_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity_returned DECIMAL(10,3) NOT NULL,
+    unit_price DECIMAL(10,2) NOT NULL,
+    total_price DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (pr_id) REFERENCES purchase_returns(pr_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- Supplier Payments
+CREATE TABLE IF NOT EXISTS supplier_payments (
+    payment_id INT PRIMARY KEY AUTO_INCREMENT,
+    supplier_id INT NOT NULL,
+    purchase_order_id INT,
+    amount DECIMAL(10, 2) NOT NULL,
+    payment_date DATE NOT NULL,
+    payment_method ENUM('cash', 'bank_transfer', 'cheque', 'credit') DEFAULT 'cash',
+    reference_number VARCHAR(100),
+    notes TEXT,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    INDEX idx_payment_date (payment_date),
+    INDEX idx_payment_supplier (supplier_id)
+);
+
+-- ============================================================
+-- SALES MODULE
+-- ============================================================
+
+-- Product Variants
 CREATE TABLE IF NOT EXISTS product_variants (
     variant_id INT PRIMARY KEY AUTO_INCREMENT,
     product_id INT NOT NULL,
@@ -582,7 +917,7 @@ CREATE TABLE IF NOT EXISTS product_variants (
     INDEX idx_product_variants_product_id (product_id)
 );
 
--- Product Bundles (combo deals)
+-- Product Bundles
 CREATE TABLE IF NOT EXISTS product_bundles (
     bundle_id INT PRIMARY KEY AUTO_INCREMENT,
     bundle_name VARCHAR(200) NOT NULL,
@@ -602,6 +937,7 @@ CREATE TABLE IF NOT EXISTS product_bundles (
 -- Sales
 CREATE TABLE IF NOT EXISTS sales (
     sale_id INT PRIMARY KEY AUTO_INCREMENT,
+    sub_total DECIMAL(10,2) DEFAULT 0,
     sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     total_amount DECIMAL(10, 2) NOT NULL,
     discount DECIMAL(10, 2) DEFAULT 0.00,
@@ -610,10 +946,8 @@ CREATE TABLE IF NOT EXISTS sales (
     net_amount DECIMAL(10, 2) NOT NULL,
     user_id INT NOT NULL,
     customer_id INT DEFAULT 1,
-    tax_rate DECIMAL(5, 2) DEFAULT 0.00,
     tax_amount DECIMAL(10, 2) DEFAULT 0.00,
     payment_method VARCHAR(50) DEFAULT 'Cash',
-    tax DECIMAL(10, 2) DEFAULT 0.00,
     status VARCHAR(20) DEFAULT 'completed',
     tax_percent DECIMAL(5, 2) DEFAULT 0.00,
     additional_charges_percent DECIMAL(5, 2) DEFAULT 0.00,
@@ -628,6 +962,88 @@ CREATE TABLE IF NOT EXISTS sales (
     INDEX idx_sale_status (status),
     INDEX idx_sale_payment_method (payment_method),
     INDEX idx_sale_date_status (sale_date, status)
+);
+
+-- Sale Details
+CREATE TABLE IF NOT EXISTS sale_details (
+    sale_detail_id INT PRIMARY KEY AUTO_INCREMENT,
+    sale_id INT NOT NULL,
+    product_id INT NOT NULL,
+    variant_id INT,
+    variant_name VARCHAR(200),
+    quantity INT NOT NULL,
+    unit_price DECIMAL(10, 2) NOT NULL,
+    discount DECIMAL(10,2) DEFAULT 0,
+    total_price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (sale_id) REFERENCES sales(sale_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    INDEX idx_sale_details_variant_id (variant_id)
+);
+
+-- Sale Bundles
+CREATE TABLE IF NOT EXISTS sale_bundles (
+    sale_bundle_id INT PRIMARY KEY AUTO_INCREMENT,
+    sale_id INT NOT NULL,
+    bundle_id INT NOT NULL,
+    bundle_name VARCHAR(200) NOT NULL,
+    discount_amount DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sale_id) REFERENCES sales(sale_id) ON DELETE CASCADE,
+    FOREIGN KEY (bundle_id) REFERENCES product_bundles(bundle_id),
+    INDEX idx_sale_bundles_sale_id (sale_id),
+    INDEX idx_sale_bundles_bundle_id (bundle_id)
+);
+
+-- Returns (customer returns)
+CREATE TABLE IF NOT EXISTS returns (
+    return_id INT PRIMARY KEY AUTO_INCREMENT,
+    sale_id INT NOT NULL,
+    return_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    refund_amount DECIMAL(10, 2) NOT NULL,
+    reason TEXT,
+    user_id INT,
+    FOREIGN KEY (sale_id) REFERENCES sales(sale_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    INDEX idx_return_date (return_date),
+    INDEX idx_return_sale (sale_id)
+);
+
+-- Return Details
+CREATE TABLE IF NOT EXISTS return_details (
+    return_detail_id INT PRIMARY KEY AUTO_INCREMENT,
+    return_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    refund_price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (return_id) REFERENCES returns(return_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- Raw Sales (direct raw material sales)
+CREATE TABLE IF NOT EXISTS raw_sales (
+    sale_id INT PRIMARY KEY AUTO_INCREMENT,
+    sale_number VARCHAR(30) NOT NULL UNIQUE,
+    section_id INT,
+    customer_name VARCHAR(100),
+    sale_date DATE NOT NULL,
+    total_amount DECIMAL(10,2) DEFAULT 0,
+    notes TEXT,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (section_id) REFERENCES sections(section_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id)
+);
+
+-- Raw Sale Items
+CREATE TABLE IF NOT EXISTS raw_sale_items (
+    item_id INT PRIMARY KEY AUTO_INCREMENT,
+    sale_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity DECIMAL(10,3) NOT NULL,
+    unit_price DECIMAL(10,2) NOT NULL,
+    total_price DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (sale_id) REFERENCES raw_sales(sale_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
 
 -- Cash Registers
@@ -652,227 +1068,6 @@ CREATE TABLE IF NOT EXISTS cash_registers (
     INDEX idx_register_status (status)
 );
 
--- Purchase Orders
-CREATE TABLE IF NOT EXISTS purchase_orders (
-    po_id INT PRIMARY KEY AUTO_INCREMENT,
-    po_number VARCHAR(50) NOT NULL UNIQUE,
-    supplier_id INT NOT NULL,
-    order_date DATE NOT NULL,
-    expected_date DATE,
-    received_date DATE,
-    status ENUM('draft', 'pending', 'received', 'cancelled') DEFAULT 'pending',
-    total_amount DECIMAL(15, 2) NOT NULL,
-    additional_charges DECIMAL(15, 2) DEFAULT 0,
-    notes TEXT,
-    created_by INT NOT NULL,
-    store_id INT DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id),
-    FOREIGN KEY (created_by) REFERENCES users(user_id),
-    INDEX idx_po_number (po_number),
-    INDEX idx_po_status (status),
-    INDEX idx_po_supplier (supplier_id),
-    INDEX idx_po_store (store_id)
-);
-
--- Attendance
-CREATE TABLE IF NOT EXISTS attendance (
-    attendance_id INT PRIMARY KEY AUTO_INCREMENT,
-    staff_id INT NOT NULL,
-    attendance_date DATE NOT NULL,
-    check_in TIME,
-    check_out TIME,
-    status ENUM('present', 'absent', 'half_day', 'leave', 'holiday') DEFAULT 'present',
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE,
-    UNIQUE KEY unique_attendance (staff_id, attendance_date),
-    INDEX idx_attendance_date (attendance_date),
-    INDEX idx_attendance_staff (staff_id)
-);
-
--- Salary Payments
-CREATE TABLE IF NOT EXISTS salary_payments (
-    payment_id INT PRIMARY KEY AUTO_INCREMENT,
-    staff_id INT NOT NULL,
-    payment_date DATE NOT NULL,
-    amount DECIMAL(10, 2) NOT NULL,
-    from_date DATE NOT NULL,
-    to_date DATE NOT NULL,
-    deductions DECIMAL(10, 2) DEFAULT 0.00,
-    bonuses DECIMAL(10, 2) DEFAULT 0.00,
-    net_amount DECIMAL(10, 2) NOT NULL,
-    payment_method ENUM('cash', 'bank_transfer', 'cheque') DEFAULT 'bank_transfer',
-    notes TEXT,
-    paid_by INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
-    FOREIGN KEY (paid_by) REFERENCES users(user_id),
-    INDEX idx_payment_date (payment_date),
-    INDEX idx_payment_staff (staff_id)
-);
-
--- Stock Alerts
-CREATE TABLE IF NOT EXISTS stock_alerts (
-    alert_id INT PRIMARY KEY AUTO_INCREMENT,
-    product_id INT NOT NULL,
-    alert_type ENUM('low_stock', 'out_of_stock', 'overstock') NOT NULL,
-    threshold_value INT,
-    current_stock INT,
-    is_active TINYINT(1) DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    resolved_at TIMESTAMP NULL,
-    FOREIGN KEY (product_id) REFERENCES products(product_id),
-    INDEX idx_alert_active (is_active),
-    INDEX idx_alert_product (product_id)
-);
-
--- Stock Adjustments (manual inventory corrections)
-CREATE TABLE IF NOT EXISTS stock_adjustments (
-    adjustment_id INT PRIMARY KEY AUTO_INCREMENT,
-    product_id INT NOT NULL,
-    variant_id INT NULL,
-    store_id INT DEFAULT 1,
-    adjustment_type ENUM('addition','subtraction','correction','damage','theft','return','opening_stock','expired') NOT NULL,
-    quantity_before INT NOT NULL,
-    quantity_adjusted INT NOT NULL,
-    quantity_after INT NOT NULL,
-    reason TEXT,
-    reference_number VARCHAR(100),
-    created_by INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (product_id) REFERENCES products(product_id),
-    FOREIGN KEY (created_by) REFERENCES users(user_id),
-    INDEX idx_adj_product (product_id),
-    INDEX idx_adj_type (adjustment_type),
-    INDEX idx_adj_date (created_at)
-);
-
--- Supplier Payments
-CREATE TABLE IF NOT EXISTS supplier_payments (
-    payment_id INT PRIMARY KEY AUTO_INCREMENT,
-    supplier_id INT NOT NULL,
-    purchase_order_id INT,
-    amount DECIMAL(10, 2) NOT NULL,
-    payment_date DATE NOT NULL,
-    payment_method ENUM('cash', 'bank_transfer', 'cheque', 'credit') DEFAULT 'cash',
-    reference_number VARCHAR(100),
-    notes TEXT,
-    created_by INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id),
-    FOREIGN KEY (created_by) REFERENCES users(user_id),
-    INDEX idx_payment_date (payment_date),
-    INDEX idx_payment_supplier (supplier_id)
-);
-
--- Store Inventory (stock per store for multi-store support)
-CREATE TABLE IF NOT EXISTS store_inventory (
-    store_inventory_id INT PRIMARY KEY AUTO_INCREMENT,
-    store_id INT NOT NULL,
-    product_id INT NOT NULL,
-    available_stock INT NOT NULL DEFAULT 0,
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (store_id) REFERENCES stores(store_id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
-    UNIQUE KEY unique_store_product (store_id, product_id),
-    INDEX idx_store_inv_store (store_id),
-    INDEX idx_store_inv_product (product_id)
-);
-
--- Returns
-CREATE TABLE IF NOT EXISTS returns (
-    return_id INT PRIMARY KEY AUTO_INCREMENT,
-    sale_id INT NOT NULL,
-    return_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    refund_amount DECIMAL(10, 2) NOT NULL,
-    reason TEXT,
-    user_id INT,
-    FOREIGN KEY (sale_id) REFERENCES sales(sale_id),
-    FOREIGN KEY (user_id) REFERENCES users(user_id),
-    INDEX idx_return_date (return_date),
-    INDEX idx_return_sale (sale_id)
-);
-
--- ============================================================
--- LEVEL 4: Depends on Level 3
--- ============================================================
-
--- Variant Combinations (links variants to type+value pairs)
-CREATE TABLE IF NOT EXISTS variant_combinations (
-    combination_id INT PRIMARY KEY AUTO_INCREMENT,
-    variant_id INT NOT NULL,
-    variant_value_id INT NOT NULL,
-    FOREIGN KEY (variant_id) REFERENCES product_variants(variant_id) ON DELETE CASCADE,
-    FOREIGN KEY (variant_value_id) REFERENCES variant_values(variant_value_id),
-    INDEX idx_variant_combinations_variant_id (variant_id)
-);
-
--- Variant Inventory (stock tracking per variant)
-CREATE TABLE IF NOT EXISTS variant_inventory (
-    variant_inventory_id INT PRIMARY KEY AUTO_INCREMENT,
-    variant_id INT NOT NULL UNIQUE,
-    available_stock INT NOT NULL DEFAULT 0,
-    FOREIGN KEY (variant_id) REFERENCES product_variants(variant_id) ON DELETE CASCADE
-);
-
--- Bundle Items (products in a bundle)
-CREATE TABLE IF NOT EXISTS bundle_items (
-    bundle_item_id INT PRIMARY KEY AUTO_INCREMENT,
-    bundle_id INT NOT NULL,
-    product_id INT NOT NULL,
-    variant_id INT,
-    quantity_required INT NOT NULL DEFAULT 1,
-    FOREIGN KEY (bundle_id) REFERENCES product_bundles(bundle_id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products(product_id),
-    FOREIGN KEY (variant_id) REFERENCES product_variants(variant_id) ON DELETE SET NULL,
-    INDEX idx_bundle_items_bundle_id (bundle_id),
-    INDEX idx_bundle_items_product_id (product_id)
-);
-
--- Sale Details
-CREATE TABLE IF NOT EXISTS sale_details (
-    sale_detail_id INT PRIMARY KEY AUTO_INCREMENT,
-    sale_id INT NOT NULL,
-    product_id INT NOT NULL,
-    variant_id INT,
-    variant_name VARCHAR(200),
-    quantity INT NOT NULL,
-    unit_price DECIMAL(10, 2) NOT NULL,
-    total_price DECIMAL(10, 2) NOT NULL,
-    FOREIGN KEY (sale_id) REFERENCES sales(sale_id),
-    FOREIGN KEY (product_id) REFERENCES products(product_id),
-    INDEX idx_sale_details_variant_id (variant_id)
-);
-
--- Sale Bundles (bundles applied to a sale)
-CREATE TABLE IF NOT EXISTS sale_bundles (
-    sale_bundle_id INT PRIMARY KEY AUTO_INCREMENT,
-    sale_id INT NOT NULL,
-    bundle_id INT NOT NULL,
-    bundle_name VARCHAR(200) NOT NULL,
-    discount_amount DECIMAL(10, 2) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sale_id) REFERENCES sales(sale_id) ON DELETE CASCADE,
-    FOREIGN KEY (bundle_id) REFERENCES product_bundles(bundle_id),
-    INDEX idx_sale_bundles_sale_id (sale_id),
-    INDEX idx_sale_bundles_bundle_id (bundle_id)
-);
-
-
--- Return Details
-CREATE TABLE IF NOT EXISTS return_details (
-    return_detail_id INT PRIMARY KEY AUTO_INCREMENT,
-    return_id INT NOT NULL,
-    product_id INT NOT NULL,
-    quantity INT NOT NULL,
-    refund_price DECIMAL(10, 2) NOT NULL,
-    FOREIGN KEY (return_id) REFERENCES returns(return_id),
-    FOREIGN KEY (product_id) REFERENCES products(product_id)
-);
-
 -- Cash Movements
 CREATE TABLE IF NOT EXISTS cash_movements (
     movement_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -885,45 +1080,6 @@ CREATE TABLE IF NOT EXISTS cash_movements (
     FOREIGN KEY (register_id) REFERENCES cash_registers(register_id),
     FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
-
--- Purchase Order Items
-CREATE TABLE IF NOT EXISTS purchase_order_items (
-    po_item_id INT PRIMARY KEY AUTO_INCREMENT,
-    po_id INT NOT NULL,
-    product_id INT NOT NULL,
-    quantity_ordered INT NOT NULL,
-    quantity_received INT DEFAULT 0,
-    unit_cost DECIMAL(10, 2) NOT NULL,
-    total_cost DECIMAL(10, 2) NOT NULL,
-    FOREIGN KEY (po_id) REFERENCES purchase_orders(po_id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products(product_id),
-    INDEX idx_po_item_po (po_id),
-    INDEX idx_po_item_product (product_id)
-);
-
--- Stock Transfers (between stores)
-CREATE TABLE IF NOT EXISTS stock_transfers (
-    transfer_id INT PRIMARY KEY AUTO_INCREMENT,
-    from_store_id INT NOT NULL,
-    to_store_id INT NOT NULL,
-    product_id INT NOT NULL,
-    quantity INT NOT NULL,
-    transfer_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('pending', 'completed', 'cancelled') DEFAULT 'pending',
-    notes TEXT,
-    created_by INT NOT NULL,
-    FOREIGN KEY (from_store_id) REFERENCES stores(store_id),
-    FOREIGN KEY (to_store_id) REFERENCES stores(store_id),
-    FOREIGN KEY (product_id) REFERENCES products(product_id),
-    FOREIGN KEY (created_by) REFERENCES users(user_id),
-    INDEX idx_transfer_from (from_store_id),
-    INDEX idx_transfer_to (to_store_id),
-    INDEX idx_transfer_date (transfer_date)
-);
-
--- ============================================================
--- SALES MODULE EXTENSION TABLES
--- ============================================================
 
 -- Quotations
 CREATE TABLE IF NOT EXISTS quotations (
@@ -1017,7 +1173,7 @@ CREATE TABLE IF NOT EXISTS price_rules (
     INDEX idx_pr_type (rule_type)
 );
 
--- Price Rule Products (which products/categories a rule applies to)
+-- Price Rule Products
 CREATE TABLE IF NOT EXISTS price_rule_products (
     id INT PRIMARY KEY AUTO_INCREMENT,
     rule_id INT NOT NULL,
@@ -1070,32 +1226,81 @@ CREATE TABLE IF NOT EXISTS target_achievements (
     UNIQUE KEY unique_target_date (target_id, achievement_date)
 );
 
--- Deliveries / Shipping
+-- Deliveries
 CREATE TABLE IF NOT EXISTS deliveries (
-    delivery_id       INT PRIMARY KEY AUTO_INCREMENT,
-    delivery_number   VARCHAR(50)  NOT NULL UNIQUE,
-    sale_id           INT          NULL,
-    customer_id       INT          NOT NULL,
-    delivery_address  TEXT         NOT NULL,
-    delivery_city     VARCHAR(100) DEFAULT '',
-    delivery_phone    VARCHAR(20)  DEFAULT '',
-    rider_name        VARCHAR(100) DEFAULT '',
-    rider_phone       VARCHAR(20)  DEFAULT '',
-    status            ENUM('pending','assigned','dispatched','in_transit','delivered','failed','cancelled')
-                      NOT NULL DEFAULT 'pending',
-    delivery_charges  DECIMAL(10,2) DEFAULT 0,
-    estimated_delivery DATE         NULL,
-    actual_delivery   TIMESTAMP    NULL,
-    notes             TEXT,
-    created_by        INT          NULL,
-    created_at        TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-    updated_at        TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (sale_id)     REFERENCES sales(sale_id) ON DELETE SET NULL,
+    delivery_id INT PRIMARY KEY AUTO_INCREMENT,
+    delivery_number VARCHAR(50) NOT NULL UNIQUE,
+    sale_id INT NULL,
+    customer_id INT NOT NULL,
+    delivery_address TEXT NOT NULL,
+    delivery_city VARCHAR(100) DEFAULT '',
+    delivery_phone VARCHAR(20) DEFAULT '',
+    rider_name VARCHAR(100) DEFAULT '',
+    rider_phone VARCHAR(20) DEFAULT '',
+    status ENUM('pending','assigned','dispatched','in_transit','delivered','failed','cancelled') NOT NULL DEFAULT 'pending',
+    delivery_charges DECIMAL(10,2) DEFAULT 0,
+    estimated_delivery DATE NULL,
+    actual_delivery TIMESTAMP NULL,
+    notes TEXT,
+    created_by INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (sale_id) REFERENCES sales(sale_id) ON DELETE SET NULL,
     FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
-    FOREIGN KEY (created_by)  REFERENCES users(user_id) ON DELETE SET NULL,
-    INDEX idx_del_status   (status),
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_del_status (status),
     INDEX idx_del_customer (customer_id),
-    INDEX idx_del_number   (delivery_number),
-    INDEX idx_del_date     (created_at)
+    INDEX idx_del_number (delivery_number),
+    INDEX idx_del_date (created_at)
 );
 
+-- ============================================================
+-- VARIANT & BUNDLE TABLES
+-- ============================================================
+
+-- Variant Combinations
+CREATE TABLE IF NOT EXISTS variant_combinations (
+    combination_id INT PRIMARY KEY AUTO_INCREMENT,
+    variant_id INT NOT NULL,
+    variant_value_id INT NOT NULL,
+    FOREIGN KEY (variant_id) REFERENCES product_variants(variant_id) ON DELETE CASCADE,
+    FOREIGN KEY (variant_value_id) REFERENCES variant_values(variant_value_id),
+    INDEX idx_variant_combinations_variant_id (variant_id)
+);
+
+-- Variant Inventory
+CREATE TABLE IF NOT EXISTS variant_inventory (
+    variant_inventory_id INT PRIMARY KEY AUTO_INCREMENT,
+    variant_id INT NOT NULL UNIQUE,
+    available_stock INT NOT NULL DEFAULT 0,
+    FOREIGN KEY (variant_id) REFERENCES product_variants(variant_id) ON DELETE CASCADE
+);
+
+-- Bundle Items
+CREATE TABLE IF NOT EXISTS bundle_items (
+    bundle_item_id INT PRIMARY KEY AUTO_INCREMENT,
+    bundle_id INT NOT NULL,
+    product_id INT NOT NULL,
+    variant_id INT,
+    quantity_required INT NOT NULL DEFAULT 1,
+    FOREIGN KEY (bundle_id) REFERENCES product_bundles(bundle_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    FOREIGN KEY (variant_id) REFERENCES product_variants(variant_id) ON DELETE SET NULL,
+    INDEX idx_bundle_items_bundle_id (bundle_id),
+    INDEX idx_bundle_items_product_id (product_id)
+);
+
+-- Printers (multi-printer)
+CREATE TABLE IF NOT EXISTS printers (
+    printer_id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    type ENUM('network','usb') NOT NULL,
+    ip_address VARCHAR(100) DEFAULT NULL,
+    port INT DEFAULT 9100,
+    printer_share_name VARCHAR(255) DEFAULT NULL,
+    paper_width INT DEFAULT 80,
+    purpose VARCHAR(50) NOT NULL DEFAULT 'receipt',
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
