@@ -1,2 +1,0 @@
-Sale Module main Done Orders main Table Responsive ni aaa raha View Thik Kro isko 
-Or By Default Date TOday main honi Chaye or Shift Wise Sale Honi Chaye Yani Agr Shift aik Din main 2 open hui hain to Current open Shift ki Sale show honi Chaye or Agr Close hai last Closed ki By Desfult Sale Show honi Chaye Sb main 

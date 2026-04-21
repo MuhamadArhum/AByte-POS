@@ -115,7 +115,11 @@
       "Bash(git add *)",
       "Bash(npm install *)",
       "Bash(npx tailwindcss *)",
-      "PowerShell(Move-Item *)"
+      "PowerShell(Move-Item *)",
+      "Bash(> D:/AByte-POS/main-app/backend/logs/combined.log)",
+      "Bash(> D:/AByte-POS/main-app/backend/logs/error.log)",
+      "Bash(> D:/AByte-POS/main-app/backend/logs/server.log)",
+      "Bash(> D:/AByte-POS/main-app/backend/logs/server_err.log)"
     ]
   }
 }
