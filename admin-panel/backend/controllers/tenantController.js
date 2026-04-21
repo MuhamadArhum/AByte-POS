@@ -23,7 +23,7 @@ exports.getAll = async (req, res) => {
 
     const result = await Promise.all(tenants.map(async (t) => {
       try {
-        const [users] = await tenantQuery(t.db_name, `USE \`${t.db_name}\`; SELECT COUNT(*) as cnt FROM users`);
+        const [users] = await tenantQuery(t.db_name, `SELECT COUNT(*) as cnt FROM \`${t.db_name}\`.users`);
         const [sales] = await tenantQuery(t.db_name, `SELECT COUNT(*) as cnt FROM \`${t.db_name}\`.sales`);
         return { ...t, stats: { users: users?.cnt || 0, sales: sales?.cnt || 0 } };
       } catch {
@@ -170,17 +170,6 @@ exports.update = async (req, res) => {
     res.json({ message: 'Client updated' });
   } catch (err) {
     logger.error('Update tenant error', { error: err.message });
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-// DELETE /api/tenants/:id — Deactivate
-exports.remove = async (req, res) => {
-  try {
-    await query('UPDATE tenants SET is_active = 0 WHERE tenant_id = ?', [req.params.id]);
-    res.json({ message: 'Client deactivated' });
-  } catch (err) {
-    logger.error('Remove tenant error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };

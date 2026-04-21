@@ -50,3 +50,19 @@ exports.login = async (req, res) => {
 exports.me = async (req, res) => {
   res.json({ admin: req.admin });
 };
+
+// POST /api/auth/change-password
+exports.changePassword = async (req, res) => {
+  try {
+    const { new_password } = req.body;
+    if (!new_password || new_password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+    const hash = await bcrypt.hash(new_password, 10);
+    await query('UPDATE super_admins SET password_hash = ? WHERE admin_id = ?', [hash, req.admin.admin_id]);
+    res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    logger.error('Change password error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
