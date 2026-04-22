@@ -119,7 +119,8 @@
       "Bash(> D:/AByte-POS/main-app/backend/logs/combined.log)",
       "Bash(> D:/AByte-POS/main-app/backend/logs/error.log)",
       "Bash(> D:/AByte-POS/main-app/backend/logs/server.log)",
-      "Bash(> D:/AByte-POS/main-app/backend/logs/server_err.log)"
+      "Bash(> D:/AByte-POS/main-app/backend/logs/server_err.log)",
+      "Bash(git push *)"
     ]
   }
 }
