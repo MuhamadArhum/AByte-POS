@@ -5,14 +5,14 @@
 
 set -e
 
-PROJECT_DIR="/var/www/abyte-pos/admin-panel"
+PROJECT_DIR="/var/www/AByte-POS/admin-panel"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 BACKEND_DIR="$PROJECT_DIR/backend"
 
 echo ">>> Deploying AByte Admin Panel..."
 
 # ── 1. Pull latest code ───────────────────────────────────────────────────────
-cd /var/www/abyte-pos
+cd /var/www/AByte-POS
 git pull origin main
 echo "✓ Code updated"
 

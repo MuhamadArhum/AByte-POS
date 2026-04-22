@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'abyte-admin-api',
       script: './backend/server.js',
-      cwd: '/var/www/abyte-pos/admin-panel',
+      cwd: '/var/www/AByte-POS/admin-panel',
       env_production: {
         NODE_ENV: 'production',
       },

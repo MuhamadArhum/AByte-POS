@@ -4,14 +4,14 @@
 
 set -e
 
-PROJECT_DIR="/var/www/abyte-pos/main-app"
+PROJECT_DIR="/var/www/AByte-POS/main-app"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 BACKEND_DIR="$PROJECT_DIR/backend"
 
 echo ">>> Deploying AByte Main App..."
 
 # ── 1. Pull latest code ───────────────────────────────────────────────────────
-cd /var/www/abyte-pos
+cd /var/www/AByte-POS
 git pull origin main
 echo "✓ Code updated"
 
