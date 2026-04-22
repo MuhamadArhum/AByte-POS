@@ -4,7 +4,6 @@ node_modules/
 
 # Main App
 main-app/backend/node_modules/
-main-app/backend/.env.production
 main-app/backend/logs/
 main-app/backend/backups/
 main-app/frontend/node_modules/
@@ -13,7 +12,6 @@ main-app/frontend/tsconfig.tsbuildinfo
 
 # Admin Panel
 admin-panel/backend/node_modules/
-admin-panel/backend/.env.production
 admin-panel/backend/logs/
 admin-panel/frontend/node_modules/
 admin-panel/frontend/dist/
