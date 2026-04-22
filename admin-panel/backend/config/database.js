@@ -1,5 +1,8 @@
 const mariadb = require('mariadb');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({
+  path: path.join(__dirname, '..', process.env.NODE_ENV === 'production' ? '.env.production' : '.env'),
+});
 
 const MASTER_DB = process.env.MASTER_DB || 'abyte_master';
 
