@@ -29,11 +29,17 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('permissions');
-      localStorage.removeItem('tenantConfig');
-      window.location.href = '/login';
+      const requestUrl = error.config?.url || '';
+      const isAuthEndpoint = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/logout');
+      const onLoginPage = window.location.pathname === '/login';
+
+      if (!isAuthEndpoint && !onLoginPage) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('permissions');
+        localStorage.removeItem('tenantConfig');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
