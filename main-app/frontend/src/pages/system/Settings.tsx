@@ -128,7 +128,39 @@ const Settings = () => {
   const [testingPrinterId, setTestingPrinterId] = useState<number | null>(null);
   const [printerTestResults, setPrinterTestResults] = useState<Record<number, { success: boolean; message: string }>>({});
   const [qzStatus, setQzStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
+  const [agentStatus, setAgentStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
+  const [agentInfo, setAgentInfo] = useState<any>(null);
+  const [testingAgent, setTestingAgent] = useState(false);
   const isDeployed = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+
+  const checkAgentStatus = async () => {
+    setAgentStatus('checking');
+    try {
+      const res = await fetch('http://localhost:3001/health', { signal: AbortSignal.timeout(2000) });
+      if (res.ok) {
+        const data = await res.json();
+        setAgentInfo(data);
+        setAgentStatus('available');
+      } else {
+        setAgentStatus('unavailable');
+      }
+    } catch {
+      setAgentStatus('unavailable');
+    }
+  };
+
+  const handleTestAgent = async () => {
+    setTestingAgent(true);
+    try {
+      const res = await fetch('http://localhost:3001/test', { method: 'POST', signal: AbortSignal.timeout(8000) });
+      if (res.ok) toast.success('Test print sent! Check your printer.');
+      else { const e = await res.json().catch(() => ({})); toast.error('Test failed: ' + (e.error || 'Unknown error')); }
+    } catch (e: any) {
+      toast.error('Agent not reachable: ' + e.message);
+    } finally {
+      setTestingAgent(false);
+    }
+  };
 
   useEffect(() => {
     fetchSettings();
@@ -143,6 +175,7 @@ const Settings = () => {
     if (activeTab === 'printer') {
       setQzStatus('checking');
       isQZAvailable().then(ok => setQzStatus(ok ? 'available' : 'unavailable'));
+      checkAgentStatus();
     }
   }, [activeTab]);
 
@@ -896,55 +929,81 @@ const Settings = () => {
           {activeTab === 'printer' && currentUser?.role_name === 'Admin' && (
             <div className="space-y-6">
 
-              {/* ── QZ Tray Status Banner (deployed only) ── */}
-              {isDeployed && (
-                <div className={`rounded-xl border p-4 flex items-start gap-3 ${
-                  qzStatus === 'available'   ? 'bg-emerald-50 border-emerald-200' :
-                  qzStatus === 'unavailable' ? 'bg-amber-50 border-amber-200' :
-                                               'bg-gray-50 border-gray-200'
+              {/* ── Printer Bridge Status ── */}
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Print Bridge Status (This PC)</p>
+
+                {/* Local Printer Agent — RECOMMENDED */}
+                <div className={`rounded-xl border-2 p-4 flex items-start gap-3 transition ${
+                  agentStatus === 'available'   ? 'border-emerald-300 bg-emerald-50' :
+                  agentStatus === 'unavailable' ? 'border-red-200 bg-red-50' :
+                                                  'border-gray-200 bg-gray-50'
                 }`}>
-                  {qzStatus === 'checking' && <Loader2 size={18} className="animate-spin text-gray-400 mt-0.5 shrink-0" />}
-                  {qzStatus === 'available' && <CheckCircle size={18} className="text-emerald-600 mt-0.5 shrink-0" />}
-                  {qzStatus === 'unavailable' && <AlertTriangle size={18} className="text-amber-600 mt-0.5 shrink-0" />}
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                    agentStatus === 'available' ? 'bg-emerald-100' : agentStatus === 'unavailable' ? 'bg-red-100' : 'bg-gray-100'
+                  }`}>
+                    {agentStatus === 'checking'   && <Loader2 size={18} className="animate-spin text-gray-400" />}
+                    {agentStatus === 'available'   && <CheckCircle size={18} className="text-emerald-600" />}
+                    {agentStatus === 'unavailable' && <XCircle size={18} className="text-red-500" />}
+                  </div>
                   <div className="flex-1">
-                    {qzStatus === 'checking' && (
-                      <p className="text-sm text-gray-600 font-medium">Checking QZ Tray status...</p>
-                    )}
-                    {qzStatus === 'available' && (
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-gray-800">AByte Printer Agent</p>
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">RECOMMENDED</span>
+                    </div>
+                    {agentStatus === 'checking' && <p className="text-xs text-gray-500 mt-1">Checking localhost:3001...</p>}
+                    {agentStatus === 'available' && (
                       <>
-                        <p className="text-sm font-semibold text-emerald-800">QZ Tray is running</p>
-                        <p className="text-xs text-emerald-700 mt-0.5">Network printer will be accessed directly from your browser. No backend needed.</p>
+                        <p className="text-xs text-emerald-700 mt-1 font-medium">
+                          Running — {agentInfo?.printer_type === 'network' ? `Network printer at ${agentInfo?.printer_target}` : agentInfo?.printer_target || 'Printer connected'}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <button onClick={handleTestAgent} disabled={testingAgent}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition disabled:opacity-60">
+                            {testingAgent ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
+                            Test Print
+                          </button>
+                          <button onClick={checkAgentStatus} className="text-xs text-emerald-700 underline hover:no-underline">Re-check</button>
+                        </div>
                       </>
                     )}
-                    {qzStatus === 'unavailable' && (
+                    {agentStatus === 'unavailable' && (
                       <>
-                        <p className="text-sm font-semibold text-amber-800">QZ Tray not detected on this PC</p>
-                        <p className="text-xs text-amber-700 mt-1">
-                          Since this app is deployed on cloud, it cannot reach your local network printer directly.
-                          Install <strong>QZ Tray</strong> on each cashier PC to enable automatic thermal printing.
-                          Without it, printing will use the browser's print dialog instead.
-                        </p>
-                        <div className="flex items-center gap-3 mt-2">
-                          <a
-                            href="https://qz.io/download/"
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition"
-                          >
-                            Download QZ Tray
-                          </a>
-                          <button
-                            onClick={() => { setQzStatus('checking'); isQZAvailable().then(ok => setQzStatus(ok ? 'available' : 'unavailable')); }}
-                            className="text-xs text-amber-700 underline hover:no-underline"
-                          >
-                            Re-check
-                          </button>
+                        <p className="text-xs text-red-600 mt-1">Not running on this PC. Install the agent for reliable direct printing.</p>
+                        <div className="mt-2 p-3 bg-white rounded-lg border border-red-100 space-y-1.5">
+                          <p className="text-xs font-semibold text-gray-700">Setup steps:</p>
+                          <p className="text-xs text-gray-600">1. Copy <code className="bg-gray-100 px-1 rounded">printer-agent/</code> folder to this cashier PC</p>
+                          <p className="text-xs text-gray-600">2. Edit <code className="bg-gray-100 px-1 rounded">config.json</code> — set your printer IP or COM port</p>
+                          <p className="text-xs text-gray-600">3. Run <code className="bg-gray-100 px-1 rounded">install-service.bat</code> as Administrator</p>
+                          <p className="text-xs text-gray-500 italic">Agent starts automatically at Windows login — no user action needed.</p>
                         </div>
+                        <button onClick={checkAgentStatus} className="text-xs text-red-600 underline hover:no-underline mt-2 block">Re-check</button>
                       </>
                     )}
                   </div>
                 </div>
-              )}
+
+                {/* QZ Tray — legacy/fallback */}
+                <div className={`rounded-xl border p-3 flex items-center gap-3 ${
+                  qzStatus === 'available' ? 'border-sky-200 bg-sky-50' : 'border-gray-200 bg-gray-50'
+                }`}>
+                  {qzStatus === 'checking'    && <Loader2 size={16} className="animate-spin text-gray-400 shrink-0" />}
+                  {qzStatus === 'available'   && <CheckCircle size={16} className="text-sky-600 shrink-0" />}
+                  {qzStatus === 'unavailable' && <XCircle size={16} className="text-gray-400 shrink-0" />}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-semibold text-gray-700">QZ Tray (fallback)</p>
+                      {qzStatus === 'available' && <span className="text-xs text-sky-600 font-medium">Running</span>}
+                      {qzStatus === 'unavailable' && <span className="text-xs text-gray-400">Not detected</span>}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">Used only if Agent is not running. Has certificate issues on HTTPS.</p>
+                  </div>
+                  <button
+                    onClick={() => { setQzStatus('checking'); isQZAvailable().then(ok => setQzStatus(ok ? 'available' : 'unavailable')); }}
+                    className="text-xs text-gray-400 hover:text-gray-600 underline shrink-0"
+                  >Check</button>
+                </div>
+              </div>
 
               <div className="flex items-center justify-between">
                 <div>
