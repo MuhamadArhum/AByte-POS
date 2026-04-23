@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Users, ShoppingCart, Database, Clock,
-  CheckCircle, XCircle, User, Globe, Package, Building2
+  User, Globe, Package
 } from 'lucide-react';
 import api from '../api/axios';
 import EditModulesModal from '../components/EditModulesModal';
