@@ -1,9 +1,8 @@
 @echo off
-:: AByte Printer Agent — Windows Service Installer
-:: Run this as Administrator
+setlocal EnableDelayedExpansion
 
 echo ============================================
-echo  AByte Printer Agent — Service Installer
+echo  AByte Printer Agent - Service Installer
 echo ============================================
 echo.
 
@@ -15,69 +14,97 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+:: Get the folder where this bat file lives (no trailing backslash)
 set "AGENT_DIR=%~dp0"
-set "AGENT_EXE=%AGENT_DIR%dist\ABytePrinterAgent.exe"
-set "NODE_SCRIPT=%AGENT_DIR%agent.js"
+if "%AGENT_DIR:~-1%"=="\" set "AGENT_DIR=%AGENT_DIR:~0,-1%"
+
+set "AGENT_JS=%AGENT_DIR%\agent.js"
+set "AGENT_EXE=%AGENT_DIR%\dist\ABytePrinterAgent.exe"
 set "SERVICE_NAME=ABytePrinterAgent"
 
-:: Check if compiled exe exists, else use node
+echo Agent folder: %AGENT_DIR%
+echo.
+
+:: Decide what to run
 if exist "%AGENT_EXE%" (
-    set "RUN_CMD=%AGENT_EXE%"
-    echo Using compiled EXE: %AGENT_EXE%
+    set "RUN_TARGET=%AGENT_EXE%"
+    set "USE_NODE=0"
+    echo Using compiled EXE.
 ) else (
     where node >nul 2>&1
     if %errorlevel% neq 0 (
-        echo ERROR: Node.js not found and no compiled EXE.
-        echo Either install Node.js or run: npm run build-exe
+        echo ERROR: Node.js not found. Install Node.js from https://nodejs.org/
         pause
         exit /b 1
     )
-    set "RUN_CMD=node \"%NODE_SCRIPT%\""
-    echo Using Node.js: node %NODE_SCRIPT%
+    set "USE_NODE=1"
+    echo Using Node.js.
 )
 
-:: Remove existing service if present
-sc query "%SERVICE_NAME%" >nul 2>&1
-if %errorlevel% equ 0 (
-    echo Removing existing service...
-    sc stop "%SERVICE_NAME%" >nul 2>&1
-    sc delete "%SERVICE_NAME%" >nul 2>&1
-    timeout /t 2 /nobreak >nul
+:: Install npm deps if needed
+if not exist "%AGENT_DIR%\node_modules" (
+    echo Installing dependencies...
+    pushd "%AGENT_DIR%"
+    npm install --omit=dev
+    popd
 )
 
-:: Create Windows Task (auto-start at login, no service manager needed)
-echo Creating startup task...
-schtasks /create /tn "%SERVICE_NAME%" /tr "%RUN_CMD%" /sc ONLOGON /rl HIGHEST /f >nul 2>&1
-
+:: Remove old task if exists
+schtasks /query /tn "%SERVICE_NAME%" >nul 2>&1
 if %errorlevel% equ 0 (
-    echo ✓ Startup task created — agent will start automatically at login.
+    echo Removing old startup task...
+    schtasks /delete /tn "%SERVICE_NAME%" /f >nul 2>&1
+)
+
+:: Create startup task
+if "%USE_NODE%"=="1" (
+    :: Write a small launcher VBScript to avoid console window popup
+    set "LAUNCHER=%AGENT_DIR%\start-agent.vbs"
+    echo Set WShell = CreateObject("WScript.Shell") > "!LAUNCHER!"
+    echo WShell.Run "cmd /c node """ & "%AGENT_JS%" & """ > """ & "%AGENT_DIR%\agent.log" & """ 2>&1", 0, False >> "!LAUNCHER!"
+
+    schtasks /create /tn "%SERVICE_NAME%" /tr "wscript.exe \"%AGENT_DIR%\start-agent.vbs\"" /sc ONLOGON /rl HIGHEST /f >nul 2>&1
 ) else (
-    echo WARNING: Could not create startup task. You may need to start manually.
+    schtasks /create /tn "%SERVICE_NAME%" /tr "\"%AGENT_EXE%\"" /sc ONLOGON /rl HIGHEST /f >nul 2>&1
 )
 
-:: Start now
+if %errorlevel% equ 0 (
+    echo ✓ Startup task created.
+) else (
+    echo WARNING: Could not create startup task.
+)
+
+:: Kill any existing agent process
+taskkill /f /im node.exe /fi "WINDOWTITLE eq ABytePrinterAgent" >nul 2>&1
+
+:: Start agent now (hidden window)
 echo.
-echo Starting agent now...
-if exist "%AGENT_EXE%" (
-    start "" "%AGENT_EXE%"
+echo Starting agent...
+
+if "%USE_NODE%"=="1" (
+    pushd "%AGENT_DIR%"
+    start "ABytePrinterAgent" /min cmd /c "node agent.js > agent.log 2>&1"
+    popd
 ) else (
-    start "" cmd /k "node \"%NODE_SCRIPT%\""
+    start "" "%AGENT_EXE%"
 )
 
-timeout /t 2 /nobreak >nul
+:: Wait and verify
+timeout /t 3 /nobreak >nul
 
-:: Verify
-curl -s http://localhost:3001/health >nul 2>&1
+curl -s --max-time 3 http://localhost:3001/health >nul 2>&1
 if %errorlevel% equ 0 (
     echo ✓ Agent is running on http://localhost:3001
 ) else (
-    echo Agent started — check the console window for errors.
+    echo Agent starting... check agent.log if it does not respond.
+    echo Log file: %AGENT_DIR%\agent.log
 )
 
 echo.
 echo ============================================
-echo  Setup complete!
-echo  Config file: %APPDATA%\ABytePrinterAgent\config.json
-echo  To change printer: edit config.json and restart
+echo  Done!
+echo  Config: %AGENT_DIR%\config.json
+echo  Log:    %AGENT_DIR%\agent.log
 echo ============================================
+echo.
 pause
