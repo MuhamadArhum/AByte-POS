@@ -131,7 +131,7 @@ const Settings = () => {
   const [agentStatus, setAgentStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
   const [agentInfo, setAgentInfo] = useState<any>(null);
   const [testingAgent, setTestingAgent] = useState(false);
-  const isDeployed = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+
 
   const checkAgentStatus = async () => {
     setAgentStatus('checking');
