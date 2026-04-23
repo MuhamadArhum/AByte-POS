@@ -1,11 +1,12 @@
 import { type ReactNode, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, LogOut, Settings, ChevronRight, Menu, Zap, Activity } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, Settings, ChevronRight, Menu, Zap, Activity, TrendingUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const navItems = [
   { to: '/',         label: 'Dashboard', icon: LayoutDashboard },
   { to: '/clients',  label: 'Clients',   icon: Users },
+  { to: '/revenue',  label: 'Revenue',   icon: TrendingUp },
   { to: '/activity', label: 'Activity',  icon: Activity },
   { to: '/settings', label: 'Settings',  icon: Settings },
 ];
@@ -13,6 +14,7 @@ const navItems = [
 const breadcrumbMap: Record<string, string> = {
   '/':         'Dashboard',
   '/clients':  'Clients',
+  '/revenue':  'Revenue',
   '/activity': 'Activity',
   '/settings': 'Settings',
 };
@@ -29,7 +31,8 @@ export default function Layout({ children }: { children: ReactNode }) {
     ? admin.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     : admin?.email?.[0]?.toUpperCase() ?? 'A';
 
-  const breadcrumb = breadcrumbMap[location.pathname] ?? 'Page';
+  const breadcrumb = breadcrumbMap[location.pathname]
+    ?? (location.pathname.startsWith('/clients/') ? 'Client Detail' : 'Page');
 
   const SidebarContent = () => (
     <>

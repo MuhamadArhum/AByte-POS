@@ -224,6 +224,123 @@ exports.getModules = async (_req, res) => {
   });
 };
 
+// GET /api/tenants/:id/details — Full client detail
+exports.getDetails = async (req, res) => {
+  try {
+    const rows = await query(`
+      SELECT t.*, tc.company_name, tc.modules_enabled, tc.currency_symbol
+      FROM tenants t
+      LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id
+      WHERE t.tenant_id = ?
+    `, [req.params.id]);
+
+    if (rows.length === 0) return res.status(404).json({ message: 'Client not found' });
+    const tenant = rows[0];
+    const db = tenant.db_name;
+
+    const safe = async (fn) => { try { return await fn(); } catch { return null; } };
+
+    const [userRows, salesRow, revenueRow, dbSizeRow, recentLogins] = await Promise.all([
+      safe(() => tenantQuery(db, `SELECT user_id, username, name, email, role_name, created_at FROM \`${db}\`.users ORDER BY created_at DESC`)),
+      safe(() => tenantQuery(db, `SELECT COUNT(*) as cnt FROM \`${db}\`.sales`)),
+      safe(() => tenantQuery(db, `SELECT COALESCE(SUM(net_amount),0) as total FROM \`${db}\`.sales WHERE status='completed'`)),
+      safe(() => tenantQuery(db, `SELECT ROUND(SUM(data_length+index_length)/1024/1024,2) as mb FROM information_schema.tables WHERE table_schema=?`, [db])),
+      safe(() => tenantQuery(db, `SELECT user_name, ip_address, created_at FROM \`${db}\`.audit_logs WHERE action='USER_LOGIN' ORDER BY created_at DESC LIMIT 10`)),
+    ]);
+
+    const mods = typeof tenant.modules_enabled === 'string'
+      ? JSON.parse(tenant.modules_enabled || '[]')
+      : (tenant.modules_enabled || []);
+
+    res.json({
+      tenant: { ...tenant, modules_enabled: mods },
+      users:        userRows || [],
+      sales_count:  salesRow?.[0]?.cnt || 0,
+      total_revenue: Number(revenueRow?.[0]?.total || 0),
+      db_size_mb:   Number(dbSizeRow?.[0]?.mb || 0),
+      recent_logins: recentLogins || [],
+      monthly_price: mods.reduce((s, m) => s + (MODULES[m]?.price || 0), 0),
+    });
+  } catch (err) {
+    logger.error('getDetails error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /api/tenants/revenue — Revenue dashboard data
+exports.getRevenue = async (req, res) => {
+  try {
+    const tenants = await query(`
+      SELECT t.tenant_id, t.tenant_code, t.is_active, t.created_at,
+             COALESCE(tc.company_name, t.tenant_name) AS display_name,
+             tc.modules_enabled
+      FROM tenants t
+      LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id
+      ORDER BY t.created_at ASC
+    `);
+
+    const getPrice = (mods) => mods.reduce((s, m) => s + (MODULES[m]?.price || 0), 0);
+    const parseMods = (m) => {
+      if (!m) return [];
+      if (Array.isArray(m)) return m;
+      try { return JSON.parse(m); } catch { return []; }
+    };
+
+    // Per-client breakdown
+    const clientBreakdown = tenants.map(t => {
+      const mods = parseMods(t.modules_enabled);
+      return {
+        tenant_id:    t.tenant_id,
+        display_name: t.display_name,
+        tenant_code:  t.tenant_code,
+        is_active:    t.is_active,
+        modules:      mods,
+        monthly_price: getPrice(mods),
+        joined_at:    t.created_at,
+      };
+    });
+
+    // Monthly MRR chart — last 12 months
+    const monthlyChart = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(1);
+      d.setMonth(d.getMonth() - i);
+      const label = d.toLocaleDateString('en-PK', { month: 'short', year: '2-digit' });
+      const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+
+      // MRR = sum of prices of all active tenants created before this month end
+      const mrr = tenants
+        .filter(t => t.is_active && new Date(t.created_at) <= monthEnd)
+        .reduce((s, t) => s + getPrice(parseMods(t.modules_enabled)), 0);
+
+      // New clients this month
+      const newClients = tenants.filter(t => {
+        const cd = new Date(t.created_at);
+        return cd.getMonth() === d.getMonth() && cd.getFullYear() === d.getFullYear();
+      }).length;
+
+      monthlyChart.push({ month: label, mrr, new_clients: newClients });
+    }
+
+    const activeTenants = tenants.filter(t => t.is_active);
+    const currentMrr   = activeTenants.reduce((s, t) => s + getPrice(parseMods(t.modules_enabled)), 0);
+
+    res.json({
+      current_mrr:      currentMrr,
+      annual_projection: currentMrr * 12,
+      active_clients:   activeTenants.length,
+      total_clients:    tenants.length,
+      avg_per_client:   activeTenants.length ? Math.round(currentMrr / activeTenants.length) : 0,
+      monthly_chart:    monthlyChart,
+      client_breakdown: clientBreakdown,
+    });
+  } catch (err) {
+    logger.error('getRevenue error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // GET /api/tenants/activity — Login activity summary for all tenants
 exports.getActivity = async (req, res) => {
   try {

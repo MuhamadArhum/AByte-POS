@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, Building2, AlertCircle } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, Building2, AlertCircle, Eye, Package } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import AddClientModal from '../components/AddClientModal';
 import ResetPasswordModal from '../components/ResetPasswordModal';
+import EditModulesModal from '../components/EditModulesModal';
 
 interface Tenant {
   tenant_id: number; tenant_code: string; tenant_name: string;
@@ -10,7 +12,8 @@ interface Tenant {
   company_name: string; db_name: string;
 }
 
-interface ResetTarget { id: number; name: string; }
+interface ResetTarget  { id: number; name: string; }
+interface ModuleTarget { id: number; name: string; modules: string[]; }
 
 const moduleStyles: Record<string, { bg: string; text: string; label: string }> = {
   sales:     { bg: 'bg-blue-50',   text: 'text-blue-600',   label: 'Sales' },
@@ -32,10 +35,12 @@ function SkeletonRow() {
 }
 
 export default function Clients() {
+  const navigate = useNavigate();
   const [clients, setClients]     = useState<Tenant[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [resetTarget, setResetTarget] = useState<ResetTarget | null>(null);
+  const [resetTarget, setResetTarget]   = useState<ResetTarget | null>(null);
+  const [moduleTarget, setModuleTarget] = useState<ModuleTarget | null>(null);
   const [search, setSearch]       = useState('');
   const [toggling, setToggling]   = useState<number | null>(null);
 
@@ -192,6 +197,20 @@ export default function Clients() {
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-1">
                             <button
+                              onClick={() => navigate(`/clients/${c.tenant_id}`)}
+                              title="View Details"
+                              className="p-2 rounded-xl hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition"
+                            >
+                              <Eye size={17} />
+                            </button>
+                            <button
+                              onClick={() => setModuleTarget({ id: c.tenant_id, name: c.company_name || c.tenant_name, modules: mods })}
+                              title="Manage Modules"
+                              className="p-2 rounded-xl hover:bg-purple-50 text-slate-400 hover:text-purple-600 transition"
+                            >
+                              <Package size={17} />
+                            </button>
+                            <button
                               onClick={() => toggleStatus(c.tenant_id, c.is_active)}
                               disabled={isToggling}
                               title={c.is_active ? 'Deactivate' : 'Activate'}
@@ -203,9 +222,7 @@ export default function Clients() {
                             >
                               {isToggling
                                 ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" />
-                                : c.is_active
-                                  ? <XCircle size={17} />
-                                  : <CheckCircle size={17} />
+                                : c.is_active ? <XCircle size={17} /> : <CheckCircle size={17} />
                               }
                             </button>
                             <button
@@ -250,6 +267,15 @@ export default function Clients() {
           tenantId={resetTarget.id}
           clientName={resetTarget.name}
           onClose={() => setResetTarget(null)}
+        />
+      )}
+
+      {moduleTarget && (
+        <EditModulesModal
+          tenantId={moduleTarget.id}
+          clientName={moduleTarget.name}
+          currentModules={moduleTarget.modules}
+          onClose={() => { setModuleTarget(null); load(); }}
         />
       )}
     </div>
