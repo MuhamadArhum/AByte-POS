@@ -62,14 +62,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [tenantConfig, setTenantConfig] = useState<TenantConfig | null>(null);
   const [isLoading,    setIsLoading]    = useState(true);
 
-  // Restore session from localStorage on app load
+  // Restore session from localStorage on app load, then refresh permissions from server
   useEffect(() => {
     const storedToken       = localStorage.getItem('token');
     const storedUser        = localStorage.getItem('user');
     const storedPermissions = localStorage.getItem('permissions');
     const storedConfig      = localStorage.getItem('tenantConfig');
+    const storedModules     = localStorage.getItem('modules');
 
-    const storedModules = localStorage.getItem('modules');
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
@@ -78,8 +78,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (storedConfig) {
         try { setTenantConfig(JSON.parse(storedConfig)); } catch {}
       }
+
+      // Silently refresh permissions from server so Access Control changes take effect immediately
+      const apiBase = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
+      fetch(`${apiBase}/auth/verify`, {
+        headers: { Authorization: `Bearer ${storedToken}` },
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.user) {
+            setUser(data.user);
+            setPermissions(data.permissions);
+            setModules(data.modules || []);
+            localStorage.setItem('user',        JSON.stringify(data.user));
+            localStorage.setItem('permissions', JSON.stringify(data.permissions));
+            localStorage.setItem('modules',     JSON.stringify(data.modules || []));
+          }
+        })
+        .catch(() => { /* silently ignore — cached data still works */ })
+        .finally(() => setIsLoading(false));
+    } else {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   const login = useCallback((newToken: string, newUser: User, newPermissions: string[] | null, newModules: string[] = []) => {
