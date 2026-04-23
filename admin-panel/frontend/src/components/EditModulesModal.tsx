@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Check, Loader2 } from 'lucide-react';
 import api from '../api/axios';
+import { useToast } from '../context/ToastContext';
 
 const ALL_MODULES = [
   { key: 'sales',     label: 'Sales',       desc: 'POS, invoices, returns',     price: 2250, color: 'border-blue-200 bg-blue-50',    check: 'bg-blue-600',   text: 'text-blue-700' },
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function EditModulesModal({ tenantId, clientName, currentModules, onClose }: Props) {
+  const { toast } = useToast();
   const [selected, setSelected] = useState<string[]>(currentModules);
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState('');
@@ -36,8 +38,9 @@ export default function EditModulesModal({ tenantId, clientName, currentModules,
     setSaving(true); setError('');
     try {
       await api.put(`/tenants/${tenantId}`, { modules: selected });
+      toast('success', `Modules updated for ${clientName}`);
       setSuccess(true);
-      setTimeout(onClose, 900);
+      setTimeout(onClose, 800);
     } catch (e: any) {
       setError(e.response?.data?.message || 'Failed to update modules.');
     } finally {

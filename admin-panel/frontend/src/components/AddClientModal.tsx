@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { X, AlertCircle, Eye, EyeOff, UserPlus } from 'lucide-react';
 import api from '../api/axios';
+import { useToast } from '../context/ToastContext';
 
 const MODULES = [
   { key: 'sales',     label: 'Sales',       price: 2250, icon: '🛒' },
@@ -12,6 +13,7 @@ const MODULES = [
 interface Props { onClose: () => void; }
 
 export default function AddClientModal({ onClose }: Props) {
+  const { toast } = useToast();
   const [form, setForm] = useState({
     tenant_code: '', tenant_name: '', company_name: '',
     admin_name: '', admin_email: '', admin_password: '',
@@ -38,6 +40,7 @@ export default function AddClientModal({ onClose }: Props) {
     setLoading(true);
     try {
       await api.post('/tenants', { ...form, modules: selectedModules });
+      toast('success', `Client "${form.company_name || form.tenant_name}" created successfully`);
       onClose();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create client');

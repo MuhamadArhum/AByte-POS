@@ -5,6 +5,7 @@ import api from '../api/axios';
 import AddClientModal from '../components/AddClientModal';
 import ResetPasswordModal from '../components/ResetPasswordModal';
 import EditModulesModal from '../components/EditModulesModal';
+import { useToast } from '../context/ToastContext';
 
 interface Tenant {
   tenant_id: number; tenant_code: string; tenant_name: string;
@@ -36,6 +37,7 @@ function SkeletonRow() {
 
 export default function Clients() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [clients, setClients]     = useState<Tenant[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -53,8 +55,13 @@ export default function Clients() {
 
   const toggleStatus = async (id: number, current: number) => {
     setToggling(id);
-    await api.put(`/tenants/${id}`, { is_active: current ? 0 : 1 });
-    await load();
+    try {
+      await api.put(`/tenants/${id}`, { is_active: current ? 0 : 1 });
+      toast('success', current ? 'Client deactivated' : 'Client activated');
+      await load();
+    } catch {
+      toast('error', 'Failed to update client status');
+    }
     setToggling(null);
   };
 

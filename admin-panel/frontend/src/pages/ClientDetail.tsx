@@ -77,7 +77,15 @@ export default function ClientDetail() {
   );
 
   if (!data) return (
-    <div className="p-6 text-center text-slate-400">Failed to load client data.</div>
+    <div className="p-6 flex flex-col items-center justify-center min-h-[40vh] gap-3">
+      <p className="text-slate-500 font-medium">Failed to load client data</p>
+      <button
+        onClick={load}
+        className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition"
+      >
+        Retry
+      </button>
+    </div>
   );
 
   const { tenant, users, sales_count, total_revenue, db_size_mb, recent_logins, monthly_price } = data;
