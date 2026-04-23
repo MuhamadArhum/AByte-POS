@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const backupController = require('../controllers/backupController');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 
 router.use(authenticate);
-router.use(authorize('Admin'));
+router.use(requirePermission('system.backup'));
 
 router.post('/', backupController.createBackup);
 router.get('/', backupController.listBackups);

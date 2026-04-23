@@ -1,51 +1,43 @@
 const express = require('express');
 const router = express.Router();
 const accountingController = require('../controllers/accountingController');
-const { authenticate, authorize } = require('../middleware/auth');
-const { requireModule }           = require('../middleware/moduleGuard');
+const { authenticate, requirePermission } = require('../middleware/auth');
+const { requireModule }                   = require('../middleware/moduleGuard');
 
 router.use(authenticate);
-router.use(requireModule('accounting')); // Professional+ plan required
+router.use(requireModule('accounting'));
 
-// Account Groups
 router.get('/account-groups', accountingController.getAccountGroups);
 
-// Chart of Accounts
 router.get('/accounts', accountingController.getAccounts);
 router.get('/accounts/next-code', accountingController.getNextCode);
 router.get('/accounts/:id', accountingController.getAccountById);
-router.post('/accounts', authorize('Admin', 'Manager'), accountingController.createAccount);
-router.put('/accounts/:id', authorize('Admin', 'Manager'), accountingController.updateAccount);
-router.delete('/accounts/:id', authorize('Admin'), accountingController.deleteAccount);
+router.post('/accounts', requirePermission('accounts.vouchers'), accountingController.createAccount);
+router.put('/accounts/:id', requirePermission('accounts.vouchers'), accountingController.updateAccount);
+router.delete('/accounts/:id', requirePermission('accounts.vouchers'), accountingController.deleteAccount);
 
-// Journal Entries
 router.get('/journal-entries', accountingController.getJournalEntries);
 router.get('/journal-entries/:id', accountingController.getJournalEntryById);
-router.post('/journal-entries', authorize('Admin', 'Manager'), accountingController.createJournalEntry);
-router.post('/journal-entries/:id/post', authorize('Admin', 'Manager'), accountingController.postJournalEntry);
-router.delete('/journal-entries/:id', authorize('Admin'), accountingController.deleteJournalEntry);
+router.post('/journal-entries', requirePermission('accounts.vouchers'), accountingController.createJournalEntry);
+router.post('/journal-entries/:id/post', requirePermission('accounts.vouchers'), accountingController.postJournalEntry);
+router.delete('/journal-entries/:id', requirePermission('accounts.vouchers'), accountingController.deleteJournalEntry);
 
-// General Ledger
 router.get('/general-ledger', accountingController.getGeneralLedger);
 
-// Bank Accounts
 router.get('/bank-accounts', accountingController.getBankAccounts);
 router.get('/bank-accounts/:id', accountingController.getBankAccountById);
-router.post('/bank-accounts', authorize('Admin', 'Manager'), accountingController.createBankAccount);
-router.put('/bank-accounts/:id', authorize('Admin', 'Manager'), accountingController.updateBankAccount);
-router.delete('/bank-accounts/:id', authorize('Admin'), accountingController.deleteBankAccount);
+router.post('/bank-accounts', requirePermission('accounts.vouchers'), accountingController.createBankAccount);
+router.put('/bank-accounts/:id', requirePermission('accounts.vouchers'), accountingController.updateBankAccount);
+router.delete('/bank-accounts/:id', requirePermission('accounts.vouchers'), accountingController.deleteBankAccount);
 
-// Payment Vouchers
 router.get('/payment-vouchers', accountingController.getPaymentVouchers);
-router.post('/payment-vouchers', authorize('Admin', 'Manager'), accountingController.createPaymentVoucher);
-router.delete('/payment-vouchers/:id', authorize('Admin'), accountingController.deletePaymentVoucher);
+router.post('/payment-vouchers', requirePermission('accounts.vouchers'), accountingController.createPaymentVoucher);
+router.delete('/payment-vouchers/:id', requirePermission('accounts.vouchers'), accountingController.deletePaymentVoucher);
 
-// Receipt Vouchers
 router.get('/receipt-vouchers', accountingController.getReceiptVouchers);
-router.post('/receipt-vouchers', authorize('Admin', 'Manager'), accountingController.createReceiptVoucher);
-router.delete('/receipt-vouchers/:id', authorize('Admin'), accountingController.deleteReceiptVoucher);
+router.post('/receipt-vouchers', requirePermission('accounts.vouchers'), accountingController.createReceiptVoucher);
+router.delete('/receipt-vouchers/:id', requirePermission('accounts.vouchers'), accountingController.deleteReceiptVoucher);
 
-// Reports
 router.get('/reports/trial-balance', accountingController.getTrialBalance);
 router.get('/reports/trial-balance-6col', accountingController.getTrialBalance6Col);
 router.get('/reports/profit-loss', accountingController.getProfitLoss);

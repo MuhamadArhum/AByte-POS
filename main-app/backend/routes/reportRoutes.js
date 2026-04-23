@@ -15,13 +15,10 @@
 const express = require('express');
 const router = express.Router();
 const reportController = require('../controllers/reportController');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 
-// Apply middleware to ALL report routes:
-// 1. authenticate - must be logged in
-// 2. authorize('Admin', 'Manager') - only Admin and Manager can view reports
 router.use(authenticate);
-router.use(authorize('Admin', 'Manager'));
+router.use(requirePermission('sales'));
 
 router.get('/dashboard', reportController.dashboardSummary);  // Combined dashboard stats (1 query)
 router.get('/daily', reportController.dailyReport);           // Today's sales summary

@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const ctrl = require('../controllers/purchaseVoucherController');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 
 router.use(authenticate);
 router.get('/',                         ctrl.getAll);
 router.get('/po-items/:po_id',          ctrl.getPOItems);
 router.get('/:id',                      ctrl.getById);
-router.post('/',                        authorize('Admin', 'Manager'), ctrl.create);
-router.put('/:id',                      authorize('Admin', 'Manager'), ctrl.update);
-router.delete('/:id',                   authorize('Admin'), ctrl.remove);
+router.post('/',                        requirePermission('inventory.suppliers'), ctrl.create);
+router.put('/:id',                      requirePermission('inventory.suppliers'), ctrl.update);
+router.delete('/:id',                   requirePermission('inventory.suppliers'), ctrl.remove);
 
 module.exports = router;

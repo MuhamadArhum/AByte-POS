@@ -1,15 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const storeController = require('../controllers/storeController');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 
 router.use(authenticate);
 
 router.get('/', storeController.getAll);
-router.post('/', authorize('Admin'), storeController.create);
-router.post('/transfer', authorize('Admin', 'Manager'), storeController.transferStock);
+router.post('/', requirePermission('system.stores'), storeController.create);
+router.post('/transfer', requirePermission('system.stores'), storeController.transferStock);
 router.get('/:id', storeController.getById);
-router.put('/:id', authorize('Admin'), storeController.update);
-router.delete('/:id', authorize('Admin'), storeController.deleteStore);
+router.put('/:id', requirePermission('system.stores'), storeController.update);
+router.delete('/:id', requirePermission('system.stores'), storeController.deleteStore);
 
 module.exports = router;

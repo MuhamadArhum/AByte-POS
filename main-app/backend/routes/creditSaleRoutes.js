@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/creditSaleController');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 
 router.use(authenticate);
 
@@ -10,7 +10,7 @@ router.get('/overdue', controller.getOverdue);
 router.get('/customer/:id/balance', controller.getCustomerBalance);
 router.get('/', controller.getAll);
 router.get('/:id', controller.getById);
-router.post('/', authorize('Admin', 'Manager'), controller.create);
-router.post('/:id/payment', authorize('Admin', 'Manager'), controller.recordPayment);
+router.post('/', requirePermission('sales'), controller.create);
+router.post('/:id/payment', requirePermission('sales'), controller.recordPayment);
 
 module.exports = router;

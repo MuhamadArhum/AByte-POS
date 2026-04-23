@@ -51,6 +51,7 @@ const authenticate = async (req, res, next) => {
 };
 
 // --- authorize ---
+// Hardcoded role check — kept for truly admin-only routes (user mgmt, tenant mgmt, system settings)
 const authorize = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role_name)) {
@@ -60,4 +61,24 @@ const authorize = (...roles) => {
   };
 };
 
-module.exports = { authenticate, authorize };
+// --- requirePermission ---
+// Dynamic permission check from role_permissions table.
+// Admin always passes. All other roles checked against DB.
+const requirePermission = (moduleKey) => async (req, res, next) => {
+  if (req.user.role_name === 'Admin') return next();
+  try {
+    const rows = await queryDb(
+      req.tenantDb,
+      'SELECT 1 FROM role_permissions WHERE role_name = ? AND module_key IN (?, ?) AND is_allowed = 1 LIMIT 1',
+      [req.user.role_name, moduleKey, moduleKey.split('.')[0]]
+    );
+    if (rows.length === 0) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    next();
+  } catch {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+};
+
+module.exports = { authenticate, authorize, requirePermission };

@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/inventoryReportController');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 
 router.use(authenticate);
-router.use(authorize('Admin', 'Manager'));
+router.use(requirePermission('inventory'));
 
 router.get('/summary', controller.getStockSummary);
 router.get('/top-products', controller.getTopProducts);

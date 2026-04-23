@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/salesReportController');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 
 router.use(authenticate);
-router.use(authorize('Admin', 'Manager'));
+router.use(requirePermission('sales'));
 
 router.get('/summary', controller.getSalesSummary);
 router.get('/hourly', controller.getHourlySales);
