@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 import Layout from './components/Layout';
 import PermissionGuard from './components/PermissionGuard';
 // Root Pages
@@ -233,6 +234,7 @@ function App() {
       </CartProvider>
       </ToastProvider>
       </SettingsProvider>
+      <PWAInstallPrompt />
     </AuthProvider>
   );
 }
