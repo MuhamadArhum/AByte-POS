@@ -11,6 +11,21 @@ const MODULES = {
   hr:        { name: 'HR & Payroll',price: 2999 },
 };
 
+async function getModulePrices() {
+  try {
+    const rows = await query("SELECT `key`, value FROM settings WHERE `key` LIKE 'price_%'");
+    if (rows.length === 0) return null;
+    const prices = {};
+    rows.forEach(r => { prices[r.key.replace('price_', '')] = Number(r.value); });
+    return prices;
+  } catch { return null; }
+}
+
+function priceOf(mod, prices) {
+  if (prices && prices[mod] !== undefined) return prices[mod];
+  return MODULES[mod]?.price || 0;
+}
+
 // GET /api/tenants
 exports.getAll = async (req, res) => {
   try {
@@ -135,7 +150,8 @@ exports.create = async (req, res) => {
     await conn.commit();
 
     // Calculate monthly price
-    const monthly = modules.reduce((sum, m) => sum + (MODULES[m]?.price || 0), 0);
+    const prices = await getModulePrices();
+    const monthly = modules.reduce((sum, m) => sum + priceOf(m, prices), 0);
 
     res.status(201).json({
       message: 'Client created successfully',
@@ -203,11 +219,12 @@ exports.getStats = async (req, res) => {
     const [{ active }] = await query('SELECT COUNT(*) as active FROM tenants WHERE is_active = 1');
 
     const tenants = await query('SELECT db_name, modules_enabled FROM tenants t JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id WHERE t.is_active = 1');
+    const prices = await getModulePrices();
 
     let monthlyRevenue = 0;
     tenants.forEach(t => {
       const mods = typeof t.modules_enabled === 'string' ? JSON.parse(t.modules_enabled || '[]') : (t.modules_enabled || []);
-      mods.forEach(m => { monthlyRevenue += MODULES[m]?.price || 0; });
+      mods.forEach(m => { monthlyRevenue += priceOf(m, prices); });
     });
 
     res.json({ total, active, inactive: total - active, monthly_revenue: monthlyRevenue });
@@ -259,7 +276,7 @@ exports.getDetails = async (req, res) => {
       total_revenue: Number(revenueRow?.[0]?.total || 0),
       db_size_mb:   Number(dbSizeRow?.[0]?.mb || 0),
       recent_logins: recentLogins || [],
-      monthly_price: mods.reduce((s, m) => s + (MODULES[m]?.price || 0), 0),
+      monthly_price: await getModulePrices().then(p => mods.reduce((s, m) => s + priceOf(m, p), 0)),
     });
   } catch (err) {
     logger.error('getDetails error', { error: err.message });
@@ -279,7 +296,8 @@ exports.getRevenue = async (req, res) => {
       ORDER BY t.created_at ASC
     `);
 
-    const getPrice = (mods) => mods.reduce((s, m) => s + (MODULES[m]?.price || 0), 0);
+    const dbPrices = await getModulePrices();
+    const getPrice = (mods) => mods.reduce((s, m) => s + priceOf(m, dbPrices), 0);
     const parseMods = (m) => {
       if (!m) return [];
       if (Array.isArray(m)) return m;

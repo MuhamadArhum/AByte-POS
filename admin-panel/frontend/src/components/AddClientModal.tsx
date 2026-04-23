@@ -2,18 +2,21 @@ import { useState, type FormEvent } from 'react';
 import { X, AlertCircle, Eye, EyeOff, UserPlus } from 'lucide-react';
 import api from '../api/axios';
 import { useToast } from '../context/ToastContext';
+import { usePrices } from '../hooks/usePrices';
 
-const MODULES = [
-  { key: 'sales',     label: 'Sales',       price: 2250, icon: '🛒' },
-  { key: 'inventory', label: 'Inventory',   price: 2250, icon: '📦' },
-  { key: 'accounts',  label: 'Accounts',    price: 2999, icon: '📊' },
-  { key: 'hr',        label: 'HR & Payroll',price: 2999, icon: '👥' },
+const MODULE_META = [
+  { key: 'sales',     label: 'Sales',       icon: '🛒' },
+  { key: 'inventory', label: 'Inventory',   icon: '📦' },
+  { key: 'accounts',  label: 'Accounts',    icon: '📊' },
+  { key: 'hr',        label: 'HR & Payroll',icon: '👥' },
 ];
 
 interface Props { onClose: () => void; }
 
 export default function AddClientModal({ onClose }: Props) {
   const { toast } = useToast();
+  const { prices } = usePrices();
+  const MODULES = MODULE_META.map(m => ({ ...m, price: prices[m.key as keyof typeof prices] || 0 }));
   const [form, setForm] = useState({
     tenant_code: '', tenant_name: '', company_name: '',
     admin_name: '', admin_email: '', admin_password: '',

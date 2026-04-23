@@ -7,6 +7,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  updateProfile: (data: { name?: string; email?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -35,7 +36,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAdmin(null);
   };
 
-  return <AuthContext.Provider value={{ admin, loading, login, logout }}>{children}</AuthContext.Provider>;
+  const updateProfile = async (data: { name?: string; email?: string }) => {
+    const r = await api.put('/auth/profile', data);
+    setAdmin(r.data.admin);
+  };
+
+  return <AuthContext.Provider value={{ admin, loading, login, logout, updateProfile }}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => {

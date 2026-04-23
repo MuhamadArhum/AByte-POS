@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { X, Check, Loader2 } from 'lucide-react';
 import api from '../api/axios';
 import { useToast } from '../context/ToastContext';
+import { usePrices } from '../hooks/usePrices';
 
-const ALL_MODULES = [
-  { key: 'sales',     label: 'Sales',       desc: 'POS, invoices, returns',     price: 2250, color: 'border-blue-200 bg-blue-50',    check: 'bg-blue-600',   text: 'text-blue-700' },
-  { key: 'inventory', label: 'Inventory',   desc: 'Products, stock, suppliers', price: 2250, color: 'border-emerald-200 bg-emerald-50', check: 'bg-emerald-600', text: 'text-emerald-700' },
-  { key: 'accounts',  label: 'Accounts',    desc: 'Ledger, vouchers, reports',  price: 2999, color: 'border-purple-200 bg-purple-50', check: 'bg-purple-600', text: 'text-purple-700' },
-  { key: 'hr',        label: 'HR & Payroll',desc: 'Staff, attendance, salary',  price: 2999, color: 'border-orange-200 bg-orange-50', check: 'bg-orange-600', text: 'text-orange-700' },
+const MODULE_META = [
+  { key: 'sales',     label: 'Sales',       desc: 'POS, invoices, returns',     color: 'border-blue-200 bg-blue-50',     check: 'bg-blue-600',    text: 'text-blue-700' },
+  { key: 'inventory', label: 'Inventory',   desc: 'Products, stock, suppliers', color: 'border-emerald-200 bg-emerald-50',check: 'bg-emerald-600', text: 'text-emerald-700' },
+  { key: 'accounts',  label: 'Accounts',    desc: 'Ledger, vouchers, reports',  color: 'border-purple-200 bg-purple-50', check: 'bg-purple-600',  text: 'text-purple-700' },
+  { key: 'hr',        label: 'HR & Payroll',desc: 'Staff, attendance, salary',  color: 'border-orange-200 bg-orange-50', check: 'bg-orange-600',  text: 'text-orange-700' },
 ];
 
 interface Props {
@@ -19,6 +20,8 @@ interface Props {
 
 export default function EditModulesModal({ tenantId, clientName, currentModules, onClose }: Props) {
   const { toast } = useToast();
+  const { prices } = usePrices();
+  const ALL_MODULES = MODULE_META.map(m => ({ ...m, price: prices[m.key as keyof typeof prices] || 0 }));
   const [selected, setSelected] = useState<string[]>(currentModules);
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState('');

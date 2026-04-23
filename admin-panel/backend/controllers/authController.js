@@ -51,6 +51,33 @@ exports.me = async (req, res) => {
   res.json({ admin: req.admin });
 };
 
+// PUT /api/auth/profile
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    if (!name && !email) {
+      return res.status(400).json({ message: 'name or email required' });
+    }
+    if (email && email !== req.admin.email) {
+      const existing = await query(
+        'SELECT admin_id FROM super_admins WHERE email = ? AND admin_id != ?',
+        [email, req.admin.admin_id]
+      );
+      if (existing.length > 0) return res.status(400).json({ message: 'Email already in use' });
+    }
+    const fields = [], params = [];
+    if (name)  { fields.push('name = ?');  params.push(name); }
+    if (email) { fields.push('email = ?'); params.push(email); }
+    params.push(req.admin.admin_id);
+    await query(`UPDATE super_admins SET ${fields.join(', ')} WHERE admin_id = ?`, params);
+    const rows = await query('SELECT admin_id, name, email FROM super_admins WHERE admin_id = ?', [req.admin.admin_id]);
+    res.json({ message: 'Profile updated', admin: rows[0] });
+  } catch (err) {
+    logger.error('updateProfile error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // POST /api/auth/change-password
 exports.changePassword = async (req, res) => {
   try {

@@ -9,8 +9,9 @@ require('dotenv').config({
 });
 
 const logger       = require('./config/logger');
-const authRoutes   = require('./routes/authRoutes');
-const tenantRoutes = require('./routes/tenantRoutes');
+const authRoutes     = require('./routes/authRoutes');
+const tenantRoutes   = require('./routes/tenantRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 
 const app = express();
 
@@ -36,8 +37,9 @@ app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 500 }));
 app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, skipSuccessfulRequests: true }));
 
 app.get('/api/ping', (_req, res) => res.json({ ok: true }));
-app.use('/api/auth',    authRoutes);
-app.use('/api/tenants', tenantRoutes);
+app.use('/api/auth',     authRoutes);
+app.use('/api/tenants',  tenantRoutes);
+app.use('/api/settings', settingsRoutes);
 
 app.use((err, req, res, next) => {
   logger.error('Unhandled error', { error: err.message });
