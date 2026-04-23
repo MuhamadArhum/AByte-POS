@@ -188,3 +188,8 @@
 [2026-04-22 00:47:33] INFO: ::1 - - [21/Apr/2026:19:47:33 +0000] "GET /api/ping HTTP/1.1" 304 - "http://localhost:5173/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
 [2026-04-22 02:00:00] INFO: [Backup] Running scheduled daily backup...
 [2026-04-22 02:00:00] ERROR: [Backup] Scheduled backup failed {"error":"Backup failed. Ensure mariadb-dump or mysqldump is available in PATH."}
+[2026-04-23 21:35:35] INFO: AByte ERP backend started {"port":"5000","db":"abyte_pos","origins":["http://localhost:5173","http://localhost:3000"]}
+[2026-04-23 21:36:28] INFO: ::1 - - [23/Apr/2026:16:36:28 +0000] "GET /api/ping HTTP/1.1" 304 - "http://localhost:5173/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
+[2026-04-23 21:36:28] INFO: ::1 - - [23/Apr/2026:16:36:28 +0000] "GET /api/ping HTTP/1.1" 304 - "http://localhost:5173/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
+[2026-04-23 21:36:42] INFO: ::1 - - [23/Apr/2026:16:36:42 +0000] "POST /api/auth/login HTTP/1.1" 401 34 "http://localhost:5173/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
+[2026-04-23 21:36:51] INFO: ::1 - - [23/Apr/2026:16:36:51 +0000] "POST /api/auth/login HTTP/1.1" 401 34 "http://localhost:5173/login" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
