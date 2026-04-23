@@ -1,0 +1,10 @@
+
+✓ AByte Printer Agent running on http://localhost:3001
+  Printer type : network
+  Printer IP   : 192.168.111.206:9100
+
+  Config file  : D:\AByte-POS\printer-agent\config.json
+  Health check : http://localhost:3001/health
+  Test print   : POST http://localhost:3001/test
+
+^C
