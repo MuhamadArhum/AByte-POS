@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS categories (
     category_id INT PRIMARY KEY AUTO_INCREMENT,
     category_name VARCHAR(100) NOT NULL UNIQUE,
     category_type ENUM('raw_material','semi_finished','finished_good') NOT NULL DEFAULT 'finished_good',
+    parent_id INT NULL,
     description TEXT,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -182,6 +183,7 @@ CREATE TABLE IF NOT EXISTS products (
     product_name VARCHAR(200) NOT NULL,
     category_id INT,
     product_type ENUM('finished_good','raw_material','semi_finished') NOT NULL DEFAULT 'finished_good',
+    unit VARCHAR(50) DEFAULT 'pcs',
     price DECIMAL(10, 2) NOT NULL,
     cost_price DECIMAL(15, 2) DEFAULT NULL,
     stock_quantity INT NOT NULL DEFAULT 0,
@@ -307,11 +309,11 @@ CREATE TABLE IF NOT EXISTS backups (
     backup_id INT PRIMARY KEY AUTO_INCREMENT,
     filename VARCHAR(255) NOT NULL,
     file_size BIGINT,
-    created_by INT NOT NULL,
+    created_by INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     type ENUM('manual', 'scheduled') DEFAULT 'manual',
     status ENUM('completed', 'failed') DEFAULT 'completed',
-    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
 -- Expenses
@@ -338,6 +340,8 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     user_id INT,
     user_name VARCHAR(100),
     details TEXT,
+    old_values JSON NULL,
+    new_values JSON NULL,
     ip_address VARCHAR(45),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL,
