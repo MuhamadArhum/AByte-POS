@@ -1,7 +1,6 @@
 // balance_data.js  — Trial Balance as on 23-Apr-2026 (leaf accounts only)
 // Format: [account_name, debit, credit]
 module.exports = [
-  ['Assets', 145906733, 0],
   ['CASH IN HAND (RESTAURANT)', 908128, 0],
   ['CREDIT CARD ABL', 483765, 0],
   ['GST CASH', 1403858, 0],
@@ -621,7 +620,6 @@ module.exports = [
   ['OFFICE EQUIPMENT', 223000, 0],
   ['COMPUTER AND ACCESSORIES', 81900, 0],
   ['SOLAR INVESTMENT', 2550000, 0],
-  ['Liabilities', 0, 10943350],
   ['786 TRADERS', 0, 60],
   ['A-1 MARKETING', 5, 0],
   ['ABBAS AGRI FARM - ICE BURG', 0, 2498],
@@ -737,10 +735,8 @@ module.exports = [
   ['DUA TRADERS (NEXT COLA)', 0, 65770],
   ['DAIRY DELIGHTS ICE CREAM', 0, 0],
   ['PEER JAMAL DAHI', 0, 19870],
-  ['Equity', 0, 124586726],
   ["OWNER'S EQUITY", 0, 11960245],
   ['PROFIT AND LOSS ACCOUNT', 0, 112626481],
-  ['Revenue', 0, 33111504],
   ['SALES RESTAURANT - DINE IN', 0, 15331393],
   ['SALES RESTAURANT - TAKE AWAY', 0, 1448809],
   ['SALES RESTAURANT - DELIVERY', 0, 2107090],
@@ -750,7 +746,6 @@ module.exports = [
   ['SALES FUNCTION', 0, 947820],
   ['OTHER INCOME', 0, 5000],
   ['MEHWISH DISPUTED CASH', 0, 0],
-  ['Expenses', 22734847, 0],
   ['PURCHASE', 16468608, 0],
   ['CARRIAGE AND FORWARDING', 12400, 0],
   ['STAFF EXPENSES', 136580, 0],
