@@ -334,8 +334,8 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
                 </tr>
               </tbody>
             </table>
-          </div>
           </form>
+          </div>
         </div>
 
         {/* Footer */}
