@@ -29,6 +29,61 @@ async function reverseStockForPV(conn, pvId) {
   }
 }
 
+// ── Helper: auto-create purchase JV ──────────────────────────
+async function createPurchaseJV(conn, pvId, pvNumber, voucherDate, payableAccountId, total, userId) {
+  if (!payableAccountId || total <= 0) return null;
+
+  const [purchaseAcc] = await conn.query(
+    "SELECT account_id FROM accounts WHERE account_code = 'X-01-01-001' LIMIT 1"
+  );
+  if (!purchaseAcc) return null;
+
+  const [last] = await conn.query("SELECT entry_number FROM journal_entries ORDER BY entry_id DESC LIMIT 1");
+  let nextNum = 1;
+  if (last?.entry_number) { const m = last.entry_number.match(/\d+$/); if (m) nextNum = parseInt(m[0]) + 1; }
+  const entryNumber = `JV${String(nextNum).padStart(6, '0')}`;
+
+  const result = await conn.query(
+    `INSERT INTO journal_entries (entry_number, entry_date, reference_type, reference_id, description, total_debit, total_credit, status, created_by, posted_at)
+     VALUES (?, ?, 'purchase_voucher', ?, ?, ?, ?, 'posted', ?, NOW())`,
+    [entryNumber, voucherDate, pvId, `Purchase - ${pvNumber}`, total, total, userId]
+  );
+  const entryId = Number(result.insertId);
+
+  await conn.query(
+    'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, ?, 0)',
+    [entryId, purchaseAcc.account_id, `Purchase - ${pvNumber}`, total]
+  );
+  await conn.query(
+    'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, 0, ?)',
+    [entryId, payableAccountId, `Purchase - ${pvNumber}`, total]
+  );
+
+  await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [total, purchaseAcc.account_id]);
+  await conn.query('UPDATE accounts SET current_balance = current_balance - ? WHERE account_id = ?', [total, payableAccountId]);
+  await conn.query('UPDATE inv_purchase_vouchers SET journal_entry_id = ?, payable_account_id = ? WHERE pv_id = ?', [entryId, payableAccountId, pvId]);
+
+  return entryId;
+}
+
+// ── Helper: reverse purchase JV ──────────────────────────────
+async function reversePurchaseJV(conn, pvId) {
+  const [pv] = await conn.query('SELECT journal_entry_id FROM inv_purchase_vouchers WHERE pv_id = ?', [pvId]);
+  if (!pv?.journal_entry_id) return;
+
+  const entryId = pv.journal_entry_id;
+  await conn.query('UPDATE inv_purchase_vouchers SET journal_entry_id = NULL, payable_account_id = NULL WHERE pv_id = ?', [pvId]);
+
+  const lines = await conn.query('SELECT account_id, debit, credit FROM journal_entry_lines WHERE entry_id = ?', [entryId]);
+  for (const line of lines) {
+    const net = Number(line.debit) - Number(line.credit);
+    await conn.query('UPDATE accounts SET current_balance = current_balance - ? WHERE account_id = ?', [net, line.account_id]);
+  }
+
+  await conn.query('DELETE FROM journal_entry_lines WHERE entry_id = ?', [entryId]);
+  await conn.query('DELETE FROM journal_entries WHERE entry_id = ?', [entryId]);
+}
+
 // ── Helper: apply stock for new items ────────────────────────
 async function applyStockForItems(conn, pvId, items, voucher_date) {
   for (const item of items) {
@@ -96,11 +151,13 @@ exports.getAll = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
     const [pv] = await query(
-      `SELECT pv.*, s.supplier_name, u.name as created_by_name, po.po_number
+      `SELECT pv.*, s.supplier_name, u.name as created_by_name, po.po_number,
+              pa.account_name as payable_account_name
        FROM inv_purchase_vouchers pv
        LEFT JOIN suppliers s ON pv.supplier_id = s.supplier_id
        LEFT JOIN purchase_orders po ON pv.po_id = po.po_id
        JOIN users u ON pv.created_by = u.user_id
+       LEFT JOIN accounts pa ON pv.payable_account_id = pa.account_id
        WHERE pv.pv_id = ?`, [req.params.id]
     );
     if (!pv) return res.status(404).json({ message: 'Purchase voucher not found' });
@@ -133,7 +190,7 @@ exports.getPOItems = async (req, res) => {
 exports.create = async (req, res) => {
   const conn = await getConnection();
   try {
-    const { po_id, supplier_id, voucher_date, notes, items, shipping_cost, extra_charges, other_charges, discount_percent, tax_percent } = req.body;
+    const { po_id, supplier_id, voucher_date, notes, items, shipping_cost, extra_charges, other_charges, discount_percent, tax_percent, payable_account_id } = req.body;
     if (!voucher_date || !items?.length) {
       return res.status(400).json({ message: 'voucher_date and items are required' });
     }
@@ -172,6 +229,10 @@ exports.create = async (req, res) => {
       await conn.query("UPDATE purchase_orders SET status = 'received', received_date = ? WHERE po_id = ?", [voucher_date, po_id]);
     }
 
+    if (payable_account_id) {
+      await createPurchaseJV(conn, pvId, pv_number, voucher_date, parseInt(payable_account_id), total, req.user.user_id);
+    }
+
     await conn.commit();
 
     // Get PO number for audit log
@@ -196,7 +257,7 @@ exports.update = async (req, res) => {
   const conn = await getConnection();
   try {
     const { id } = req.params;
-    const { supplier_id, voucher_date, notes, items, shipping_cost, extra_charges, other_charges, discount_percent, tax_percent } = req.body;
+    const { supplier_id, voucher_date, notes, items, shipping_cost, extra_charges, other_charges, discount_percent, tax_percent, payable_account_id } = req.body;
     if (!voucher_date || !items?.length) {
       return res.status(400).json({ message: 'voucher_date and items are required' });
     }
@@ -206,7 +267,8 @@ exports.update = async (req, res) => {
 
     await conn.beginTransaction();
 
-    // Reverse old stock
+    // Reverse old JV first, then old stock
+    await reversePurchaseJV(conn, parseInt(id));
     await reverseStockForPV(conn, id);
     await conn.query('DELETE FROM inv_purchase_voucher_items WHERE pv_id = ?', [id]);
 
@@ -232,6 +294,10 @@ exports.update = async (req, res) => {
     // Apply new stock
     await applyStockForItems(conn, parseInt(id), items, voucher_date);
 
+    if (payable_account_id) {
+      await createPurchaseJV(conn, parseInt(id), pv.pv_number, voucher_date, parseInt(payable_account_id), total, req.user.user_id);
+    }
+
     await conn.commit();
     await logAction(req.user.user_id, req.user.name, 'PURCHASE_VOUCHER_UPDATED', 'inv_purchase_vouchers', parseInt(id),
       { pv_number: pv.pv_number, total }, req.ip);
@@ -252,6 +318,7 @@ exports.remove = async (req, res) => {
     if (!pv) return res.status(404).json({ message: 'Not found' });
 
     await conn.beginTransaction();
+    await reversePurchaseJV(conn, parseInt(req.params.id));
     await reverseStockForPV(conn, req.params.id);
     await conn.query('DELETE FROM inv_purchase_vouchers WHERE pv_id = ?', [req.params.id]);
     await conn.commit();

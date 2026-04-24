@@ -11,10 +11,12 @@ interface Supplier { supplier_id: number; supplier_name: string; }
 interface PO { po_id: number; po_number: string; supplier_id: number; supplier_name: string; }
 interface Product { product_id: number; product_name: string; barcode?: string; cost_price?: number; }
 interface VoucherItem { product_id: number; product_name: string; quantity_received: number; unit_price: number; }
+interface PayableAccount { account_id: number; account_name: string; account_code: string; }
 
 const PurchaseVoucher = () => {
   const [vouchers, setVouchers]   = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [payableAccounts, setPayableAccounts] = useState<PayableAccount[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showForm, setShowForm]   = useState(false);
   const [editingPV, setEditingPV] = useState<any>(null); // null = create, object = edit
@@ -39,6 +41,7 @@ const PurchaseVoucher = () => {
   const [formOther, setFormOther]               = useState<number>(0);
   const [formDiscountPct, setFormDiscountPct]   = useState<number>(0);
   const [formTaxPct, setFormTaxPct]             = useState<number>(0);
+  const [formPayableAccountId, setFormPayableAccountId] = useState('');
   const [items, setItems]           = useState<VoucherItem[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [productResults, setProductResults] = useState<Product[]>([]);
@@ -59,6 +62,7 @@ const PurchaseVoucher = () => {
 
   useEffect(() => {
     api.get('/suppliers', { params: { limit: 200 } }).then(r => setSuppliers(r.data.data || []));
+    api.get('/accounts', { params: { search: 'L-01-01-', limit: 200 } }).then(r => setPayableAccounts(r.data.data || []));
     api.get('/purchase-orders', { params: { limit: 200 } }).then(r =>
       setPOs((r.data.data || []).filter((p: any) => p.status !== 'received' && p.status !== 'cancelled'))
     );
@@ -100,7 +104,7 @@ const PurchaseVoucher = () => {
     setMode('manual'); setSelectedPO(''); setFormSupplier('');
     setFormDate(localToday()); setFormNotes('');
     setFormShipping(0); setFormExtra(0); setFormOther(0);
-    setFormDiscountPct(0); setFormTaxPct(0);
+    setFormDiscountPct(0); setFormTaxPct(0); setFormPayableAccountId('');
     setItems([]); setProductSearch(''); setProductResults([]);
     setEditingPV(null);
   };
@@ -122,6 +126,7 @@ const PurchaseVoucher = () => {
       setFormOther(Number(data.other_charges) || 0);
       setFormDiscountPct(Number(data.discount_percent) || 0);
       setFormTaxPct(Number(data.tax_percent) || 0);
+      setFormPayableAccountId(data.payable_account_id ? String(data.payable_account_id) : '');
       setItems((data.items || []).map((i: any) => ({
         product_id: i.product_id,
         product_name: i.product_name,
@@ -154,6 +159,7 @@ const PurchaseVoucher = () => {
         other_charges: formOther,
         discount_percent: formDiscountPct,
         tax_percent: formTaxPct,
+        payable_account_id: formPayableAccountId || null,
         items,
       };
       if (!editingPV && mode === 'po' && selectedPO) payload.po_id = selectedPO;
@@ -242,7 +248,7 @@ const PurchaseVoucher = () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-4 mb-5">
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
                   <select value={formSupplier} onChange={e => setFormSupplier(e.target.value)}
@@ -251,6 +257,21 @@ const PurchaseVoucher = () => {
                     {suppliers.map(s => <option key={s.supplier_id} value={s.supplier_id}>{s.supplier_name}</option>)}
                   </select>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Payable Account <span className="text-red-500">*</span>
+                    <span className="text-xs text-gray-400 ml-1">(Credit)</span>
+                  </label>
+                  <select value={formPayableAccountId} onChange={e => setFormPayableAccountId(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <option value="">-- Select Party Account --</option>
+                    {payableAccounts.map(a => (
+                      <option key={a.account_id} value={a.account_id}>{a.account_name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 mb-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Voucher Date *</label>
                   <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)}
@@ -413,6 +434,12 @@ const PurchaseVoucher = () => {
               <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
                 <div><span className="text-gray-500">Supplier:</span> <span className="font-medium">{viewVoucher.supplier_name || '—'}</span></div>
                 <div><span className="text-gray-500">Date:</span> <span className="font-medium">{viewVoucher.voucher_date}</span></div>
+                {viewVoucher.payable_account_name && (
+                  <div className="col-span-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                    <span className="text-amber-700 text-xs font-semibold">Payable Account (Credit):</span>
+                    <span className="ml-2 font-bold text-amber-900">{viewVoucher.payable_account_name}</span>
+                  </div>
+                )}
                 {viewVoucher.po_number && (
                   <div className="col-span-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
                     <span className="text-blue-600 text-xs font-semibold">Received Against PO:</span>
