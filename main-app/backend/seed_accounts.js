@@ -4,6 +4,10 @@
 // Example: node seed_accounts.js abyte_pos
 // ============================================================
 require('dotenv').config();
+// VPS uses .env.production — fallback if DB creds not loaded
+if (!process.env.DB_PASSWORD && !process.env.DB_HOST) {
+  require('dotenv').config({ path: require('path').join(__dirname, '.env.production') });
+}
 const mariadb = require('mariadb');
 const data1   = require('./accounts_data_1');
 const data2   = require('./accounts_data_2');
