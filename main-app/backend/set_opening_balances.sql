@@ -1,6 +1,5 @@
 -- ============================================================
--- set_opening_balances.sql
--- Trial Balance as on 23-Apr-2026
+-- set_opening_balances.sql  —  Trial Balance as on 23-Apr-2026
 -- Run: mysql -u root -p abyte_pos < set_opening_balances.sql
 -- ============================================================
 
@@ -520,7 +519,7 @@ UPDATE accounts SET opening_balance = -149091, current_balance = -149091 WHERE U
 UPDATE accounts SET opening_balance = 5, current_balance = 5 WHERE UPPER(TRIM(account_name)) = UPPER('REHMAN CHICKEN') AND NOT EXISTS (SELECT 1 FROM accounts c WHERE c.parent_account_id = account_id);
 UPDATE accounts SET opening_balance = -65770, current_balance = -65770 WHERE UPPER(TRIM(account_name)) = UPPER('DUA TRADERS (NEXT COLA)') AND NOT EXISTS (SELECT 1 FROM accounts c WHERE c.parent_account_id = account_id);
 UPDATE accounts SET opening_balance = -19870, current_balance = -19870 WHERE UPPER(TRIM(account_name)) = UPPER('PEER JAMAL DAHI') AND NOT EXISTS (SELECT 1 FROM accounts c WHERE c.parent_account_id = account_id);
-UPDATE accounts SET opening_balance = -11960245, current_balance = -11960245 WHERE UPPER(TRIM(account_name)) = UPPER('OWNER'S EQUITY') AND NOT EXISTS (SELECT 1 FROM accounts c WHERE c.parent_account_id = account_id);
+UPDATE accounts SET opening_balance = -11960245, current_balance = -11960245 WHERE UPPER(TRIM(account_name)) = UPPER('OWNER''S EQUITY') AND NOT EXISTS (SELECT 1 FROM accounts c WHERE c.parent_account_id = account_id);
 UPDATE accounts SET opening_balance = -112626481, current_balance = -112626481 WHERE UPPER(TRIM(account_name)) = UPPER('PROFIT AND LOSS ACCOUNT') AND NOT EXISTS (SELECT 1 FROM accounts c WHERE c.parent_account_id = account_id);
 UPDATE accounts SET opening_balance = -15331393, current_balance = -15331393 WHERE UPPER(TRIM(account_name)) = UPPER('SALES RESTAURANT - DINE IN') AND NOT EXISTS (SELECT 1 FROM accounts c WHERE c.parent_account_id = account_id);
 UPDATE accounts SET opening_balance = -1448809, current_balance = -1448809 WHERE UPPER(TRIM(account_name)) = UPPER('SALES RESTAURANT - TAKE AWAY') AND NOT EXISTS (SELECT 1 FROM accounts c WHERE c.parent_account_id = account_id);
@@ -565,7 +564,7 @@ UPDATE accounts SET opening_balance = 17815, current_balance = 17815 WHERE UPPER
 UPDATE accounts SET opening_balance = 164463, current_balance = 164463 WHERE UPPER(TRIM(account_name)) = UPPER('ENTERTAINMENT OTHERS') AND NOT EXISTS (SELECT 1 FROM accounts c WHERE c.parent_account_id = account_id);
 UPDATE accounts SET opening_balance = 45848, current_balance = 45848 WHERE UPPER(TRIM(account_name)) = UPPER('ENTERTAINMENT STAFF') AND NOT EXISTS (SELECT 1 FROM accounts c WHERE c.parent_account_id = account_id);
 
--- Step 3: Verify
+-- Step 3: Verify totals
 SELECT 'Accounts with balance' AS info, COUNT(*) AS cnt FROM accounts WHERE opening_balance != 0;
 SELECT 'Total Debit' AS info, SUM(CASE WHEN opening_balance > 0 THEN opening_balance ELSE 0 END) AS amount FROM accounts WHERE NOT EXISTS (SELECT 1 FROM accounts c WHERE c.parent_account_id = accounts.account_id);
 SELECT 'Total Credit' AS info, SUM(CASE WHEN opening_balance < 0 THEN ABS(opening_balance) ELSE 0 END) AS amount FROM accounts WHERE NOT EXISTS (SELECT 1 FROM accounts c WHERE c.parent_account_id = accounts.account_id);
