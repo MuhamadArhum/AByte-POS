@@ -3,7 +3,7 @@ import { Receipt, Plus, Trash2, Download, Search, ChevronDown, X } from 'lucide-
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
-import { localToday } from '../../utils/dateUtils';
+import { localToday, localMonthStart } from '../../utils/dateUtils';
 
 // ── Searchable Account Selector ───────────────────────────────────────────────
 const AccountSelector = ({
@@ -158,18 +158,18 @@ const CRVModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; onClose: ()
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-1">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[85vw] h-[calc(100vh-8px)] flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-1 md:p-2">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[calc(100vh-8px)] flex flex-col">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-gray-200 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center shrink-0">
               <Receipt size={16} className="text-emerald-600" />
             </div>
             <div>
               <h2 className="text-base font-bold text-gray-900">Cash Receipt Voucher <span className="text-emerald-600">(CRV)</span></h2>
-              <p className="text-xs text-gray-500">Fill each row and press Enter on Amount to save</p>
+              <p className="text-xs text-gray-500 hidden sm:block">Fill each row and press Enter on Amount to save</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -185,7 +185,8 @@ const CRVModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; onClose: ()
         </div>
 
         {/* Lines Table */}
-        <div className="overflow-y-auto flex-1 px-6 py-4">
+        <div className="overflow-y-auto flex-1 px-4 md:px-6 py-4">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="bg-gray-800 text-white">
@@ -264,10 +265,11 @@ const CRVModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; onClose: ()
               )}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 shrink-0 bg-gray-50 rounded-b-2xl">
+        <div className="px-4 md:px-6 py-4 border-t border-gray-200 shrink-0 bg-gray-50 rounded-b-2xl">
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-500">
               {savedLines.length > 0
@@ -292,7 +294,7 @@ const ReceiptVouchers = () => {
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
-  const [filters, setFilters]     = useState({ from_date: '', to_date: '' });
+  const [filters, setFilters]     = useState({ from_date: localMonthStart(), to_date: localToday() });
 
   const fetchVouchers = async () => {
     setLoading(true);

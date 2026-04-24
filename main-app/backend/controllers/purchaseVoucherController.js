@@ -128,12 +128,13 @@ exports.getAll = async (req, res) => {
     if (to_date)     { where += ' AND pv.voucher_date <= ?';  params.push(to_date); }
 
     const sql = `SELECT pv.*, s.supplier_name, u.name as created_by_name,
-                   po.po_number,
+                   po.po_number, pa.account_name as payable_account_name,
                    COUNT(pvi.item_id) as item_count
                  FROM inv_purchase_vouchers pv
                  LEFT JOIN suppliers s ON pv.supplier_id = s.supplier_id
                  LEFT JOIN purchase_orders po ON pv.po_id = po.po_id
                  JOIN users u ON pv.created_by = u.user_id
+                 LEFT JOIN accounts pa ON pv.payable_account_id = pa.account_id
                  LEFT JOIN inv_purchase_voucher_items pvi ON pv.pv_id = pvi.pv_id
                  ${where} GROUP BY pv.pv_id ORDER BY pv.voucher_date DESC, pv.created_at DESC
                  LIMIT ? OFFSET ?`;

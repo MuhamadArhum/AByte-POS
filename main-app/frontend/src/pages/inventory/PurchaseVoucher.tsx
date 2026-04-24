@@ -248,28 +248,18 @@ const PurchaseVoucher = () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-                  <select value={formSupplier} onChange={e => setFormSupplier(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                    <option value="">-- Select Supplier --</option>
-                    {suppliers.map(s => <option key={s.supplier_id} value={s.supplier_id}>{s.supplier_name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Payable Account <span className="text-red-500">*</span>
-                    <span className="text-xs text-gray-400 ml-1">(Credit)</span>
-                  </label>
-                  <select value={formPayableAccountId} onChange={e => setFormPayableAccountId(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                    <option value="">-- Select Party Account --</option>
-                    {payableAccounts.map(a => (
-                      <option key={a.account_id} value={a.account_id}>{a.account_name}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Party / Payable Account <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-400 ml-1">— Auto credit on save</span>
+                </label>
+                <select value={formPayableAccountId} onChange={e => setFormPayableAccountId(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                  <option value="">-- Select Party --</option>
+                  {payableAccounts.map(a => (
+                    <option key={a.account_id} value={a.account_id}>{a.account_name}</option>
+                  ))}
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-4 mb-5">
                 <div>
@@ -432,7 +422,7 @@ const PurchaseVoucher = () => {
             </div>
             <div className="p-6">
               <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
-                <div><span className="text-gray-500">Supplier:</span> <span className="font-medium">{viewVoucher.supplier_name || '—'}</span></div>
+                <div><span className="text-gray-500">Party:</span> <span className="font-medium">{viewVoucher.payable_account_name || viewVoucher.supplier_name || '—'}</span></div>
                 <div><span className="text-gray-500">Date:</span> <span className="font-medium">{viewVoucher.voucher_date}</span></div>
                 {viewVoucher.payable_account_name && (
                   <div className="col-span-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
@@ -506,7 +496,7 @@ const PurchaseVoucher = () => {
         <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} onApply={fetchVouchers} />
         <select value={supplierFilter} onChange={e => { setSupplierFilter(e.target.value); setPage(1); }}
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none">
-          <option value="">All Suppliers</option>
+          <option value="">All Parties</option>
           {suppliers.map(s => <option key={s.supplier_id} value={s.supplier_id}>{s.supplier_name}</option>)}
         </select>
       </div>
@@ -521,7 +511,7 @@ const PurchaseVoucher = () => {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Voucher #</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">PO #</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Party</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Items</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
@@ -540,7 +530,7 @@ const PurchaseVoucher = () => {
                       ? <span className="text-blue-600 font-medium text-xs bg-blue-50 px-2 py-0.5 rounded">{v.po_number}</span>
                       : <span className="text-gray-400">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-gray-800">{v.supplier_name || '—'}</td>
+                  <td className="px-4 py-3 text-gray-800">{v.payable_account_name || v.supplier_name || '—'}</td>
                   <td className="px-4 py-3 text-gray-600">{v.voucher_date}</td>
                   <td className="px-4 py-3 text-right">{v.item_count}</td>
                   <td className="px-4 py-3 text-right font-medium text-gray-900">{fmt(v.total_amount)}</td>

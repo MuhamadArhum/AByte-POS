@@ -1,6 +1,5 @@
 ﻿import { useState, useEffect, useRef } from 'react';
 import { FileText, Plus, Send, Trash2, ChevronDown, Search, Lock, Eye, EyeOff, AlertTriangle } from 'lucide-react';
-import DateRangeFilter from '../../components/DateRangeFilter';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
@@ -492,7 +491,8 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
 const JournalEntries = () => {
   const toast = useToast();
   const [entries, setEntries] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
   const [showModal, setShowModal] = useState(false);
   const [deleteEntry, setDeleteEntry] = useState<any>(null);
@@ -500,10 +500,11 @@ const JournalEntries = () => {
   const [fromDate, setFromDate] = useState(localMonthStart);
   const [toDate, setToDate] = useState(localToday);
 
-  useEffect(() => { fetchEntries(); }, [pagination.page, statusFilter, fromDate, toDate]);
+  useEffect(() => { if (hasLoaded) fetchEntries(); }, [pagination.page]);
 
   const fetchEntries = async () => {
     setLoading(true);
+    setHasLoaded(true);
     try {
       const params: any = { page: pagination.page, limit: pagination.limit };
       if (statusFilter !== 'all') params.status = statusFilter;
@@ -517,6 +518,11 @@ const JournalEntries = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLoad = () => {
+    setPagination(p => ({ ...p, page: 1 }));
+    fetchEntries();
   };
 
   const handlePost = async (entry: any) => {
@@ -540,89 +546,114 @@ const JournalEntries = () => {
   };
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 md:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <FileText className="text-emerald-600" size={20} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-gray-900">Journal Voucher</h1>
-            <p className="text-gray-600 text-sm mt-1">Record accounting transactions</p>
+            <p className="text-gray-600 text-sm mt-0.5">Record accounting transactions</p>
           </div>
         </div>
         <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg">
-          <Plus size={20} /> New Entry
+          className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition shadow text-sm font-medium">
+          <Plus size={16} /> New Entry
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap items-center gap-4">
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500">
-          <option value="all">All Status</option>
-          <option value="draft">Draft</option>
-          <option value="posted">Posted</option>
-        </select>
-        <DateRangeFilter standalone={false} dateFrom={fromDate} dateTo={toDate} onFromChange={setFromDate} onToChange={setToDate} />
+      {/* Filters + Load Button */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+            <option value="all">All Status</option>
+            <option value="draft">Draft</option>
+            <option value="posted">Posted</option>
+          </select>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">From</span>
+            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">To</span>
+            <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+          </div>
+          <button onClick={handleLoad} disabled={loading}
+            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-60">
+            <Search size={15} /> {loading ? 'Loading...' : 'Load Entries'}
+          </button>
+          {hasLoaded && <span className="text-xs text-gray-400 ml-auto">{pagination.total} entries</span>}
+        </div>
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr className="border-b">
-              <th className="text-left p-4 font-semibold text-gray-700">Entry #</th>
-              <th className="text-left p-4 font-semibold text-gray-700">Date</th>
-              <th className="text-left p-4 font-semibold text-gray-700">Description</th>
-              <th className="text-right p-4 font-semibold text-gray-700">Debit</th>
-              <th className="text-right p-4 font-semibold text-gray-700">Credit</th>
-              <th className="text-center p-4 font-semibold text-gray-700">Status</th>
-              <th className="text-center p-4 font-semibold text-gray-700">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={7} className="p-8 text-center text-gray-500">Loading...</td></tr>
-            ) : entries.length > 0 ? (
-              entries.map((entry: any) => (
-                <tr key={entry.entry_id} className="border-b hover:bg-gray-50 transition">
-                  <td className="p-4 font-mono font-semibold text-gray-800">{entry.entry_number}</td>
-                  <td className="p-4 text-gray-600">{new Date(entry.entry_date).toLocaleDateString()}</td>
-                  <td className="p-4 text-gray-600">{entry.description || '-'}</td>
-                  <td className="p-4 text-right font-medium">{Number(entry.total_debit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
-                  <td className="p-4 text-right font-medium">{Number(entry.total_credit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
-                  <td className="p-4 text-center">{statusBadge(entry.status)}</td>
-                  <td className="p-4 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      {entry.status === 'draft' && (
-                        <button onClick={() => handlePost(entry)}
-                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Post Entry">
-                          <Send size={16} />
-                        </button>
-                      )}
-                      {/* Delete available for ALL statuses — password protected */}
-                      <button onClick={() => setDeleteEntry(entry)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
+        {!hasLoaded ? (
+          <div className="text-center py-16 text-gray-400">
+            <FileText size={44} className="mx-auto mb-3 opacity-20" />
+            <p className="font-medium">Set date range and click <strong className="text-emerald-600">Load Entries</strong></p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
+              <thead className="bg-gray-50">
+                <tr className="border-b">
+                  <th className="text-left px-4 py-3 font-semibold text-gray-700 text-sm">Entry #</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-700 text-sm">Date</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-700 text-sm">Description</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-700 text-sm">Debit</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-700 text-sm">Credit</th>
+                  <th className="text-center px-4 py-3 font-semibold text-gray-700 text-sm">Status</th>
+                  <th className="text-center px-4 py-3 font-semibold text-gray-700 text-sm">Actions</th>
                 </tr>
-              ))
-            ) : (
-              <tr><td colSpan={7} className="p-8 text-center text-gray-500">No entries found</td></tr>
-            )}
-          </tbody>
-        </table>
-
-        <Pagination
-          currentPage={pagination.page}
-          totalPages={pagination.totalPages}
-          onPageChange={(page) => setPagination(p => ({ ...p, page }))}
-          totalItems={pagination.total}
-          itemsPerPage={pagination.limit}
-          onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
-        />
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={7} className="p-8 text-center text-gray-400"><div className="animate-spin h-6 w-6 rounded-full border-2 border-emerald-500 border-t-transparent mx-auto" /></td></tr>
+                ) : entries.length > 0 ? (
+                  entries.map((entry: any) => (
+                    <tr key={entry.entry_id} className="border-b hover:bg-gray-50 transition">
+                      <td className="px-4 py-3 font-mono font-semibold text-gray-800 text-sm">{entry.entry_number}</td>
+                      <td className="px-4 py-3 text-gray-600 text-sm whitespace-nowrap">{new Date(entry.entry_date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                      <td className="px-4 py-3 text-gray-600 text-sm">{entry.description || '—'}</td>
+                      <td className="px-4 py-3 text-right font-medium text-sm">{Number(entry.total_debit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-3 text-right font-medium text-sm">{Number(entry.total_credit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
+                      <td className="px-4 py-3 text-center">{statusBadge(entry.status)}</td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {entry.status === 'draft' && (
+                            <button onClick={() => handlePost(entry)}
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Post Entry">
+                              <Send size={15} />
+                            </button>
+                          )}
+                          <button onClick={() => setDeleteEntry(entry)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete">
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr><td colSpan={7} className="p-8 text-center text-gray-400">No entries found for this period</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {hasLoaded && (
+          <Pagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+            onPageChange={(page) => setPagination(p => ({ ...p, page }))}
+            totalItems={pagination.total}
+            itemsPerPage={pagination.limit}
+            onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
+          />
+        )}
       </div>
 
       <JournalEntryModal isOpen={showModal} onClose={() => setShowModal(false)} onSuccess={fetchEntries} />
