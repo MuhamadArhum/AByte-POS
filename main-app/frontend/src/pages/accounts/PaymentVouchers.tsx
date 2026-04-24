@@ -161,34 +161,32 @@ const CPVModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; onClose: ()
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-1 md:p-2">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[calc(100vh-8px)] flex flex-col">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
 
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-gray-200 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
               <FileText size={16} className="text-red-600" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-gray-900">Cash Payment Voucher <span className="text-red-600">(CPV)</span></h2>
-              <p className="text-xs text-gray-500 hidden sm:block">Fill each row and press Enter on Amount to save</p>
+              <h2 className="text-base font-semibold text-gray-900">Cash Payment Voucher <span className="text-red-600">(CPV)</span></h2>
+              <p className="text-xs text-gray-500">Press Enter on Amount to save each line</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-600">Date:</label>
-              <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none" />
-            </div>
-            <button onClick={handleDone} className="text-gray-400 hover:text-gray-600 transition">
-              <X size={22} />
+            <label className="text-sm font-medium text-gray-600">Date:</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none" />
+            <button onClick={handleDone} className="text-gray-400 hover:text-gray-600 ml-1">
+              <X size={20} />
             </button>
           </div>
         </div>
 
         {/* Lines Table */}
-        <div className="overflow-y-auto flex-1 px-4 md:px-6 py-4">
+        <div className="overflow-y-auto flex-1 px-6 py-4">
           <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
@@ -272,18 +270,16 @@ const CPVModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; onClose: ()
         </div>
 
         {/* Footer */}
-        <div className="px-4 md:px-6 py-4 border-t border-gray-200 shrink-0 bg-gray-50 rounded-b-2xl">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">
-              {savedLines.length > 0
-                ? <span className="text-emerald-600 font-semibold">{savedLines.length} voucher{savedLines.length !== 1 ? 's' : ''} saved ✓</span>
-                : 'Select account, enter narration and amount, then press Enter'}
-            </p>
-            <button onClick={handleDone}
-              className="px-8 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition shadow">
-              Done
-            </button>
-          </div>
+        <div className="px-6 py-4 border-t shrink-0 flex items-center justify-between">
+          <p className="text-sm text-gray-500">
+            {savedLines.length > 0
+              ? <span className="text-emerald-600 font-semibold">{savedLines.length} voucher{savedLines.length !== 1 ? 's' : ''} saved ✓</span>
+              : 'Select account → narration → amount → Enter'}
+          </p>
+          <button onClick={handleDone}
+            className="px-5 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition">
+            Done
+          </button>
         </div>
       </div>
     </div>

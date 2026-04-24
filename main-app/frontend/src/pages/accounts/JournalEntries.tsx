@@ -197,41 +197,40 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-1">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[85vw] h-screen flex flex-col">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
               <FileText size={16} className="text-emerald-700" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-gray-900">Journal Voucher</h2>
+              <h2 className="text-base font-semibold text-gray-900">Journal Voucher</h2>
               <p className="text-xs text-gray-500">Double-entry bookkeeping</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-600">Date:</label>
-              <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500" required />
-            </div>
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-600">Date:</label>
+            <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" required />
           </div>
         </div>
 
-        {/* Narration / Description */}
-        <div className="px-6 py-3 border-b border-gray-100 shrink-0 bg-gray-50">
+        {/* Narration */}
+        <div className="px-6 py-3 border-b shrink-0 bg-gray-50">
           <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-600 shrink-0">Voucher Narration:</label>
+            <label className="text-sm font-medium text-gray-600 shrink-0">Narration:</label>
             <input type="text" value={description} onChange={e => setDescription(e.target.value)}
-              className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 bg-white"
+              className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 bg-white outline-none"
               placeholder="General narration for this journal voucher..." />
           </div>
         </div>
 
         {/* Lines Table */}
         <div className="overflow-y-auto flex-1 px-6 py-4">
+          <div className="overflow-x-auto">
           <form id="jv-form" onSubmit={handleSubmit}>
             <table className="w-full text-sm border-collapse">
               <thead>
@@ -335,33 +334,32 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
                 </tr>
               </tbody>
             </table>
+          </div>
           </form>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 shrink-0 bg-gray-50 rounded-b-2xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={() => setLines(prev => [...prev, emptyLine()])}
-                className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-4 py-2 rounded-lg text-sm font-medium transition">
-                <Plus size={15} /> Add Line
-              </button>
-              {!isBalanced && totals.debit > 0 && (
-                <span className="text-red-600 text-xs font-medium">
-                  ⚠ Difference: {Math.abs(totals.debit - totals.credit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
-                </span>
-              )}
-            </div>
-            <div className="flex gap-3">
-              <button type="button" onClick={onClose}
-                className="px-6 py-2 border border-gray-300 rounded-xl text-sm hover:bg-gray-100 transition">
-                Cancel
-              </button>
-              <button type="submit" form="jv-form" disabled={loading || !isBalanced}
-                className="px-8 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-40 disabled:cursor-not-allowed shadow">
-                {loading ? 'Saving...' : 'Save Journal Voucher'}
-              </button>
-            </div>
+        <div className="px-6 py-4 border-t shrink-0 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => setLines(prev => [...prev, emptyLine()])}
+              className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-2 rounded-lg text-sm font-medium transition">
+              <Plus size={14} /> Add Line
+            </button>
+            {!isBalanced && totals.debit > 0 && (
+              <span className="text-red-500 text-xs font-medium">
+                ⚠ Diff: {Math.abs(totals.debit - totals.credit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+              </span>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button type="button" onClick={onClose}
+              className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
+              Cancel
+            </button>
+            <button type="submit" form="jv-form" disabled={loading || !isBalanced}
+              className="px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-40 disabled:cursor-not-allowed">
+              {loading ? 'Saving...' : 'Save JV'}
+            </button>
           </div>
         </div>
 
