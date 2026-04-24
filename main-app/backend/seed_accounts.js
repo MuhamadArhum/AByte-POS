@@ -52,7 +52,16 @@ async function run() {
     // ── Step 3: Re-enable FK checks ──
     await conn.query('SET FOREIGN_KEY_CHECKS = 1');
 
-    // ── Step 4: Build a code→id map as we insert (for parent lookups) ──
+    // ── Step 4: Check if 'level' column exists in accounts table ──
+    const cols = await conn.query(`SHOW COLUMNS FROM accounts LIKE 'level'`);
+    const hasLevel = cols.length > 0;
+    if (!hasLevel) {
+      // Add level column if missing
+      await conn.query(`ALTER TABLE accounts ADD COLUMN level TINYINT(1) NOT NULL DEFAULT 1`);
+      console.log(`✓ Added missing 'level' column to accounts table`);
+    }
+
+    // ── Step 5: Build a code→id map as we insert (for parent lookups) ──
     const codeToId = {};
     let inserted = 0;
     let skipped  = 0;
@@ -66,11 +75,15 @@ async function run() {
         continue;
       }
 
+      // Level = number of dash-separated parts in code
+      // A=1, A-01=2, A-01-01=3, A-01-01-001=4
+      const level = code.split('-').length;
+
       const result = await conn.query(
         `INSERT INTO accounts
-           (account_code, account_name, group_id, parent_account_id, account_type, is_active, opening_balance, current_balance)
-         VALUES (?, ?, ?, ?, ?, ?, 0, 0)`,
-        [code, name, groupId, parentId, accountType, isActive]
+           (account_code, account_name, group_id, parent_account_id, account_type, is_active, opening_balance, current_balance, level)
+         VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+        [code, name, groupId, parentId, accountType, isActive, level]
       );
 
       codeToId[code] = result.insertId;
