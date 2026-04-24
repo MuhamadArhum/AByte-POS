@@ -33,6 +33,12 @@ async function run() {
     console.log(`  Updating Balances → DB: ${DB_NAME}`);
     console.log(`╚══════════════════════════════════════════════╝\n`);
 
+    // ── Step 1: Reset ALL accounts to zero (wipe old balances) ──
+    const resetResult = await conn.query(
+      'UPDATE accounts SET opening_balance = 0, current_balance = 0'
+    );
+    console.log(`✓ Reset ${resetResult.affectedRows} accounts to zero\n`);
+
     let updated  = 0;
     let skipped  = 0;
     let zeroSkip = 0;
