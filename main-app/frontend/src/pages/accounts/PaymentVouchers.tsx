@@ -268,12 +268,14 @@ const PaymentVouchers = () => {
   const toast = useToast();
   const [view, setView] = useState<'list' | 'new'>('list');
   const [vouchers, setVouchers]   = useState<any[]>([]);
-  const [loading, setLoading]     = useState(true);
+  const [loading, setLoading]     = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
   const [filters, setFilters]     = useState({ from_date: localMonthStart(), to_date: localToday() });
 
   const fetchVouchers = async () => {
     setLoading(true);
+    setHasLoaded(true);
     try {
       const res = await api.get('/accounting/payment-vouchers', {
         params: { ...filters, page: pagination.page, limit: pagination.limit }
@@ -284,7 +286,7 @@ const PaymentVouchers = () => {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchVouchers(); }, [pagination.page, filters]);
+  useEffect(() => { if (hasLoaded) fetchVouchers(); }, [pagination.page]);
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this Cash Payment Voucher?')) return;
@@ -352,17 +354,24 @@ const PaymentVouchers = () => {
               onChange={e => setFilters(f => ({ ...f, to_date: e.target.value }))}
               className="px-2 sm:px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
           </div>
-          {(filters.from_date || filters.to_date) && (
-            <button onClick={() => setFilters({ from_date: '', to_date: '' })}
-              className="text-xs text-gray-500 hover:text-red-500 font-medium transition">Clear</button>
-          )}
-          <span className="ml-auto text-xs text-gray-400">{pagination.total} vouchers</span>
+          <button onClick={() => { setPagination(p => ({ ...p, page: 1 })); fetchVouchers(); }} disabled={loading}
+            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-60 shadow-sm">
+            <Search size={14} /> {loading ? 'Loading...' : 'Load'}
+          </button>
+          {hasLoaded && <span className="ml-auto text-xs text-gray-400">{pagination.total} vouchers</span>}
         </div>
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        {loading ? (
+        {!hasLoaded ? (
+          <div className="text-center py-16 text-gray-400">
+            <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <ArrowUpCircle size={24} className="opacity-30" />
+            </div>
+            <p className="font-semibold text-gray-500 text-sm">Set date range and click <strong className="text-emerald-600">Load</strong></p>
+          </div>
+        ) : loading ? (
           <div className="flex items-center justify-center py-16">
             <div className="animate-spin h-6 w-6 rounded-full border-2 border-emerald-600 border-t-transparent" />
           </div>
