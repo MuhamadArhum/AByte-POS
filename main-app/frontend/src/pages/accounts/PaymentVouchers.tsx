@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowUpCircle, Plus, Trash2, Download, Search, ChevronDown, ArrowLeft } from 'lucide-react';
+import { ArrowUpCircle, Plus, Trash2, Download, Search, ChevronDown, ArrowLeft, Pencil, Check, X } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
@@ -77,7 +77,7 @@ const AccountSelector = ({
 };
 
 // ── Full-page CPV Entry Form ──────────────────────────────────────────────────
-type SavedLine = { voucher_id: number; voucher_number: string; account_name: string; narration: string; amount: number };
+type SavedLine = { voucher_id: number; voucher_number: string; account_id: string; account_name: string; narration: string; amount: number };
 
 const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => void }) => {
   const toast = useToast();
@@ -86,6 +86,7 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
   const [savedLines, setSavedLines] = useState<SavedLine[]>([]);
   const [entry, setEntry] = useState({ account_id: '', narration: '', amount: '' });
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const narrationRef = useRef<HTMLInputElement>(null);
   const amountRef    = useRef<HTMLInputElement>(null);
@@ -96,37 +97,61 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
       .catch(() => {});
   }, []);
 
+  const resetEntry = () => {
+    setEntry({ account_id: '', narration: '', amount: '' });
+    setEditingId(null);
+  };
+
   const saveEntry = async () => {
     if (!date || !entry.account_id || !entry.amount) { toast.error('Account and Amount are required'); return; }
     const amount = parseFloat(entry.amount);
     if (isNaN(amount) || amount <= 0) { toast.error('Enter a valid amount'); return; }
     setSaving(true);
     try {
+      if (editingId !== null) {
+        // Update: delete old then create new
+        await api.delete(`/accounting/payment-vouchers/${editingId}`);
+      }
       const res = await api.post('/accounting/payment-vouchers', {
         voucher_date: date, payment_to: entry.narration || '—',
         payment_type: 'expense', account_id: entry.account_id,
         amount, payment_method: 'cash', description: entry.narration,
       });
       const acct = accounts.find(a => String(a.account_id) === entry.account_id);
-      setSavedLines(prev => [...prev, {
+      const newLine: SavedLine = {
         voucher_id: res.data.voucher_id, voucher_number: res.data.voucher_number,
-        account_name: acct?.account_name ?? '', narration: entry.narration, amount,
-      }]);
-      setEntry({ account_id: '', narration: '', amount: '' });
+        account_id: entry.account_id, account_name: acct?.account_name ?? '',
+        narration: entry.narration, amount,
+      };
+      if (editingId !== null) {
+        setSavedLines(prev => prev.map(l => l.voucher_id === editingId ? newLine : l));
+        toast.success('Entry updated');
+      } else {
+        setSavedLines(prev => [...prev, newLine]);
+      }
+      resetEntry();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Save failed');
     } finally { setSaving(false); }
+  };
+
+  const startEdit = (line: SavedLine) => {
+    setEditingId(line.voucher_id);
+    setEntry({ account_id: line.account_id, narration: line.narration, amount: String(line.amount) });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const deleteLine = async (voucher_id: number) => {
     try {
       await api.delete(`/accounting/payment-vouchers/${voucher_id}`);
       setSavedLines(prev => prev.filter(l => l.voucher_id !== voucher_id));
+      if (editingId === voucher_id) resetEntry();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Delete failed'); }
   };
 
   const handleDone = () => { onRefresh(); onBack(); };
   const total = savedLines.reduce((s, l) => s + l.amount, 0);
+  const isEditing = editingId !== null;
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
@@ -144,7 +169,7 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-bold text-gray-900">New Cash Payment Voucher</h2>
-              <p className="text-xs text-gray-500 hidden sm:block">Press Enter on Amount to save each line</p>
+              <p className="text-xs text-gray-500 hidden sm:block">Fill details and click Save Entry</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -156,9 +181,19 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
       </div>
 
       {/* Entry Form */}
-      <div className="px-4 sm:px-6 py-4 bg-white border-b border-gray-100 shrink-0">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">New Entry</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_200px] gap-3">
+      <div className={`px-4 sm:px-6 py-4 bg-white border-b shrink-0 ${isEditing ? 'border-emerald-300 bg-emerald-50/40' : 'border-gray-100'}`}>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            {isEditing ? '✏️ Editing Entry' : 'New Entry'}
+          </p>
+          {isEditing && (
+            <button onClick={resetEntry} className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition">
+              <X size={13} /> Cancel Edit
+            </button>
+          )}
+        </div>
+        {/* Row 1: Account + Description */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1.5 block">Account</label>
             <AccountSelector value={entry.account_id}
@@ -174,22 +209,25 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
               placeholder="e.g. Salary, Utility Bill..."
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 bg-white outline-none" />
           </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Amount</label>
-            <div className="flex gap-2">
-              <input ref={amountRef} type="number" step="0.01" min="0"
-                value={entry.amount}
-                onChange={e => setEntry(v => ({ ...v, amount: e.target.value }))}
-                onKeyDown={e => { if (e.key === 'Enter') saveEntry(); }}
-                placeholder="0.00"
-                className="flex-1 px-3 py-2 border border-emerald-200 bg-emerald-50 rounded-lg text-sm text-right font-semibold text-emerald-700 focus:ring-2 focus:ring-emerald-500 outline-none" />
-              <button onClick={saveEntry} disabled={saving}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap">
-                {saving ? <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" /> : <Plus size={15} />}
-                <span className="hidden sm:inline">Add</span>
-              </button>
-            </div>
+        </div>
+        {/* Row 2: Amount + Save button */}
+        <div className="flex items-end gap-3">
+          <div className="w-48">
+            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Amount (Rs.)</label>
+            <input ref={amountRef} type="number" step="0.01" min="0"
+              value={entry.amount}
+              onChange={e => setEntry(v => ({ ...v, amount: e.target.value }))}
+              onKeyDown={e => { if (e.key === 'Enter') saveEntry(); }}
+              placeholder="0.00"
+              className="w-full px-3 py-2 border border-emerald-200 bg-emerald-50 rounded-lg text-sm text-right font-semibold text-emerald-700 focus:ring-2 focus:ring-emerald-500 outline-none" />
           </div>
+          <button onClick={saveEntry} disabled={saving}
+            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-50 whitespace-nowrap">
+            {saving
+              ? <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+              : isEditing ? <Check size={15} /> : <Plus size={15} />}
+            {isEditing ? 'Update Entry' : 'Save Entry'}
+          </button>
         </div>
       </div>
 
@@ -201,24 +239,25 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
               <ArrowUpCircle size={24} className="opacity-30" />
             </div>
             <p className="text-sm font-medium text-gray-500">No entries yet</p>
-            <p className="text-xs mt-1 text-gray-400">Fill the form above and press Enter or click Add</p>
+            <p className="text-xs mt-1 text-gray-400">Fill the form above and click Save Entry</p>
           </div>
         ) : (
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse min-w-[500px]">
+              <table className="w-full text-sm border-collapse min-w-[520px]">
                 <thead>
                   <tr className="bg-gray-800 text-white text-xs uppercase tracking-wider">
                     <th className="px-4 py-3 text-left font-semibold">Voucher #</th>
                     <th className="px-4 py-3 text-left font-semibold">Account</th>
                     <th className="px-4 py-3 text-left font-semibold">Description</th>
                     <th className="px-4 py-3 text-right font-semibold">Amount</th>
-                    <th className="px-4 py-3 w-12"></th>
+                    <th className="px-4 py-3 text-center font-semibold w-20">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {savedLines.map((line, i) => (
-                    <tr key={line.voucher_id} className={`border-b border-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}`}>
+                    <tr key={line.voucher_id}
+                      className={`border-b border-gray-100 transition ${editingId === line.voucher_id ? 'bg-emerald-50 ring-1 ring-inset ring-emerald-300' : i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}`}>
                       <td className="px-4 py-3 font-mono text-xs font-bold text-emerald-700">{line.voucher_number}</td>
                       <td className="px-4 py-3 text-gray-800 font-medium">{line.account_name}</td>
                       <td className="px-4 py-3 text-gray-500">{line.narration || '—'}</td>
@@ -226,10 +265,16 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
                         {line.amount.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <button onClick={() => deleteLine(line.voucher_id)}
-                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => startEdit(line)} title="Edit"
+                            className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition">
+                            <Pencil size={14} />
+                          </button>
+                          <button onClick={() => deleteLine(line.voucher_id)} title="Delete"
+                            className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -252,7 +297,7 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
         <p className="text-sm">
           {savedLines.length > 0
             ? <span className="text-emerald-600 font-semibold">{savedLines.length} voucher{savedLines.length !== 1 ? 's' : ''} saved ✓</span>
-            : <span className="text-gray-400 text-xs">Select account → description → amount → Enter</span>}
+            : <span className="text-gray-400 text-xs">Fill form above and click Save Entry</span>}
         </p>
         <button onClick={handleDone}
           className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition shadow-sm">

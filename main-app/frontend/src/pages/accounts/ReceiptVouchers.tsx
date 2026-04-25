@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowDownCircle, Plus, Trash2, Download, Search, ChevronDown, ArrowLeft } from 'lucide-react';
+import { ArrowDownCircle, Plus, Trash2, Download, Search, ChevronDown, ArrowLeft, Pencil, Check, X } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
@@ -77,7 +77,7 @@ const AccountSelector = ({
 };
 
 // ── Full-page CRV Entry Form ──────────────────────────────────────────────────
-type SavedLine = { voucher_id: number; voucher_number: string; account_name: string; narration: string; amount: number };
+type SavedLine = { voucher_id: number; voucher_number: string; account_id: string; account_name: string; narration: string; amount: number };
 
 const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => void }) => {
   const toast = useToast();
@@ -86,6 +86,7 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
   const [savedLines, setSavedLines] = useState<SavedLine[]>([]);
   const [entry, setEntry] = useState({ account_id: '', narration: '', amount: '' });
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const narrationRef = useRef<HTMLInputElement>(null);
   const amountRef    = useRef<HTMLInputElement>(null);
@@ -96,26 +97,45 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
       .catch(() => {});
   }, []);
 
+  const resetEntry = () => {
+    setEntry({ account_id: '', narration: '', amount: '' });
+    setEditingId(null);
+  };
+
   const saveEntry = async () => {
     if (!date || !entry.account_id || !entry.amount) { toast.error('Account and Amount are required'); return; }
     const amount = parseFloat(entry.amount);
     if (isNaN(amount) || amount <= 0) { toast.error('Enter a valid amount'); return; }
     setSaving(true);
     try {
+      if (editingId !== null) {
+        await api.delete(`/accounting/receipt-vouchers/${editingId}`);
+      }
       const res = await api.post('/accounting/receipt-vouchers', {
         voucher_date: date, received_from: entry.narration || '—',
         receipt_type: 'customer', account_id: entry.account_id,
         amount, payment_method: 'cash', description: entry.narration,
       });
       const acct = accounts.find(a => String(a.account_id) === entry.account_id);
-      setSavedLines(prev => [...prev, {
+      const newLine: SavedLine = {
         voucher_id: res.data.voucher_id, voucher_number: res.data.voucher_number,
-        account_name: acct?.account_name ?? '', narration: entry.narration, amount,
-      }]);
-      setEntry({ account_id: '', narration: '', amount: '' });
+        account_id: entry.account_id, account_name: acct?.account_name ?? '',
+        narration: entry.narration, amount,
+      };
+      if (editingId !== null) {
+        setSavedLines(prev => prev.map(l => l.voucher_id === editingId ? newLine : l));
+      } else {
+        setSavedLines(prev => [...prev, newLine]);
+      }
+      resetEntry();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Save failed');
     } finally { setSaving(false); }
+  };
+
+  const startEdit = (line: SavedLine) => {
+    setEntry({ account_id: line.account_id, narration: line.narration, amount: String(line.amount) });
+    setEditingId(line.voucher_id);
   };
 
   const deleteLine = async (voucher_id: number) => {
@@ -157,8 +177,19 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
 
       {/* Entry Form */}
       <div className="px-4 sm:px-6 py-4 bg-white border-b border-gray-100 shrink-0">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">New Entry</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_200px] gap-3">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            {editingId !== null ? 'Edit Entry' : 'New Entry'}
+          </p>
+          {editingId !== null && (
+            <button onClick={resetEntry}
+              className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+              <X size={12} /> Cancel Edit
+            </button>
+          )}
+        </div>
+        {/* Row 1: Account | Description */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1.5 block">Account</label>
             <AccountSelector value={entry.account_id}
@@ -174,22 +205,25 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
               placeholder="e.g. Customer Name, Invoice #..."
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 bg-white outline-none" />
           </div>
+        </div>
+        {/* Row 2: Amount | Save Button */}
+        <div className="flex items-end gap-3">
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1.5 block">Amount</label>
-            <div className="flex gap-2">
-              <input ref={amountRef} type="number" step="0.01" min="0"
-                value={entry.amount}
-                onChange={e => setEntry(v => ({ ...v, amount: e.target.value }))}
-                onKeyDown={e => { if (e.key === 'Enter') saveEntry(); }}
-                placeholder="0.00"
-                className="flex-1 px-3 py-2 border border-emerald-200 bg-emerald-50 rounded-lg text-sm text-right font-semibold text-emerald-700 focus:ring-2 focus:ring-emerald-500 outline-none" />
-              <button onClick={saveEntry} disabled={saving}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap">
-                {saving ? <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" /> : <Plus size={15} />}
-                <span className="hidden sm:inline">Add</span>
-              </button>
-            </div>
+            <input ref={amountRef} type="number" step="0.01" min="0"
+              value={entry.amount}
+              onChange={e => setEntry(v => ({ ...v, amount: e.target.value }))}
+              onKeyDown={e => { if (e.key === 'Enter') saveEntry(); }}
+              placeholder="0.00"
+              className="w-48 px-3 py-2 border border-emerald-200 bg-emerald-50 rounded-lg text-sm text-right font-semibold text-emerald-700 focus:ring-2 focus:ring-emerald-500 outline-none" />
           </div>
+          <button onClick={saveEntry} disabled={saving}
+            className="flex items-center gap-1.5 px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-50 whitespace-nowrap">
+            {saving
+              ? <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+              : editingId !== null ? <Check size={15} /> : <Plus size={15} />}
+            {editingId !== null ? 'Update Entry' : 'Save Entry'}
+          </button>
         </div>
       </div>
 
@@ -213,12 +247,12 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
                     <th className="px-4 py-3 text-left font-semibold">Account</th>
                     <th className="px-4 py-3 text-left font-semibold">Description</th>
                     <th className="px-4 py-3 text-right font-semibold">Amount</th>
-                    <th className="px-4 py-3 w-12"></th>
+                    <th className="px-4 py-3 w-20"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {savedLines.map((line, i) => (
-                    <tr key={line.voucher_id} className={`border-b border-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}`}>
+                    <tr key={line.voucher_id} className={`border-b border-gray-100 ${line.voucher_id === editingId ? 'bg-emerald-50 ring-1 ring-inset ring-emerald-300' : i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}`}>
                       <td className="px-4 py-3 font-mono text-xs font-bold text-emerald-700">{line.voucher_number}</td>
                       <td className="px-4 py-3 text-gray-800 font-medium">{line.account_name}</td>
                       <td className="px-4 py-3 text-gray-500">{line.narration || '—'}</td>
@@ -226,10 +260,16 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
                         {line.amount.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <button onClick={() => deleteLine(line.voucher_id)}
-                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => startEdit(line)}
+                            className="p-1.5 text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition">
+                            <Pencil size={14} />
+                          </button>
+                          <button onClick={() => deleteLine(line.voucher_id)}
+                            className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
