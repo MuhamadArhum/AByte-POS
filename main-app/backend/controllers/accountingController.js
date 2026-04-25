@@ -952,10 +952,20 @@ exports.getPaymentVouchers = async (req, res) => {
   }
 };
 
+exports.getNextPaymentVoucherNumber = async (req, res) => {
+  try {
+    const [maxRow] = await query("SELECT MAX(CAST(SUBSTRING(voucher_number, 4) AS UNSIGNED)) as max_num FROM payment_vouchers WHERE voucher_number REGEXP '^CPV[0-9]+'");
+    const nextNumber = (maxRow?.max_num || 0) + 1;
+    res.json({ voucher_number: `CPV${String(nextNumber).padStart(6, '0')}` });
+  } catch (err) {
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+};
+
 exports.createPaymentVoucher = async (req, res) => {
   const conn = await getConnection();
   try {
-    const { voucher_date, payment_to, payment_type, account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
+    const { voucher_number, voucher_date, payment_to, payment_type, account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
 
     if (!voucher_date || !payment_to || !account_id || !amount) {
       return res.status(400).json({ message: 'Required fields missing' });
@@ -972,12 +982,15 @@ exports.createPaymentVoucher = async (req, res) => {
 
     await conn.beginTransaction();
 
-    // Generate voucher number — MAX-based to avoid duplicates from old-format records
-    const [maxRow] = await conn.query("SELECT MAX(CAST(SUBSTRING(voucher_number, 4) AS UNSIGNED)) as max_num FROM payment_vouchers WHERE voucher_number REGEXP '^CPV[0-9]+'");
-    const nextNumber = (maxRow?.max_num || 0) + 1;
-    const voucherNumber = `CPV${String(nextNumber).padStart(6, '0')}`;
+    // Use provided voucher_number (shared across entries) or generate new one
+    let voucherNumber = voucher_number;
+    if (!voucherNumber) {
+      const [maxRow] = await conn.query("SELECT MAX(CAST(SUBSTRING(voucher_number, 4) AS UNSIGNED)) as max_num FROM payment_vouchers WHERE voucher_number REGEXP '^CPV[0-9]+'");
+      const nextNumber = (maxRow?.max_num || 0) + 1;
+      voucherNumber = `CPV${String(nextNumber).padStart(6, '0')}`;
+    }
 
-    // Create payment voucher
+    // Create payment voucher line
     const result = await conn.query(
       'INSERT INTO payment_vouchers (voucher_number, voucher_date, payment_to, payment_type, account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [voucherNumber, voucher_date, payment_to, payment_type || 'expense', account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
@@ -1043,10 +1056,20 @@ exports.getReceiptVouchers = async (req, res) => {
   }
 };
 
+exports.getNextReceiptVoucherNumber = async (req, res) => {
+  try {
+    const [maxRow] = await query("SELECT MAX(CAST(SUBSTRING(voucher_number, 4) AS UNSIGNED)) as max_num FROM receipt_vouchers WHERE voucher_number REGEXP '^CRV[0-9]+'");
+    const nextNumber = (maxRow?.max_num || 0) + 1;
+    res.json({ voucher_number: `CRV${String(nextNumber).padStart(6, '0')}` });
+  } catch (err) {
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+};
+
 exports.createReceiptVoucher = async (req, res) => {
   const conn = await getConnection();
   try {
-    const { voucher_date, received_from, receipt_type, account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
+    const { voucher_number, voucher_date, received_from, receipt_type, account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
 
     if (!voucher_date || !received_from || !account_id || !amount) {
       return res.status(400).json({ message: 'Required fields missing' });
@@ -1063,12 +1086,15 @@ exports.createReceiptVoucher = async (req, res) => {
 
     await conn.beginTransaction();
 
-    // Generate voucher number — MAX-based to avoid duplicates from old-format records
-    const [maxRow] = await conn.query("SELECT MAX(CAST(SUBSTRING(voucher_number, 4) AS UNSIGNED)) as max_num FROM receipt_vouchers WHERE voucher_number REGEXP '^CRV[0-9]+'");
-    const nextNumber = (maxRow?.max_num || 0) + 1;
-    const voucherNumber = `CRV${String(nextNumber).padStart(6, '0')}`;
+    // Use provided voucher_number (shared across entries) or generate new one
+    let voucherNumber = voucher_number;
+    if (!voucherNumber) {
+      const [maxRow] = await conn.query("SELECT MAX(CAST(SUBSTRING(voucher_number, 4) AS UNSIGNED)) as max_num FROM receipt_vouchers WHERE voucher_number REGEXP '^CRV[0-9]+'");
+      const nextNumber = (maxRow?.max_num || 0) + 1;
+      voucherNumber = `CRV${String(nextNumber).padStart(6, '0')}`;
+    }
 
-    // Create receipt voucher
+    // Create receipt voucher line
     const result = await conn.query(
       'INSERT INTO receipt_vouchers (voucher_number, voucher_date, received_from, receipt_type, account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [voucherNumber, voucher_date, received_from, receipt_type || 'customer', account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]

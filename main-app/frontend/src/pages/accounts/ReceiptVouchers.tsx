@@ -83,6 +83,7 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
   const toast = useToast();
   const [accounts, setAccounts] = useState<any[]>([]);
   const [date, setDate] = useState(localToday());
+  const [voucherNumber, setVoucherNumber] = useState('');
   const [savedLines, setSavedLines] = useState<SavedLine[]>([]);
   const [entry, setEntry] = useState({ account_id: '', narration: '', amount: '' });
   const [saving, setSaving] = useState(false);
@@ -95,6 +96,9 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
     api.get('/accounting/accounts', { params: { tree: 1 } })
       .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active)))
       .catch(() => toast.error('Failed to load accounts. Check DB migration.'));
+    api.get('/accounting/receipt-vouchers/next-number')
+      .then(r => setVoucherNumber(r.data.voucher_number))
+      .catch(() => {});
   }, []);
 
   const resetEntry = () => {
@@ -112,10 +116,12 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
         await api.delete(`/accounting/receipt-vouchers/${editingId}`);
       }
       const res = await api.post('/accounting/receipt-vouchers', {
+        voucher_number: voucherNumber,
         voucher_date: date, received_from: entry.narration || '—',
         receipt_type: 'customer', account_id: entry.account_id,
         amount, payment_method: 'cash', description: entry.narration,
       });
+      if (!voucherNumber) setVoucherNumber(res.data.voucher_number);
       const acct = accounts.find(a => String(a.account_id) === entry.account_id);
       const newLine: SavedLine = {
         voucher_id: res.data.voucher_id, voucher_number: res.data.voucher_number,
@@ -138,6 +144,7 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
   const startEdit = (line: SavedLine) => {
     setEntry({ account_id: line.account_id, narration: line.narration, amount: String(line.amount) });
     setEditingId(line.voucher_id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const deleteLine = async (voucher_id: number) => {
@@ -165,8 +172,13 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
               <ArrowDownCircle size={17} className="text-emerald-700" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-gray-900">New Cash Receipt Voucher</h2>
-              <p className="text-xs text-gray-500 hidden sm:block">Press Enter on Amount to save each line</p>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-bold text-gray-900">Cash Receipt Voucher</h2>
+                {voucherNumber && (
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-mono font-bold">{voucherNumber}</span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">Sab entries is ek voucher mein save hongi</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -178,15 +190,14 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
       </div>
 
       {/* Entry Form */}
-      <div className="px-4 sm:px-6 py-4 bg-white border-b border-gray-100 shrink-0">
+      <div className={`px-4 sm:px-6 py-4 bg-white border-b shrink-0 ${editingId !== null ? 'border-emerald-300 bg-emerald-50/40' : 'border-gray-100'}`}>
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            {editingId !== null ? 'Edit Entry' : 'New Entry'}
+            {editingId !== null ? '✏️ Editing Entry' : 'New Entry'}
           </p>
           {editingId !== null && (
-            <button onClick={resetEntry}
-              className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
-              <X size={12} /> Cancel Edit
+            <button onClick={resetEntry} className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition">
+              <X size={13} /> Cancel Edit
             </button>
           )}
         </div>
@@ -293,8 +304,8 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
       <div className="px-4 sm:px-6 py-4 bg-white border-t border-gray-200 shrink-0 flex items-center justify-between">
         <p className="text-sm">
           {savedLines.length > 0
-            ? <span className="text-emerald-600 font-semibold">{savedLines.length} voucher{savedLines.length !== 1 ? 's' : ''} saved ✓</span>
-            : <span className="text-gray-400 text-xs">Select account → description → amount → Enter</span>}
+            ? <span className="text-emerald-600 font-semibold">{savedLines.length} entr{savedLines.length !== 1 ? 'ies' : 'y'} saved ✓</span>
+            : <span className="text-gray-400 text-xs">Fill form above and click Save Entry</span>}
         </p>
         <button onClick={handleDone}
           className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition shadow-sm">

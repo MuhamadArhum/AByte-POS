@@ -83,6 +83,7 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
   const toast = useToast();
   const [accounts, setAccounts] = useState<any[]>([]);
   const [date, setDate] = useState(localToday());
+  const [voucherNumber, setVoucherNumber] = useState('');
   const [savedLines, setSavedLines] = useState<SavedLine[]>([]);
   const [entry, setEntry] = useState({ account_id: '', narration: '', amount: '' });
   const [saving, setSaving] = useState(false);
@@ -95,6 +96,9 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
     api.get('/accounting/accounts', { params: { tree: 1 } })
       .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active)))
       .catch(() => toast.error('Failed to load accounts. Check DB migration.'));
+    api.get('/accounting/payment-vouchers/next-number')
+      .then(r => setVoucherNumber(r.data.voucher_number))
+      .catch(() => {});
   }, []);
 
   const resetEntry = () => {
@@ -109,14 +113,15 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
     setSaving(true);
     try {
       if (editingId !== null) {
-        // Update: delete old then create new
         await api.delete(`/accounting/payment-vouchers/${editingId}`);
       }
       const res = await api.post('/accounting/payment-vouchers', {
+        voucher_number: voucherNumber,
         voucher_date: date, payment_to: entry.narration || '—',
         payment_type: 'expense', account_id: entry.account_id,
         amount, payment_method: 'cash', description: entry.narration,
       });
+      if (!voucherNumber) setVoucherNumber(res.data.voucher_number);
       const acct = accounts.find(a => String(a.account_id) === entry.account_id);
       const newLine: SavedLine = {
         voucher_id: res.data.voucher_id, voucher_number: res.data.voucher_number,
@@ -169,8 +174,13 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
               <ArrowUpCircle size={17} className="text-emerald-700" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-gray-900">New Cash Payment Voucher</h2>
-              <p className="text-xs text-gray-500 hidden sm:block">Fill details and click Save Entry</p>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-bold text-gray-900">Cash Payment Voucher</h2>
+                {voucherNumber && (
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-mono font-bold">{voucherNumber}</span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">Sab entries is ek voucher mein save hongi</p>
             </div>
           </div>
           <div className="flex items-center gap-2">

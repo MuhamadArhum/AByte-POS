@@ -121,7 +121,9 @@
       "Bash(> D:/AByte-POS/main-app/backend/logs/server.log)",
       "Bash(> D:/AByte-POS/main-app/backend/logs/server_err.log)",
       "Bash(git push *)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(echo \"SHOW CREATE TABLE payment_vouchers\\\\\\\\G\")",
+      "Bash(echo \"SHOW CREATE TABLE receipt_vouchers\\\\\\\\G\")"
     ]
   }
 }

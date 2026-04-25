@@ -30,10 +30,12 @@ router.post('/bank-accounts', requirePermission('accounts.vouchers'), accounting
 router.put('/bank-accounts/:id', requirePermission('accounts.vouchers'), accountingController.updateBankAccount);
 router.delete('/bank-accounts/:id', requirePermission('accounts.vouchers'), accountingController.deleteBankAccount);
 
+router.get('/payment-vouchers/next-number', accountingController.getNextPaymentVoucherNumber);
 router.get('/payment-vouchers', accountingController.getPaymentVouchers);
 router.post('/payment-vouchers', requirePermission('accounts.vouchers'), accountingController.createPaymentVoucher);
 router.delete('/payment-vouchers/:id', requirePermission('accounts.vouchers'), accountingController.deletePaymentVoucher);
 
+router.get('/receipt-vouchers/next-number', accountingController.getNextReceiptVoucherNumber);
 router.get('/receipt-vouchers', accountingController.getReceiptVouchers);
 router.post('/receipt-vouchers', requirePermission('accounts.vouchers'), accountingController.createReceiptVoucher);
 router.delete('/receipt-vouchers/:id', requirePermission('accounts.vouchers'), accountingController.deleteReceiptVoucher);
