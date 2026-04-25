@@ -45,5 +45,6 @@ router.get('/reports/trial-balance-6col', accountingController.getTrialBalance6C
 router.get('/reports/profit-loss', accountingController.getProfitLoss);
 router.get('/reports/balance-sheet', accountingController.getBalanceSheet);
 router.get('/reports/analytics', accountingController.getAccountingAnalytics);
+router.get('/cash-position', accountingController.getCashPosition);
 
 module.exports = router;

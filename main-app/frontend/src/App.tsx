@@ -86,6 +86,7 @@ import PaymentVouchers from './pages/accounts/PaymentVouchers';
 import ReceiptVouchers from './pages/accounts/ReceiptVouchers';
 import Analytics from './pages/accounts/Analytics';
 import Reports from './pages/accounts/Reports';
+import CashPosition from './pages/accounts/CashPosition';
 import SalesAnalytics from './pages/SalesAnalytics';
 
 // System Module
@@ -215,6 +216,7 @@ function App() {
                       <Route path="/receipt-vouchers" element={<PermissionGuard moduleKey="accounts.receipt-vouchers"><ReceiptVouchers /></PermissionGuard>} />
                       <Route path="/analytics" element={<PermissionGuard moduleKey="accounts.analytics"><Analytics /></PermissionGuard>} />
                       <Route path="/reports" element={<PermissionGuard moduleKey="accounts.reports"><Reports /></PermissionGuard>} />
+                      <Route path="/cash-position" element={<PermissionGuard moduleKey="accounts.cash-position"><CashPosition /></PermissionGuard>} />
 
                       {/* System */}
                       <Route path="/stores" element={<PermissionGuard moduleKey="system.stores"><Stores /></PermissionGuard>} />

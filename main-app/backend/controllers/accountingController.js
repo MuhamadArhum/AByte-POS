@@ -556,7 +556,7 @@ exports.getGeneralLedger = async (req, res) => {
     }
 
     // Map column names to what frontend expects
-    const data = ledger.map((r: any) => ({
+    const data = ledger.map((r) => ({
       line_id: r.tx_id,
       entry_number: r.ref_number,
       entry_date: r.tx_date,
@@ -1320,6 +1320,48 @@ exports.getAccountingAnalytics = async (req, res) => {
       },
       journal_summary: jvSummary
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== CASH POSITION (All Level-4 Accounts) ==============
+
+exports.getCashPosition = async (req, res) => {
+  try {
+    const accounts = await query(`
+      SELECT a.account_id, a.account_code, a.account_name, a.account_type,
+             a.current_balance, g.group_name
+      FROM accounts a
+      JOIN account_groups g ON a.group_id = g.group_id
+      WHERE a.level = 4 AND a.is_active = 1
+      ORDER BY a.account_type, a.account_code
+    `);
+
+    let totalDr = 0, totalCr = 0;
+
+    const data = accounts.map(a => {
+      const bal = Number(a.current_balance || 0);
+      const isDebitNormal = ['asset', 'expense'].includes(a.account_type);
+      // asset/expense: positive stored balance = Dr side
+      // liability/equity/revenue: positive stored balance = Cr side
+      const dr_balance = isDebitNormal ? (bal > 0 ? bal : 0) : (bal < 0 ? Math.abs(bal) : 0);
+      const cr_balance = isDebitNormal ? (bal < 0 ? Math.abs(bal) : 0) : (bal > 0 ? bal : 0);
+      totalDr += dr_balance;
+      totalCr += cr_balance;
+      return {
+        account_id:   Number(a.account_id),
+        account_code: a.account_code,
+        account_name: a.account_name,
+        account_type: a.account_type,
+        group_name:   a.group_name,
+        dr_balance,
+        cr_balance
+      };
+    });
+
+    res.json({ data, totals: { dr: totalDr, cr: totalCr, net: totalDr - totalCr } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
