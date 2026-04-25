@@ -13,7 +13,7 @@ const AccountSelector = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [highlighted, setHighlighted] = useState(0);
+  const [hi, setHi] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
 
   const selected = accounts.find(a => String(a.account_id) === String(value));
@@ -21,22 +21,22 @@ const AccountSelector = ({
     !search || a.account_name.toLowerCase().includes(search.toLowerCase()) || a.account_code.includes(search)
   );
 
-  useEffect(() => { setHighlighted(0); }, [search]);
+  useEffect(() => { setHi(0); }, [search]);
   useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, []);
 
   const selectAccount = (id: string) => {
-    onChange(id); setOpen(false); setSearch(''); setHighlighted(0);
+    onChange(id); setOpen(false); setSearch(''); setHi(0);
     setTimeout(() => onAfterSelect?.(), 0);
   };
 
   return (
     <div ref={ref} className="relative">
       <button type="button" onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-left transition">
+        className="w-full flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-left transition">
         <span className={selected ? 'text-gray-900 font-medium truncate' : 'text-gray-400'}>
           {selected ? `${selected.account_code} — ${selected.account_name}` : 'Select Account...'}
         </span>
@@ -48,15 +48,15 @@ const AccountSelector = ({
         </p>
       )}
       {open && (
-        <div className="absolute z-50 left-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-xl shadow-2xl">
-          <div className="p-2.5 border-b border-gray-100">
+        <div className="absolute z-50 left-0 top-full mt-1 w-72 sm:w-80 bg-white border border-gray-200 rounded-xl shadow-2xl">
+          <div className="p-2 border-b border-gray-100">
             <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 rounded-lg">
               <Search size={13} className="text-gray-400" />
               <input autoFocus type="text" value={search} onChange={e => setSearch(e.target.value)}
                 onKeyDown={e => {
-                  if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, filtered.length - 1)); }
-                  else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
-                  else if (e.key === 'Enter') { e.preventDefault(); if (filtered.length > 0) selectAccount(String(filtered[highlighted]?.account_id ?? filtered[0].account_id)); }
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setHi(h => Math.min(h + 1, filtered.length - 1)); }
+                  else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(h => Math.max(h - 1, 0)); }
+                  else if (e.key === 'Enter') { e.preventDefault(); if (filtered.length > 0) selectAccount(String(filtered[hi]?.account_id ?? filtered[0].account_id)); }
                   else if (e.key === 'Escape') setOpen(false);
                 }}
                 className="bg-transparent text-sm outline-none w-full placeholder-gray-400"
@@ -68,7 +68,7 @@ const AccountSelector = ({
             {filtered.map((a, idx) => (
               <li key={a.account_id}>
                 <button type="button" onClick={() => selectAccount(String(a.account_id))}
-                  className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition ${idx === highlighted ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-gray-50'}`}>
+                  className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition ${idx === hi ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-gray-50'}`}>
                   <div className="min-w-0">
                     <span className="text-xs text-gray-400 font-mono">{a.account_code}</span>
                     <span className="ml-2 text-sm text-gray-800 truncate">{a.account_name}</span>
@@ -140,8 +140,7 @@ const JournalEntryForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess
     setLoading(true);
     try {
       await api.post('/accounting/journal-entries', {
-        entry_date: entryDate,
-        description,
+        entry_date: entryDate, description,
         lines: lines.filter(l => l.account_id).map(l => ({
           account_id: l.account_id, description: l.narration,
           debit: Number(l.debit || 0), credit: Number(l.credit || 0)
@@ -158,170 +157,170 @@ const JournalEntryForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-gray-50">
 
       {/* Top Bar */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
             <button onClick={onBack}
-              className="w-9 h-9 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition">
-              <ArrowLeft size={18} className="text-white" />
+              className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center transition">
+              <ArrowLeft size={17} className="text-gray-600" />
             </button>
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-                <FileText size={18} className="text-white" />
-              </div>
-              <div>
-                <h2 className="text-white font-bold text-lg leading-tight">New Journal Voucher</h2>
-                <p className="text-emerald-100 text-xs">Double-entry bookkeeping</p>
-              </div>
+            <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center">
+              <FileText size={17} className="text-emerald-700" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-gray-900">New Journal Voucher</h2>
+              <p className="text-xs text-gray-500 hidden sm:block">Double-entry bookkeeping</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <label className="text-emerald-100 text-sm font-medium">Date</label>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <label className="text-sm font-medium text-gray-500 hidden sm:block">Date</label>
             <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)}
-              className="px-3 py-1.5 bg-white/15 border border-white/30 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/50"
-              style={{ colorScheme: 'dark' }} required />
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" required />
           </div>
         </div>
       </div>
 
       {/* Narration Row */}
-      <div className="px-6 py-3 border-b bg-emerald-50/60 shrink-0">
-        <div className="flex items-center gap-3">
+      <div className="px-4 sm:px-6 py-3 bg-white border-b border-gray-100 shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <label className="text-sm font-semibold text-gray-600 shrink-0">Narration</label>
           <input type="text" value={description} onChange={e => setDescription(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 bg-white outline-none"
+            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 bg-white outline-none"
             placeholder="General narration for this journal entry..." />
         </div>
       </div>
 
-      {/* Lines Table — scrollable */}
-      <div className="flex-1 overflow-y-auto px-6 py-5">
+      {/* Lines Table */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <form id="jv-form" onSubmit={handleSubmit}>
-          <div className="rounded-xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-slate-700 text-white">
-                  <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide w-12">#</th>
-                  <th className="px-3 py-3 text-center font-semibold text-xs uppercase tracking-wide w-20">Dr/Cr</th>
-                  <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide">Account</th>
-                  <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide">Narration</th>
-                  <th className="px-3 py-3 text-right font-semibold text-xs uppercase tracking-wide w-36">Debit</th>
-                  <th className="px-3 py-3 text-right font-semibold text-xs uppercase tracking-wide w-36">Credit</th>
-                  <th className="px-3 py-3 text-center font-semibold text-xs uppercase tracking-wide w-10"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map((line, i) => (
-                  <tr key={i} className={`border-b border-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
-                    <td className="px-3 py-3 text-gray-400 font-mono text-xs font-semibold">{String(i + 1).padStart(2, '0')}</td>
-
-                    <td className="px-2 py-3 text-center">
-                      <div className="flex rounded-full overflow-hidden bg-gray-100 p-0.5 gap-0.5 w-[72px] mx-auto">
-                        <button type="button" onClick={() => handleDrCr(i, 'Dr')}
-                          className={`flex-1 py-1 text-xs font-bold rounded-full transition ${line.dr_cr === 'Dr' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-blue-600'}`}>
-                          Dr
-                        </button>
-                        <button type="button" onClick={() => handleDrCr(i, 'Cr')}
-                          className={`flex-1 py-1 text-xs font-bold rounded-full transition ${line.dr_cr === 'Cr' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-orange-500'}`}>
-                          Cr
-                        </button>
-                      </div>
-                    </td>
-
-                    <td className="px-2 py-2 min-w-[220px]">
-                      <AccountSelector
-                        value={line.account_id}
-                        onChange={id => updateLine(i, { account_id: id })}
-                        onAfterSelect={() => narrationRefs.current[i]?.focus()}
-                        accounts={accounts}
-                      />
-                    </td>
-
-                    <td className="px-2 py-2">
-                      <input ref={el => { narrationRefs.current[i] = el; }}
-                        type="text" value={line.narration}
-                        onChange={e => updateLine(i, { narration: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 bg-white outline-none"
-                        placeholder="Line narration..." />
-                    </td>
-
-                    <td className="px-2 py-2">
-                      <input type="number" step="0.01" min="0"
-                        value={line.dr_cr === 'Dr' ? (line.debit || '') : ''}
-                        onChange={e => handleAmountChange(i, e.target.value)}
-                        disabled={line.dr_cr === 'Cr'}
-                        className={`w-full px-3 py-2 border rounded-lg text-sm text-right font-semibold focus:ring-2 focus:ring-blue-400 outline-none transition ${line.dr_cr === 'Dr' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-                        placeholder="0.00" />
-                    </td>
-
-                    <td className="px-2 py-2">
-                      <input type="number" step="0.01" min="0"
-                        value={line.dr_cr === 'Cr' ? (line.credit || '') : ''}
-                        onChange={e => handleAmountChange(i, e.target.value)}
-                        disabled={line.dr_cr === 'Dr'}
-                        className={`w-full px-3 py-2 border rounded-lg text-sm text-right font-semibold focus:ring-2 focus:ring-orange-400 outline-none transition ${line.dr_cr === 'Cr' ? 'border-orange-200 bg-orange-50 text-orange-700' : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-                        placeholder="0.00" />
-                    </td>
-
-                    <td className="px-2 py-2 text-center">
-                      <button type="button" onClick={() => setLines(prev => prev.filter((_, idx) => idx !== i))}
-                        disabled={lines.length <= 2}
-                        className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-20 disabled:cursor-not-allowed">
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="bg-gray-800 text-white">
+                    <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide w-10">#</th>
+                    <th className="px-3 py-3 text-center font-semibold text-xs uppercase tracking-wide w-20">Dr/Cr</th>
+                    <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide">Account</th>
+                    <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide">Narration</th>
+                    <th className="px-3 py-3 text-right font-semibold text-xs uppercase tracking-wide w-32">Debit</th>
+                    <th className="px-3 py-3 text-right font-semibold text-xs uppercase tracking-wide w-32">Credit</th>
+                    <th className="px-3 py-3 w-10"></th>
                   </tr>
-                ))}
+                </thead>
+                <tbody>
+                  {lines.map((line, i) => (
+                    <tr key={i} className={`border-b border-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}`}>
+                      <td className="px-3 py-2.5 text-gray-400 font-mono text-xs">{String(i + 1).padStart(2, '0')}</td>
 
-                {/* Totals Row */}
-                <tr className={`font-bold text-sm ${isBalanced ? 'bg-emerald-600' : 'bg-slate-700'} text-white`}>
-                  <td colSpan={4} className="px-4 py-3 text-right tracking-wide text-xs uppercase">Total</td>
-                  <td className="px-3 py-3 text-right font-mono">{totals.debit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
-                  <td className="px-3 py-3 text-right font-mono">{totals.credit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
-                  <td className="px-2 py-3 text-center text-base">{isBalanced ? '✓' : '✗'}</td>
-                </tr>
-              </tbody>
-            </table>
+                      <td className="px-2 py-2.5 text-center">
+                        <div className="flex rounded-full overflow-hidden bg-gray-100 p-0.5 gap-0.5 w-[68px] mx-auto">
+                          <button type="button" onClick={() => handleDrCr(i, 'Dr')}
+                            className={`flex-1 py-1 text-xs font-bold rounded-full transition ${line.dr_cr === 'Dr' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-500 hover:text-emerald-600'}`}>
+                            Dr
+                          </button>
+                          <button type="button" onClick={() => handleDrCr(i, 'Cr')}
+                            className={`flex-1 py-1 text-xs font-bold rounded-full transition ${line.dr_cr === 'Cr' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                            Cr
+                          </button>
+                        </div>
+                      </td>
+
+                      <td className="px-2 py-2 min-w-[200px]">
+                        <AccountSelector
+                          value={line.account_id}
+                          onChange={id => updateLine(i, { account_id: id })}
+                          onAfterSelect={() => narrationRefs.current[i]?.focus()}
+                          accounts={accounts}
+                        />
+                      </td>
+
+                      <td className="px-2 py-2 min-w-[140px]">
+                        <input ref={el => { narrationRefs.current[i] = el; }}
+                          type="text" value={line.narration}
+                          onChange={e => updateLine(i, { narration: e.target.value })}
+                          className="w-full px-2 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 bg-white outline-none"
+                          placeholder="Line narration..." />
+                      </td>
+
+                      <td className="px-2 py-2">
+                        <input type="number" step="0.01" min="0"
+                          value={line.dr_cr === 'Dr' ? (line.debit || '') : ''}
+                          onChange={e => handleAmountChange(i, e.target.value)}
+                          disabled={line.dr_cr === 'Cr'}
+                          className={`w-full px-2 py-2 border rounded-lg text-sm text-right font-semibold outline-none transition ${line.dr_cr === 'Dr' ? 'border-emerald-200 bg-emerald-50 text-emerald-700 focus:ring-2 focus:ring-emerald-500' : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                          placeholder="0.00" />
+                      </td>
+
+                      <td className="px-2 py-2">
+                        <input type="number" step="0.01" min="0"
+                          value={line.dr_cr === 'Cr' ? (line.credit || '') : ''}
+                          onChange={e => handleAmountChange(i, e.target.value)}
+                          disabled={line.dr_cr === 'Dr'}
+                          className={`w-full px-2 py-2 border rounded-lg text-sm text-right font-semibold outline-none transition ${line.dr_cr === 'Cr' ? 'border-gray-300 bg-gray-50 text-gray-700 focus:ring-2 focus:ring-gray-400' : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                          placeholder="0.00" />
+                      </td>
+
+                      <td className="px-2 py-2 text-center">
+                        <button type="button" onClick={() => setLines(prev => prev.filter((_, idx) => idx !== i))}
+                          disabled={lines.length <= 2}
+                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-20 disabled:cursor-not-allowed">
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+
+                  <tr className={`font-bold text-sm ${isBalanced ? 'bg-emerald-600' : 'bg-gray-800'} text-white`}>
+                    <td colSpan={4} className="px-4 py-3 text-right text-xs uppercase tracking-wide">Total</td>
+                    <td className="px-3 py-3 text-right font-mono">{totals.debit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-3 py-3 text-right font-mono">{totals.credit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-2 py-3 text-center">{isBalanced ? '✓' : '✗'}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </form>
       </div>
 
-      {/* Footer Actions */}
-      <div className="px-6 py-4 border-t bg-gray-50 shrink-0 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button type="button" onClick={() => setLines(prev => [...prev, emptyLine()])}
-            className="flex items-center gap-1.5 text-emerald-700 bg-white hover:bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
-            <Plus size={14} /> Add Line
-          </button>
-          {isBalanced ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
-              <CheckCircle2 size={13} /> Balanced
-            </span>
-          ) : totals.debit > 0 ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-600 rounded-full text-xs font-semibold">
-              <XCircle size={13} /> Diff: {Math.abs(totals.debit - totals.credit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
-            </span>
-          ) : null}
-        </div>
-        <div className="flex gap-2.5">
-          <button type="button" onClick={onBack}
-            className="px-5 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition font-medium">
-            Cancel
-          </button>
-          <button type="submit" form="jv-form" disabled={loading || !isBalanced}
-            className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
-            {loading ? 'Saving...' : 'Save Journal Voucher'}
-          </button>
+      {/* Footer */}
+      <div className="px-4 sm:px-6 py-4 bg-white border-t border-gray-200 shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button type="button" onClick={() => setLines(prev => [...prev, emptyLine()])}
+              className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-2 rounded-lg text-sm font-medium transition">
+              <Plus size={14} /> Add Line
+            </button>
+            {isBalanced ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
+                <CheckCircle2 size={13} /> Balanced
+              </span>
+            ) : totals.debit > 0 ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-600 rounded-full text-xs font-semibold">
+                <XCircle size={13} /> Diff: {Math.abs(totals.debit - totals.credit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+              </span>
+            ) : null}
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={onBack}
+              className="px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition font-medium">
+              Cancel
+            </button>
+            <button type="submit" form="jv-form" disabled={loading || !isBalanced}
+              className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
+              {loading ? 'Saving...' : 'Save JV'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-// ── Password-protected JV Delete Modal ────────────────────────────────────────
+// ── Delete Modal ──────────────────────────────────────────────────────────────
 const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () => void; onDeleted: () => void }) => {
   const toast = useToast();
   const [password, setPassword] = useState('');
@@ -332,10 +331,7 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    api.get('/settings').then(res => {
-      setCorrectPw(res.data.jv_delete_password || '');
-      setPwLoaded(true);
-    }).catch(() => setPwLoaded(true));
+    api.get('/settings').then(res => { setCorrectPw(res.data.jv_delete_password || ''); setPwLoaded(true); }).catch(() => setPwLoaded(true));
   }, []);
 
   const handleDelete = async () => {
@@ -348,9 +344,7 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
       onDeleted(); onClose();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to delete');
-    } finally {
-      setDeleting(false);
-    }
+    } finally { setDeleting(false); }
   };
 
   return (
@@ -367,38 +361,24 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
           </p>
         </div>
         <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-5 text-sm space-y-1.5">
-          <div className="flex justify-between">
-            <span className="text-gray-500">Voucher #</span>
-            <span className="font-mono font-bold text-gray-800">{entry.entry_number}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Date</span>
-            <span className="text-gray-700">{new Date(entry.entry_date).toLocaleDateString()}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Amount</span>
-            <span className="font-semibold text-gray-800">{Number(entry.total_debit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
-          </div>
+          <div className="flex justify-between"><span className="text-gray-500">Voucher #</span><span className="font-mono font-bold text-gray-800">{entry.entry_number}</span></div>
+          <div className="flex justify-between"><span className="text-gray-500">Date</span><span className="text-gray-700">{new Date(entry.entry_date).toLocaleDateString()}</span></div>
+          <div className="flex justify-between"><span className="text-gray-500">Amount</span><span className="font-semibold text-gray-800">{Number(entry.total_debit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span></div>
           <div className="flex justify-between">
             <span className="text-gray-500">Status</span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${entry.status === 'posted' ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>
-              {entry.status}
-            </span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${entry.status === 'posted' ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>{entry.status}</span>
           </div>
         </div>
         {pwLoaded && correctPw && (
           <div className="mb-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              <Lock size={13} className="inline mr-1" /> Enter Password to Confirm
-            </label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5"><Lock size={13} className="inline mr-1" /> Enter Password to Confirm</label>
             <div className="relative">
               <input autoFocus type={showPw ? 'text' : 'password'} value={password}
                 onChange={e => { setPassword(e.target.value); setError(''); }}
                 onKeyDown={e => { if (e.key === 'Enter') handleDelete(); }}
                 placeholder="Enter password..."
                 className="w-full pl-4 pr-10 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none transition" />
-              <button type="button" onClick={() => setShowPw(s => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <button type="button" onClick={() => setShowPw(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                 {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
@@ -406,10 +386,7 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
           </div>
         )}
         <div className="flex gap-3">
-          <button onClick={onClose}
-            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
-            Cancel
-          </button>
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition">Cancel</button>
           <button onClick={handleDelete} disabled={deleting || !pwLoaded || (!!correctPw && !password)}
             className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
             <Trash2 size={15} /> {deleting ? 'Deleting...' : 'Delete Permanently'}
@@ -420,7 +397,7 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
   );
 };
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Main List Page ─────────────────────────────────────────────────────────────
 const JournalEntries = () => {
   const toast = useToast();
   const [view, setView] = useState<'list' | 'new'>('list');
@@ -436,8 +413,7 @@ const JournalEntries = () => {
   useEffect(() => { if (hasLoaded) fetchEntries(); }, [pagination.page]);
 
   const fetchEntries = async () => {
-    setLoading(true);
-    setHasLoaded(true);
+    setLoading(true); setHasLoaded(true);
     try {
       const params: any = { page: pagination.page, limit: pagination.limit };
       if (statusFilter !== 'all') params.status = statusFilter;
@@ -446,11 +422,8 @@ const JournalEntries = () => {
       const res = await api.get('/accounting/journal-entries', { params });
       setEntries(res.data.data || []);
       if (res.data.pagination) setPagination(res.data.pagination);
-    } catch {
-      toast.error('Failed to load entries');
-    } finally {
-      setLoading(false);
-    }
+    } catch { toast.error('Failed to load entries'); }
+    finally { setLoading(false); }
   };
 
   const handleLoad = () => { setPagination(p => ({ ...p, page: 1 })); fetchEntries(); };
@@ -461,139 +434,130 @@ const JournalEntries = () => {
       await api.post(`/accounting/journal-entries/${entry.entry_id}/post`);
       toast.success('Entry posted successfully');
       fetchEntries();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to post');
-    }
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to post'); }
   };
 
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
-      draft: 'bg-amber-100 text-amber-700 border border-amber-200',
-      posted: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
-      reversed: 'bg-red-100 text-red-700 border border-red-200'
+      draft: 'bg-amber-100 text-amber-700',
+      posted: 'bg-emerald-100 text-emerald-700',
+      reversed: 'bg-red-100 text-red-700'
     };
     return <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${map[status] ?? 'bg-gray-100 text-gray-600'}`}>{status}</span>;
   };
 
-  // Show full-page entry form
-  if (view === 'new') {
-    return <JournalEntryForm onBack={() => setView('list')} onSuccess={fetchEntries} />;
-  }
+  if (view === 'new') return <JournalEntryForm onBack={() => setView('list')} onSuccess={fetchEntries} />;
 
   return (
-    <div className="p-4 md:p-6 space-y-5">
+    <div className="p-4 sm:p-6 space-y-4">
 
-      {/* Page Header */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
-        <div className="px-6 py-5 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center">
-              <FileText size={22} className="text-emerald-600" />
+      {/* Header */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="h-1 bg-emerald-600" />
+        <div className="px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+              <FileText size={20} className="text-emerald-700" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Journal Voucher</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Double-entry accounting transactions</p>
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900">Journal Voucher</h1>
+              <p className="text-xs sm:text-sm text-gray-500">Double-entry accounting transactions</p>
             </div>
           </div>
           <button onClick={() => setView('new')}
-            className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl hover:bg-emerald-700 transition shadow-sm text-sm font-semibold">
-            <Plus size={16} /> New Entry
+            className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition shadow-sm text-sm font-semibold">
+            <Plus size={15} /> New Entry
           </button>
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Filters</span>
-          <div className="w-px h-4 bg-gray-200" />
+      {/* Filters */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 sm:px-5 py-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:block">Filters</span>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 outline-none bg-white">
+            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
             <option value="all">All Status</option>
             <option value="draft">Draft</option>
             <option value="posted">Posted</option>
           </select>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 font-medium">From</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-500">From</span>
             <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 outline-none" />
+              className="px-2 sm:px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 font-medium">To</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-500">To</span>
             <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 outline-none" />
+              className="px-2 sm:px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
           </div>
           <button onClick={handleLoad} disabled={loading}
-            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-60 shadow-sm">
-            <Search size={14} /> {loading ? 'Loading...' : 'Load Entries'}
+            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-60 shadow-sm">
+            <Search size={14} /> {loading ? 'Loading...' : 'Load'}
           </button>
-          {hasLoaded && <span className="ml-auto text-xs text-gray-400 font-medium">{pagination.total} entries found</span>}
+          {hasLoaded && <span className="ml-auto text-xs text-gray-400">{pagination.total} entries</span>}
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         {!hasLoaded ? (
-          <div className="text-center py-20 text-gray-400">
-            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <FileText size={28} className="opacity-40" />
+          <div className="text-center py-16 text-gray-400">
+            <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <FileText size={24} className="opacity-30" />
             </div>
-            <p className="font-semibold text-gray-500">No data loaded</p>
-            <p className="text-sm mt-1">Set date range and click <strong className="text-emerald-600">Load Entries</strong></p>
+            <p className="font-semibold text-gray-500 text-sm">Set date range and click <strong className="text-emerald-600">Load</strong></p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px]">
+            <table className="w-full min-w-[600px] text-sm">
               <thead>
-                <tr className="bg-slate-700 text-white text-xs uppercase tracking-wider">
-                  <th className="text-left px-5 py-3.5 font-semibold">Entry #</th>
-                  <th className="text-left px-5 py-3.5 font-semibold">Date</th>
-                  <th className="text-left px-5 py-3.5 font-semibold">Description</th>
-                  <th className="text-right px-5 py-3.5 font-semibold">Debit</th>
-                  <th className="text-right px-5 py-3.5 font-semibold">Credit</th>
-                  <th className="text-center px-5 py-3.5 font-semibold">Status</th>
-                  <th className="text-center px-5 py-3.5 font-semibold">Actions</th>
+                <tr className="bg-gray-800 text-white text-xs uppercase tracking-wider">
+                  <th className="text-left px-4 py-3 font-semibold">Entry #</th>
+                  <th className="text-left px-4 py-3 font-semibold">Date</th>
+                  <th className="text-left px-4 py-3 font-semibold">Description</th>
+                  <th className="text-right px-4 py-3 font-semibold">Debit</th>
+                  <th className="text-right px-4 py-3 font-semibold">Credit</th>
+                  <th className="text-center px-4 py-3 font-semibold">Status</th>
+                  <th className="text-center px-4 py-3 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={7} className="p-10 text-center">
-                    <div className="animate-spin h-7 w-7 rounded-full border-2 border-emerald-500 border-t-transparent mx-auto" />
+                  <tr><td colSpan={7} className="p-8 text-center">
+                    <div className="animate-spin h-6 w-6 rounded-full border-2 border-emerald-500 border-t-transparent mx-auto" />
                   </td></tr>
                 ) : entries.length > 0 ? (
                   entries.map((entry: any, i: number) => (
-                    <tr key={entry.entry_id} className={`border-b border-gray-50 hover:bg-emerald-50/30 transition ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
-                      <td className="px-5 py-3.5 font-mono font-bold text-emerald-700 text-sm">{entry.entry_number}</td>
-                      <td className="px-5 py-3.5 text-gray-500 text-sm whitespace-nowrap">
+                    <tr key={entry.entry_id} className={`border-b border-gray-50 hover:bg-emerald-50/30 transition ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}>
+                      <td className="px-4 py-3 font-mono font-bold text-emerald-700 text-sm">{entry.entry_number}</td>
+                      <td className="px-4 py-3 text-gray-500 text-sm whitespace-nowrap">
                         {new Date(entry.entry_date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
-                      <td className="px-5 py-3.5 text-gray-600 text-sm max-w-xs truncate">{entry.description || '—'}</td>
-                      <td className="px-5 py-3.5 text-right font-semibold text-sm text-blue-700 font-mono">
+                      <td className="px-4 py-3 text-gray-600 text-sm max-w-[200px] truncate">{entry.description || '—'}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-sm text-gray-800 font-mono">
                         {Number(entry.total_debit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="px-5 py-3.5 text-right font-semibold text-sm text-orange-600 font-mono">
+                      <td className="px-4 py-3 text-right font-semibold text-sm text-gray-800 font-mono">
                         {Number(entry.total_credit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="px-5 py-3.5 text-center">{statusBadge(entry.status)}</td>
-                      <td className="px-5 py-3.5 text-center">
+                      <td className="px-4 py-3 text-center">{statusBadge(entry.status)}</td>
+                      <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">
                           {entry.status === 'draft' && (
-                            <button onClick={() => handlePost(entry)}
-                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Post Entry">
-                              <Send size={15} />
+                            <button onClick={() => handlePost(entry)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Post Entry">
+                              <Send size={14} />
                             </button>
                           )}
-                          <button onClick={() => setDeleteEntry(entry)}
-                            className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete">
-                            <Trash2 size={15} />
+                          <button onClick={() => setDeleteEntry(entry)} className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete">
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>
                     </tr>
                   ))
                 ) : (
-                  <tr><td colSpan={7} className="p-10 text-center text-gray-400 text-sm">No entries found for this period</td></tr>
+                  <tr><td colSpan={7} className="p-8 text-center text-gray-400 text-sm">No entries found for this period</td></tr>
                 )}
               </tbody>
             </table>
@@ -601,19 +565,15 @@ const JournalEntries = () => {
         )}
         {hasLoaded && (
           <Pagination
-            currentPage={pagination.page}
-            totalPages={pagination.totalPages}
+            currentPage={pagination.page} totalPages={pagination.totalPages}
             onPageChange={page => setPagination(p => ({ ...p, page }))}
-            totalItems={pagination.total}
-            itemsPerPage={pagination.limit}
+            totalItems={pagination.total} itemsPerPage={pagination.limit}
             onItemsPerPageChange={limit => setPagination(p => ({ ...p, limit, page: 1 }))}
           />
         )}
       </div>
 
-      {deleteEntry && (
-        <JvDeleteModal entry={deleteEntry} onClose={() => setDeleteEntry(null)} onDeleted={fetchEntries} />
-      )}
+      {deleteEntry && <JvDeleteModal entry={deleteEntry} onClose={() => setDeleteEntry(null)} onDeleted={fetchEntries} />}
     </div>
   );
 };
