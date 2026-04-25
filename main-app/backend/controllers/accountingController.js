@@ -965,24 +965,24 @@ exports.getNextPaymentVoucherNumber = async (req, res) => {
 exports.createPaymentVoucher = async (req, res) => {
   const conn = await getConnection();
   try {
-    const { voucher_number, voucher_date, payment_to, payment_type, account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
+    const { voucher_number, voucher_date, payment_to, payment_type, account_id, cash_account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
 
-    if (!voucher_date || !payment_to || !account_id || !amount) {
-      return res.status(400).json({ message: 'Required fields missing' });
+    if (!voucher_date || !payment_to || !account_id || !cash_account_id || !amount) {
+      return res.status(400).json({ message: 'Required fields missing (account, cash account, amount)' });
     }
 
-    // Validate account exists and is active
-    const [accCheck] = await conn.query('SELECT account_id, account_name, is_active FROM accounts WHERE account_id = ?', [account_id]);
-    if (!accCheck) {
-      return res.status(400).json({ message: 'Account not found' });
-    }
-    if (!accCheck.is_active) {
-      return res.status(400).json({ message: `Account "${accCheck.account_name}" is inactive` });
-    }
+    // Validate both accounts
+    const accs = await conn.query('SELECT account_id, account_name, account_type, is_active FROM accounts WHERE account_id IN (?, ?)', [account_id, cash_account_id]);
+    const expAcc  = accs.find(a => String(a.account_id) === String(account_id));
+    const cashAcc = accs.find(a => String(a.account_id) === String(cash_account_id));
+    if (!expAcc)  return res.status(400).json({ message: 'Account not found' });
+    if (!cashAcc) return res.status(400).json({ message: 'Cash account not found' });
+    if (!expAcc.is_active)  return res.status(400).json({ message: `Account "${expAcc.account_name}" is inactive` });
+    if (!cashAcc.is_active) return res.status(400).json({ message: `Account "${cashAcc.account_name}" is inactive` });
 
     await conn.beginTransaction();
 
-    // Use provided voucher_number (shared across entries) or generate new one
+    // Voucher number
     let voucherNumber = voucher_number;
     if (!voucherNumber) {
       const [maxRow] = await conn.query("SELECT MAX(CAST(SUBSTRING(voucher_number, 4) AS UNSIGNED)) as max_num FROM payment_vouchers WHERE voucher_number REGEXP '^CPV[0-9]+'");
@@ -990,10 +990,41 @@ exports.createPaymentVoucher = async (req, res) => {
       voucherNumber = `CPV${String(nextNumber).padStart(6, '0')}`;
     }
 
-    // Create payment voucher line
+    // JV entry number
+    const [lastEntry] = await conn.query('SELECT entry_number FROM journal_entries ORDER BY entry_id DESC LIMIT 1');
+    let nextJVNum = 1;
+    if (lastEntry && lastEntry.entry_number) {
+      const match = lastEntry.entry_number.match(/JV(\d+)/);
+      if (match) nextJVNum = parseInt(match[1]) + 1;
+    }
+    const entryNumber = `JV${String(nextJVNum).padStart(6, '0')}`;
+
+    // Create journal entry (CPV: DR expense account, CR cash account)
+    const jvResult = await conn.query(
+      'INSERT INTO journal_entries (entry_number, entry_date, description, total_debit, total_credit, status, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)',
+      [entryNumber, voucher_date, description || payment_to, amount, amount, 'posted', req.user.user_id]
+    );
+    const entryId = jvResult.insertId;
+
+    await conn.query(
+      'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, ?, ?)',
+      [entryId, account_id, description || payment_to, amount, 0]
+    );
+    await conn.query(
+      'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, ?, ?)',
+      [entryId, cash_account_id, description || payment_to, 0, amount]
+    );
+
+    // Update account balances
+    const expDebitInc  = ['asset', 'expense'].includes(expAcc.account_type);
+    const cashDebitInc = ['asset', 'expense'].includes(cashAcc.account_type);
+    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [expDebitInc ? amount : -amount, account_id]);
+    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [cashDebitInc ? -amount : amount, cash_account_id]);
+
+    // Create payment voucher
     const result = await conn.query(
-      'INSERT INTO payment_vouchers (voucher_number, voucher_date, payment_to, payment_type, account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [voucherNumber, voucher_date, payment_to, payment_type || 'expense', account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
+      'INSERT INTO payment_vouchers (voucher_number, voucher_date, payment_to, payment_type, account_id, amount, payment_method, cheque_number, bank_account_id, description, journal_entry_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [voucherNumber, voucher_date, payment_to, payment_type || 'expense', account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, entryId, req.user.user_id]
     );
 
     await conn.commit();
@@ -1009,14 +1040,42 @@ exports.createPaymentVoucher = async (req, res) => {
 };
 
 exports.deletePaymentVoucher = async (req, res) => {
+  const conn = await getConnection();
   try {
     const { id } = req.params;
-    await query('DELETE FROM payment_vouchers WHERE voucher_id = ?', [id]);
+    const [voucher] = await conn.query('SELECT * FROM payment_vouchers WHERE voucher_id = ?', [id]);
+    if (!voucher) return res.status(404).json({ message: 'Voucher not found' });
+
+    await conn.beginTransaction();
+
+    if (voucher.journal_entry_id) {
+      const lines = await conn.query('SELECT * FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
+      const [je] = await conn.query('SELECT status FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
+      if (je && je.status === 'posted' && lines.length > 0) {
+        const accIds = [...new Set(lines.map(l => l.account_id))];
+        const accRows = await conn.query(`SELECT account_id, account_type FROM accounts WHERE account_id IN (${accIds.map(() => '?').join(',')})`, accIds);
+        const typeMap = {};
+        for (const a of accRows) typeMap[a.account_id] = a.account_type;
+        for (const line of lines) {
+          const debitInc = ['asset', 'expense'].includes(typeMap[line.account_id]);
+          const reversal = debitInc ? -(Number(line.debit) - Number(line.credit)) : -(Number(line.credit) - Number(line.debit));
+          await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [reversal, line.account_id]);
+        }
+      }
+      await conn.query('DELETE FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
+      await conn.query('DELETE FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
+    }
+
+    await conn.query('DELETE FROM payment_vouchers WHERE voucher_id = ?', [id]);
+    await conn.commit();
     await logAction(req.user.user_id, req.user.name, 'PAYMENT_VOUCHER_DELETED', 'payment_vouchers', id, {}, req.ip);
     res.json({ message: 'Payment voucher deleted' });
   } catch (err) {
-    console.error(err);
+    await conn.rollback();
+    console.error('deletePaymentVoucher error:', err);
     res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
   }
 };
 
@@ -1069,24 +1128,24 @@ exports.getNextReceiptVoucherNumber = async (req, res) => {
 exports.createReceiptVoucher = async (req, res) => {
   const conn = await getConnection();
   try {
-    const { voucher_number, voucher_date, received_from, receipt_type, account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
+    const { voucher_number, voucher_date, received_from, receipt_type, account_id, cash_account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
 
-    if (!voucher_date || !received_from || !account_id || !amount) {
-      return res.status(400).json({ message: 'Required fields missing' });
+    if (!voucher_date || !received_from || !account_id || !cash_account_id || !amount) {
+      return res.status(400).json({ message: 'Required fields missing (account, cash account, amount)' });
     }
 
-    // Validate account exists and is active
-    const [accCheck] = await conn.query('SELECT account_id, account_name, is_active FROM accounts WHERE account_id = ?', [account_id]);
-    if (!accCheck) {
-      return res.status(400).json({ message: 'Account not found' });
-    }
-    if (!accCheck.is_active) {
-      return res.status(400).json({ message: `Account "${accCheck.account_name}" is inactive` });
-    }
+    // Validate both accounts
+    const accs = await conn.query('SELECT account_id, account_name, account_type, is_active FROM accounts WHERE account_id IN (?, ?)', [account_id, cash_account_id]);
+    const incAcc  = accs.find(a => String(a.account_id) === String(account_id));
+    const cashAcc = accs.find(a => String(a.account_id) === String(cash_account_id));
+    if (!incAcc)  return res.status(400).json({ message: 'Account not found' });
+    if (!cashAcc) return res.status(400).json({ message: 'Cash account not found' });
+    if (!incAcc.is_active)  return res.status(400).json({ message: `Account "${incAcc.account_name}" is inactive` });
+    if (!cashAcc.is_active) return res.status(400).json({ message: `Account "${cashAcc.account_name}" is inactive` });
 
     await conn.beginTransaction();
 
-    // Use provided voucher_number (shared across entries) or generate new one
+    // Voucher number
     let voucherNumber = voucher_number;
     if (!voucherNumber) {
       const [maxRow] = await conn.query("SELECT MAX(CAST(SUBSTRING(voucher_number, 4) AS UNSIGNED)) as max_num FROM receipt_vouchers WHERE voucher_number REGEXP '^CRV[0-9]+'");
@@ -1094,10 +1153,41 @@ exports.createReceiptVoucher = async (req, res) => {
       voucherNumber = `CRV${String(nextNumber).padStart(6, '0')}`;
     }
 
-    // Create receipt voucher line
+    // JV entry number
+    const [lastEntry] = await conn.query('SELECT entry_number FROM journal_entries ORDER BY entry_id DESC LIMIT 1');
+    let nextJVNum = 1;
+    if (lastEntry && lastEntry.entry_number) {
+      const match = lastEntry.entry_number.match(/JV(\d+)/);
+      if (match) nextJVNum = parseInt(match[1]) + 1;
+    }
+    const entryNumber = `JV${String(nextJVNum).padStart(6, '0')}`;
+
+    // Create journal entry (CRV: DR cash account, CR income account)
+    const jvResult = await conn.query(
+      'INSERT INTO journal_entries (entry_number, entry_date, description, total_debit, total_credit, status, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)',
+      [entryNumber, voucher_date, description || received_from, amount, amount, 'posted', req.user.user_id]
+    );
+    const entryId = jvResult.insertId;
+
+    await conn.query(
+      'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, ?, ?)',
+      [entryId, cash_account_id, description || received_from, amount, 0]
+    );
+    await conn.query(
+      'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, ?, ?)',
+      [entryId, account_id, description || received_from, 0, amount]
+    );
+
+    // Update account balances
+    const cashDebitInc = ['asset', 'expense'].includes(cashAcc.account_type);
+    const incDebitInc  = ['asset', 'expense'].includes(incAcc.account_type);
+    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [cashDebitInc ? amount : -amount, cash_account_id]);
+    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [incDebitInc ? -amount : amount, account_id]);
+
+    // Create receipt voucher
     const result = await conn.query(
-      'INSERT INTO receipt_vouchers (voucher_number, voucher_date, received_from, receipt_type, account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [voucherNumber, voucher_date, received_from, receipt_type || 'customer', account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
+      'INSERT INTO receipt_vouchers (voucher_number, voucher_date, received_from, receipt_type, account_id, amount, payment_method, cheque_number, bank_account_id, description, journal_entry_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [voucherNumber, voucher_date, received_from, receipt_type || 'customer', account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, entryId, req.user.user_id]
     );
 
     await conn.commit();
@@ -1113,14 +1203,42 @@ exports.createReceiptVoucher = async (req, res) => {
 };
 
 exports.deleteReceiptVoucher = async (req, res) => {
+  const conn = await getConnection();
   try {
     const { id } = req.params;
-    await query('DELETE FROM receipt_vouchers WHERE voucher_id = ?', [id]);
+    const [voucher] = await conn.query('SELECT * FROM receipt_vouchers WHERE voucher_id = ?', [id]);
+    if (!voucher) return res.status(404).json({ message: 'Voucher not found' });
+
+    await conn.beginTransaction();
+
+    if (voucher.journal_entry_id) {
+      const lines = await conn.query('SELECT * FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
+      const [je] = await conn.query('SELECT status FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
+      if (je && je.status === 'posted' && lines.length > 0) {
+        const accIds = [...new Set(lines.map(l => l.account_id))];
+        const accRows = await conn.query(`SELECT account_id, account_type FROM accounts WHERE account_id IN (${accIds.map(() => '?').join(',')})`, accIds);
+        const typeMap = {};
+        for (const a of accRows) typeMap[a.account_id] = a.account_type;
+        for (const line of lines) {
+          const debitInc = ['asset', 'expense'].includes(typeMap[line.account_id]);
+          const reversal = debitInc ? -(Number(line.debit) - Number(line.credit)) : -(Number(line.credit) - Number(line.debit));
+          await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [reversal, line.account_id]);
+        }
+      }
+      await conn.query('DELETE FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
+      await conn.query('DELETE FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
+    }
+
+    await conn.query('DELETE FROM receipt_vouchers WHERE voucher_id = ?', [id]);
+    await conn.commit();
     await logAction(req.user.user_id, req.user.name, 'RECEIPT_VOUCHER_DELETED', 'receipt_vouchers', id, {}, req.ip);
     res.json({ message: 'Receipt voucher deleted' });
   } catch (err) {
-    console.error(err);
+    await conn.rollback();
+    console.error('deleteReceiptVoucher error:', err);
     res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
   }
 };
 
