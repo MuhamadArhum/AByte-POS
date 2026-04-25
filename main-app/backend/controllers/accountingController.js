@@ -465,62 +465,108 @@ exports.getGeneralLedger = async (req, res) => {
     const { account_id, from_date, to_date } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 
-    let sql = `SELECT jel.line_id, jel.entry_id, je.entry_number, je.entry_date,
-               COALESCE(jel.description, je.description) as description,
-               a.account_id, a.account_code, a.account_name, a.account_type,
-               jel.debit, jel.credit
-               FROM journal_entry_lines jel
-               JOIN journal_entries je ON jel.entry_id = je.entry_id
-               JOIN accounts a ON jel.account_id = a.account_id
-               WHERE je.status = 'posted'`;
-    let countSql = `SELECT COUNT(*) as total FROM journal_entry_lines jel
-                    JOIN journal_entries je ON jel.entry_id = je.entry_id
-                    WHERE je.status = 'posted'`;
-    const params = [], countParams = [];
-
-    if (account_id) {
-      sql += ' AND jel.account_id = ?'; countSql += ' AND jel.account_id = ?';
-      params.push(account_id); countParams.push(account_id);
-    }
-    if (from_date && to_date) {
-      sql += ' AND je.entry_date BETWEEN ? AND ?';
-      countSql += ' AND je.entry_date BETWEEN ? AND ?';
-      params.push(from_date, to_date); countParams.push(from_date, to_date);
+    if (!account_id) {
+      return res.json({ data: [], pagination: { total: 0, page, limit, totalPages: 0 }, opening_balance: 0, account: null });
     }
 
-    sql += ' ORDER BY je.entry_date ASC, jel.line_id ASC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
+    const dateFilter = from_date && to_date;
 
-    const [ledger, [{ total }]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
+    // UNION: JV lines + CPV (as debit) + CRV (as credit)
+    const unionSql = `
+      SELECT jel.line_id AS tx_id, je.entry_number AS ref_number, je.entry_date AS tx_date,
+             COALESCE(jel.description, je.description) AS description,
+             jel.debit, jel.credit
+      FROM journal_entry_lines jel
+      JOIN journal_entries je ON jel.entry_id = je.entry_id
+      WHERE je.status = 'posted' AND jel.account_id = ?
+      ${dateFilter ? 'AND je.entry_date BETWEEN ? AND ?' : ''}
 
-    // Calculate opening balance for the selected account before from_date
+      UNION ALL
+
+      SELECT pv.voucher_id, pv.voucher_number, pv.voucher_date,
+             COALESCE(pv.description, pv.payment_to),
+             pv.amount AS debit, 0 AS credit
+      FROM payment_vouchers pv
+      WHERE pv.account_id = ? AND pv.journal_entry_id IS NULL
+      ${dateFilter ? 'AND pv.voucher_date BETWEEN ? AND ?' : ''}
+
+      UNION ALL
+
+      SELECT rv.voucher_id, rv.voucher_number, rv.voucher_date,
+             COALESCE(rv.description, rv.received_from),
+             0 AS debit, rv.amount AS credit
+      FROM receipt_vouchers rv
+      WHERE rv.account_id = ? AND rv.journal_entry_id IS NULL
+      ${dateFilter ? 'AND rv.voucher_date BETWEEN ? AND ?' : ''}
+    `;
+
+    const buildParams = () => {
+      const p = [account_id];
+      if (dateFilter) p.push(from_date, to_date);
+      p.push(account_id);
+      if (dateFilter) p.push(from_date, to_date);
+      p.push(account_id);
+      if (dateFilter) p.push(from_date, to_date);
+      return p;
+    };
+
+    const countSql = `SELECT COUNT(*) as total FROM (${unionSql}) AS combined`;
+    const pageSql  = `SELECT * FROM (${unionSql}) AS combined ORDER BY tx_date ASC, tx_id ASC LIMIT ? OFFSET ?`;
+
+    const pageParams  = [...buildParams(), limit, offset];
+    const countParams = buildParams();
+
+    const [ledger, [{ total }]] = await Promise.all([query(pageSql, pageParams), query(countSql, countParams)]);
+
+    // Account info
+    const accs = await query(
+      'SELECT account_id, account_code, account_name, account_type, opening_balance FROM accounts WHERE account_id = ?',
+      [account_id]
+    );
     let openingBalance = 0;
     let accountInfo = null;
-    if (account_id) {
-      const accs = await query(
-        'SELECT account_id, account_code, account_name, account_type, opening_balance FROM accounts WHERE account_id = ?',
-        [account_id]
-      );
-      if (accs.length > 0) {
-        accountInfo = accs[0];
-        openingBalance = Number(accs[0].opening_balance || 0);
-        if (from_date) {
-          const [prev] = await query(`
-            SELECT COALESCE(SUM(jel.debit), 0) as total_debit, COALESCE(SUM(jel.credit), 0) as total_credit
-            FROM journal_entry_lines jel
-            JOIN journal_entries je ON jel.entry_id = je.entry_id
-            WHERE jel.account_id = ? AND je.status = 'posted' AND je.entry_date < ?
-          `, [account_id, from_date]);
-          const debitIncrease = ['asset', 'expense'].includes(accs[0].account_type);
-          const prevDr = Number(prev.total_debit || 0);
-          const prevCr = Number(prev.total_credit || 0);
-          openingBalance += debitIncrease ? (prevDr - prevCr) : (prevCr - prevDr);
-        }
+    if (accs.length > 0) {
+      accountInfo = accs[0];
+      openingBalance = Number(accs[0].opening_balance || 0);
+
+      if (from_date) {
+        // JV contribution before from_date
+        const [jvPrev] = await query(`
+          SELECT COALESCE(SUM(jel.debit),0) AS dr, COALESCE(SUM(jel.credit),0) AS cr
+          FROM journal_entry_lines jel
+          JOIN journal_entries je ON jel.entry_id = je.entry_id
+          WHERE jel.account_id = ? AND je.status = 'posted' AND je.entry_date < ?
+        `, [account_id, from_date]);
+        // CPV contribution before from_date
+        const [cpvPrev] = await query(`
+          SELECT COALESCE(SUM(amount),0) AS dr
+          FROM payment_vouchers WHERE account_id = ? AND journal_entry_id IS NULL AND voucher_date < ?
+        `, [account_id, from_date]);
+        // CRV contribution before from_date
+        const [crvPrev] = await query(`
+          SELECT COALESCE(SUM(amount),0) AS cr
+          FROM receipt_vouchers WHERE account_id = ? AND journal_entry_id IS NULL AND voucher_date < ?
+        `, [account_id, from_date]);
+
+        const debitIncrease = ['asset', 'expense'].includes(accs[0].account_type);
+        const prevDr = Number(jvPrev.dr || 0) + Number(cpvPrev.dr || 0);
+        const prevCr = Number(jvPrev.cr || 0) + Number(crvPrev.cr || 0);
+        openingBalance += debitIncrease ? (prevDr - prevCr) : (prevCr - prevDr);
       }
     }
 
+    // Map column names to what frontend expects
+    const data = ledger.map((r: any) => ({
+      line_id: r.tx_id,
+      entry_number: r.ref_number,
+      entry_date: r.tx_date,
+      description: r.description,
+      debit: r.debit,
+      credit: r.credit,
+    }));
+
     res.json({
-      data: ledger,
+      data,
       pagination: { total: Number(total), page, limit, totalPages: Math.ceil(Number(total) / limit) },
       opening_balance: openingBalance,
       account: accountInfo
@@ -965,24 +1011,18 @@ exports.getNextPaymentVoucherNumber = async (req, res) => {
 exports.createPaymentVoucher = async (req, res) => {
   const conn = await getConnection();
   try {
-    const { voucher_number, voucher_date, payment_to, payment_type, account_id, cash_account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
+    const { voucher_number, voucher_date, payment_to, payment_type, account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
 
-    if (!voucher_date || !payment_to || !account_id || !cash_account_id || !amount) {
-      return res.status(400).json({ message: 'Required fields missing (account, cash account, amount)' });
+    if (!voucher_date || !payment_to || !account_id || !amount) {
+      return res.status(400).json({ message: 'Required fields missing' });
     }
 
-    // Validate both accounts
-    const accs = await conn.query('SELECT account_id, account_name, account_type, is_active FROM accounts WHERE account_id IN (?, ?)', [account_id, cash_account_id]);
-    const expAcc  = accs.find(a => String(a.account_id) === String(account_id));
-    const cashAcc = accs.find(a => String(a.account_id) === String(cash_account_id));
-    if (!expAcc)  return res.status(400).json({ message: 'Account not found' });
-    if (!cashAcc) return res.status(400).json({ message: 'Cash account not found' });
-    if (!expAcc.is_active)  return res.status(400).json({ message: `Account "${expAcc.account_name}" is inactive` });
-    if (!cashAcc.is_active) return res.status(400).json({ message: `Account "${cashAcc.account_name}" is inactive` });
+    const [acc] = await conn.query('SELECT account_id, account_name, account_type, is_active FROM accounts WHERE account_id = ?', [account_id]);
+    if (!acc)           return res.status(400).json({ message: 'Account not found' });
+    if (!acc.is_active) return res.status(400).json({ message: `Account "${acc.account_name}" is inactive` });
 
     await conn.beginTransaction();
 
-    // Voucher number
     let voucherNumber = voucher_number;
     if (!voucherNumber) {
       const [maxRow] = await conn.query("SELECT MAX(CAST(SUBSTRING(voucher_number, 4) AS UNSIGNED)) as max_num FROM payment_vouchers WHERE voucher_number REGEXP '^CPV[0-9]+'");
@@ -990,41 +1030,13 @@ exports.createPaymentVoucher = async (req, res) => {
       voucherNumber = `CPV${String(nextNumber).padStart(6, '0')}`;
     }
 
-    // JV entry number
-    const [lastEntry] = await conn.query('SELECT entry_number FROM journal_entries ORDER BY entry_id DESC LIMIT 1');
-    let nextJVNum = 1;
-    if (lastEntry && lastEntry.entry_number) {
-      const match = lastEntry.entry_number.match(/JV(\d+)/);
-      if (match) nextJVNum = parseInt(match[1]) + 1;
-    }
-    const entryNumber = `JV${String(nextJVNum).padStart(6, '0')}`;
+    // CPV debits the account (payment going out)
+    const debitIncrease = ['asset', 'expense'].includes(acc.account_type);
+    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitIncrease ? amount : -amount, account_id]);
 
-    // Create journal entry (CPV: DR expense account, CR cash account)
-    const jvResult = await conn.query(
-      'INSERT INTO journal_entries (entry_number, entry_date, description, total_debit, total_credit, status, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)',
-      [entryNumber, voucher_date, description || payment_to, amount, amount, 'posted', req.user.user_id]
-    );
-    const entryId = jvResult.insertId;
-
-    await conn.query(
-      'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, ?, ?)',
-      [entryId, account_id, description || payment_to, amount, 0]
-    );
-    await conn.query(
-      'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, ?, ?)',
-      [entryId, cash_account_id, description || payment_to, 0, amount]
-    );
-
-    // Update account balances
-    const expDebitInc  = ['asset', 'expense'].includes(expAcc.account_type);
-    const cashDebitInc = ['asset', 'expense'].includes(cashAcc.account_type);
-    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [expDebitInc ? amount : -amount, account_id]);
-    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [cashDebitInc ? -amount : amount, cash_account_id]);
-
-    // Create payment voucher
     const result = await conn.query(
-      'INSERT INTO payment_vouchers (voucher_number, voucher_date, payment_to, payment_type, account_id, amount, payment_method, cheque_number, bank_account_id, description, journal_entry_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [voucherNumber, voucher_date, payment_to, payment_type || 'expense', account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, entryId, req.user.user_id]
+      'INSERT INTO payment_vouchers (voucher_number, voucher_date, payment_to, payment_type, account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [voucherNumber, voucher_date, payment_to, payment_type || 'expense', account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
     );
 
     await conn.commit();
@@ -1049,6 +1061,7 @@ exports.deletePaymentVoucher = async (req, res) => {
     await conn.beginTransaction();
 
     if (voucher.journal_entry_id) {
+      // Voucher was created with old double-entry — reverse JE balances
       const lines = await conn.query('SELECT * FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
       const [je] = await conn.query('SELECT status FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
       if (je && je.status === 'posted' && lines.length > 0) {
@@ -1062,8 +1075,17 @@ exports.deletePaymentVoucher = async (req, res) => {
           await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [reversal, line.account_id]);
         }
       }
+      // NULL out FK before deleting JE (avoids constraint error)
+      await conn.query('UPDATE payment_vouchers SET journal_entry_id = NULL WHERE voucher_id = ?', [id]);
       await conn.query('DELETE FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
       await conn.query('DELETE FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
+    } else {
+      // Reverse direct balance update
+      const [acc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.account_id]);
+      if (acc) {
+        const debitInc = ['asset', 'expense'].includes(acc.account_type);
+        await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitInc ? -Number(voucher.amount) : Number(voucher.amount), voucher.account_id]);
+      }
     }
 
     await conn.query('DELETE FROM payment_vouchers WHERE voucher_id = ?', [id]);
@@ -1128,24 +1150,18 @@ exports.getNextReceiptVoucherNumber = async (req, res) => {
 exports.createReceiptVoucher = async (req, res) => {
   const conn = await getConnection();
   try {
-    const { voucher_number, voucher_date, received_from, receipt_type, account_id, cash_account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
+    const { voucher_number, voucher_date, received_from, receipt_type, account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
 
-    if (!voucher_date || !received_from || !account_id || !cash_account_id || !amount) {
-      return res.status(400).json({ message: 'Required fields missing (account, cash account, amount)' });
+    if (!voucher_date || !received_from || !account_id || !amount) {
+      return res.status(400).json({ message: 'Required fields missing' });
     }
 
-    // Validate both accounts
-    const accs = await conn.query('SELECT account_id, account_name, account_type, is_active FROM accounts WHERE account_id IN (?, ?)', [account_id, cash_account_id]);
-    const incAcc  = accs.find(a => String(a.account_id) === String(account_id));
-    const cashAcc = accs.find(a => String(a.account_id) === String(cash_account_id));
-    if (!incAcc)  return res.status(400).json({ message: 'Account not found' });
-    if (!cashAcc) return res.status(400).json({ message: 'Cash account not found' });
-    if (!incAcc.is_active)  return res.status(400).json({ message: `Account "${incAcc.account_name}" is inactive` });
-    if (!cashAcc.is_active) return res.status(400).json({ message: `Account "${cashAcc.account_name}" is inactive` });
+    const [acc] = await conn.query('SELECT account_id, account_name, account_type, is_active FROM accounts WHERE account_id = ?', [account_id]);
+    if (!acc)           return res.status(400).json({ message: 'Account not found' });
+    if (!acc.is_active) return res.status(400).json({ message: `Account "${acc.account_name}" is inactive` });
 
     await conn.beginTransaction();
 
-    // Voucher number
     let voucherNumber = voucher_number;
     if (!voucherNumber) {
       const [maxRow] = await conn.query("SELECT MAX(CAST(SUBSTRING(voucher_number, 4) AS UNSIGNED)) as max_num FROM receipt_vouchers WHERE voucher_number REGEXP '^CRV[0-9]+'");
@@ -1153,41 +1169,13 @@ exports.createReceiptVoucher = async (req, res) => {
       voucherNumber = `CRV${String(nextNumber).padStart(6, '0')}`;
     }
 
-    // JV entry number
-    const [lastEntry] = await conn.query('SELECT entry_number FROM journal_entries ORDER BY entry_id DESC LIMIT 1');
-    let nextJVNum = 1;
-    if (lastEntry && lastEntry.entry_number) {
-      const match = lastEntry.entry_number.match(/JV(\d+)/);
-      if (match) nextJVNum = parseInt(match[1]) + 1;
-    }
-    const entryNumber = `JV${String(nextJVNum).padStart(6, '0')}`;
+    // CRV credits the account (cash coming in)
+    const debitIncrease = ['asset', 'expense'].includes(acc.account_type);
+    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitIncrease ? -amount : amount, account_id]);
 
-    // Create journal entry (CRV: DR cash account, CR income account)
-    const jvResult = await conn.query(
-      'INSERT INTO journal_entries (entry_number, entry_date, description, total_debit, total_credit, status, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)',
-      [entryNumber, voucher_date, description || received_from, amount, amount, 'posted', req.user.user_id]
-    );
-    const entryId = jvResult.insertId;
-
-    await conn.query(
-      'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, ?, ?)',
-      [entryId, cash_account_id, description || received_from, amount, 0]
-    );
-    await conn.query(
-      'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, ?, ?)',
-      [entryId, account_id, description || received_from, 0, amount]
-    );
-
-    // Update account balances
-    const cashDebitInc = ['asset', 'expense'].includes(cashAcc.account_type);
-    const incDebitInc  = ['asset', 'expense'].includes(incAcc.account_type);
-    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [cashDebitInc ? amount : -amount, cash_account_id]);
-    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [incDebitInc ? -amount : amount, account_id]);
-
-    // Create receipt voucher
     const result = await conn.query(
-      'INSERT INTO receipt_vouchers (voucher_number, voucher_date, received_from, receipt_type, account_id, amount, payment_method, cheque_number, bank_account_id, description, journal_entry_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [voucherNumber, voucher_date, received_from, receipt_type || 'customer', account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, entryId, req.user.user_id]
+      'INSERT INTO receipt_vouchers (voucher_number, voucher_date, received_from, receipt_type, account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [voucherNumber, voucher_date, received_from, receipt_type || 'customer', account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
     );
 
     await conn.commit();
@@ -1212,6 +1200,7 @@ exports.deleteReceiptVoucher = async (req, res) => {
     await conn.beginTransaction();
 
     if (voucher.journal_entry_id) {
+      // Voucher was created with old double-entry — reverse JE balances
       const lines = await conn.query('SELECT * FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
       const [je] = await conn.query('SELECT status FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
       if (je && je.status === 'posted' && lines.length > 0) {
@@ -1225,8 +1214,17 @@ exports.deleteReceiptVoucher = async (req, res) => {
           await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [reversal, line.account_id]);
         }
       }
+      // NULL out FK before deleting JE (avoids constraint error)
+      await conn.query('UPDATE receipt_vouchers SET journal_entry_id = NULL WHERE voucher_id = ?', [id]);
       await conn.query('DELETE FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
       await conn.query('DELETE FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
+    } else {
+      // Reverse direct balance update
+      const [acc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.account_id]);
+      if (acc) {
+        const debitInc = ['asset', 'expense'].includes(acc.account_type);
+        await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitInc ? Number(voucher.amount) : -Number(voucher.amount), voucher.account_id]);
+      }
     }
 
     await conn.query('DELETE FROM receipt_vouchers WHERE voucher_id = ?', [id]);

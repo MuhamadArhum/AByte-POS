@@ -77,7 +77,7 @@ const AccountSelector = ({
 };
 
 // ── Full-page CRV Entry Form ──────────────────────────────────────────────────
-type SavedLine = { voucher_id: number; voucher_number: string; account_id: string; account_name: string; cash_account_id: string; cash_account_name: string; narration: string; amount: number };
+type SavedLine = { voucher_id: number; voucher_number: string; account_id: string; account_name: string; narration: string; amount: number };
 
 const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => void }) => {
   const toast = useToast();
@@ -85,7 +85,7 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
   const [date, setDate] = useState(localToday());
   const [voucherNumber, setVoucherNumber] = useState('');
   const [savedLines, setSavedLines] = useState<SavedLine[]>([]);
-  const [entry, setEntry] = useState({ account_id: '', cash_account_id: '', narration: '', amount: '' });
+  const [entry, setEntry] = useState({ account_id: '', narration: '', amount: '' });
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
@@ -102,12 +102,12 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
   }, []);
 
   const resetEntry = () => {
-    setEntry({ account_id: '', cash_account_id: '', narration: '', amount: '' });
+    setEntry({ account_id: '', narration: '', amount: '' });
     setEditingId(null);
   };
 
   const saveEntry = async () => {
-    if (!date || !entry.account_id || !entry.cash_account_id || !entry.amount) { toast.error('Account, Cash Account and Amount are required'); return; }
+    if (!date || !entry.account_id || !entry.amount) { toast.error('Account and Amount are required'); return; }
     const amount = parseFloat(entry.amount);
     if (isNaN(amount) || amount <= 0) { toast.error('Enter a valid amount'); return; }
     setSaving(true);
@@ -119,16 +119,13 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
         voucher_number: voucherNumber,
         voucher_date: date, received_from: entry.narration || '—',
         receipt_type: 'customer', account_id: entry.account_id,
-        cash_account_id: entry.cash_account_id,
         amount, payment_method: 'cash', description: entry.narration,
       });
       if (!voucherNumber) setVoucherNumber(res.data.voucher_number);
-      const acct     = accounts.find(a => String(a.account_id) === entry.account_id);
-      const cashAcct = accounts.find(a => String(a.account_id) === entry.cash_account_id);
+      const acct = accounts.find(a => String(a.account_id) === entry.account_id);
       const newLine: SavedLine = {
         voucher_id: res.data.voucher_id, voucher_number: res.data.voucher_number,
         account_id: entry.account_id, account_name: acct?.account_name ?? '',
-        cash_account_id: entry.cash_account_id, cash_account_name: cashAcct?.account_name ?? '',
         narration: entry.narration, amount,
       };
       if (editingId !== null) {
@@ -145,7 +142,7 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
   };
 
   const startEdit = (line: SavedLine) => {
-    setEntry({ account_id: line.account_id, cash_account_id: line.cash_account_id, narration: line.narration, amount: String(line.amount) });
+    setEntry({ account_id: line.account_id, narration: line.narration, amount: String(line.amount) });
     setEditingId(line.voucher_id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -204,30 +201,23 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
             </button>
           )}
         </div>
-        {/* Row 1: Cash Account + Income Account */}
+        {/* Row 1: Account + Description */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Cash Account <span className="text-gray-400">(received in)</span></label>
-            <AccountSelector value={entry.cash_account_id}
-              onChange={id => setEntry(v => ({ ...v, cash_account_id: id }))}
-              accounts={accounts} />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Income / Account <span className="text-gray-400">(source)</span></label>
+            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Account</label>
             <AccountSelector value={entry.account_id}
               onChange={id => setEntry(v => ({ ...v, account_id: id }))}
               onAfterSelect={() => narrationRef.current?.focus()}
               accounts={accounts} />
           </div>
-        </div>
-        {/* Row 2: Description */}
-        <div className="mb-3">
-          <label className="text-xs font-medium text-gray-500 mb-1.5 block">Description / Received From</label>
-          <input ref={narrationRef} type="text" value={entry.narration}
-            onChange={e => setEntry(v => ({ ...v, narration: e.target.value }))}
-            onKeyDown={e => { if (e.key === 'Enter') amountRef.current?.focus(); }}
-            placeholder="e.g. Customer Name, Invoice #..."
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 bg-white outline-none" />
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Description / Received From</label>
+            <input ref={narrationRef} type="text" value={entry.narration}
+              onChange={e => setEntry(v => ({ ...v, narration: e.target.value }))}
+              onKeyDown={e => { if (e.key === 'Enter') amountRef.current?.focus(); }}
+              placeholder="e.g. Customer Name, Invoice #..."
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 bg-white outline-none" />
+          </div>
         </div>
         {/* Row 2: Amount | Save Button */}
         <div className="flex items-end gap-3">
