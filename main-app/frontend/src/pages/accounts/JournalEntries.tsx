@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { FileText, Plus, Send, Trash2, ChevronDown, Search, Lock, Eye, EyeOff, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { FileText, Plus, Send, Trash2, ChevronDown, Search, Lock, Eye, EyeOff, AlertTriangle, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
@@ -9,16 +9,12 @@ import ReportPasswordGate from '../../components/ReportPasswordGate';
 const AccountSelector = ({
   value, onChange, accounts, onAfterSelect
 }: {
-  value: string;
-  onChange: (id: string) => void;
-  accounts: any[];
-  onAfterSelect?: () => void;
+  value: string; onChange: (id: string) => void; accounts: any[]; onAfterSelect?: () => void;
 }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [highlighted, setHighlighted] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
 
   const selected = accounts.find(a => String(a.account_id) === String(value));
   const filtered = accounts.filter(a =>
@@ -35,13 +31,6 @@ const AccountSelector = ({
   const selectAccount = (id: string) => {
     onChange(id); setOpen(false); setSearch(''); setHighlighted(0);
     setTimeout(() => onAfterSelect?.(), 0);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, filtered.length - 1)); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
-    else if (e.key === 'Enter') { e.preventDefault(); if (filtered.length > 0) selectAccount(String(filtered[highlighted]?.account_id ?? filtered[0].account_id)); }
-    else if (e.key === 'Escape') setOpen(false);
   };
 
   return (
@@ -64,12 +53,17 @@ const AccountSelector = ({
             <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 rounded-lg">
               <Search size={13} className="text-gray-400" />
               <input autoFocus type="text" value={search} onChange={e => setSearch(e.target.value)}
-                onKeyDown={handleKeyDown}
+                onKeyDown={e => {
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, filtered.length - 1)); }
+                  else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
+                  else if (e.key === 'Enter') { e.preventDefault(); if (filtered.length > 0) selectAccount(String(filtered[highlighted]?.account_id ?? filtered[0].account_id)); }
+                  else if (e.key === 'Escape') setOpen(false);
+                }}
                 className="bg-transparent text-sm outline-none w-full placeholder-gray-400"
                 placeholder="Search by name or code..." />
             </div>
           </div>
-          <ul ref={listRef} className="max-h-52 overflow-y-auto py-1">
+          <ul className="max-h-52 overflow-y-auto py-1">
             {filtered.length === 0 && <li className="px-3 py-3 text-sm text-gray-400 text-center">No accounts found</li>}
             {filtered.map((a, idx) => (
               <li key={a.account_id}>
@@ -93,7 +87,8 @@ const AccountSelector = ({
 type JvLine = { dr_cr: 'Dr' | 'Cr'; account_id: string; narration: string; debit: string; credit: string };
 const emptyLine = (): JvLine => ({ dr_cr: 'Dr', account_id: '', narration: '', debit: '', credit: '' });
 
-const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
+// ── Full-page JV Entry Form ───────────────────────────────────────────────────
+const JournalEntryForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => void }) => {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -103,16 +98,13 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
   const narrationRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    if (isOpen) {
-      api.get('/accounting/accounts', { params: { tree: 1 } })
-        .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active && a.level === 4)))
-        .catch(() => {});
-    }
-  }, [isOpen]);
+    api.get('/accounting/accounts', { params: { tree: 1 } })
+      .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active && a.level === 4)))
+      .catch(() => {});
+  }, []);
 
-  const updateLine = (i: number, patch: Partial<JvLine>) => {
+  const updateLine = (i: number, patch: Partial<JvLine>) =>
     setLines(prev => prev.map((l, idx) => idx === i ? { ...l, ...patch } : l));
-  };
 
   const handleDrCr = (i: number, val: 'Dr' | 'Cr') => {
     setLines(prev => {
@@ -129,12 +121,11 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
     });
   };
 
-  const handleAmountChange = (i: number, val: string) => {
+  const handleAmountChange = (i: number, val: string) =>
     setLines(prev => prev.map((l, idx) => {
       if (idx !== i) return l;
       return l.dr_cr === 'Dr' ? { ...l, debit: val, credit: '' } : { ...l, credit: val, debit: '' };
     }));
-  };
 
   const totals = lines.reduce((acc, l) => ({
     debit: acc.debit + Number(l.debit || 0),
@@ -158,10 +149,7 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
       });
       toast.success('Journal entry created');
       onSuccess();
-      onClose();
-      setLines([emptyLine(), emptyLine()]);
-      setDescription('');
-      setEntryDate(localToday());
+      onBack();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to create entry');
     } finally {
@@ -169,169 +157,164 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col">
 
-        {/* Gradient Header */}
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-5 shrink-0">
-          <div className="flex items-center justify-between">
+      {/* Top Bar */}
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button onClick={onBack}
+              className="w-9 h-9 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition">
+              <ArrowLeft size={18} className="text-white" />
+            </button>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                <FileText size={20} className="text-white" />
+              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+                <FileText size={18} className="text-white" />
               </div>
               <div>
-                <h2 className="text-white font-bold text-lg leading-tight">Journal Voucher</h2>
-                <p className="text-emerald-100 text-xs mt-0.5">Double-entry bookkeeping</p>
+                <h2 className="text-white font-bold text-lg leading-tight">New Journal Voucher</h2>
+                <p className="text-emerald-100 text-xs">Double-entry bookkeeping</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <label className="text-emerald-100 text-sm font-medium">Date</label>
-              <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)}
-                className="px-3 py-1.5 bg-white/15 border border-white/30 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:bg-white/20"
-                style={{ colorScheme: 'dark' }} required />
-            </div>
           </div>
-        </div>
-
-        {/* Narration Row */}
-        <div className="px-6 py-3 border-b bg-emerald-50/50 shrink-0">
           <div className="flex items-center gap-3">
-            <label className="text-sm font-semibold text-gray-600 shrink-0 w-20">Narration</label>
-            <input type="text" value={description} onChange={e => setDescription(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 bg-white outline-none"
-              placeholder="General narration for this journal entry..." />
+            <label className="text-emerald-100 text-sm font-medium">Date</label>
+            <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)}
+              className="px-3 py-1.5 bg-white/15 border border-white/30 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+              style={{ colorScheme: 'dark' }} required />
           </div>
         </div>
+      </div>
 
-        {/* Lines Table */}
-        <div className="overflow-y-auto flex-1 p-5">
-          <div className="overflow-x-auto rounded-xl border border-gray-200">
-            <form id="jv-form" onSubmit={handleSubmit}>
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="bg-slate-700 text-white">
-                    <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide w-12">#</th>
-                    <th className="px-3 py-3 text-center font-semibold text-xs uppercase tracking-wide w-20">Dr/Cr</th>
-                    <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide">Account</th>
-                    <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide">Narration</th>
-                    <th className="px-3 py-3 text-right font-semibold text-xs uppercase tracking-wide w-32">Debit</th>
-                    <th className="px-3 py-3 text-right font-semibold text-xs uppercase tracking-wide w-32">Credit</th>
-                    <th className="px-3 py-3 text-center font-semibold text-xs uppercase tracking-wide w-10"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lines.map((line, i) => (
-                    <tr key={i} className={`border-b border-gray-100 transition ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
-                      <td className="px-3 py-2.5 text-gray-400 font-mono text-xs font-semibold">{String(i + 1).padStart(2, '0')}</td>
+      {/* Narration Row */}
+      <div className="px-6 py-3 border-b bg-emerald-50/60 shrink-0">
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-semibold text-gray-600 shrink-0">Narration</label>
+          <input type="text" value={description} onChange={e => setDescription(e.target.value)}
+            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 bg-white outline-none"
+            placeholder="General narration for this journal entry..." />
+        </div>
+      </div>
 
-                      <td className="px-2 py-2.5 text-center">
-                        <div className="flex rounded-full overflow-hidden bg-gray-100 p-0.5 gap-0.5 w-[70px] mx-auto">
-                          <button type="button" onClick={() => handleDrCr(i, 'Dr')}
-                            className={`flex-1 py-1 text-xs font-bold rounded-full transition ${line.dr_cr === 'Dr' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-blue-600'}`}>
-                            Dr
-                          </button>
-                          <button type="button" onClick={() => handleDrCr(i, 'Cr')}
-                            className={`flex-1 py-1 text-xs font-bold rounded-full transition ${line.dr_cr === 'Cr' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-orange-500'}`}>
-                            Cr
-                          </button>
-                        </div>
-                      </td>
+      {/* Lines Table — scrollable */}
+      <div className="flex-1 overflow-y-auto px-6 py-5">
+        <form id="jv-form" onSubmit={handleSubmit}>
+          <div className="rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-slate-700 text-white">
+                  <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide w-12">#</th>
+                  <th className="px-3 py-3 text-center font-semibold text-xs uppercase tracking-wide w-20">Dr/Cr</th>
+                  <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide">Account</th>
+                  <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide">Narration</th>
+                  <th className="px-3 py-3 text-right font-semibold text-xs uppercase tracking-wide w-36">Debit</th>
+                  <th className="px-3 py-3 text-right font-semibold text-xs uppercase tracking-wide w-36">Credit</th>
+                  <th className="px-3 py-3 text-center font-semibold text-xs uppercase tracking-wide w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {lines.map((line, i) => (
+                  <tr key={i} className={`border-b border-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                    <td className="px-3 py-3 text-gray-400 font-mono text-xs font-semibold">{String(i + 1).padStart(2, '0')}</td>
 
-                      <td className="px-2 py-2.5 min-w-[200px]">
-                        <AccountSelector
-                          value={line.account_id}
-                          onChange={id => updateLine(i, { account_id: id })}
-                          onAfterSelect={() => narrationRefs.current[i]?.focus()}
-                          accounts={accounts}
-                        />
-                      </td>
-
-                      <td className="px-2 py-2.5">
-                        <input
-                          ref={el => { narrationRefs.current[i] = el; }}
-                          type="text" value={line.narration}
-                          onChange={e => updateLine(i, { narration: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 bg-white outline-none"
-                          placeholder="Line narration..." />
-                      </td>
-
-                      <td className="px-2 py-2.5">
-                        <input type="number" step="0.01" min="0"
-                          value={line.dr_cr === 'Dr' ? (line.debit || '') : ''}
-                          onChange={e => handleAmountChange(i, e.target.value)}
-                          disabled={line.dr_cr === 'Cr'}
-                          className={`w-full px-2 py-2 border rounded-lg text-sm text-right font-semibold focus:ring-2 focus:ring-blue-400 outline-none transition ${line.dr_cr === 'Dr' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-                          placeholder="0.00" />
-                      </td>
-
-                      <td className="px-2 py-2.5">
-                        <input type="number" step="0.01" min="0"
-                          value={line.dr_cr === 'Cr' ? (line.credit || '') : ''}
-                          onChange={e => handleAmountChange(i, e.target.value)}
-                          disabled={line.dr_cr === 'Dr'}
-                          className={`w-full px-2 py-2 border rounded-lg text-sm text-right font-semibold focus:ring-2 focus:ring-orange-400 outline-none transition ${line.dr_cr === 'Cr' ? 'border-orange-200 bg-orange-50 text-orange-700' : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-                          placeholder="0.00" />
-                      </td>
-
-                      <td className="px-2 py-2.5 text-center">
-                        <button type="button" onClick={() => setLines(prev => prev.filter((_, idx) => idx !== i))}
-                          disabled={lines.length <= 2}
-                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-20 disabled:cursor-not-allowed">
-                          <Trash2 size={14} />
+                    <td className="px-2 py-3 text-center">
+                      <div className="flex rounded-full overflow-hidden bg-gray-100 p-0.5 gap-0.5 w-[72px] mx-auto">
+                        <button type="button" onClick={() => handleDrCr(i, 'Dr')}
+                          className={`flex-1 py-1 text-xs font-bold rounded-full transition ${line.dr_cr === 'Dr' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-blue-600'}`}>
+                          Dr
                         </button>
-                      </td>
-                    </tr>
-                  ))}
+                        <button type="button" onClick={() => handleDrCr(i, 'Cr')}
+                          className={`flex-1 py-1 text-xs font-bold rounded-full transition ${line.dr_cr === 'Cr' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-orange-500'}`}>
+                          Cr
+                        </button>
+                      </div>
+                    </td>
 
-                  {/* Totals Row */}
-                  <tr className={`font-bold text-sm ${isBalanced ? 'bg-emerald-600' : 'bg-slate-700'} text-white`}>
-                    <td colSpan={4} className="px-4 py-3 text-right tracking-wide text-xs uppercase">Total</td>
-                    <td className="px-2 py-3 text-right font-mono">
-                      {totals.debit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                    <td className="px-2 py-2 min-w-[220px]">
+                      <AccountSelector
+                        value={line.account_id}
+                        onChange={id => updateLine(i, { account_id: id })}
+                        onAfterSelect={() => narrationRefs.current[i]?.focus()}
+                        accounts={accounts}
+                      />
                     </td>
-                    <td className="px-2 py-3 text-right font-mono">
-                      {totals.credit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+
+                    <td className="px-2 py-2">
+                      <input ref={el => { narrationRefs.current[i] = el; }}
+                        type="text" value={line.narration}
+                        onChange={e => updateLine(i, { narration: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 bg-white outline-none"
+                        placeholder="Line narration..." />
                     </td>
-                    <td className="px-2 py-3 text-center text-base">
-                      {isBalanced ? '✓' : '✗'}
+
+                    <td className="px-2 py-2">
+                      <input type="number" step="0.01" min="0"
+                        value={line.dr_cr === 'Dr' ? (line.debit || '') : ''}
+                        onChange={e => handleAmountChange(i, e.target.value)}
+                        disabled={line.dr_cr === 'Cr'}
+                        className={`w-full px-3 py-2 border rounded-lg text-sm text-right font-semibold focus:ring-2 focus:ring-blue-400 outline-none transition ${line.dr_cr === 'Dr' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                        placeholder="0.00" />
+                    </td>
+
+                    <td className="px-2 py-2">
+                      <input type="number" step="0.01" min="0"
+                        value={line.dr_cr === 'Cr' ? (line.credit || '') : ''}
+                        onChange={e => handleAmountChange(i, e.target.value)}
+                        disabled={line.dr_cr === 'Dr'}
+                        className={`w-full px-3 py-2 border rounded-lg text-sm text-right font-semibold focus:ring-2 focus:ring-orange-400 outline-none transition ${line.dr_cr === 'Cr' ? 'border-orange-200 bg-orange-50 text-orange-700' : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                        placeholder="0.00" />
+                    </td>
+
+                    <td className="px-2 py-2 text-center">
+                      <button type="button" onClick={() => setLines(prev => prev.filter((_, idx) => idx !== i))}
+                        disabled={lines.length <= 2}
+                        className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-20 disabled:cursor-not-allowed">
+                        <Trash2 size={14} />
+                      </button>
                     </td>
                   </tr>
-                </tbody>
-              </table>
-            </form>
-          </div>
-        </div>
+                ))}
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t bg-gray-50 shrink-0 flex items-center justify-between rounded-b-2xl">
-          <div className="flex items-center gap-3">
-            <button type="button" onClick={() => setLines(prev => [...prev, emptyLine()])}
-              className="flex items-center gap-1.5 text-emerald-700 bg-white hover:bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg text-sm font-medium transition shadow-sm">
-              <Plus size={14} /> Add Line
-            </button>
-            {isBalanced ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
-                <CheckCircle2 size={13} /> Balanced
-              </span>
-            ) : totals.debit > 0 ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-600 rounded-full text-xs font-semibold">
-                <XCircle size={13} /> Diff: {Math.abs(totals.debit - totals.credit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
-              </span>
-            ) : null}
+                {/* Totals Row */}
+                <tr className={`font-bold text-sm ${isBalanced ? 'bg-emerald-600' : 'bg-slate-700'} text-white`}>
+                  <td colSpan={4} className="px-4 py-3 text-right tracking-wide text-xs uppercase">Total</td>
+                  <td className="px-3 py-3 text-right font-mono">{totals.debit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-3 py-3 text-right font-mono">{totals.credit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-2 py-3 text-center text-base">{isBalanced ? '✓' : '✗'}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div className="flex gap-2.5">
-            <button type="button" onClick={onClose}
-              className="px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition font-medium">
-              Cancel
-            </button>
-            <button type="submit" form="jv-form" disabled={loading || !isBalanced}
-              className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
-              {loading ? 'Saving...' : 'Save JV'}
-            </button>
-          </div>
+        </form>
+      </div>
+
+      {/* Footer Actions */}
+      <div className="px-6 py-4 border-t bg-gray-50 shrink-0 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => setLines(prev => [...prev, emptyLine()])}
+            className="flex items-center gap-1.5 text-emerald-700 bg-white hover:bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
+            <Plus size={14} /> Add Line
+          </button>
+          {isBalanced ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
+              <CheckCircle2 size={13} /> Balanced
+            </span>
+          ) : totals.debit > 0 ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-600 rounded-full text-xs font-semibold">
+              <XCircle size={13} /> Diff: {Math.abs(totals.debit - totals.credit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+            </span>
+          ) : null}
+        </div>
+        <div className="flex gap-2.5">
+          <button type="button" onClick={onBack}
+            className="px-5 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition font-medium">
+            Cancel
+          </button>
+          <button type="submit" form="jv-form" disabled={loading || !isBalanced}
+            className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
+            {loading ? 'Saving...' : 'Save Journal Voucher'}
+          </button>
         </div>
       </div>
     </div>
@@ -383,16 +366,16 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
             {entry.status === 'posted' && ' Account balances will be reversed.'}
           </p>
         </div>
-        <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-5 text-sm">
-          <div className="flex justify-between mb-1.5">
+        <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-5 text-sm space-y-1.5">
+          <div className="flex justify-between">
             <span className="text-gray-500">Voucher #</span>
             <span className="font-mono font-bold text-gray-800">{entry.entry_number}</span>
           </div>
-          <div className="flex justify-between mb-1.5">
+          <div className="flex justify-between">
             <span className="text-gray-500">Date</span>
             <span className="text-gray-700">{new Date(entry.entry_date).toLocaleDateString()}</span>
           </div>
-          <div className="flex justify-between mb-1.5">
+          <div className="flex justify-between">
             <span className="text-gray-500">Amount</span>
             <span className="font-semibold text-gray-800">{Number(entry.total_debit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
           </div>
@@ -437,14 +420,14 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
   );
 };
 
-// ── Main Journal Entries List ──────────────────────────────────────────────────
+// ── Main Page ─────────────────────────────────────────────────────────────────
 const JournalEntries = () => {
   const toast = useToast();
+  const [view, setView] = useState<'list' | 'new'>('list');
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
-  const [showModal, setShowModal] = useState(false);
   const [deleteEntry, setDeleteEntry] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [fromDate, setFromDate] = useState(localMonthStart);
@@ -492,10 +475,15 @@ const JournalEntries = () => {
     return <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${map[status] ?? 'bg-gray-100 text-gray-600'}`}>{status}</span>;
   };
 
+  // Show full-page entry form
+  if (view === 'new') {
+    return <JournalEntryForm onBack={() => setView('list')} onSuccess={fetchEntries} />;
+  }
+
   return (
     <div className="p-4 md:p-6 space-y-5">
 
-      {/* Page Header Card */}
+      {/* Page Header */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
         <div className="px-6 py-5 flex flex-wrap items-center justify-between gap-4">
@@ -508,7 +496,7 @@ const JournalEntries = () => {
               <p className="text-sm text-gray-500 mt-0.5">Double-entry accounting transactions</p>
             </div>
           </div>
-          <button onClick={() => setShowModal(true)}
+          <button onClick={() => setView('new')}
             className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl hover:bg-emerald-700 transition shadow-sm text-sm font-semibold">
             <Plus size={16} /> New Entry
           </button>
@@ -540,9 +528,7 @@ const JournalEntries = () => {
             className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-60 shadow-sm">
             <Search size={14} /> {loading ? 'Loading...' : 'Load Entries'}
           </button>
-          {hasLoaded && (
-            <span className="ml-auto text-xs text-gray-400 font-medium">{pagination.total} entries found</span>
-          )}
+          {hasLoaded && <span className="ml-auto text-xs text-gray-400 font-medium">{pagination.total} entries found</span>}
         </div>
       </div>
 
@@ -625,7 +611,6 @@ const JournalEntries = () => {
         )}
       </div>
 
-      <JournalEntryModal isOpen={showModal} onClose={() => setShowModal(false)} onSuccess={fetchEntries} />
       {deleteEntry && (
         <JvDeleteModal entry={deleteEntry} onClose={() => setDeleteEntry(null)} onDeleted={fetchEntries} />
       )}

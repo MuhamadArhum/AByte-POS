@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowDownCircle, Plus, Trash2, Download, Search, ChevronDown, X } from 'lucide-react';
+import { ArrowDownCircle, Plus, Trash2, Download, Search, ChevronDown, ArrowLeft } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
@@ -9,10 +9,7 @@ import { localToday, localMonthStart } from '../../utils/dateUtils';
 const AccountSelector = ({
   value, onChange, accounts, onAfterSelect,
 }: {
-  value: string;
-  onChange: (id: string) => void;
-  accounts: any[];
-  onAfterSelect?: () => void;
+  value: string; onChange: (id: string) => void; accounts: any[]; onAfterSelect?: () => void;
 }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -21,9 +18,7 @@ const AccountSelector = ({
 
   const selected = accounts.find(a => String(a.account_id) === String(value));
   const filtered = accounts.filter(a =>
-    !search ||
-    a.account_name.toLowerCase().includes(search.toLowerCase()) ||
-    a.account_code.includes(search)
+    !search || a.account_name.toLowerCase().includes(search.toLowerCase()) || a.account_code.includes(search)
   );
 
   useEffect(() => { setHi(0); }, [search]);
@@ -52,8 +47,7 @@ const AccountSelector = ({
           <div className="p-2.5 border-b border-gray-100">
             <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 rounded-lg">
               <Search size={13} className="text-gray-400 shrink-0" />
-              <input autoFocus type="text" value={search}
-                onChange={e => setSearch(e.target.value)}
+              <input autoFocus type="text" value={search} onChange={e => setSearch(e.target.value)}
                 onKeyDown={e => {
                   if (e.key === 'ArrowDown') { e.preventDefault(); setHi(h => Math.min(h + 1, filtered.length - 1)); }
                   else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(h => Math.max(h - 1, 0)); }
@@ -83,10 +77,10 @@ const AccountSelector = ({
   );
 };
 
-// ── CRV Modal ─────────────────────────────────────────────────────────────────
+// ── Full-page CRV Entry Form ──────────────────────────────────────────────────
 type SavedLine = { voucher_id: number; voucher_number: string; account_name: string; narration: string; amount: number };
 
-const CRVModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; onClose: () => void; onRefresh: () => void }) => {
+const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => void }) => {
   const toast = useToast();
   const [accounts, setAccounts] = useState<any[]>([]);
   const [date, setDate] = useState(localToday());
@@ -98,42 +92,27 @@ const CRVModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; onClose: ()
   const amountRef    = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      api.get('/accounting/accounts', { params: { tree: 1 } })
-        .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active && a.level === 4)))
-        .catch(() => {});
-      setSavedLines([]);
-      setEntry({ account_id: '', narration: '', amount: '' });
-      setDate(localToday());
-    }
-  }, [isOpen]);
+    api.get('/accounting/accounts', { params: { tree: 1 } })
+      .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active && a.level === 4)))
+      .catch(() => {});
+  }, []);
 
   const saveEntry = async () => {
-    if (!date || !entry.account_id || !entry.amount) {
-      toast.error('Account and Amount are required');
-      return;
-    }
+    if (!date || !entry.account_id || !entry.amount) { toast.error('Account and Amount are required'); return; }
     const amount = parseFloat(entry.amount);
     if (isNaN(amount) || amount <= 0) { toast.error('Enter a valid amount'); return; }
 
     setSaving(true);
     try {
       const res = await api.post('/accounting/receipt-vouchers', {
-        voucher_date:   date,
-        received_from:  entry.narration || '—',
-        receipt_type:   'customer',
-        account_id:     entry.account_id,
-        amount,
-        payment_method: 'cash',
-        description:    entry.narration,
+        voucher_date: date, received_from: entry.narration || '—',
+        receipt_type: 'customer', account_id: entry.account_id,
+        amount, payment_method: 'cash', description: entry.narration,
       });
       const acct = accounts.find(a => String(a.account_id) === entry.account_id);
       setSavedLines(prev => [...prev, {
-        voucher_id:     res.data.voucher_id,
-        voucher_number: res.data.voucher_number,
-        account_name:   acct?.account_name ?? '',
-        narration:      entry.narration,
-        amount,
+        voucher_id: res.data.voucher_id, voucher_number: res.data.voucher_number,
+        account_name: acct?.account_name ?? '', narration: entry.narration, amount,
       }]);
       setEntry({ account_id: '', narration: '', amount: '' });
     } catch (err: any) {
@@ -152,149 +131,145 @@ const CRVModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; onClose: ()
     }
   };
 
-  const handleDone = () => { onRefresh(); onClose(); };
+  const handleDone = () => { onRefresh(); onBack(); };
   const total = savedLines.reduce((s, l) => s + l.amount, 0);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col">
 
-        {/* Gradient Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 shrink-0">
-          <div className="flex items-center justify-between">
+      {/* Top Bar */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button onClick={handleDone}
+              className="w-9 h-9 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition">
+              <ArrowLeft size={18} className="text-white" />
+            </button>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                <ArrowDownCircle size={20} className="text-white" />
+              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+                <ArrowDownCircle size={18} className="text-white" />
               </div>
               <div>
                 <h2 className="text-white font-bold text-lg leading-tight">
-                  Cash Receipt Voucher <span className="text-blue-200 font-normal text-base">(CRV)</span>
+                  New Cash Receipt Voucher <span className="text-blue-200 font-normal text-sm">(CRV)</span>
                 </h2>
-                <p className="text-blue-100 text-xs mt-0.5">Press Enter on Amount to save each line</p>
+                <p className="text-blue-100 text-xs">Press Enter on Amount to save each line</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <label className="text-blue-100 text-sm font-medium">Date</label>
-              <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                className="px-3 py-1.5 bg-white/15 border border-white/30 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/50"
-                style={{ colorScheme: 'dark' }} />
-              <button onClick={handleDone} className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition">
-                <X size={16} className="text-white" />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-blue-100 text-sm font-medium">Date</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              className="px-3 py-1.5 bg-white/15 border border-white/30 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+              style={{ colorScheme: 'dark' }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Entry Form */}
+      <div className="px-6 py-5 bg-blue-50/60 border-b border-blue-100 shrink-0">
+        <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-3">New Entry</p>
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_200px] gap-4">
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Account</label>
+            <AccountSelector
+              value={entry.account_id}
+              onChange={id => setEntry(v => ({ ...v, account_id: id }))}
+              onAfterSelect={() => narrationRef.current?.focus()}
+              accounts={accounts}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Description / Received From</label>
+            <input ref={narrationRef} type="text" value={entry.narration}
+              onChange={e => setEntry(v => ({ ...v, narration: e.target.value }))}
+              onKeyDown={e => { if (e.key === 'Enter') amountRef.current?.focus(); }}
+              placeholder="e.g. Customer Name, Invoice #..."
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 bg-white outline-none" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1.5 block">Amount</label>
+            <div className="flex gap-2">
+              <input ref={amountRef} type="number" step="0.01" min="0"
+                value={entry.amount}
+                onChange={e => setEntry(v => ({ ...v, amount: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') saveEntry(); }}
+                placeholder="0.00"
+                className="flex-1 px-3 py-2 border border-blue-200 bg-white rounded-lg text-sm text-right font-semibold text-blue-700 focus:ring-2 focus:ring-blue-400 outline-none" />
+              <button onClick={saveEntry} disabled={saving}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-1.5">
+                {saving
+                  ? <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                  : <><Plus size={15} /> Add</>}
               </button>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Entry Form Card */}
-        <div className="px-6 py-4 bg-blue-50/60 border-b border-blue-100 shrink-0">
-          <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-3">New Entry</p>
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_180px] gap-3">
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">Account</label>
-              <AccountSelector
-                value={entry.account_id}
-                onChange={id => setEntry(v => ({ ...v, account_id: id }))}
-                onAfterSelect={() => narrationRef.current?.focus()}
-                accounts={accounts}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">Description / Received From</label>
-              <input
-                ref={narrationRef}
-                type="text" value={entry.narration}
-                onChange={e => setEntry(v => ({ ...v, narration: e.target.value }))}
-                onKeyDown={e => { if (e.key === 'Enter') amountRef.current?.focus(); }}
-                placeholder="e.g. Customer Name, Invoice #..."
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 bg-white outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">Amount</label>
-              <div className="flex gap-2">
-                <input
-                  ref={amountRef}
-                  type="number" step="0.01" min="0"
-                  value={entry.amount}
-                  onChange={e => setEntry(v => ({ ...v, amount: e.target.value }))}
-                  onKeyDown={e => { if (e.key === 'Enter') saveEntry(); }}
-                  placeholder="0.00"
-                  className="flex-1 px-3 py-2 border border-blue-200 bg-white rounded-lg text-sm text-right font-semibold text-blue-700 focus:ring-2 focus:ring-blue-400 outline-none" />
-                <button onClick={saveEntry} disabled={saving}
-                  className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-1">
-                  {saving
-                    ? <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                    : <Plus size={15} />}
-                </button>
-              </div>
-            </div>
+      {/* Saved Lines — scrollable */}
+      <div className="flex-1 overflow-y-auto px-6 py-5">
+        {savedLines.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">
+            <ArrowDownCircle size={40} className="mx-auto mb-3 opacity-20" />
+            <p className="text-sm font-medium">No entries yet</p>
+            <p className="text-xs mt-1">Fill the form above and press <strong>Enter</strong> or click <strong>Add</strong></p>
           </div>
-        </div>
-
-        {/* Saved Lines Table */}
-        <div className="overflow-y-auto flex-1 px-6 py-4">
-          {savedLines.length === 0 ? (
-            <div className="text-center py-10 text-gray-400">
-              <ArrowDownCircle size={36} className="mx-auto mb-2 opacity-20" />
-              <p className="text-sm">No entries yet — fill the form above and press <strong>Enter</strong> or click <strong>+</strong></p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-gray-200">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="bg-slate-700 text-white text-xs uppercase tracking-wider">
-                    <th className="px-4 py-3 text-left font-semibold w-32">Voucher #</th>
-                    <th className="px-4 py-3 text-left font-semibold">Account</th>
-                    <th className="px-4 py-3 text-left font-semibold">Description</th>
-                    <th className="px-4 py-3 text-right font-semibold w-36">Amount</th>
-                    <th className="px-4 py-3 text-center font-semibold w-12"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {savedLines.map((line, i) => (
-                    <tr key={line.voucher_id} className={`border-b border-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
-                      <td className="px-4 py-3 font-mono text-xs font-bold text-blue-600">{line.voucher_number}</td>
-                      <td className="px-4 py-3 text-gray-800 font-medium">{line.account_name}</td>
-                      <td className="px-4 py-3 text-gray-500">{line.narration || '—'}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-blue-700 font-mono">
-                        {line.amount.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button onClick={() => deleteLine(line.voucher_id)}
-                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-blue-600 text-white font-bold">
-                    <td colSpan={3} className="px-4 py-3 text-right text-xs uppercase tracking-wide">Total</td>
-                    <td className="px-4 py-3 text-right font-mono text-base">
-                      {total.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+        ) : (
+          <div className="rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-slate-700 text-white text-xs uppercase tracking-wider">
+                  <th className="px-5 py-3.5 text-left font-semibold w-36">Voucher #</th>
+                  <th className="px-5 py-3.5 text-left font-semibold">Account</th>
+                  <th className="px-5 py-3.5 text-left font-semibold">Description</th>
+                  <th className="px-5 py-3.5 text-right font-semibold w-40">Amount</th>
+                  <th className="px-5 py-3.5 text-center font-semibold w-14"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {savedLines.map((line, i) => (
+                  <tr key={line.voucher_id} className={`border-b border-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                    <td className="px-5 py-3.5 font-mono text-xs font-bold text-blue-600">{line.voucher_number}</td>
+                    <td className="px-5 py-3.5 text-gray-800 font-medium">{line.account_name}</td>
+                    <td className="px-5 py-3.5 text-gray-500">{line.narration || '—'}</td>
+                    <td className="px-5 py-3.5 text-right font-semibold text-blue-700 font-mono">
+                      {line.amount.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
                     </td>
-                    <td />
+                    <td className="px-5 py-3.5 text-center">
+                      <button onClick={() => deleteLine(line.voucher_id)}
+                        className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
                   </tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
-        </div>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-blue-600 text-white font-bold">
+                  <td colSpan={3} className="px-5 py-3 text-right text-xs uppercase tracking-wide">Total</td>
+                  <td className="px-5 py-3 text-right font-mono text-base">
+                    {total.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t bg-gray-50 shrink-0 flex items-center justify-between rounded-b-2xl">
-          <p className="text-sm text-gray-500">
-            {savedLines.length > 0
-              ? <span className="text-emerald-600 font-semibold">{savedLines.length} voucher{savedLines.length !== 1 ? 's' : ''} saved ✓</span>
-              : <span className="text-gray-400">Select account → description → amount → Enter</span>}
-          </p>
-          <button onClick={handleDone}
-            className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition shadow-sm">
-            Done
-          </button>
-        </div>
+      {/* Footer */}
+      <div className="px-6 py-4 border-t bg-gray-50 shrink-0 flex items-center justify-between">
+        <p className="text-sm">
+          {savedLines.length > 0
+            ? <span className="text-emerald-600 font-semibold">{savedLines.length} voucher{savedLines.length !== 1 ? 's' : ''} saved ✓</span>
+            : <span className="text-gray-400 text-xs">Select account → description → amount → Enter or Add</span>}
+        </p>
+        <button onClick={handleDone}
+          className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition shadow-sm">
+          Done
+        </button>
       </div>
     </div>
   );
@@ -303,9 +278,9 @@ const CRVModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; onClose: ()
 // ── Main List Page ────────────────────────────────────────────────────────────
 const ReceiptVouchers = () => {
   const toast = useToast();
+  const [view, setView] = useState<'list' | 'new'>('list');
   const [vouchers, setVouchers]   = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [showModal, setShowModal] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
   const [filters, setFilters]     = useState({ from_date: localMonthStart(), to_date: localToday() });
 
@@ -356,10 +331,15 @@ const ReceiptVouchers = () => {
     URL.revokeObjectURL(a.href);
   };
 
+  // Full-page form view
+  if (view === 'new') {
+    return <CRVForm onBack={() => setView('list')} onRefresh={fetchVouchers} />;
+  }
+
   return (
     <div className="p-4 md:p-6 space-y-5">
 
-      {/* Page Header Card */}
+      {/* Page Header */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="h-1.5 bg-gradient-to-r from-blue-500 to-indigo-600" />
         <div className="px-6 py-5 flex flex-wrap items-center justify-between gap-4">
@@ -379,7 +359,7 @@ const ReceiptVouchers = () => {
               className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 font-medium">
               <Download size={15} /> Export CSV
             </button>
-            <button onClick={() => setShowModal(true)}
+            <button onClick={() => setView('new')}
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition shadow-sm">
               <Plus size={16} /> New CRV
             </button>
@@ -488,8 +468,6 @@ const ReceiptVouchers = () => {
           </>
         )}
       </div>
-
-      <CRVModal isOpen={showModal} onClose={() => setShowModal(false)} onRefresh={fetchVouchers} />
     </div>
   );
 };
