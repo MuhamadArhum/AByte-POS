@@ -972,13 +972,9 @@ exports.createPaymentVoucher = async (req, res) => {
 
     await conn.beginTransaction();
 
-    // Generate voucher number
-    const [lastVoucher] = await conn.query('SELECT voucher_number FROM payment_vouchers ORDER BY voucher_id DESC LIMIT 1');
-    let nextNumber = 1;
-    if (lastVoucher && lastVoucher.voucher_number) {
-      const match = lastVoucher.voucher_number.match(/CPV(\d+)/);
-      if (match) nextNumber = parseInt(match[1]) + 1;
-    }
+    // Generate voucher number — MAX-based to avoid duplicates from old-format records
+    const [maxRow] = await conn.query("SELECT MAX(CAST(SUBSTRING(voucher_number, 4) AS UNSIGNED)) as max_num FROM payment_vouchers WHERE voucher_number REGEXP '^CPV[0-9]+'");
+    const nextNumber = (maxRow?.max_num || 0) + 1;
     const voucherNumber = `CPV${String(nextNumber).padStart(6, '0')}`;
 
     // Create payment voucher
@@ -1067,13 +1063,9 @@ exports.createReceiptVoucher = async (req, res) => {
 
     await conn.beginTransaction();
 
-    // Generate voucher number
-    const [lastVoucher] = await conn.query('SELECT voucher_number FROM receipt_vouchers ORDER BY voucher_id DESC LIMIT 1');
-    let nextNumber = 1;
-    if (lastVoucher && lastVoucher.voucher_number) {
-      const match = lastVoucher.voucher_number.match(/CRV(\d+)/);
-      if (match) nextNumber = parseInt(match[1]) + 1;
-    }
+    // Generate voucher number — MAX-based to avoid duplicates from old-format records
+    const [maxRow] = await conn.query("SELECT MAX(CAST(SUBSTRING(voucher_number, 4) AS UNSIGNED)) as max_num FROM receipt_vouchers WHERE voucher_number REGEXP '^CRV[0-9]+'");
+    const nextNumber = (maxRow?.max_num || 0) + 1;
     const voucherNumber = `CRV${String(nextNumber).padStart(6, '0')}`;
 
     // Create receipt voucher
