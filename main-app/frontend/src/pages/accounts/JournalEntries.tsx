@@ -99,7 +99,7 @@ const JournalEntryForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess
 
   useEffect(() => {
     api.get('/accounting/accounts', { params: { tree: 1 } })
-      .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active && a.level === 4)))
+      .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active)))
       .catch(() => {});
   }, []);
 

@@ -120,6 +120,8 @@ CREATE TABLE IF NOT EXISTS accounts (
     group_id INT NOT NULL,
     parent_account_id INT NULL,
     account_type ENUM('asset','liability','equity','revenue','expense') NOT NULL,
+    level INT NOT NULL DEFAULT 1,
+    is_system TINYINT(1) NOT NULL DEFAULT 0,
     is_active TINYINT(1) DEFAULT 1,
     opening_balance DECIMAL(15,2) DEFAULT 0,
     current_balance DECIMAL(15,2) DEFAULT 0,
@@ -130,27 +132,28 @@ CREATE TABLE IF NOT EXISTS accounts (
     FOREIGN KEY (parent_account_id) REFERENCES accounts(account_id) ON DELETE SET NULL,
     INDEX idx_account_code (account_code),
     INDEX idx_account_type (account_type),
-    INDEX idx_active (is_active)
+    INDEX idx_active (is_active),
+    INDEX idx_level (level)
 );
 
-INSERT IGNORE INTO accounts (account_code, account_name, group_id, account_type, opening_balance) VALUES
-('1001', 'Cash in Hand', 1, 'asset', 0),
-('1002', 'Cash at Bank', 1, 'asset', 0),
-('1003', 'Accounts Receivable', 1, 'asset', 0),
-('1004', 'Inventory', 1, 'asset', 0),
-('1101', 'Furniture & Fixtures', 2, 'asset', 0),
-('1102', 'Equipment', 2, 'asset', 0),
-('2001', 'Accounts Payable', 3, 'liability', 0),
-('2002', 'Short-term Loans', 3, 'liability', 0),
-('3001', 'Owner Capital', 5, 'equity', 0),
-('3002', 'Retained Earnings', 5, 'equity', 0),
-('4001', 'Product Sales', 6, 'revenue', 0),
-('4002', 'Service Revenue', 6, 'revenue', 0),
-('5001', 'Cost of Goods Sold', 8, 'expense', 0),
-('6001', 'Salaries Expense', 9, 'expense', 0),
-('6002', 'Rent Expense', 9, 'expense', 0),
-('6003', 'Utilities Expense', 9, 'expense', 0),
-('6004', 'Office Supplies', 9, 'expense', 0);
+INSERT IGNORE INTO accounts (account_code, account_name, group_id, account_type, level, is_system, opening_balance) VALUES
+('1001', 'Cash in Hand', 1, 'asset', 1, 1, 0),
+('1002', 'Cash at Bank', 1, 'asset', 1, 1, 0),
+('1003', 'Accounts Receivable', 1, 'asset', 1, 1, 0),
+('1004', 'Inventory', 1, 'asset', 1, 1, 0),
+('1101', 'Furniture & Fixtures', 2, 'asset', 1, 1, 0),
+('1102', 'Equipment', 2, 'asset', 1, 1, 0),
+('2001', 'Accounts Payable', 3, 'liability', 1, 1, 0),
+('2002', 'Short-term Loans', 3, 'liability', 1, 1, 0),
+('3001', 'Owner Capital', 5, 'equity', 1, 1, 0),
+('3002', 'Retained Earnings', 5, 'equity', 1, 1, 0),
+('4001', 'Product Sales', 6, 'revenue', 1, 1, 0),
+('4002', 'Service Revenue', 6, 'revenue', 1, 1, 0),
+('5001', 'Cost of Goods Sold', 8, 'expense', 1, 1, 0),
+('6001', 'Salaries Expense', 9, 'expense', 1, 1, 0),
+('6002', 'Rent Expense', 9, 'expense', 1, 1, 0),
+('6003', 'Utilities Expense', 9, 'expense', 1, 1, 0),
+('6004', 'Office Supplies', 9, 'expense', 1, 1, 0);
 
 -- ============================================================
 -- LEVEL 2: Depends on Level 1

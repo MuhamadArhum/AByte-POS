@@ -93,8 +93,8 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
 
   useEffect(() => {
     api.get('/accounting/accounts', { params: { tree: 1 } })
-      .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active && a.level === 4)))
-      .catch(() => {});
+      .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active)))
+      .catch(() => toast.error('Failed to load accounts. Check DB migration.'));
   }, []);
 
   const resetEntry = () => {
@@ -124,8 +124,10 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
       };
       if (editingId !== null) {
         setSavedLines(prev => prev.map(l => l.voucher_id === editingId ? newLine : l));
+        toast.success('Entry updated');
       } else {
         setSavedLines(prev => [...prev, newLine]);
+        toast.success('Entry saved');
       }
       resetEntry();
     } catch (err: any) {

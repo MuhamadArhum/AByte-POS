@@ -304,10 +304,10 @@ exports.createJournalEntry = async (req, res) => {
     const accountIds = lines.filter(l => l.account_id).map(l => l.account_id);
     if (accountIds.length > 0) {
       const placeholders = accountIds.map(() => '?').join(',');
-      const accs = await conn.query(`SELECT account_id, account_name, level FROM accounts WHERE account_id IN (${placeholders})`, accountIds);
-      const nonLevel4 = accs.filter(a => a.level !== 4);
-      if (nonLevel4.length > 0) {
-        return res.status(400).json({ message: `Only Level 4 accounts can be used in entries. Invalid: ${nonLevel4.map(a => a.account_name).join(', ')}` });
+      const accs = await conn.query(`SELECT account_id, account_name, is_active FROM accounts WHERE account_id IN (${placeholders})`, accountIds);
+      const inactive = accs.filter(a => !a.is_active);
+      if (inactive.length > 0) {
+        return res.status(400).json({ message: `Inactive accounts cannot be used: ${inactive.map(a => a.account_name).join(', ')}` });
       }
     }
 
@@ -961,10 +961,13 @@ exports.createPaymentVoucher = async (req, res) => {
       return res.status(400).json({ message: 'Required fields missing' });
     }
 
-    // Validate account is Level 4
-    const [accCheck] = await conn.query('SELECT level, account_name FROM accounts WHERE account_id = ?', [account_id]);
-    if (!accCheck || accCheck.level !== 4) {
-      return res.status(400).json({ message: `Only Level 4 accounts can be used in vouchers. "${accCheck?.account_name || 'Account'}" is Level ${accCheck?.level || '?'}.` });
+    // Validate account exists and is active
+    const [accCheck] = await conn.query('SELECT account_id, account_name, is_active FROM accounts WHERE account_id = ?', [account_id]);
+    if (!accCheck) {
+      return res.status(400).json({ message: 'Account not found' });
+    }
+    if (!accCheck.is_active) {
+      return res.status(400).json({ message: `Account "${accCheck.account_name}" is inactive` });
     }
 
     await conn.beginTransaction();
@@ -989,8 +992,8 @@ exports.createPaymentVoucher = async (req, res) => {
     res.status(201).json({ message: 'Payment voucher created', voucher_id: result.insertId, voucher_number: voucherNumber });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('createPaymentVoucher error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
   } finally {
     conn.release();
   }
@@ -1053,10 +1056,13 @@ exports.createReceiptVoucher = async (req, res) => {
       return res.status(400).json({ message: 'Required fields missing' });
     }
 
-    // Validate account is Level 4
-    const [accCheck] = await conn.query('SELECT level, account_name FROM accounts WHERE account_id = ?', [account_id]);
-    if (!accCheck || accCheck.level !== 4) {
-      return res.status(400).json({ message: `Only Level 4 accounts can be used in vouchers. "${accCheck?.account_name || 'Account'}" is Level ${accCheck?.level || '?'}.` });
+    // Validate account exists and is active
+    const [accCheck] = await conn.query('SELECT account_id, account_name, is_active FROM accounts WHERE account_id = ?', [account_id]);
+    if (!accCheck) {
+      return res.status(400).json({ message: 'Account not found' });
+    }
+    if (!accCheck.is_active) {
+      return res.status(400).json({ message: `Account "${accCheck.account_name}" is inactive` });
     }
 
     await conn.beginTransaction();
@@ -1081,8 +1087,8 @@ exports.createReceiptVoucher = async (req, res) => {
     res.status(201).json({ message: 'Receipt voucher created', voucher_id: result.insertId, voucher_number: voucherNumber });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('createReceiptVoucher error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
   } finally {
     conn.release();
   }
