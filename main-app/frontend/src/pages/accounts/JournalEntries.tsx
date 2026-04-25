@@ -1,12 +1,11 @@
-﻿import { useState, useEffect, useRef } from 'react';
-import { FileText, Plus, Send, Trash2, ChevronDown, Search, Lock, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { FileText, Plus, Send, Trash2, ChevronDown, Search, Lock, Eye, EyeOff, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 import { localToday, localMonthStart } from '../../utils/dateUtils';
 import ReportPasswordGate from '../../components/ReportPasswordGate';
 
-// Searchable account selector with balance display
 const AccountSelector = ({
   value, onChange, accounts, onAfterSelect
 }: {
@@ -22,14 +21,11 @@ const AccountSelector = ({
   const listRef = useRef<HTMLUListElement>(null);
 
   const selected = accounts.find(a => String(a.account_id) === String(value));
-
   const filtered = accounts.filter(a =>
     !search || a.account_name.toLowerCase().includes(search.toLowerCase()) || a.account_code.includes(search)
   );
 
-  // Reset highlight when search changes
   useEffect(() => { setHighlighted(0); }, [search]);
-
   useEffect(() => {
     const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
     document.addEventListener('mousedown', handler);
@@ -37,71 +33,53 @@ const AccountSelector = ({
   }, []);
 
   const selectAccount = (id: string) => {
-    onChange(id);
-    setOpen(false);
-    setSearch('');
-    setHighlighted(0);
-    // Move focus to next field after React flushes state
+    onChange(id); setOpen(false); setSearch(''); setHighlighted(0);
     setTimeout(() => onAfterSelect?.(), 0);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setHighlighted(h => Math.min(h + 1, filtered.length - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setHighlighted(h => Math.max(h - 1, 0));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (filtered.length > 0) selectAccount(String(filtered[highlighted]?.account_id ?? filtered[0].account_id));
-    } else if (e.key === 'Escape') {
-      setOpen(false);
-    }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, filtered.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (filtered.length > 0) selectAccount(String(filtered[highlighted]?.account_id ?? filtered[0].account_id)); }
+    else if (e.key === 'Escape') setOpen(false);
   };
 
   return (
     <div ref={ref} className="relative">
       <button type="button" onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-2 py-1.5 border border-gray-200 rounded text-sm bg-white hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-left">
-        <span className={selected ? 'text-gray-900 font-medium' : 'text-gray-400'}>
+        className="w-full flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-left transition">
+        <span className={selected ? 'text-gray-900 font-medium truncate' : 'text-gray-400'}>
           {selected ? `${selected.account_code} — ${selected.account_name}` : 'Select Account...'}
         </span>
         <ChevronDown size={14} className="text-gray-400 shrink-0 ml-1" />
       </button>
       {selected && (
-        <p className="text-xs text-gray-500 mt-0.5 px-1">
-          Balance: <span className="font-semibold text-gray-700">{Number(selected.current_balance || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
+        <p className="text-xs text-gray-400 mt-0.5 px-1">
+          Balance: <span className="font-semibold text-gray-600">{Number(selected.current_balance || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
         </p>
       )}
       {open && (
-        <div className="absolute z-50 left-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-xl">
-          <div className="p-2 border-b border-gray-100">
-            <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 rounded">
+        <div className="absolute z-50 left-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-xl shadow-2xl">
+          <div className="p-2.5 border-b border-gray-100">
+            <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 rounded-lg">
               <Search size={13} className="text-gray-400" />
-              <input
-                autoFocus
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
+              <input autoFocus type="text" value={search} onChange={e => setSearch(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="bg-transparent text-sm outline-none w-full"
-                placeholder="Search or type to filter, Enter to select..."
-              />
+                className="bg-transparent text-sm outline-none w-full placeholder-gray-400"
+                placeholder="Search by name or code..." />
             </div>
           </div>
           <ul ref={listRef} className="max-h-52 overflow-y-auto py-1">
-            {filtered.length === 0 && <li className="px-3 py-2 text-sm text-gray-400">No accounts found</li>}
+            {filtered.length === 0 && <li className="px-3 py-3 text-sm text-gray-400 text-center">No accounts found</li>}
             {filtered.map((a, idx) => (
               <li key={a.account_id}>
-                <button type="button"
-                  onClick={() => selectAccount(String(a.account_id))}
-                  className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 ${idx === highlighted ? 'bg-emerald-100' : 'hover:bg-emerald-50'}`}>
-                  <div>
+                <button type="button" onClick={() => selectAccount(String(a.account_id))}
+                  className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition ${idx === highlighted ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-gray-50'}`}>
+                  <div className="min-w-0">
                     <span className="text-xs text-gray-400 font-mono">{a.account_code}</span>
-                    <span className="ml-2 text-sm text-gray-800">{a.account_name}</span>
+                    <span className="ml-2 text-sm text-gray-800 truncate">{a.account_name}</span>
                   </div>
-                  <span className="text-xs text-gray-500 shrink-0">{Number(a.current_balance || 0).toLocaleString()}</span>
+                  <span className="text-xs text-gray-500 shrink-0 font-mono">{Number(a.current_balance || 0).toLocaleString()}</span>
                 </button>
               </li>
             ))}
@@ -138,15 +116,12 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
 
   const handleDrCr = (i: number, val: 'Dr' | 'Cr') => {
     setLines(prev => {
-      // Calculate imbalance from all OTHER lines (exclude current line)
       const others = prev.filter((_, idx) => idx !== i);
       const otherDr = others.reduce((s, l) => s + Number(l.debit || 0), 0);
       const otherCr = others.reduce((s, l) => s + Number(l.credit || 0), 0);
       const remaining = parseFloat(Math.abs(otherDr - otherCr).toFixed(2));
-
       return prev.map((l, idx) => {
         if (idx !== i) return l;
-        // Auto-fill with remaining imbalance if it exists, otherwise keep existing amount
         const existingAmt = l.debit || l.credit || '';
         const autoAmt = remaining > 0 ? String(remaining) : existingAmt;
         return { ...l, dr_cr: val, debit: val === 'Dr' ? autoAmt : '', credit: val === 'Cr' ? autoAmt : '' };
@@ -171,15 +146,15 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isBalanced) { toast.error('Debits must equal credits and total must be > 0'); return; }
-
     setLoading(true);
     try {
       await api.post('/accounting/journal-entries', {
         entry_date: entryDate,
         description,
-        lines: lines
-          .filter(l => l.account_id)
-          .map(l => ({ account_id: l.account_id, description: l.narration, debit: Number(l.debit || 0), credit: Number(l.credit || 0) }))
+        lines: lines.filter(l => l.account_id).map(l => ({
+          account_id: l.account_id, description: l.narration,
+          debit: Number(l.debit || 0), credit: Number(l.credit || 0)
+        }))
       });
       toast.success('Journal entry created');
       onSuccess();
@@ -197,178 +172,173 @@ const JournalEntryModal = ({ isOpen, onClose, onSuccess }: any) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <FileText size={16} className="text-emerald-700" />
+        {/* Gradient Header */}
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-5 shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <FileText size={20} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-white font-bold text-lg leading-tight">Journal Voucher</h2>
+                <p className="text-emerald-100 text-xs mt-0.5">Double-entry bookkeeping</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base font-semibold text-gray-900">Journal Voucher</h2>
-              <p className="text-xs text-gray-500">Double-entry bookkeeping</p>
+            <div className="flex items-center gap-3">
+              <label className="text-emerald-100 text-sm font-medium">Date</label>
+              <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)}
+                className="px-3 py-1.5 bg-white/15 border border-white/30 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:bg-white/20"
+                style={{ colorScheme: 'dark' }} required />
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-600">Date:</label>
-            <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)}
-              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" required />
           </div>
         </div>
 
-        {/* Narration */}
-        <div className="px-6 py-3 border-b shrink-0 bg-gray-50">
+        {/* Narration Row */}
+        <div className="px-6 py-3 border-b bg-emerald-50/50 shrink-0">
           <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-600 shrink-0">Narration:</label>
+            <label className="text-sm font-semibold text-gray-600 shrink-0 w-20">Narration</label>
             <input type="text" value={description} onChange={e => setDescription(e.target.value)}
-              className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 bg-white outline-none"
-              placeholder="General narration for this journal voucher..." />
+              className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 bg-white outline-none"
+              placeholder="General narration for this journal entry..." />
           </div>
         </div>
 
         {/* Lines Table */}
-        <div className="overflow-y-auto flex-1 px-6 py-4">
-          <div className="overflow-x-auto">
-          <form id="jv-form" onSubmit={handleSubmit}>
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-800 text-white">
-                  <th className="px-3 py-2.5 text-left font-semibold w-16 rounded-tl-lg">#</th>
-                  <th className="px-3 py-2.5 text-center font-semibold w-20">Dr / Cr</th>
-                  <th className="px-3 py-2.5 text-left font-semibold">Account Title</th>
-                  <th className="px-3 py-2.5 text-left font-semibold">Narration</th>
-                  <th className="px-3 py-2.5 text-right font-semibold w-32">Debit</th>
-                  <th className="px-3 py-2.5 text-right font-semibold w-32">Credit</th>
-                  <th className="px-3 py-2.5 text-center font-semibold w-12 rounded-tr-lg">Del</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map((line, i) => (
-                  <tr key={i} className={`border-b border-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                    {/* # */}
-                    <td className="px-3 py-2 text-gray-400 font-mono text-xs">{String(i + 1).padStart(2, '0')}</td>
+        <div className="overflow-y-auto flex-1 p-5">
+          <div className="overflow-x-auto rounded-xl border border-gray-200">
+            <form id="jv-form" onSubmit={handleSubmit}>
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-slate-700 text-white">
+                    <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide w-12">#</th>
+                    <th className="px-3 py-3 text-center font-semibold text-xs uppercase tracking-wide w-20">Dr/Cr</th>
+                    <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide">Account</th>
+                    <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide">Narration</th>
+                    <th className="px-3 py-3 text-right font-semibold text-xs uppercase tracking-wide w-32">Debit</th>
+                    <th className="px-3 py-3 text-right font-semibold text-xs uppercase tracking-wide w-32">Credit</th>
+                    <th className="px-3 py-3 text-center font-semibold text-xs uppercase tracking-wide w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((line, i) => (
+                    <tr key={i} className={`border-b border-gray-100 transition ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                      <td className="px-3 py-2.5 text-gray-400 font-mono text-xs font-semibold">{String(i + 1).padStart(2, '0')}</td>
 
-                    {/* Dr / Cr toggle */}
-                    <td className="px-2 py-2 text-center">
-                      <div className="flex rounded overflow-hidden border border-gray-200 w-16 mx-auto">
-                        <button type="button"
-                          onClick={() => handleDrCr(i, 'Dr')}
-                          className={`flex-1 py-1 text-xs font-bold transition ${line.dr_cr === 'Dr' ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-blue-50'}`}>
-                          Dr
+                      <td className="px-2 py-2.5 text-center">
+                        <div className="flex rounded-full overflow-hidden bg-gray-100 p-0.5 gap-0.5 w-[70px] mx-auto">
+                          <button type="button" onClick={() => handleDrCr(i, 'Dr')}
+                            className={`flex-1 py-1 text-xs font-bold rounded-full transition ${line.dr_cr === 'Dr' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-blue-600'}`}>
+                            Dr
+                          </button>
+                          <button type="button" onClick={() => handleDrCr(i, 'Cr')}
+                            className={`flex-1 py-1 text-xs font-bold rounded-full transition ${line.dr_cr === 'Cr' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-orange-500'}`}>
+                            Cr
+                          </button>
+                        </div>
+                      </td>
+
+                      <td className="px-2 py-2.5 min-w-[200px]">
+                        <AccountSelector
+                          value={line.account_id}
+                          onChange={id => updateLine(i, { account_id: id })}
+                          onAfterSelect={() => narrationRefs.current[i]?.focus()}
+                          accounts={accounts}
+                        />
+                      </td>
+
+                      <td className="px-2 py-2.5">
+                        <input
+                          ref={el => { narrationRefs.current[i] = el; }}
+                          type="text" value={line.narration}
+                          onChange={e => updateLine(i, { narration: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 bg-white outline-none"
+                          placeholder="Line narration..." />
+                      </td>
+
+                      <td className="px-2 py-2.5">
+                        <input type="number" step="0.01" min="0"
+                          value={line.dr_cr === 'Dr' ? (line.debit || '') : ''}
+                          onChange={e => handleAmountChange(i, e.target.value)}
+                          disabled={line.dr_cr === 'Cr'}
+                          className={`w-full px-2 py-2 border rounded-lg text-sm text-right font-semibold focus:ring-2 focus:ring-blue-400 outline-none transition ${line.dr_cr === 'Dr' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                          placeholder="0.00" />
+                      </td>
+
+                      <td className="px-2 py-2.5">
+                        <input type="number" step="0.01" min="0"
+                          value={line.dr_cr === 'Cr' ? (line.credit || '') : ''}
+                          onChange={e => handleAmountChange(i, e.target.value)}
+                          disabled={line.dr_cr === 'Dr'}
+                          className={`w-full px-2 py-2 border rounded-lg text-sm text-right font-semibold focus:ring-2 focus:ring-orange-400 outline-none transition ${line.dr_cr === 'Cr' ? 'border-orange-200 bg-orange-50 text-orange-700' : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                          placeholder="0.00" />
+                      </td>
+
+                      <td className="px-2 py-2.5 text-center">
+                        <button type="button" onClick={() => setLines(prev => prev.filter((_, idx) => idx !== i))}
+                          disabled={lines.length <= 2}
+                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-20 disabled:cursor-not-allowed">
+                          <Trash2 size={14} />
                         </button>
-                        <button type="button"
-                          onClick={() => handleDrCr(i, 'Cr')}
-                          className={`flex-1 py-1 text-xs font-bold transition ${line.dr_cr === 'Cr' ? 'bg-orange-500 text-white' : 'bg-white text-gray-500 hover:bg-orange-50'}`}>
-                          Cr
-                        </button>
-                      </div>
-                    </td>
+                      </td>
+                    </tr>
+                  ))}
 
-                    {/* Account Title */}
-                    <td className="px-2 py-2 min-w-0">
-                      <AccountSelector
-                        value={line.account_id}
-                        onChange={id => updateLine(i, { account_id: id })}
-                        onAfterSelect={() => narrationRefs.current[i]?.focus()}
-                        accounts={accounts}
-                      />
+                  {/* Totals Row */}
+                  <tr className={`font-bold text-sm ${isBalanced ? 'bg-emerald-600' : 'bg-slate-700'} text-white`}>
+                    <td colSpan={4} className="px-4 py-3 text-right tracking-wide text-xs uppercase">Total</td>
+                    <td className="px-2 py-3 text-right font-mono">
+                      {totals.debit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
                     </td>
-
-                    {/* Narration */}
-                    <td className="px-2 py-2">
-                      <input
-                        ref={el => { narrationRefs.current[i] = el; }}
-                        type="text" value={line.narration}
-                        onChange={e => updateLine(i, { narration: e.target.value })}
-                        className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-2 focus:ring-emerald-500 bg-white"
-                        placeholder="Line narration..." />
+                    <td className="px-2 py-3 text-right font-mono">
+                      {totals.credit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
                     </td>
-
-                    {/* Debit */}
-                    <td className="px-2 py-2">
-                      <input type="number" step="0.01" min="0"
-                        value={line.dr_cr === 'Dr' ? (line.debit || '') : ''}
-                        onChange={e => handleAmountChange(i, e.target.value)}
-                        disabled={line.dr_cr === 'Cr'}
-                        className={`w-full px-2 py-1.5 border rounded text-sm text-right focus:ring-2 focus:ring-blue-500 ${line.dr_cr === 'Dr' ? 'border-blue-200 bg-blue-50 font-semibold text-blue-700' : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-                        placeholder="0.00" />
-                    </td>
-
-                    {/* Credit */}
-                    <td className="px-2 py-2">
-                      <input type="number" step="0.01" min="0"
-                        value={line.dr_cr === 'Cr' ? (line.credit || '') : ''}
-                        onChange={e => handleAmountChange(i, e.target.value)}
-                        disabled={line.dr_cr === 'Dr'}
-                        className={`w-full px-2 py-1.5 border rounded text-sm text-right focus:ring-2 focus:ring-orange-400 ${line.dr_cr === 'Cr' ? 'border-orange-200 bg-orange-50 font-semibold text-orange-700' : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-                        placeholder="0.00" />
-                    </td>
-
-                    {/* Delete */}
-                    <td className="px-2 py-2 text-center">
-                      <button type="button" onClick={() => setLines(prev => prev.filter((_, idx) => idx !== i))}
-                        disabled={lines.length <= 2}
-                        className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition disabled:opacity-20 disabled:cursor-not-allowed">
-                        <Trash2 size={14} />
-                      </button>
+                    <td className="px-2 py-3 text-center text-base">
+                      {isBalanced ? '✓' : '✗'}
                     </td>
                   </tr>
-                ))}
-
-                {/* Totals Row */}
-                <tr className="bg-gray-800 text-white font-bold">
-                  <td colSpan={4} className="px-3 py-3 text-right text-sm tracking-wide rounded-bl-lg">TOTAL</td>
-                  <td className={`px-2 py-3 text-right text-sm ${isBalanced ? 'text-emerald-300' : 'text-red-300'}`}>
-                    {totals.debit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className={`px-2 py-3 text-right text-sm ${isBalanced ? 'text-emerald-300' : 'text-red-300'}`}>
-                    {totals.credit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="rounded-br-lg px-2 py-3 text-center">
-                    {isBalanced
-                      ? <span className="text-emerald-300 text-xs">✓</span>
-                      : <span className="text-red-300 text-xs">✗</span>}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </form>
+                </tbody>
+              </table>
+            </form>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t shrink-0 flex items-center justify-between">
+        <div className="px-6 py-4 border-t bg-gray-50 shrink-0 flex items-center justify-between rounded-b-2xl">
           <div className="flex items-center gap-3">
             <button type="button" onClick={() => setLines(prev => [...prev, emptyLine()])}
-              className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-2 rounded-lg text-sm font-medium transition">
+              className="flex items-center gap-1.5 text-emerald-700 bg-white hover:bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg text-sm font-medium transition shadow-sm">
               <Plus size={14} /> Add Line
             </button>
-            {!isBalanced && totals.debit > 0 && (
-              <span className="text-red-500 text-xs font-medium">
-                ⚠ Diff: {Math.abs(totals.debit - totals.credit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+            {isBalanced ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
+                <CheckCircle2 size={13} /> Balanced
               </span>
-            )}
+            ) : totals.debit > 0 ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-600 rounded-full text-xs font-semibold">
+                <XCircle size={13} /> Diff: {Math.abs(totals.debit - totals.credit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+              </span>
+            ) : null}
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2.5">
             <button type="button" onClick={onClose}
-              className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
+              className="px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition font-medium">
               Cancel
             </button>
             <button type="submit" form="jv-form" disabled={loading || !isBalanced}
-              className="px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-40 disabled:cursor-not-allowed">
+              className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
               {loading ? 'Saving...' : 'Save JV'}
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );
 };
 
-// ── Password-protected JV Delete Modal ───────────────────────────────────────
+// ── Password-protected JV Delete Modal ────────────────────────────────────────
 const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () => void; onDeleted: () => void }) => {
   const toast = useToast();
   const [password, setPassword] = useState('');
@@ -387,17 +357,12 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
 
   const handleDelete = async () => {
     if (!pwLoaded) return;
-    if (correctPw && password !== correctPw) {
-      setError('Incorrect password');
-      setPassword('');
-      return;
-    }
+    if (correctPw && password !== correctPw) { setError('Incorrect password'); setPassword(''); return; }
     setDeleting(true);
     try {
       await api.delete(`/accounting/journal-entries/${entry.entry_id}`);
       toast.success(`${entry.entry_number} deleted successfully`);
-      onDeleted();
-      onClose();
+      onDeleted(); onClose();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to delete');
     } finally {
@@ -406,9 +371,8 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-        {/* Icon + Title */}
         <div className="flex flex-col items-center mb-5">
           <div className="w-14 h-14 bg-red-50 border-2 border-red-200 rounded-2xl flex items-center justify-center mb-3">
             <AlertTriangle size={28} className="text-red-500" />
@@ -419,18 +383,16 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
             {entry.status === 'posted' && ' Account balances will be reversed.'}
           </p>
         </div>
-
-        {/* Entry details */}
         <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-5 text-sm">
-          <div className="flex justify-between mb-1">
+          <div className="flex justify-between mb-1.5">
             <span className="text-gray-500">Voucher #</span>
             <span className="font-mono font-bold text-gray-800">{entry.entry_number}</span>
           </div>
-          <div className="flex justify-between mb-1">
+          <div className="flex justify-between mb-1.5">
             <span className="text-gray-500">Date</span>
             <span className="text-gray-700">{new Date(entry.entry_date).toLocaleDateString()}</span>
           </div>
-          <div className="flex justify-between mb-1">
+          <div className="flex justify-between mb-1.5">
             <span className="text-gray-500">Amount</span>
             <span className="font-semibold text-gray-800">{Number(entry.total_debit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
           </div>
@@ -441,24 +403,17 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
             </span>
           </div>
         </div>
-
-        {/* Password field — only if password is set */}
         {pwLoaded && correctPw && (
           <div className="mb-4">
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              <Lock size={13} className="inline mr-1" />
-              Enter Password to Confirm
+              <Lock size={13} className="inline mr-1" /> Enter Password to Confirm
             </label>
             <div className="relative">
-              <input
-                autoFocus
-                type={showPw ? 'text' : 'password'}
-                value={password}
+              <input autoFocus type={showPw ? 'text' : 'password'} value={password}
                 onChange={e => { setPassword(e.target.value); setError(''); }}
                 onKeyDown={e => { if (e.key === 'Enter') handleDelete(); }}
                 placeholder="Enter password..."
-                className="w-full pl-4 pr-10 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none transition"
-              />
+                className="w-full pl-4 pr-10 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-400 focus:border-red-400 outline-none transition" />
               <button type="button" onClick={() => setShowPw(s => !s)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                 {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -467,8 +422,6 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
             {error && <p className="text-red-500 text-xs mt-1.5">{error}</p>}
           </div>
         )}
-
-        {/* Buttons */}
         <div className="flex gap-3">
           <button onClick={onClose}
             className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
@@ -476,8 +429,7 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
           </button>
           <button onClick={handleDelete} disabled={deleting || !pwLoaded || (!!correctPw && !password)}
             className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-            <Trash2 size={15} />
-            {deleting ? 'Deleting...' : 'Delete Permanently'}
+            <Trash2 size={15} /> {deleting ? 'Deleting...' : 'Delete Permanently'}
           </button>
         </div>
       </div>
@@ -485,7 +437,7 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
   );
 };
 
-// ── Main Journal Entries List ─────────────────────────────────────────────────
+// ── Main Journal Entries List ──────────────────────────────────────────────────
 const JournalEntries = () => {
   const toast = useToast();
   const [entries, setEntries] = useState<any[]>([]);
@@ -511,17 +463,14 @@ const JournalEntries = () => {
       const res = await api.get('/accounting/journal-entries', { params });
       setEntries(res.data.data || []);
       if (res.data.pagination) setPagination(res.data.pagination);
-    } catch (err) {
+    } catch {
       toast.error('Failed to load entries');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLoad = () => {
-    setPagination(p => ({ ...p, page: 1 }));
-    fetchEntries();
-  };
+  const handleLoad = () => { setPagination(p => ({ ...p, page: 1 })); fetchEntries(); };
 
   const handlePost = async (entry: any) => {
     if (!window.confirm(`Post journal entry ${entry.entry_number}? This will update account balances.`)) return;
@@ -536,90 +485,112 @@ const JournalEntries = () => {
 
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
-      draft: 'bg-yellow-100 text-yellow-700',
-      posted: 'bg-emerald-100 text-emerald-700',
-      reversed: 'bg-red-100 text-red-700'
+      draft: 'bg-amber-100 text-amber-700 border border-amber-200',
+      posted: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+      reversed: 'bg-red-100 text-red-700 border border-red-200'
     };
-    return <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${map[status]}`}>{status}</span>;
+    return <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${map[status] ?? 'bg-gray-100 text-gray-600'}`}>{status}</span>;
   };
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div className="flex items-center gap-3">
-          <FileText className="text-emerald-600" size={20} />
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Journal Voucher</h1>
-            <p className="text-gray-600 text-sm mt-0.5">Record accounting transactions</p>
+    <div className="p-4 md:p-6 space-y-5">
+
+      {/* Page Header Card */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
+        <div className="px-6 py-5 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center">
+              <FileText size={22} className="text-emerald-600" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Journal Voucher</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Double-entry accounting transactions</p>
+            </div>
           </div>
+          <button onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl hover:bg-emerald-700 transition shadow-sm text-sm font-semibold">
+            <Plus size={16} /> New Entry
+          </button>
         </div>
-        <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition shadow text-sm font-medium">
-          <Plus size={16} /> New Entry
-        </button>
       </div>
 
-      {/* Filters + Load Button */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-5">
+      {/* Filter Bar */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
         <div className="flex flex-wrap items-center gap-3">
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Filters</span>
+          <div className="w-px h-4 bg-gray-200" />
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 outline-none bg-white">
             <option value="all">All Status</option>
             <option value="draft">Draft</option>
             <option value="posted">Posted</option>
           </select>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">From</span>
+            <span className="text-xs text-gray-500 font-medium">From</span>
             <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 outline-none" />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">To</span>
+            <span className="text-xs text-gray-500 font-medium">To</span>
             <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 outline-none" />
           </div>
           <button onClick={handleLoad} disabled={loading}
-            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-60">
-            <Search size={15} /> {loading ? 'Loading...' : 'Load Entries'}
+            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-60 shadow-sm">
+            <Search size={14} /> {loading ? 'Loading...' : 'Load Entries'}
           </button>
-          {hasLoaded && <span className="text-xs text-gray-400 ml-auto">{pagination.total} entries</span>}
+          {hasLoaded && (
+            <span className="ml-auto text-xs text-gray-400 font-medium">{pagination.total} entries found</span>
+          )}
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {!hasLoaded ? (
-          <div className="text-center py-16 text-gray-400">
-            <FileText size={44} className="mx-auto mb-3 opacity-20" />
-            <p className="font-medium">Set date range and click <strong className="text-emerald-600">Load Entries</strong></p>
+          <div className="text-center py-20 text-gray-400">
+            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <FileText size={28} className="opacity-40" />
+            </div>
+            <p className="font-semibold text-gray-500">No data loaded</p>
+            <p className="text-sm mt-1">Set date range and click <strong className="text-emerald-600">Load Entries</strong></p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px]">
-              <thead className="bg-gray-50">
-                <tr className="border-b">
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700 text-sm">Entry #</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700 text-sm">Date</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700 text-sm">Description</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700 text-sm">Debit</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-700 text-sm">Credit</th>
-                  <th className="text-center px-4 py-3 font-semibold text-gray-700 text-sm">Status</th>
-                  <th className="text-center px-4 py-3 font-semibold text-gray-700 text-sm">Actions</th>
+              <thead>
+                <tr className="bg-slate-700 text-white text-xs uppercase tracking-wider">
+                  <th className="text-left px-5 py-3.5 font-semibold">Entry #</th>
+                  <th className="text-left px-5 py-3.5 font-semibold">Date</th>
+                  <th className="text-left px-5 py-3.5 font-semibold">Description</th>
+                  <th className="text-right px-5 py-3.5 font-semibold">Debit</th>
+                  <th className="text-right px-5 py-3.5 font-semibold">Credit</th>
+                  <th className="text-center px-5 py-3.5 font-semibold">Status</th>
+                  <th className="text-center px-5 py-3.5 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={7} className="p-8 text-center text-gray-400"><div className="animate-spin h-6 w-6 rounded-full border-2 border-emerald-500 border-t-transparent mx-auto" /></td></tr>
+                  <tr><td colSpan={7} className="p-10 text-center">
+                    <div className="animate-spin h-7 w-7 rounded-full border-2 border-emerald-500 border-t-transparent mx-auto" />
+                  </td></tr>
                 ) : entries.length > 0 ? (
-                  entries.map((entry: any) => (
-                    <tr key={entry.entry_id} className="border-b hover:bg-gray-50 transition">
-                      <td className="px-4 py-3 font-mono font-semibold text-gray-800 text-sm">{entry.entry_number}</td>
-                      <td className="px-4 py-3 text-gray-600 text-sm whitespace-nowrap">{new Date(entry.entry_date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                      <td className="px-4 py-3 text-gray-600 text-sm">{entry.description || '—'}</td>
-                      <td className="px-4 py-3 text-right font-medium text-sm">{Number(entry.total_debit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-3 text-right font-medium text-sm">{Number(entry.total_credit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
-                      <td className="px-4 py-3 text-center">{statusBadge(entry.status)}</td>
-                      <td className="px-4 py-3 text-center">
+                  entries.map((entry: any, i: number) => (
+                    <tr key={entry.entry_id} className={`border-b border-gray-50 hover:bg-emerald-50/30 transition ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
+                      <td className="px-5 py-3.5 font-mono font-bold text-emerald-700 text-sm">{entry.entry_number}</td>
+                      <td className="px-5 py-3.5 text-gray-500 text-sm whitespace-nowrap">
+                        {new Date(entry.entry_date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </td>
+                      <td className="px-5 py-3.5 text-gray-600 text-sm max-w-xs truncate">{entry.description || '—'}</td>
+                      <td className="px-5 py-3.5 text-right font-semibold text-sm text-blue-700 font-mono">
+                        {Number(entry.total_debit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-5 py-3.5 text-right font-semibold text-sm text-orange-600 font-mono">
+                        {Number(entry.total_credit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-5 py-3.5 text-center">{statusBadge(entry.status)}</td>
+                      <td className="px-5 py-3.5 text-center">
                         <div className="flex items-center justify-center gap-1">
                           {entry.status === 'draft' && (
                             <button onClick={() => handlePost(entry)}
@@ -628,7 +599,7 @@ const JournalEntries = () => {
                             </button>
                           )}
                           <button onClick={() => setDeleteEntry(entry)}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete">
+                            className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete">
                             <Trash2 size={15} />
                           </button>
                         </div>
@@ -636,7 +607,7 @@ const JournalEntries = () => {
                     </tr>
                   ))
                 ) : (
-                  <tr><td colSpan={7} className="p-8 text-center text-gray-400">No entries found for this period</td></tr>
+                  <tr><td colSpan={7} className="p-10 text-center text-gray-400 text-sm">No entries found for this period</td></tr>
                 )}
               </tbody>
             </table>
@@ -646,22 +617,17 @@ const JournalEntries = () => {
           <Pagination
             currentPage={pagination.page}
             totalPages={pagination.totalPages}
-            onPageChange={(page) => setPagination(p => ({ ...p, page }))}
+            onPageChange={page => setPagination(p => ({ ...p, page }))}
             totalItems={pagination.total}
             itemsPerPage={pagination.limit}
-            onItemsPerPageChange={(limit) => setPagination(p => ({ ...p, limit, page: 1 }))}
+            onItemsPerPageChange={limit => setPagination(p => ({ ...p, limit, page: 1 }))}
           />
         )}
       </div>
 
       <JournalEntryModal isOpen={showModal} onClose={() => setShowModal(false)} onSuccess={fetchEntries} />
-
       {deleteEntry && (
-        <JvDeleteModal
-          entry={deleteEntry}
-          onClose={() => setDeleteEntry(null)}
-          onDeleted={fetchEntries}
-        />
+        <JvDeleteModal entry={deleteEntry} onClose={() => setDeleteEntry(null)} onDeleted={fetchEntries} />
       )}
     </div>
   );
