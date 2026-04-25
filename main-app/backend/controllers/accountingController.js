@@ -1011,15 +1011,19 @@ exports.getNextPaymentVoucherNumber = async (req, res) => {
 exports.createPaymentVoucher = async (req, res) => {
   const conn = await getConnection();
   try {
-    const { voucher_number, voucher_date, payment_to, payment_type, account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
+    const { voucher_number, voucher_date, payment_to, payment_type, account_id, cash_account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
 
-    if (!voucher_date || !payment_to || !account_id || !amount) {
-      return res.status(400).json({ message: 'Required fields missing' });
+    if (!voucher_date || !payment_to || !account_id || !cash_account_id || !amount) {
+      return res.status(400).json({ message: 'account_id, cash_account_id and amount are required' });
     }
 
     const [acc] = await conn.query('SELECT account_id, account_name, account_type, is_active FROM accounts WHERE account_id = ?', [account_id]);
     if (!acc)           return res.status(400).json({ message: 'Account not found' });
     if (!acc.is_active) return res.status(400).json({ message: `Account "${acc.account_name}" is inactive` });
+
+    const [cashAcc] = await conn.query('SELECT account_id, account_name, account_type, is_active FROM accounts WHERE account_id = ?', [cash_account_id]);
+    if (!cashAcc)           return res.status(400).json({ message: 'Cash account not found' });
+    if (!cashAcc.is_active) return res.status(400).json({ message: `Cash account "${cashAcc.account_name}" is inactive` });
 
     await conn.beginTransaction();
 
@@ -1030,13 +1034,17 @@ exports.createPaymentVoucher = async (req, res) => {
       voucherNumber = `CPV${String(nextNumber).padStart(6, '0')}`;
     }
 
-    // CPV debits the account (payment going out)
-    const debitIncrease = ['asset', 'expense'].includes(acc.account_type);
-    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitIncrease ? amount : -amount, account_id]);
+    // Double entry:
+    // Dr account_id (expense/asset goes up)
+    const drInc = ['asset', 'expense'].includes(acc.account_type);
+    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [drInc ? amount : -amount, account_id]);
+    // Cr cash_account_id (Cash in Hand decreases)
+    const crInc = ['asset', 'expense'].includes(cashAcc.account_type);
+    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [crInc ? -amount : amount, cash_account_id]);
 
     const result = await conn.query(
-      'INSERT INTO payment_vouchers (voucher_number, voucher_date, payment_to, payment_type, account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [voucherNumber, voucher_date, payment_to, payment_type || 'expense', account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
+      'INSERT INTO payment_vouchers (voucher_number, voucher_date, payment_to, payment_type, account_id, cash_account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [voucherNumber, voucher_date, payment_to, payment_type || 'expense', account_id, cash_account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
     );
 
     await conn.commit();
@@ -1080,11 +1088,18 @@ exports.deletePaymentVoucher = async (req, res) => {
       await conn.query('DELETE FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
       await conn.query('DELETE FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
     } else {
-      // Reverse direct balance update
+      // Reverse double entry: undo Dr on account_id, undo Cr on cash_account_id
       const [acc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.account_id]);
       if (acc) {
-        const debitInc = ['asset', 'expense'].includes(acc.account_type);
-        await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitInc ? -Number(voucher.amount) : Number(voucher.amount), voucher.account_id]);
+        const drInc = ['asset', 'expense'].includes(acc.account_type);
+        await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [drInc ? -Number(voucher.amount) : Number(voucher.amount), voucher.account_id]);
+      }
+      if (voucher.cash_account_id) {
+        const [cashAcc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.cash_account_id]);
+        if (cashAcc) {
+          const crInc = ['asset', 'expense'].includes(cashAcc.account_type);
+          await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [crInc ? Number(voucher.amount) : -Number(voucher.amount), voucher.cash_account_id]);
+        }
       }
     }
 
@@ -1150,15 +1165,19 @@ exports.getNextReceiptVoucherNumber = async (req, res) => {
 exports.createReceiptVoucher = async (req, res) => {
   const conn = await getConnection();
   try {
-    const { voucher_number, voucher_date, received_from, receipt_type, account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
+    const { voucher_number, voucher_date, received_from, receipt_type, account_id, cash_account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
 
-    if (!voucher_date || !received_from || !account_id || !amount) {
-      return res.status(400).json({ message: 'Required fields missing' });
+    if (!voucher_date || !received_from || !account_id || !cash_account_id || !amount) {
+      return res.status(400).json({ message: 'account_id, cash_account_id and amount are required' });
     }
 
     const [acc] = await conn.query('SELECT account_id, account_name, account_type, is_active FROM accounts WHERE account_id = ?', [account_id]);
     if (!acc)           return res.status(400).json({ message: 'Account not found' });
     if (!acc.is_active) return res.status(400).json({ message: `Account "${acc.account_name}" is inactive` });
+
+    const [cashAcc] = await conn.query('SELECT account_id, account_name, account_type, is_active FROM accounts WHERE account_id = ?', [cash_account_id]);
+    if (!cashAcc)           return res.status(400).json({ message: 'Cash account not found' });
+    if (!cashAcc.is_active) return res.status(400).json({ message: `Cash account "${cashAcc.account_name}" is inactive` });
 
     await conn.beginTransaction();
 
@@ -1169,13 +1188,17 @@ exports.createReceiptVoucher = async (req, res) => {
       voucherNumber = `CRV${String(nextNumber).padStart(6, '0')}`;
     }
 
-    // CRV credits the account (cash coming in)
-    const debitIncrease = ['asset', 'expense'].includes(acc.account_type);
-    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitIncrease ? -amount : amount, account_id]);
+    // Double entry:
+    // Dr cash_account_id (Cash in Hand increases)
+    const drInc = ['asset', 'expense'].includes(cashAcc.account_type);
+    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [drInc ? amount : -amount, cash_account_id]);
+    // Cr account_id (revenue/liability goes up)
+    const crInc = ['asset', 'expense'].includes(acc.account_type);
+    await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [crInc ? -amount : amount, account_id]);
 
     const result = await conn.query(
-      'INSERT INTO receipt_vouchers (voucher_number, voucher_date, received_from, receipt_type, account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [voucherNumber, voucher_date, received_from, receipt_type || 'customer', account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
+      'INSERT INTO receipt_vouchers (voucher_number, voucher_date, received_from, receipt_type, account_id, cash_account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [voucherNumber, voucher_date, received_from, receipt_type || 'customer', account_id, cash_account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
     );
 
     await conn.commit();
@@ -1219,11 +1242,18 @@ exports.deleteReceiptVoucher = async (req, res) => {
       await conn.query('DELETE FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
       await conn.query('DELETE FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
     } else {
-      // Reverse direct balance update
+      // Reverse double entry: undo Dr on cash_account_id, undo Cr on account_id
+      if (voucher.cash_account_id) {
+        const [cashAcc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.cash_account_id]);
+        if (cashAcc) {
+          const drInc = ['asset', 'expense'].includes(cashAcc.account_type);
+          await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [drInc ? -Number(voucher.amount) : Number(voucher.amount), voucher.cash_account_id]);
+        }
+      }
       const [acc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.account_id]);
       if (acc) {
-        const debitInc = ['asset', 'expense'].includes(acc.account_type);
-        await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitInc ? Number(voucher.amount) : -Number(voucher.amount), voucher.account_id]);
+        const crInc = ['asset', 'expense'].includes(acc.account_type);
+        await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [crInc ? Number(voucher.amount) : -Number(voucher.amount), voucher.account_id]);
       }
     }
 
