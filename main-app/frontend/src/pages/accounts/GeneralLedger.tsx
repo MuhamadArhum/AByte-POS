@@ -97,7 +97,7 @@ const GeneralLedger = () => {
 
   useEffect(() => {
     api.get('/accounting/accounts', { params: { tree: 1 } })
-      .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active)))
+      .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active && a.level === 4)))
       .catch(() => {});
   }, []);
 
