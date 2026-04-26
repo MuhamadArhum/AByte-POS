@@ -5,7 +5,7 @@ import {
   Clock, MapPin, Phone, User, Calendar, DollarSign, Loader2,
   RefreshCw, Package, XCircle, Navigation, ChevronRight,
   Save, ShoppingCart, CreditCard,
-  Eye, Printer,
+  Eye, Printer, LayoutGrid, List,
 } from 'lucide-react';
 import { printReceipt } from '../../utils/receiptPrinter';
 import DateRangeFilter from '../../components/DateRangeFilter';
@@ -435,7 +435,10 @@ const Deliveries = () => {
   const [page, setPage]             = useState(1);
   const [limit]                     = useState(20);
   const [view, setView]             = useState<'running' | 'completed'>('running');
+  const [layout, setLayout]         = useState<'card' | 'table'>(() => (localStorage.getItem('delivery_layout') as 'card' | 'table') || 'card');
   const [cs, setCs]                 = useState('Rs.');
+
+  const switchLayout = (l: 'card' | 'table') => { setLayout(l); localStorage.setItem('delivery_layout', l); };
 
   const [search, setSearch]     = useState('');
   const [dateFrom, setDateFrom] = useState(localMonthStart());
@@ -720,6 +723,24 @@ const Deliveries = () => {
               onToChange={d => { setDateTo(d); setPage(1); }}
             />
           )}
+          {view === 'running' && (
+            <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1 gap-1">
+              <button
+                onClick={() => switchLayout('card')}
+                title="Card View"
+                className={`p-1.5 rounded-md transition-colors ${layout === 'card' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button
+                onClick={() => switchLayout('table')}
+                title="Table View"
+                className={`p-1.5 rounded-md transition-colors ${layout === 'table' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                <List size={16} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── Running Orders ───────────────────────────────────────────── */}
@@ -747,21 +768,127 @@ const Deliveries = () => {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {sortedRunning.map(d => (
-                  <RunningCard
-                    key={d.delivery_id}
-                    delivery={d}
-                    onStatusChange={handleStatusChange}
-                    onEdit={openEdit}
-                    onDelete={handleDelete}
-                    onRefresh={fetchDeliveries}
-                    onEditOrder={handleEditOrder}
-                    onCheckout={openCheckout}
-                    updatingStatus={updatingStatus}
-                  />
-                ))}
-              </div>
+              {layout === 'card' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {sortedRunning.map(d => (
+                    <RunningCard
+                      key={d.delivery_id}
+                      delivery={d}
+                      onStatusChange={handleStatusChange}
+                      onEdit={openEdit}
+                      onDelete={handleDelete}
+                      onRefresh={fetchDeliveries}
+                      onEditOrder={handleEditOrder}
+                      onCheckout={openCheckout}
+                      updatingStatus={updatingStatus}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Delivery #</th>
+                          <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Customer</th>
+                          <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Address</th>
+                          <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Rider</th>
+                          <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                          <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">Charges</th>
+                          <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {sortedRunning.map(d => {
+                          const isUpd = updatingStatus === d.delivery_id;
+                          const nextStatuses: { status: Status; label: string; cls: string }[] = [];
+                          if (d.status === 'pending' || d.status === 'assigned')
+                            nextStatuses.push({ status: 'dispatched', label: 'Dispatch', cls: 'bg-amber-500 hover:bg-amber-600 text-white' });
+                          if (d.status === 'dispatched')
+                            nextStatuses.push({ status: 'in_transit', label: 'In Transit', cls: 'bg-orange-500 hover:bg-orange-600 text-white' });
+                          if (d.status === 'in_transit') {
+                            nextStatuses.push({ status: 'delivered', label: 'Delivered', cls: 'bg-emerald-600 hover:bg-emerald-700 text-white' });
+                            nextStatuses.push({ status: 'failed', label: 'Failed', cls: 'bg-red-500 hover:bg-red-600 text-white' });
+                          }
+                          return (
+                            <tr key={d.delivery_id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-4 py-3">
+                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-bold">
+                                  <Truck size={11} />{d.delivery_number}
+                                </span>
+                                {d.sale_id && (
+                                  <span className="ml-1 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-medium">#{d.sale_id}</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                <p className="text-sm font-semibold text-gray-800">{d.customer_name}</p>
+                                {(d.delivery_phone || d.customer_phone) && (
+                                  <p className="text-xs text-gray-400 flex items-center gap-1"><Phone size={10} />{d.delivery_phone || d.customer_phone}</p>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 max-w-[180px]">
+                                <p className="text-sm text-gray-700 truncate">{d.delivery_address}</p>
+                                {d.delivery_city && <p className="text-xs text-gray-400">{d.delivery_city}</p>}
+                              </td>
+                              <td className="px-4 py-3">
+                                {d.rider_name
+                                  ? <><p className="text-sm text-gray-700 font-medium">{d.rider_name}</p>{d.rider_phone && <p className="text-xs text-gray-400">{d.rider_phone}</p>}</>
+                                  : <span className="text-xs text-gray-400 italic">Unassigned</span>
+                                }
+                              </td>
+                              <td className="px-4 py-3">
+                                <StatusBadge status={d.status} />
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                {Number(d.delivery_charges) > 0
+                                  ? <span className="text-sm font-semibold text-gray-700">{cs} {Number(d.delivery_charges).toLocaleString()}</span>
+                                  : <span className="text-gray-300 text-sm">—</span>
+                                }
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center justify-end gap-1 flex-wrap">
+                                  {nextStatuses.map(ns => (
+                                    <button
+                                      key={ns.status}
+                                      onClick={() => handleStatusChange(d.delivery_id, ns.status)}
+                                      disabled={isUpd}
+                                      className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 ${ns.cls}`}
+                                    >
+                                      {isUpd ? <Loader2 size={10} className="animate-spin" /> : <ChevronRight size={10} />}
+                                      {ns.label}
+                                    </button>
+                                  ))}
+                                  {d.sale_id && d.sale_status !== 'completed' && (
+                                    <button onClick={() => handleEditOrder(d)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit Order">
+                                      <ShoppingCart size={13} />
+                                    </button>
+                                  )}
+                                  {d.sale_id && d.sale_status === 'pending' && (
+                                    <button onClick={() => openCheckout(d)} className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Checkout">
+                                      <CreditCard size={13} />
+                                    </button>
+                                  )}
+                                  {d.sale_status !== 'completed' && (
+                                    <button onClick={() => openEdit(d)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit Delivery">
+                                      <Edit2 size={13} />
+                                    </button>
+                                  )}
+                                  {['pending', 'cancelled'].includes(d.status) && (
+                                    <button onClick={() => handleDelete(d)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete">
+                                      <Trash2 size={13} />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {/* Running summary footer */}
               <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-xl px-6 py-3 flex items-center justify-between">

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   ShoppingBag, Clock, CheckCircle, DollarSign, User, Calendar, CreditCard,
-  Package, RefreshCw, Edit2, X, Hash, Printer, Archive
+  Package, RefreshCw, Edit2, X, Hash, Printer, Archive, LayoutGrid, List
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
@@ -130,6 +130,12 @@ const WalkInOrders = () => {
 
   // Modals (active tab only)
   const [previewSaleId, setPreviewSaleId] = useState<number | null>(null);
+
+  // Layout toggle
+  const [layout, setLayout] = useState<'card' | 'table'>(() =>
+    (localStorage.getItem('walkin_layout') as 'card' | 'table') || 'card'
+  );
+  const switchLayout = (l: 'card' | 'table') => { setLayout(l); localStorage.setItem('walkin_layout', l); };
 
   useEffect(() => {
     api.get('/settings').then(res => {
@@ -267,86 +273,149 @@ const WalkInOrders = () => {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
-                {activeSales.map(sale => (
-                  <div
-                    key={sale.sale_id}
-                    className="bg-white border-2 border-gray-200 rounded-xl p-5 hover:shadow-xl hover:border-emerald-300 transition-all duration-200 hover:-translate-y-1 flex flex-col"
+              {/* Layout Toggle */}
+              <div className="flex items-center justify-end mb-4">
+                <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1 gap-1 shadow-sm">
+                  <button
+                    onClick={() => switchLayout('card')}
+                    title="Card View"
+                    className={`p-1.5 rounded-md transition-colors ${layout === 'card' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-gray-600'}`}
                   >
-                    {/* Card Header */}
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        {sale.token_no && (
-                          <p className="text-2xl font-black text-emerald-600 leading-tight">Token {sale.token_no}</p>
-                        )}
-                        <p className="text-xs font-bold text-emerald-700 mt-0.5 flex items-center gap-1">
-                          <Hash size={11} />{sale.invoice_no || `Order #${sale.sale_id}`}
-                        </p>
-                        <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
-                          <Calendar size={11} />
-                          {new Date(sale.sale_date).toLocaleString('en-US', {
-                            month: 'short', day: 'numeric',
-                            hour: '2-digit', minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-                      <span className="bg-emerald-100 text-emerald-700 text-xs px-2.5 py-1 rounded-full font-bold border border-emerald-200 shrink-0">
-                        Active
-                      </span>
-                    </div>
-
-                    {/* Card Body */}
-                    <div className="py-3 border-t border-b border-gray-100 space-y-2 flex-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-500 flex items-center gap-1.5"><User size={14} className="text-emerald-500" /> Customer</span>
-                        <span className="font-semibold text-gray-800 truncate max-w-[120px]">{sale.customer_name || 'Walk-in'}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-500 flex items-center gap-1.5"><DollarSign size={14} className="text-emerald-500" /> Total</span>
-                        <span className="font-bold text-lg text-emerald-600">{cs} {parseFloat(sale.total_amount).toFixed(2)}</span>
-                      </div>
-                      {sale.note && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 mt-1">
-                          <p className="text-xs text-gray-600 italic truncate">📝 {sale.note}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Card Actions */}
-                    <div className="space-y-2 mt-4">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => navigate('/pos', { state: { editOrder: sale } })}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all border border-blue-200 font-medium text-sm"
-                          title="Edit items"
-                        >
-                          <Edit2 size={14} /> Edit
-                        </button>
-                        <button
-                          onClick={() => setPreviewSaleId(sale.sale_id)}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-all border border-gray-200 font-medium text-sm"
-                          title="Preview & Print"
-                        >
-                          <Printer size={14} /> Print
-                        </button>
-                        <button
-                          onClick={() => handleDeleteActive(sale)}
-                          className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-all border border-red-200"
-                          title="Delete order"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                      <button
-                        onClick={() => navigate('/pos', { state: { pendingSale: sale } })}
-                        className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-2.5 rounded-lg font-bold hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-md flex items-center justify-center gap-2 text-sm"
-                      >
-                        <CreditCard size={16} /> Checkout
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                    <LayoutGrid size={16} />
+                  </button>
+                  <button
+                    onClick={() => switchLayout('table')}
+                    title="Table View"
+                    className={`p-1.5 rounded-md transition-colors ${layout === 'table' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    <List size={16} />
+                  </button>
+                </div>
               </div>
+
+              {/* ── CARD VIEW ── */}
+              {layout === 'card' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+                  {activeSales.map(sale => (
+                    <div
+                      key={sale.sale_id}
+                      className="bg-white border-2 border-gray-200 rounded-xl p-5 hover:shadow-xl hover:border-emerald-300 transition-all duration-200 hover:-translate-y-1 flex flex-col"
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          {sale.token_no && (
+                            <p className="text-2xl font-black text-emerald-600 leading-tight">Token {sale.token_no}</p>
+                          )}
+                          <p className="text-xs font-bold text-emerald-700 mt-0.5 flex items-center gap-1">
+                            <Hash size={11} />{sale.invoice_no || `Order #${sale.sale_id}`}
+                          </p>
+                          <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
+                            <Calendar size={11} />
+                            {new Date(sale.sale_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                        <span className="bg-emerald-100 text-emerald-700 text-xs px-2.5 py-1 rounded-full font-bold border border-emerald-200 shrink-0">Active</span>
+                      </div>
+                      <div className="py-3 border-t border-b border-gray-100 space-y-2 flex-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-500 flex items-center gap-1.5"><User size={14} className="text-emerald-500" /> Customer</span>
+                          <span className="font-semibold text-gray-800 truncate max-w-[120px]">{sale.customer_name || 'Walk-in'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-500 flex items-center gap-1.5"><DollarSign size={14} className="text-emerald-500" /> Total</span>
+                          <span className="font-bold text-lg text-emerald-600">{cs} {parseFloat(sale.total_amount).toFixed(2)}</span>
+                        </div>
+                        {sale.note && (
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 mt-1">
+                            <p className="text-xs text-gray-600 italic truncate">📝 {sale.note}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2 mt-4">
+                        <div className="flex gap-2">
+                          <button onClick={() => navigate('/pos', { state: { editOrder: sale } })}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all border border-blue-200 font-medium text-sm">
+                            <Edit2 size={14} /> Edit
+                          </button>
+                          <button onClick={() => setPreviewSaleId(sale.sale_id)}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-all border border-gray-200 font-medium text-sm">
+                            <Printer size={14} /> Print
+                          </button>
+                          <button onClick={() => handleDeleteActive(sale)}
+                            className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-all border border-red-200">
+                            <X size={14} />
+                          </button>
+                        </div>
+                        <button onClick={() => navigate('/pos', { state: { pendingSale: sale } })}
+                          className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-2.5 rounded-lg font-bold hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-md flex items-center justify-center gap-2 text-sm">
+                          <CreditCard size={16} /> Checkout
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── TABLE VIEW ── */}
+              {layout === 'table' && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Token</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Invoice</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Customer</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date & Time</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Note</th>
+                          <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {activeSales.map(sale => (
+                          <tr key={sale.sale_id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3">
+                              {sale.token_no
+                                ? <span className="font-bold text-emerald-600">{sale.token_no}</span>
+                                : <span className="text-gray-400 text-sm">—</span>}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600 font-medium">{sale.invoice_no || `#${sale.sale_id}`}</td>
+                            <td className="px-4 py-3 text-sm text-gray-800">{sale.customer_name || 'Walk-in'}</td>
+                            <td className="px-4 py-3">
+                              <span className="font-semibold text-emerald-600">{cs} {parseFloat(sale.total_amount).toFixed(2)}</span>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-gray-500">
+                              {new Date(sale.sale_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                            <td className="px-4 py-3 text-xs text-gray-500 max-w-[150px] truncate">{sale.note || '—'}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button onClick={() => navigate('/pos', { state: { editOrder: sale } })}
+                                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit">
+                                  <Edit2 size={15} />
+                                </button>
+                                <button onClick={() => setPreviewSaleId(sale.sale_id)}
+                                  className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="Print">
+                                  <Printer size={15} />
+                                </button>
+                                <button onClick={() => navigate('/pos', { state: { pendingSale: sale } })}
+                                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Checkout">
+                                  <CreditCard size={15} />
+                                </button>
+                                <button onClick={() => handleDeleteActive(sale)}
+                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete">
+                                  <X size={15} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {activeTotalPages > 1 && (
                 <div className="mt-6 bg-white rounded-xl p-4 border border-gray-200">
