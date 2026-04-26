@@ -205,6 +205,87 @@ async function getSystemContext() {
       `),
     ]);
 
+    // ── Yesterday's Sales with Product Details ─────────────────────
+    const yesterdaySales = await safeQuery(`
+      SELECT s.sale_id,
+             COALESCE(c.customer_name, 'Walk-in') as customer,
+             s.total_amount, s.payment_method,
+             s.sale_date,
+             GROUP_CONCAT(
+               CONCAT(p.product_name, ' x', sd.quantity, ' @Rs.', sd.unit_price)
+               ORDER BY sd.sale_detail_id SEPARATOR ' | '
+             ) as products
+      FROM sales s
+      LEFT JOIN customers c    ON s.customer_id = c.customer_id
+      LEFT JOIN sale_details sd ON s.sale_id    = sd.sale_id
+      LEFT JOIN products p      ON sd.product_id = p.product_id
+      WHERE DATE(s.sale_date) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+        AND s.status != 'refunded'
+      GROUP BY s.sale_id, c.customer_name, s.total_amount, s.payment_method, s.sale_date
+      ORDER BY s.sale_date DESC
+      LIMIT 20
+    `);
+
+    // ── Today's Sales with Product Details ────────────────────────
+    const todaySalesDetail = await safeQuery(`
+      SELECT s.sale_id,
+             COALESCE(c.customer_name, 'Walk-in') as customer,
+             s.total_amount, s.payment_method,
+             s.sale_date,
+             GROUP_CONCAT(
+               CONCAT(p.product_name, ' x', sd.quantity, ' @Rs.', sd.unit_price)
+               ORDER BY sd.sale_detail_id SEPARATOR ' | '
+             ) as products
+      FROM sales s
+      LEFT JOIN customers c     ON s.customer_id  = c.customer_id
+      LEFT JOIN sale_details sd ON s.sale_id      = sd.sale_id
+      LEFT JOIN products p      ON sd.product_id  = p.product_id
+      WHERE DATE(s.sale_date) = CURDATE()
+        AND s.status != 'refunded'
+      GROUP BY s.sale_id, c.customer_name, s.total_amount, s.payment_method, s.sale_date
+      ORDER BY s.sale_date DESC
+      LIMIT 20
+    `);
+
+    // ── All Products with Stock ────────────────────────────────────
+    const allProducts = await safeQuery(`
+      SELECT p.product_name, p.selling_price, p.cost_price,
+             COALESCE(i.available_stock, 0) as stock,
+             cat.category_name
+      FROM products p
+      LEFT JOIN inventory i    ON p.product_id   = i.product_id
+      LEFT JOIN categories cat ON p.category_id  = cat.category_id
+      WHERE p.is_active = 1
+      ORDER BY p.product_name
+      LIMIT 100
+    `);
+
+    // ── CPV Entries This Month ─────────────────────────────────────
+    const cpvDetails = await safeQuery(`
+      SELECT pv.voucher_number, pv.voucher_date,
+             pv.payment_to, pv.amount,
+             a.account_name
+      FROM payment_vouchers pv
+      LEFT JOIN accounts a ON pv.account_id = a.account_id
+      WHERE YEAR(pv.voucher_date)  = YEAR(CURDATE())
+        AND MONTH(pv.voucher_date) = MONTH(CURDATE())
+      ORDER BY pv.voucher_date DESC
+      LIMIT 20
+    `);
+
+    // ── CRV Entries This Month ─────────────────────────────────────
+    const crvDetails = await safeQuery(`
+      SELECT rv.voucher_number, rv.voucher_date,
+             rv.received_from, rv.amount,
+             a.account_name
+      FROM receipt_vouchers rv
+      LEFT JOIN accounts a ON rv.account_id = a.account_id
+      WHERE YEAR(rv.voucher_date)  = YEAR(CURDATE())
+        AND MONTH(rv.voucher_date) = MONTH(CURDATE())
+      ORDER BY rv.voucher_date DESC
+      LIMIT 20
+    `);
+
     const reg = registerStatus[0];
     const registerInfo = reg
       ? `${reg.status === 'open' ? 'OPEN' : 'CLOSED'} (opened at ${reg.opened_at ? new Date(reg.opened_at).toLocaleTimeString() : 'N/A'}, opening cash Rs. ${reg.opening_amount || 0})`
@@ -234,6 +315,20 @@ Time: ${new Date().toLocaleTimeString('en-PK')}
 • Transactions: ${sm.count}
 • Total Revenue: Rs. ${Number(sm.total).toLocaleString()}
 • Total Profit: Rs. ${Number(sm.profit).toLocaleString()}
+
+--- TODAY'S SALES (WITH PRODUCTS) ---
+${todaySalesDetail.length > 0
+  ? todaySalesDetail.map(s =>
+      `• Sale #${s.sale_id} | ${s.customer} | Rs. ${Number(s.total_amount).toLocaleString()} | ${s.payment_method}\n  Products: ${s.products || 'N/A'}`
+    ).join('\n')
+  : '• No sales today'}
+
+--- YESTERDAY'S SALES (WITH PRODUCTS) ---
+${yesterdaySales.length > 0
+  ? yesterdaySales.map(s =>
+      `• Sale #${s.sale_id} | ${s.customer} | Rs. ${Number(s.total_amount).toLocaleString()} | ${s.payment_method}\n  Products: ${s.products || 'N/A'}`
+    ).join('\n')
+  : '• No sales yesterday'}
 
 --- RECENT 5 SALES ---
 ${recentSales.map(s =>
@@ -284,6 +379,19 @@ ${topCustomers.map((c, i) =>
 --- EXPENSES / CPV (THIS MONTH) ---
 • Total Payments: Rs. ${Number(ex.total_expense).toLocaleString()}
 • Payment Entries: ${ex.expense_count}
+${cpvDetails.map(v =>
+  `  • ${v.voucher_number} | ${new Date(v.voucher_date).toLocaleDateString()} | ${v.payment_to} | Rs. ${Number(v.amount).toLocaleString()} | ${v.account_name || ''}`
+).join('\n')}
+
+--- RECEIPTS / CRV (THIS MONTH) ---
+${crvDetails.map(v =>
+  `  • ${v.voucher_number} | ${new Date(v.voucher_date).toLocaleDateString()} | ${v.received_from} | Rs. ${Number(v.amount).toLocaleString()} | ${v.account_name || ''}`
+).join('\n') || '• No receipts this month'}
+
+--- ALL PRODUCTS (STOCK & PRICE) ---
+${allProducts.map(p =>
+  `• ${p.product_name} | Cat: ${p.category_name || 'N/A'} | Stock: ${p.stock} | Price: Rs. ${p.selling_price} | Cost: Rs. ${p.cost_price}`
+).join('\n') || '• No products'}
 
 --- CASH REGISTER ---
 • Status: ${registerInfo}
