@@ -17,6 +17,11 @@ function getGroqClient() {
   return groq;
 }
 
+const safeQuery = async (sql, params = []) => {
+  try { return await query(sql, params); }
+  catch (e) { console.error('[AI safeQuery error]', e.message, sql.slice(0, 80)); return []; }
+};
+
 // ── Comprehensive business context from all modules ────────────────────────
 async function getSystemContext() {
   try {
@@ -39,7 +44,7 @@ async function getSystemContext() {
     ] = await Promise.all([
 
       // ── Sales: Today ───────────────────────────────────────────────
-      query(`
+      safeQuery(`
         SELECT COUNT(*) as count,
                COALESCE(SUM(total_amount), 0) as total,
                COALESCE(AVG(total_amount), 0) as avg_sale
@@ -49,7 +54,7 @@ async function getSystemContext() {
       `),
 
       // ── Sales: This Month ──────────────────────────────────────────
-      query(`
+      safeQuery(`
         SELECT COUNT(*) as count,
                COALESCE(SUM(total_amount), 0) as total,
                COALESCE(SUM(profit), 0) as profit
@@ -60,7 +65,7 @@ async function getSystemContext() {
       `),
 
       // ── Top 5 Best-Selling Products (this month) ───────────────────
-      query(`
+      safeQuery(`
         SELECT p.product_name,
                SUM(sd.quantity) as qty_sold,
                SUM(sd.subtotal) as revenue
@@ -74,8 +79,8 @@ async function getSystemContext() {
         LIMIT 5
       `),
 
-      // ── Low Stock (available < reorder_level or < 10) ─────────────
-      query(`
+      // ── Low Stock ─────────────────────────────────────────────────
+      safeQuery(`
         SELECT p.product_name,
                i.available_stock,
                COALESCE(p.reorder_level, 10) as reorder_level
@@ -87,7 +92,7 @@ async function getSystemContext() {
       `),
 
       // ── Inventory Summary ──────────────────────────────────────────
-      query(`
+      safeQuery(`
         SELECT COUNT(*)                     as total_products,
                SUM(i.available_stock)       as total_units,
                COUNT(CASE WHEN i.available_stock = 0 THEN 1 END) as out_of_stock
@@ -97,7 +102,7 @@ async function getSystemContext() {
       `),
 
       // ── Customers ─────────────────────────────────────────────────
-      query(`
+      safeQuery(`
         SELECT COUNT(*) as total,
                SUM(CASE WHEN DATE(created_at) = CURDATE() THEN 1 ELSE 0 END) as new_today,
                SUM(CASE WHEN MONTH(created_at) = MONTH(CURDATE())
@@ -107,7 +112,7 @@ async function getSystemContext() {
       `),
 
       // ── Recent 5 Sales ─────────────────────────────────────────────
-      query(`
+      safeQuery(`
         SELECT s.sale_id,
                COALESCE(c.customer_name, 'Walk-in') as customer,
                s.total_amount,
@@ -120,23 +125,23 @@ async function getSystemContext() {
       `),
 
       // ── HR: Staff ─────────────────────────────────────────────────
-      query(`
+      safeQuery(`
         SELECT COUNT(*) as total_staff,
                SUM(CASE WHEN employment_status = 'active' THEN 1 ELSE 0 END) as active,
                COALESCE(SUM(basic_salary), 0) as total_payroll
         FROM staff
       `),
 
-      // ── HR: Pending / Active Loans ────────────────────────────────
-      query(`
+      // ── HR: Loans ─────────────────────────────────────────────────
+      safeQuery(`
         SELECT COUNT(*) as active_loans,
                COALESCE(SUM(remaining_balance), 0) as total_outstanding
         FROM staff_loans
         WHERE status = 'active'
       `),
 
-      // ── Expenses: This Month (via CPV payment vouchers) ───────────
-      query(`
+      // ── Expenses: This Month (CPV) ────────────────────────────────
+      safeQuery(`
         SELECT COALESCE(SUM(amount), 0) as total_expense,
                COUNT(*) as expense_count
         FROM payment_vouchers
@@ -145,29 +150,26 @@ async function getSystemContext() {
       `),
 
       // ── Cash Register Status ───────────────────────────────────────
-      query(`
-        SELECT status,
-               opening_amount,
-               closing_amount,
-               opened_at
+      safeQuery(`
+        SELECT status, opening_amount, closing_amount, opened_at
         FROM cash_registers
         ORDER BY register_id DESC
         LIMIT 1
       `),
 
       // ── Inventory Value ────────────────────────────────────────────
-      query(`
+      safeQuery(`
         SELECT COALESCE(SUM(i.available_stock * p.cost_price), 0) as stock_value
         FROM inventory i
         JOIN products p ON i.product_id = p.product_id
         WHERE p.is_active = 1
       `),
 
-      // ── Top 5 Customers by Revenue (this month) ───────────────────
-      query(`
+      // ── Top 5 Customers (this month) ──────────────────────────────
+      safeQuery(`
         SELECT c.customer_name,
-               COUNT(s.sale_id)         as purchase_count,
-               SUM(s.total_amount)      as total_spent
+               COUNT(s.sale_id)    as purchase_count,
+               SUM(s.total_amount) as total_spent
         FROM sales s
         JOIN customers c ON s.customer_id = c.customer_id
         WHERE c.customer_id != 1
@@ -179,12 +181,12 @@ async function getSystemContext() {
       `),
 
       // ── Sales by Category (this month) ────────────────────────────
-      query(`
+      safeQuery(`
         SELECT cat.category_name,
                SUM(sd.quantity) as qty_sold,
                SUM(sd.subtotal) as revenue
         FROM sale_details sd
-        JOIN products  p   ON sd.product_id   = p.product_id
+        JOIN products   p   ON sd.product_id  = p.product_id
         JOIN categories cat ON p.category_id  = cat.category_id
         JOIN sales      s   ON sd.sale_id     = s.sale_id
         WHERE YEAR(s.sale_date)  = YEAR(CURDATE())
@@ -194,8 +196,8 @@ async function getSystemContext() {
         LIMIT 5
       `),
 
-      // ── Pending/Processing Purchase Orders ────────────────────────
-      query(`
+      // ── Pending Purchase Orders ────────────────────────────────────
+      safeQuery(`
         SELECT COUNT(*) as pending_orders,
                COALESCE(SUM(total_amount), 0) as pending_value
         FROM purchase_orders
@@ -208,20 +210,30 @@ async function getSystemContext() {
       ? `${reg.status === 'open' ? 'OPEN' : 'CLOSED'} (opened at ${reg.opened_at ? new Date(reg.opened_at).toLocaleTimeString() : 'N/A'}, opening cash Rs. ${reg.opening_amount || 0})`
       : 'No register data';
 
+    const st  = salesToday[0]      || { count: 0, total: 0, avg_sale: 0 };
+    const sm  = salesThisMonth[0]  || { count: 0, total: 0, profit: 0 };
+    const ss  = stockSummary[0]    || { total_products: 0, total_units: 0, out_of_stock: 0 };
+    const cs  = customerSummary[0] || { total: 0, new_today: 0, new_this_month: 0 };
+    const hf  = staffSummary[0]    || { total_staff: 0, active: 0, total_payroll: 0 };
+    const ln  = pendingLoans[0]    || { active_loans: 0, total_outstanding: 0 };
+    const ex  = expenseSummary[0]  || { total_expense: 0, expense_count: 0 };
+    const inv = inventoryValue[0]  || { stock_value: 0 };
+    const po  = pendingOrders[0]   || { pending_orders: 0, pending_value: 0 };
+
     return `
 === AByte ERP — LIVE BUSINESS DATA ===
 Date: ${new Date().toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
 Time: ${new Date().toLocaleTimeString('en-PK')}
 
 --- SALES: TODAY ---
-• Transactions: ${salesToday[0].count}
-• Total Revenue: Rs. ${Number(salesToday[0].total).toLocaleString()}
-• Average Sale Value: Rs. ${Number(salesToday[0].avg_sale).toFixed(0)}
+• Transactions: ${st.count}
+• Total Revenue: Rs. ${Number(st.total).toLocaleString()}
+• Average Sale Value: Rs. ${Number(st.avg_sale).toFixed(0)}
 
 --- SALES: THIS MONTH ---
-• Transactions: ${salesThisMonth[0].count}
-• Total Revenue: Rs. ${Number(salesThisMonth[0].total).toLocaleString()}
-• Total Profit: Rs. ${Number(salesThisMonth[0].profit).toLocaleString()}
+• Transactions: ${sm.count}
+• Total Revenue: Rs. ${Number(sm.total).toLocaleString()}
+• Total Profit: Rs. ${Number(sm.profit).toLocaleString()}
 
 --- RECENT 5 SALES ---
 ${recentSales.map(s =>
@@ -239,10 +251,10 @@ ${salesByCategory.map(c =>
 ).join('\n') || '• No data'}
 
 --- INVENTORY ---
-• Total Active Products: ${stockSummary[0].total_products}
-• Total Units in Stock: ${Number(stockSummary[0].total_units).toLocaleString()}
-• Out of Stock Products: ${stockSummary[0].out_of_stock}
-• Total Stock Value: Rs. ${Number(inventoryValue[0].stock_value).toLocaleString()}
+• Total Active Products: ${ss.total_products}
+• Total Units in Stock: ${Number(ss.total_units).toLocaleString()}
+• Out of Stock Products: ${ss.out_of_stock}
+• Total Stock Value: Rs. ${Number(inv.stock_value).toLocaleString()}
 
 --- LOW / OUT OF STOCK ITEMS ---
 ${lowStock.length > 0
@@ -250,13 +262,13 @@ ${lowStock.length > 0
   : '• All products are well-stocked'}
 
 --- PURCHASE ORDERS (PENDING) ---
-• Pending Orders: ${pendingOrders[0].pending_orders}
-• Pending Value: Rs. ${Number(pendingOrders[0].pending_value).toLocaleString()}
+• Pending Orders: ${po.pending_orders}
+• Pending Value: Rs. ${Number(po.pending_value).toLocaleString()}
 
 --- CUSTOMERS ---
-• Total Registered Customers: ${customerSummary[0].total}
-• New Customers Today: ${customerSummary[0].new_today}
-• New Customers This Month: ${customerSummary[0].new_this_month}
+• Total Registered Customers: ${cs.total}
+• New Customers Today: ${cs.new_today}
+• New Customers This Month: ${cs.new_this_month}
 
 --- TOP CUSTOMERS (THIS MONTH) ---
 ${topCustomers.map((c, i) =>
@@ -264,21 +276,24 @@ ${topCustomers.map((c, i) =>
 ).join('\n') || '• No customer data'}
 
 --- HUMAN RESOURCES ---
-• Total Staff: ${staffSummary[0].total_staff}
-• Active Staff: ${staffSummary[0].active}
-• Monthly Payroll: Rs. ${Number(staffSummary[0].total_payroll).toLocaleString()}
-• Active Loans: ${pendingLoans[0].active_loans} (Rs. ${Number(pendingLoans[0].total_outstanding).toLocaleString()} outstanding)
+• Total Staff: ${hf.total_staff}
+• Active Staff: ${hf.active}
+• Monthly Payroll: Rs. ${Number(hf.total_payroll).toLocaleString()}
+• Active Loans: ${ln.active_loans} (Rs. ${Number(ln.total_outstanding).toLocaleString()} outstanding)
 
---- EXPENSES (THIS MONTH) ---
-• Total Expenses: Rs. ${Number(expenseSummary[0].total_expense).toLocaleString()}
-• Expense Entries: ${expenseSummary[0].expense_count}
+--- EXPENSES / CPV (THIS MONTH) ---
+• Total Payments: Rs. ${Number(ex.total_expense).toLocaleString()}
+• Payment Entries: ${ex.expense_count}
 
 --- CASH REGISTER ---
 • Status: ${registerInfo}
 ===`;
   } catch (error) {
     console.error("Error fetching AI context:", error);
-    return "System context unavailable. Database error occurred.";
+    return `=== AByte ERP — PARTIAL DATA ===
+Date: ${new Date().toLocaleDateString()}
+Note: Some data could not be loaded. ${error.message}
+===`;
   }
 }
 
