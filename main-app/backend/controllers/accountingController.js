@@ -1030,9 +1030,18 @@ exports.createPaymentVoucher = async (req, res) => {
       voucherNumber = `CPV${String(nextNumber).padStart(6, '0')}`;
     }
 
-    // CPV debits the account (payment going out)
+    // CPV: line account gets debited (expense increases)
     const debitIncrease = ['asset', 'expense'].includes(acc.account_type);
     await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitIncrease ? amount : -amount, account_id]);
+
+    // CPV: main account (cash/bank) gets credited — cash going out
+    if (main_account_id) {
+      const [mainAcc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [main_account_id]);
+      if (mainAcc) {
+        const mainDebitInc = ['asset', 'expense'].includes(mainAcc.account_type);
+        await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [mainDebitInc ? -amount : amount, main_account_id]);
+      }
+    }
 
     const result = await conn.query(
       'INSERT INTO payment_vouchers (voucher_number, voucher_date, payment_to, payment_type, account_id, main_account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -1080,11 +1089,19 @@ exports.deletePaymentVoucher = async (req, res) => {
       await conn.query('DELETE FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
       await conn.query('DELETE FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
     } else {
-      // Reverse direct balance update
+      // Reverse direct balance update for line account
       const [acc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.account_id]);
       if (acc) {
         const debitInc = ['asset', 'expense'].includes(acc.account_type);
         await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitInc ? -Number(voucher.amount) : Number(voucher.amount), voucher.account_id]);
+      }
+      // Reverse main account balance (re-credit the cash that was credited)
+      if (voucher.main_account_id) {
+        const [mainAcc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.main_account_id]);
+        if (mainAcc) {
+          const mainDebitInc = ['asset', 'expense'].includes(mainAcc.account_type);
+          await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [mainDebitInc ? Number(voucher.amount) : -Number(voucher.amount), voucher.main_account_id]);
+        }
       }
     }
 
@@ -1169,9 +1186,18 @@ exports.createReceiptVoucher = async (req, res) => {
       voucherNumber = `CRV${String(nextNumber).padStart(6, '0')}`;
     }
 
-    // CRV credits the account (cash coming in)
+    // CRV: line account gets credited (income increases)
     const debitIncrease = ['asset', 'expense'].includes(acc.account_type);
     await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitIncrease ? -amount : amount, account_id]);
+
+    // CRV: main account (cash/bank) gets debited — cash coming in
+    if (main_account_id) {
+      const [mainAcc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [main_account_id]);
+      if (mainAcc) {
+        const mainDebitInc = ['asset', 'expense'].includes(mainAcc.account_type);
+        await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [mainDebitInc ? amount : -amount, main_account_id]);
+      }
+    }
 
     const result = await conn.query(
       'INSERT INTO receipt_vouchers (voucher_number, voucher_date, received_from, receipt_type, account_id, main_account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -1219,11 +1245,19 @@ exports.deleteReceiptVoucher = async (req, res) => {
       await conn.query('DELETE FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
       await conn.query('DELETE FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
     } else {
-      // Reverse direct balance update
+      // Reverse direct balance update for line account
       const [acc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.account_id]);
       if (acc) {
         const debitInc = ['asset', 'expense'].includes(acc.account_type);
         await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitInc ? Number(voucher.amount) : -Number(voucher.amount), voucher.account_id]);
+      }
+      // Reverse main account balance (re-debit the cash that was debited)
+      if (voucher.main_account_id) {
+        const [mainAcc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.main_account_id]);
+        if (mainAcc) {
+          const mainDebitInc = ['asset', 'expense'].includes(mainAcc.account_type);
+          await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [mainDebitInc ? -Number(voucher.amount) : Number(voucher.amount), voucher.main_account_id]);
+        }
       }
     }
 
