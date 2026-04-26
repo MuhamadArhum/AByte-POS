@@ -50,8 +50,7 @@ import {
   PackageOpen,
   Sliders,
   Star,
-  LogIn,
-  Banknote
+  LogIn
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
