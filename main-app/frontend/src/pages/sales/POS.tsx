@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, ShoppingCart, Trash2, Minus, Plus, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Truck, MapPin, CheckCircle } from 'lucide-react';
+import { Search, ShoppingCart, Trash2, Minus, Plus, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Truck, MapPin, CheckCircle, UtensilsCrossed, Coffee, Printer, Table2 } from 'lucide-react';
 import CompletedOrdersView from '../../components/CompletedOrdersView';
 import Pagination from '../../components/Pagination';
 import { useCart, Product } from '../../context/CartContext';
@@ -96,16 +96,21 @@ const POS = () => {
   const [delivMatchedCust, setDelivMatchedCust] = useState<any>(null);
   const [delivPhoneSuggestions, setDelivPhoneSuggestions] = useState<any[]>([]);
 
-  // Order type: on_spot or delivery
-  type OrderType = 'on_spot' | 'delivery';
-  const [orderType, setOrderType] = useState<OrderType>('on_spot');
+  // Order type: dine_in, takeaway, or delivery
+  type OrderType = 'dine_in' | 'takeaway' | 'delivery';
+  const [orderType, setOrderType] = useState<OrderType>('dine_in');
+
+  // Restaurant tables
+  const [tables, setTables] = useState<any[]>([]);
+  const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
   const [deliveryInfo, setDeliveryInfo] = useState({
     delivery_address: '', delivery_city: '', delivery_phone: '',
     rider_name: '', rider_phone: '', delivery_charges: '',
     estimated_delivery: '', notes: '',
   });
   const resetDelivery = () => {
-    setOrderType('on_spot');
+    setOrderType('dine_in');
+    setSelectedTableId(null);
     setDeliveryInfo({ delivery_address: '', delivery_city: '', delivery_phone: '', rider_name: '', rider_phone: '', delivery_charges: '', estimated_delivery: '', notes: '' });
     setDelivName('');
     setDelivMatchedCust(null);
@@ -113,9 +118,51 @@ const POS = () => {
   };
   const delivCharges = orderType === 'delivery' ? (parseFloat(deliveryInfo.delivery_charges) || 0) : 0;
 
-  // Check register on mount + load store settings
+  const fetchTables = async () => {
+    try {
+      const res = await api.get('/restaurant/tables');
+      setTables(Array.isArray(res.data) ? res.data : []);
+    } catch { setTables([]); }
+  };
+
+  const handlePrintKOT = () => {
+    const tableName = orderType === 'dine_in'
+      ? (tables.find(t => t.table_id === selectedTableId)?.table_name || 'No Table')
+      : 'TAKEAWAY';
+    const kotWin = window.open('', '_blank', 'width=320,height=600');
+    if (!kotWin) return;
+    kotWin.document.write(`<!DOCTYPE html><html><head><title>KOT</title>
+      <style>
+        body{font-family:monospace;font-size:13px;padding:12px;margin:0}
+        h2{text-align:center;font-size:15px;margin:0 0 4px}
+        .sub{text-align:center;font-size:11px;color:#555;margin-bottom:6px}
+        hr{border:none;border-top:1px dashed #000;margin:6px 0}
+        .tbl{font-size:16px;font-weight:bold;text-align:center;padding:4px 0}
+        .row{display:flex;gap:8px;padding:3px 0}
+        .qty{font-weight:bold;min-width:28px}
+        .name{flex:1}
+        .footer{text-align:center;font-size:10px;margin-top:8px}
+      </style>
+    </head><body>
+      <h2>KITCHEN ORDER TICKET</h2>
+      <div class="sub">${new Date().toLocaleString()}</div>
+      <hr/>
+      <div class="tbl">${tableName}</div>
+      <div class="sub">Waiter: ${user?.name || ''}</div>
+      <hr/>
+      ${cart.map(item => `<div class="row"><span class="qty">${item.quantity}x</span><span class="name">${item.product_name}${item.variant_name ? ` (${item.variant_name})` : ''}</span></div>`).join('')}
+      <hr/>
+      <div class="footer">--- KOT END ---</div>
+    </body></html>`);
+    kotWin.document.close();
+    kotWin.focus();
+    setTimeout(() => { kotWin.print(); kotWin.close(); }, 300);
+  };
+
+  // Check register on mount + load store settings + fetch tables
   useEffect(() => {
     checkRegister();
+    fetchTables();
     api.get('/settings').then(res => {
       const dc = parseFloat(res.data.default_delivery_charges) || 0;
       setDefaultDeliveryCharges(dc);
@@ -406,7 +453,7 @@ const POS = () => {
 
   // Phone field → search existing customers, show suggestions
   useEffect(() => {
-    if (orderType !== 'delivery') return;
+    if (orderType !== 'delivery') { setDelivPhoneSuggestions([]); return; }
     const q = deliveryInfo.delivery_phone.trim();
     if (q.length < 3) { setDelivPhoneSuggestions([]); return; }
     const results = customers
@@ -472,7 +519,9 @@ const POS = () => {
           product_id: item.product_id,
           product_name: item.product_name,
           quantity: item.quantity,
-          unit_price: item.price
+          unit_price: item.price,
+          variant_id: (item as any).variant_id || null,
+          variant_name: (item as any).variant_name || null,
         })),
         customer_id: selectedCustomer?.customer_id || 1,
         discount: 0,
@@ -483,14 +532,18 @@ const POS = () => {
         status: 'pending',
         tax_percent: taxRate,
         additional_charges_percent: additionalRate,
+        table_id: orderType === 'dine_in' ? selectedTableId : null,
+        order_type: orderType,
       };
 
       const res = await api.post('/sales', payload);
       clearCart();
-      resetDelivery();
+      setSelectedTableId(null);
+      fetchTables();
       const token = res.data?.token_no || null;
       setHoldToken(token);
       setTimeout(() => setHoldToken(null), 5000);
+      if (orderType === 'dine_in') handlePrintKOT();
     } catch (error) {
       console.error('Failed to hold order', error);
       alert('Failed to hold order');
@@ -922,13 +975,17 @@ const POS = () => {
             <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center">
               {orderType === 'delivery'
                 ? <Truck size={18} className="text-emerald-400" />
-                : <ShoppingCart size={18} className="text-emerald-400" />}
+                : orderType === 'dine_in'
+                ? <UtensilsCrossed size={18} className="text-orange-400" />
+                : <Coffee size={18} className="text-yellow-400" />}
             </div>
             <div>
               <h2 className="text-white font-bold text-sm leading-tight">
                 {editingSaleId
                   ? <span className="text-amber-400">Editing Token #{editingTokenNo || editingSaleId}</span>
-                  : orderType === 'delivery' ? 'Delivery Order' : 'Current Sale'}
+                  : orderType === 'delivery' ? 'Delivery Order'
+                  : orderType === 'dine_in' ? `Dine-In${selectedTableId ? ` · ${tables.find(t => t.table_id === selectedTableId)?.table_name || ''}` : ''}`
+                  : 'Takeaway'}
               </h2>
               <p className="text-gray-400 text-xs">
                 {cart.length === 0 ? 'No items' : `${cart.length} item${cart.length > 1 ? 's' : ''} · Rs. ${subtotal.toFixed(2)}`}
@@ -946,20 +1003,28 @@ const POS = () => {
             {/* Order Type Toggle in header */}
             <div className="flex bg-white/10 rounded-lg p-0.5 gap-0.5">
               <button
-                onClick={() => setOrderType('on_spot')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  orderType === 'on_spot' ? 'bg-white text-gray-900' : 'text-gray-300 hover:text-white'
+                onClick={() => { setOrderType('dine_in'); setSelectedTableId(null); }}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  orderType === 'dine_in' ? 'bg-orange-500 text-white' : 'text-gray-300 hover:text-white'
                 }`}
               >
-                <ShoppingBag size={11} /> On Spot
+                <UtensilsCrossed size={10} /> Dine-In
+              </button>
+              <button
+                onClick={() => { setOrderType('takeaway'); setSelectedTableId(null); }}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  orderType === 'takeaway' ? 'bg-yellow-500 text-white' : 'text-gray-300 hover:text-white'
+                }`}
+              >
+                <ShoppingBag size={10} /> Takeaway
               </button>
               <button
                 onClick={() => setOrderType('delivery')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
                   orderType === 'delivery' ? 'bg-emerald-500 text-white' : 'text-gray-300 hover:text-white'
                 }`}
               >
-                <Truck size={11} /> Delivery
+                <Truck size={10} /> Delivery
               </button>
             </div>
             {cart.length > 0 && (
@@ -992,8 +1057,48 @@ const POS = () => {
           </div>
         )}
 
-        {/* ── On Spot: Customer Panel ── */}
-        {orderType === 'on_spot' && (
+        {/* ── Dine-In: Table Selector ── */}
+        {orderType === 'dine_in' && (
+          <div className="bg-orange-50 border-b border-orange-100 px-4 py-3 flex-shrink-0">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-orange-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Table2 size={12} /> Select Table
+              </span>
+              {selectedTableId && (
+                <button onClick={() => setSelectedTableId(null)} className="text-xs text-red-500 hover:text-red-700 font-medium">Clear</button>
+              )}
+            </div>
+            {tables.length === 0 ? (
+              <p className="text-xs text-orange-400 text-center py-1">No tables configured — add tables in Restaurant module</p>
+            ) : (
+              <div className="grid grid-cols-4 gap-1.5 max-h-28 overflow-y-auto">
+                {tables.map((table: any) => {
+                  const isOccupied = Number(table.has_pending_order) > 0;
+                  const isSelected = selectedTableId === table.table_id;
+                  return (
+                    <button
+                      key={table.table_id}
+                      onClick={() => !isOccupied && setSelectedTableId(table.table_id)}
+                      className={`py-2 px-1 rounded-lg text-xs font-bold transition-all text-center leading-tight ${
+                        isSelected
+                          ? 'bg-orange-500 text-white shadow-md ring-2 ring-orange-300'
+                          : isOccupied
+                          ? 'bg-red-100 text-red-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 hover:bg-orange-100 hover:text-orange-700 border border-gray-200'
+                      }`}
+                    >
+                      {table.table_name}
+                      {isOccupied && <div className="text-[9px] opacity-70 font-normal">Busy</div>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Dine-In / Takeaway: Customer Panel ── */}
+        {(orderType === 'dine_in' || orderType === 'takeaway') && (
           <div className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -1171,7 +1276,7 @@ const POS = () => {
               </div>
               <p className="font-semibold text-gray-500 text-base">Cart is empty</p>
               <p className="text-sm text-gray-400 mt-1">
-                {orderType === 'delivery' ? 'Fill customer info then add products' : 'Scan a barcode or tap a product'}
+                {orderType === 'delivery' ? 'Fill delivery info then add products' : 'Scan a barcode or tap a product'}
               </p>
             </div>
           ) : (
@@ -1369,9 +1474,14 @@ const POS = () => {
                   <button
                     onClick={handleHoldOrder}
                     disabled={cart.length === 0}
-                    className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+                    className={`flex items-center justify-center gap-2 text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${
+                      orderType === 'dine_in'
+                        ? 'bg-orange-500 hover:bg-orange-600'
+                        : 'bg-amber-500 hover:bg-amber-600'
+                    }`}
                   >
-                    <Archive size={16} /> Punch/Hold <span className="text-amber-200 text-xs">F8</span>
+                    {orderType === 'dine_in' ? <><UtensilsCrossed size={15} /> KOT + Hold</> : <><Archive size={15} /> Punch/Hold</>}
+                    <span className="text-white/50 text-xs">F8</span>
                   </button>
                   <button
                     onClick={() => { setSelectedPendingSale(null); setIsCheckoutOpen(true); }}
@@ -1381,6 +1491,16 @@ const POS = () => {
                     <DollarSign size={16} /> Pay Now <span className="text-white/60 text-xs">F9</span>
                   </button>
                 </div>
+                {/* KOT Print only button */}
+                {(orderType === 'dine_in' || orderType === 'takeaway') && (
+                  <button
+                    onClick={handlePrintKOT}
+                    disabled={cart.length === 0}
+                    className="w-full flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 text-white py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Printer size={15} /> Print KOT Only
+                  </button>
+                )}
                 {(user?.role_name === 'Admin' || user?.role_name === 'Manager') && (
                   <button
                     onClick={() => { setQtValidUntil(''); setQtNotes(''); setShowQuotationModal(true); }}
@@ -1444,6 +1564,8 @@ const POS = () => {
           setEditingSaleId(null);
           setEditingTokenNo(null);
           setShowMobileCart(false);
+          setSelectedTableId(null);
+          fetchTables();
           resetDelivery();
           const walkin = customers.find(c => c.customer_id === 1);
           setSelectedCustomer(walkin || null);

@@ -50,7 +50,9 @@ import {
   PackageOpen,
   Sliders,
   Star,
-  LogIn
+  LogIn,
+  UtensilsCrossed,
+  Table2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -142,6 +144,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: Target, label: 'Sales Targets', path: '/sales-targets', moduleKey: 'sales.targets' },
         { icon: PieChart, label: 'Sales Reports', path: '/sales-reports', moduleKey: 'sales.reports' },
         { icon: TrendingUp, label: 'Sales Analytics', path: '/sales-analytics', moduleKey: 'sales.reports' },
+        // ── RESTAURANT ──
+        { icon: UtensilsCrossed, label: 'RESTAURANT', isSection: true } as any,
+        { icon: Table2, label: 'Tables', path: '/restaurant/tables', moduleKey: 'sales.pos' },
         { icon: Users, label: 'Customers', path: '/customers', moduleKey: 'sales.customers' },
       ]
     },

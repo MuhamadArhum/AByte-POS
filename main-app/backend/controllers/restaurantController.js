@@ -1,0 +1,62 @@
+const { query } = require('../config/database');
+
+exports.getTables = async (req, res) => {
+  try {
+    const tables = await query(
+      `SELECT t.*,
+        (SELECT COUNT(*) FROM sales s WHERE s.table_id = t.table_id AND s.status = 'pending') AS has_pending_order
+       FROM restaurant_tables t
+       ORDER BY t.floor, t.table_name`
+    );
+    res.json(tables);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.createTable = async (req, res) => {
+  try {
+    const { table_name, floor = 'Main', capacity = 4 } = req.body;
+    if (!table_name || !table_name.trim()) {
+      return res.status(400).json({ message: 'Table name is required' });
+    }
+    const result = await query(
+      'INSERT INTO restaurant_tables (table_name, floor, capacity) VALUES (?, ?, ?)',
+      [table_name.trim(), floor || 'Main', parseInt(capacity) || 4]
+    );
+    res.status(201).json({
+      table_id: Number(result.insertId),
+      table_name: table_name.trim(),
+      floor: floor || 'Main',
+      capacity: parseInt(capacity) || 4,
+      status: 'available',
+      has_pending_order: 0,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.updateTable = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { table_name, floor, capacity } = req.body;
+    await query(
+      'UPDATE restaurant_tables SET table_name = ?, floor = ?, capacity = ? WHERE table_id = ?',
+      [table_name, floor || 'Main', parseInt(capacity) || 4, id]
+    );
+    res.json({ message: 'Table updated' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.deleteTable = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM restaurant_tables WHERE table_id = ?', [id]);
+    res.json({ message: 'Table deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

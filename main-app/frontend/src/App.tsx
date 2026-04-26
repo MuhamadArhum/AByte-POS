@@ -88,6 +88,9 @@ import Analytics from './pages/accounts/Analytics';
 import Reports from './pages/accounts/Reports';
 import SalesAnalytics from './pages/SalesAnalytics';
 
+// Restaurant Module
+import TableManagement from './pages/restaurant/TableManagement';
+
 // System Module
 import Stores from './pages/system/Stores';
 import AuditLog from './pages/system/AuditLog';
@@ -153,6 +156,8 @@ function App() {
                       <Route path="/deliveries" element={<PermissionGuard moduleKey="sales.deliveries"><Deliveries /></PermissionGuard>} />
                       <Route path="/sales-reports" element={<PermissionGuard moduleKey="sales.reports"><SalesReports /></PermissionGuard>} />
                       <Route path="/sales-analytics" element={<PermissionGuard moduleKey="sales.reports"><SalesAnalytics /></PermissionGuard>} />
+                      {/* Restaurant */}
+                      <Route path="/restaurant/tables" element={<TableManagement />} />
 
                       {/* Inventory */}
                       <Route path="/inventory" element={<PermissionGuard moduleKey="inventory.products"><Inventory /></PermissionGuard>} />

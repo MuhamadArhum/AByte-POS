@@ -73,6 +73,7 @@ const deliveryRoutes        = require('./routes/deliveryRoutes');
 const permissionRoutes      = require('./routes/permissionRoutes');
 const tenantRoutes          = require('./routes/tenantRoutes');
 const emailRoutes           = require('./routes/emailRoutes');
+const restaurantRoutes      = require('./routes/restaurantRoutes');
 
 // --- Module Guard (plan-based access) ---
 const { requireModule } = require('./middleware/moduleGuard');
@@ -151,6 +152,9 @@ app.use('/api/permissions',     permissionRoutes);
 app.use('/api/stores',          storeRoutes);
 app.use('/api/analytics',       analyticsRoutes);
 app.use('/api/email',           emailRoutes);
+
+// Restaurant module
+app.use('/api/restaurant/tables', restaurantRoutes);
 
 // Sales module (basic+)
 app.use('/api/sales',           salesRoutes);

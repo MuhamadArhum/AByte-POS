@@ -96,6 +96,11 @@ async function runMigration(conn, dbName) {
     // receipt_vouchers - main account
     `ALTER TABLE receipt_vouchers
        ADD COLUMN IF NOT EXISTS main_account_id INT NULL`,
+
+    // sales - restaurant features
+    `ALTER TABLE sales
+       ADD COLUMN IF NOT EXISTS table_id INT NULL,
+       ADD COLUMN IF NOT EXISTS order_type VARCHAR(20) DEFAULT 'on_spot'`,
   ];
 
   for (const sql of alters) {
@@ -874,6 +879,16 @@ async function runMigration(conn, dbName) {
        final_settlement DECIMAL(12,2) DEFAULT 0,
        settlement_notes TEXT,
        status VARCHAR(20) DEFAULT 'pending',
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+     )`,
+
+    // ── RESTAURANT ──────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS restaurant_tables (
+       table_id INT PRIMARY KEY AUTO_INCREMENT,
+       table_name VARCHAR(50) NOT NULL,
+       floor VARCHAR(50) DEFAULT 'Main',
+       capacity INT DEFAULT 4,
+       status VARCHAR(20) DEFAULT 'available',
        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
      )`,
   ];

@@ -39,7 +39,9 @@ exports.createSale = async (req, res) => {
       note,
       applied_bundles = [], // Array of { bundle_id, bundle_name, discount_amount }
       is_credit,
-      credit_due_date
+      credit_due_date,
+      table_id = null,
+      order_type = 'on_spot',
     } = req.body;
     // items = array of { product_id, quantity, unit_price, variant_id, variant_name }
 
@@ -143,8 +145,8 @@ exports.createSale = async (req, res) => {
         sub_total, total_amount, discount, bundle_discount, bundle_count, net_amount, user_id, customer_id,
         payment_method, amount_paid, status,
         tax_percent, tax_amount, additional_charges_percent, additional_charges_amount, note,
-        token_no, invoice_no
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        token_no, invoice_no, table_id, order_type
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         subtotal,
         total_amount,
@@ -163,7 +165,9 @@ exports.createSale = async (req, res) => {
         additionalAmt,
         note || null,
         token_no,
-        invoice_no
+        invoice_no,
+        table_id || null,
+        order_type || 'on_spot',
       ]
     );
 
