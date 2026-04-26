@@ -123,7 +123,8 @@
       "Bash(git push *)",
       "Bash(python3 -c ' *)",
       "Bash(echo \"SHOW CREATE TABLE payment_vouchers\\\\\\\\G\")",
-      "Bash(echo \"SHOW CREATE TABLE receipt_vouchers\\\\\\\\G\")"
+      "Bash(echo \"SHOW CREATE TABLE receipt_vouchers\\\\\\\\G\")",
+      "Bash(git rm *)"
     ]
   }
 }
