@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, UtensilsCrossed, Table2, Users, X, Check } from 'lucide-react';
+import { Plus, Edit2, Trash2, UtensilsCrossed, Table2, Users, X, Check, Layers } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 
@@ -12,22 +12,29 @@ interface RestaurantTable {
   has_pending_order: number;
 }
 
-const FLOORS = ['Main', 'Ground Floor', 'First Floor', 'Second Floor', 'Rooftop', 'Outdoor'];
-
 const TableManagement = () => {
   const { success: toastSuccess, error: toastError } = useToast();
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingTable, setEditingTable] = useState<RestaurantTable | null>(null);
-  const [form, setForm] = useState({ table_name: '', floor: 'Main', capacity: '4' });
+  const [form, setForm] = useState({ table_name: '', floor: '', capacity: '4' });
   const [saving, setSaving] = useState(false);
   const [selectedFloor, setSelectedFloor] = useState<string>('All');
+
+  // Floor management
+  const [showFloorModal, setShowFloorModal] = useState(false);
+  const [newFloorName, setNewFloorName] = useState('');
+  const [customFloors, setCustomFloors] = useState<string[]>([]);
 
   const fetchTables = async () => {
     try {
       const res = await api.get('/restaurant/tables');
-      setTables(Array.isArray(res.data) ? res.data : []);
+      const data: RestaurantTable[] = Array.isArray(res.data) ? res.data : [];
+      setTables(data);
+      // Derive unique floors from tables + custom floors
+      const fromTables = Array.from(new Set(data.map(t => t.floor).filter(Boolean)));
+      setCustomFloors(prev => Array.from(new Set([...prev, ...fromTables])));
     } catch {
       toastError('Failed to load tables');
     } finally {
@@ -37,9 +44,12 @@ const TableManagement = () => {
 
   useEffect(() => { fetchTables(); }, []);
 
+  // All unique floor names
+  const allFloors = Array.from(new Set(customFloors));
+
   const openAdd = () => {
     setEditingTable(null);
-    setForm({ table_name: '', floor: 'Main', capacity: '4' });
+    setForm({ table_name: '', floor: allFloors[0] || '', capacity: '4' });
     setShowForm(true);
   };
 
@@ -59,6 +69,10 @@ const TableManagement = () => {
       } else {
         await api.post('/restaurant/tables', form);
         toastSuccess('Table added');
+      }
+      // If new floor typed, add to customFloors
+      if (form.floor && !customFloors.includes(form.floor)) {
+        setCustomFloors(prev => [...prev, form.floor]);
       }
       setShowForm(false);
       fetchTables();
@@ -84,7 +98,23 @@ const TableManagement = () => {
     }
   };
 
-  const floors = ['All', ...Array.from(new Set(tables.map(t => t.floor)))];
+  const addFloor = () => {
+    const name = newFloorName.trim();
+    if (!name) return;
+    if (customFloors.includes(name)) { toastError('Floor already exists'); return; }
+    setCustomFloors(prev => [...prev, name]);
+    setNewFloorName('');
+    toastSuccess(`Floor "${name}" added`);
+  };
+
+  const deleteFloor = (floor: string) => {
+    const inUse = tables.some(t => t.floor === floor);
+    if (inUse) { toastError('Cannot delete — tables are assigned to this floor'); return; }
+    setCustomFloors(prev => prev.filter(f => f !== floor));
+    if (selectedFloor === floor) setSelectedFloor('All');
+  };
+
+  const floorFilters = ['All', ...allFloors];
   const filtered = selectedFloor === 'All' ? tables : tables.filter(t => t.floor === selectedFloor);
 
   const stats = {
@@ -106,12 +136,20 @@ const TableManagement = () => {
             <p className="text-sm text-gray-500">Manage restaurant floor plan</p>
           </div>
         </div>
-        <button
-          onClick={openAdd}
-          className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl font-semibold text-sm shadow-md transition-colors"
-        >
-          <Plus size={16} /> Add Table
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowFloorModal(true)}
+            className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl font-semibold text-sm shadow-sm transition-colors"
+          >
+            <Layers size={15} /> Manage Floors
+          </button>
+          <button
+            onClick={openAdd}
+            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl font-semibold text-sm shadow-md transition-colors"
+          >
+            <Plus size={16} /> Add Table
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -128,10 +166,10 @@ const TableManagement = () => {
         ))}
       </div>
 
-      {/* Floor Filter */}
-      {floors.length > 2 && (
+      {/* Floor Filter Tabs */}
+      {floorFilters.length > 1 && (
         <div className="flex flex-wrap gap-2 mb-4">
-          {floors.map(floor => (
+          {floorFilters.map(floor => (
             <button
               key={floor}
               onClick={() => setSelectedFloor(floor)}
@@ -142,6 +180,11 @@ const TableManagement = () => {
               }`}
             >
               {floor}
+              {floor !== 'All' && (
+                <span className="ml-1.5 text-[10px] opacity-70">
+                  ({tables.filter(t => t.floor === floor).length})
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -156,7 +199,11 @@ const TableManagement = () => {
         <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-300">
           <Table2 size={40} className="mx-auto text-gray-300 mb-3" />
           <p className="text-gray-500 font-medium">No tables yet</p>
-          <p className="text-gray-400 text-sm mt-1">Click "Add Table" to create your first table</p>
+          <p className="text-gray-400 text-sm mt-1">
+            {allFloors.length === 0
+              ? 'First add floors via "Manage Floors", then add tables'
+              : 'Click "Add Table" to add tables'}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -166,9 +213,7 @@ const TableManagement = () => {
               <div
                 key={table.table_id}
                 className={`relative rounded-2xl border-2 p-4 text-center transition-all ${
-                  isOccupied
-                    ? 'border-red-300 bg-red-50'
-                    : 'border-green-300 bg-green-50'
+                  isOccupied ? 'border-red-300 bg-red-50' : 'border-green-300 bg-green-50'
                 }`}
               >
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2 ${
@@ -177,6 +222,9 @@ const TableManagement = () => {
                   <Table2 size={20} className={isOccupied ? 'text-red-600' : 'text-green-600'} />
                 </div>
                 <div className="font-black text-gray-800 text-sm">{table.table_name}</div>
+                {table.floor && (
+                  <div className="text-[10px] text-gray-400 mt-0.5">{table.floor}</div>
+                )}
                 <div className="text-xs text-gray-500 mt-0.5 flex items-center justify-center gap-1">
                   <Users size={10} /> {table.capacity} seats
                 </div>
@@ -203,25 +251,89 @@ const TableManagement = () => {
         </div>
       )}
 
-      {/* Add/Edit Modal */}
+      {/* ── Manage Floors Modal ── */}
+      {showFloorModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowFloorModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <Layers size={18} className="text-orange-500" /> Floors / Areas / Sections
+              </h3>
+              <button onClick={() => setShowFloorModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+
+            {/* Add new floor */}
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                placeholder="e.g. Ground Floor, Rooftop..."
+                value={newFloorName}
+                onChange={e => setNewFloorName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addFloor()}
+                className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                autoFocus
+              />
+              <button
+                onClick={addFloor}
+                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold text-sm transition-colors"
+              >
+                Add
+              </button>
+            </div>
+
+            {/* Floor list */}
+            {allFloors.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-4">No floors yet — type a name and click Add</p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {allFloors.map(floor => {
+                  const count = tables.filter(t => t.floor === floor).length;
+                  return (
+                    <div key={floor} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5">
+                      <div>
+                        <span className="font-semibold text-gray-800 text-sm">{floor}</span>
+                        <span className="text-xs text-gray-400 ml-2">{count} table{count !== 1 ? 's' : ''}</span>
+                      </div>
+                      <button
+                        onClick={() => deleteFloor(floor)}
+                        className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete floor"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowFloorModal(false)}
+              className="w-full mt-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold text-sm transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add / Edit Table Modal ── */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-base font-bold text-gray-900">{editingTable ? 'Edit Table' : 'Add New Table'}</h3>
-              <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={20} />
-              </button>
+              <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Table Name *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Table Name / Number *</label>
                 <input
                   type="text"
                   value={form.table_name}
                   onChange={e => setForm(f => ({ ...f, table_name: e.target.value }))}
-                  placeholder="e.g. Table 1, Window Table, VIP-01"
+                  placeholder="e.g. T-01, Window Table, VIP Booth"
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
                   autoFocus
                   onKeyDown={e => e.key === 'Enter' && handleSubmit()}
@@ -229,16 +341,41 @@ const TableManagement = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Floor / Area</label>
-                <select
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                  Floor / Area / Section
+                  {allFloors.length === 0 && (
+                    <span className="text-orange-500 ml-1">(add floors via Manage Floors)</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  list="floor-options"
                   value={form.floor}
                   onChange={e => setForm(f => ({ ...f, floor: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none bg-white"
-                >
-                  {FLOORS.map(floor => (
-                    <option key={floor} value={floor}>{floor}</option>
-                  ))}
-                </select>
+                  placeholder="Select or type a floor name"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                />
+                <datalist id="floor-options">
+                  {allFloors.map(floor => <option key={floor} value={floor} />)}
+                </datalist>
+                {allFloors.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {allFloors.map(floor => (
+                      <button
+                        key={floor}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, floor }))}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                          form.floor === floor
+                            ? 'bg-orange-500 text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-700'
+                        }`}
+                      >
+                        {floor}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -247,8 +384,7 @@ const TableManagement = () => {
                   type="number"
                   value={form.capacity}
                   onChange={e => setForm(f => ({ ...f, capacity: e.target.value }))}
-                  min="1"
-                  max="50"
+                  min="1" max="50"
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
                 />
               </div>

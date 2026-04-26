@@ -13,6 +13,116 @@ import RegisterCloseModal from '../../components/RegisterCloseModal';
 import ProductVariantModal from '../../components/ProductVariantModal';
 import api from '../../utils/api';
 
+// ── TableSearchInput ─────────────────────────────────────────
+const TableSearchInput = ({
+  tables, selectedTableId, onSelect, onClear,
+}: {
+  tables: any[];
+  selectedTableId: number | null;
+  onSelect: (id: number) => void;
+  onClear: () => void;
+}) => {
+  const [query, setQuery] = useState('');
+  const [showDrop, setShowDrop] = useState(false);
+  const [occupiedAlert, setOccupiedAlert] = useState<string | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setShowDrop(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const selectedTable = tables.find(t => t.table_id === selectedTableId);
+
+  const filtered = query.trim()
+    ? tables.filter(t => t.table_name.toLowerCase().includes(query.toLowerCase()))
+    : tables;
+
+  const handlePick = (table: any) => {
+    if (Number(table.has_pending_order) > 0) {
+      setOccupiedAlert(table.table_name);
+      setQuery('');
+      setShowDrop(false);
+      return;
+    }
+    onSelect(table.table_id);
+    setQuery('');
+    setShowDrop(false);
+  };
+
+  return (
+    <div className="bg-orange-50 border-b border-orange-100 px-4 py-3 flex-shrink-0">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-bold text-orange-700 uppercase tracking-wider flex items-center gap-1.5">
+          <Table2 size={12} /> Table
+        </span>
+        {selectedTableId && (
+          <button onClick={onClear} className="text-xs text-red-500 hover:text-red-700 font-medium">Clear</button>
+        )}
+      </div>
+
+      {selectedTable ? (
+        <div className="flex items-center gap-2 bg-orange-500 text-white rounded-xl px-3 py-2">
+          <Table2 size={14} />
+          <span className="font-bold text-sm flex-1">{selectedTable.table_name}</span>
+          {selectedTable.floor && <span className="text-orange-200 text-xs">{selectedTable.floor}</span>}
+          <button onClick={onClear} className="text-orange-200 hover:text-white"><X size={14} /></button>
+        </div>
+      ) : (
+        <div className="relative" ref={ref}>
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 pointer-events-none" size={14} />
+          <input
+            type="text"
+            placeholder={tables.length === 0 ? 'No tables — add in Restaurant module' : 'Search table number...'}
+            disabled={tables.length === 0}
+            className="w-full pl-9 pr-4 py-2 bg-white border border-orange-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 outline-none disabled:opacity-50"
+            value={query}
+            onChange={e => { setQuery(e.target.value); setShowDrop(true); setOccupiedAlert(null); }}
+            onFocus={() => setShowDrop(true)}
+          />
+          {showDrop && filtered.length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-auto z-40">
+              {filtered.map((table: any) => {
+                const isOccupied = Number(table.has_pending_order) > 0;
+                return (
+                  <button
+                    key={table.table_id}
+                    onClick={() => handlePick(table)}
+                    className={`w-full text-left px-3 py-2.5 flex items-center justify-between text-sm border-b border-gray-100 last:border-0 transition-colors ${
+                      isOccupied ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-orange-50'
+                    }`}
+                  >
+                    <div>
+                      <span className="font-bold text-gray-800">{table.table_name}</span>
+                      {table.floor && <span className="text-xs text-gray-400 ml-2">{table.floor}</span>}
+                    </div>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                      isOccupied ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
+                    }`}>
+                      {isOccupied ? 'Busy' : 'Free'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {occupiedAlert && (
+        <div className="mt-2 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-xs font-medium">
+          <X size={13} className="shrink-0 text-red-500" />
+          <span><strong>{occupiedAlert}</strong> is currently occupied. Choose another table.</span>
+          <button onClick={() => setOccupiedAlert(null)} className="ml-auto text-red-400 hover:text-red-600"><X size={12} /></button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const POS = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1057,44 +1167,14 @@ const POS = () => {
           </div>
         )}
 
-        {/* ── Dine-In: Table Selector ── */}
+        {/* ── Dine-In: Table Search Input ── */}
         {orderType === 'dine_in' && (
-          <div className="bg-orange-50 border-b border-orange-100 px-4 py-3 flex-shrink-0">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-orange-700 uppercase tracking-wider flex items-center gap-1.5">
-                <Table2 size={12} /> Select Table
-              </span>
-              {selectedTableId && (
-                <button onClick={() => setSelectedTableId(null)} className="text-xs text-red-500 hover:text-red-700 font-medium">Clear</button>
-              )}
-            </div>
-            {tables.length === 0 ? (
-              <p className="text-xs text-orange-400 text-center py-1">No tables configured — add tables in Restaurant module</p>
-            ) : (
-              <div className="grid grid-cols-4 gap-1.5 max-h-28 overflow-y-auto">
-                {tables.map((table: any) => {
-                  const isOccupied = Number(table.has_pending_order) > 0;
-                  const isSelected = selectedTableId === table.table_id;
-                  return (
-                    <button
-                      key={table.table_id}
-                      onClick={() => !isOccupied && setSelectedTableId(table.table_id)}
-                      className={`py-2 px-1 rounded-lg text-xs font-bold transition-all text-center leading-tight ${
-                        isSelected
-                          ? 'bg-orange-500 text-white shadow-md ring-2 ring-orange-300'
-                          : isOccupied
-                          ? 'bg-red-100 text-red-400 cursor-not-allowed'
-                          : 'bg-white text-gray-700 hover:bg-orange-100 hover:text-orange-700 border border-gray-200'
-                      }`}
-                    >
-                      {table.table_name}
-                      {isOccupied && <div className="text-[9px] opacity-70 font-normal">Busy</div>}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <TableSearchInput
+            tables={tables}
+            selectedTableId={selectedTableId}
+            onSelect={setSelectedTableId}
+            onClear={() => setSelectedTableId(null)}
+          />
         )}
 
         {/* ── Dine-In / Takeaway: Customer Panel ── */}
