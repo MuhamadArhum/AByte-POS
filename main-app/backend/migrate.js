@@ -97,10 +97,11 @@ async function runMigration(conn, dbName) {
     `ALTER TABLE receipt_vouchers
        ADD COLUMN IF NOT EXISTS main_account_id INT NULL`,
 
-    // sales - restaurant features
+    // sales - restaurant features + KOT tracking
     `ALTER TABLE sales
        ADD COLUMN IF NOT EXISTS table_id INT NULL,
-       ADD COLUMN IF NOT EXISTS order_type VARCHAR(20) DEFAULT 'on_spot'`,
+       ADD COLUMN IF NOT EXISTS order_type VARCHAR(20) DEFAULT 'on_spot',
+       ADD COLUMN IF NOT EXISTS kot_printed TINYINT(1) DEFAULT 0`,
   ];
 
   for (const sql of alters) {

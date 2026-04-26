@@ -647,13 +647,17 @@ const POS = () => {
       };
 
       const res = await api.post('/sales', payload);
+      const newSaleId = res.data?.sale_id || null;
       clearCart();
       setSelectedTableId(null);
       fetchTables();
       const token = res.data?.token_no || null;
       setHoldToken(token);
       setTimeout(() => setHoldToken(null), 5000);
-      if (orderType === 'dine_in') handlePrintKOT();
+      if (orderType === 'dine_in') {
+        handlePrintKOT();
+        if (newSaleId) api.patch(`/sales/${newSaleId}/kot-printed`).catch(() => {});
+      }
     } catch (error) {
       console.error('Failed to hold order', error);
       alert('Failed to hold order');
@@ -1571,16 +1575,6 @@ const POS = () => {
                     <DollarSign size={16} /> Pay Now <span className="text-white/60 text-xs">F9</span>
                   </button>
                 </div>
-                {/* KOT Print only button */}
-                {(orderType === 'dine_in' || orderType === 'takeaway') && (
-                  <button
-                    onClick={handlePrintKOT}
-                    disabled={cart.length === 0}
-                    className="w-full flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 text-white py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <Printer size={15} /> Print KOT Only
-                  </button>
-                )}
                 {(user?.role_name === 'Admin' || user?.role_name === 'Manager') && (
                   <button
                     onClick={() => { setQtValidUntil(''); setQtNotes(''); setShowQuotationModal(true); }}

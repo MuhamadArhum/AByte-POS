@@ -370,6 +370,17 @@ exports.completeSale = async (req, res) => {
   }
 };
 
+// --- Mark KOT as Printed ---
+exports.markKotPrinted = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('UPDATE sales SET kot_printed = 1 WHERE sale_id = ?', [id]);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ message: 'Failed to update KOT status' });
+  }
+};
+
 // --- Update Items of a Pending Sale (Edit mode) ---
 exports.updateSaleItems = async (req, res) => {
   let conn;

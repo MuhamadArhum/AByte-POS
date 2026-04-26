@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   ShoppingBag, Clock, CheckCircle, DollarSign, User, Calendar, CreditCard,
-  Package, RefreshCw, Edit2, X, Hash, Printer, Archive, LayoutGrid, List
+  Package, RefreshCw, Edit2, X, Hash, Printer, Archive, LayoutGrid, List,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { printReceipt } from '../../utils/receiptPrinter';
 import Pagination from '../../components/Pagination';
 import CompletedOrdersView from '../../components/CompletedOrdersView';
+import { useAuth } from '../../context/AuthContext';
 
 // ─── Bill Preview Modal (active orders) ─────────────────────────────────────
 const ActiveBillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: () => void }) => {
@@ -116,6 +118,8 @@ const StatCard = ({ icon: Icon, label, value, color }: { icon: any; label: strin
 // ─── Main Component ─────────────────────────────────────────────────────────
 const WalkInOrders = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role_name === 'Admin';
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
   const [cs, setCs] = useState('Rs.');
 
@@ -170,6 +174,45 @@ const WalkInOrders = () => {
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to delete order');
     }
+  };
+
+  const handleReprintKOT = async (sale: any) => {
+    const tableName = sale.table_name || (sale.order_type === 'takeaway' ? 'TAKEAWAY' : 'DINE-IN');
+    const kotWin = window.open('', '_blank', 'width=320,height=600');
+    if (!kotWin) return;
+    const items: any[] = sale.items || [];
+    kotWin.document.write(`<!DOCTYPE html><html><head><title>KOT</title>
+      <style>
+        body{font-family:monospace;font-size:13px;padding:12px;margin:0}
+        h2{text-align:center;font-size:15px;margin:0 0 4px}
+        .sub{text-align:center;font-size:11px;color:#555;margin-bottom:6px}
+        hr{border:none;border-top:1px dashed #000;margin:6px 0}
+        .tbl{font-size:16px;font-weight:bold;text-align:center;padding:4px 0}
+        .row{display:flex;gap:8px;padding:3px 0}
+        .qty{font-weight:bold;min-width:28px}
+        .name{flex:1}
+        .reprint{text-align:center;font-size:10px;color:#c00;font-weight:bold;margin-bottom:4px}
+        .footer{text-align:center;font-size:10px;margin-top:8px}
+      </style>
+    </head><body>
+      <h2>KITCHEN ORDER TICKET</h2>
+      <div class="reprint">*** REPRINT ***</div>
+      <div class="sub">${new Date().toLocaleString()}</div>
+      <hr/>
+      <div class="tbl">${tableName}</div>
+      <div class="sub">Token: ${sale.token_no || sale.sale_id}</div>
+      <hr/>
+      ${items.length > 0
+        ? items.map((item: any) => `<div class="row"><span class="qty">${item.quantity}x</span><span class="name">${item.product_name}${item.variant_name ? ` (${item.variant_name})` : ''}</span></div>`).join('')
+        : '<div class="sub">No item details available</div>'
+      }
+      <hr/>
+      <div class="footer">--- KOT END ---</div>
+    </body></html>`);
+    kotWin.document.close();
+    kotWin.focus();
+    setTimeout(() => { kotWin.print(); kotWin.close(); }, 300);
+    await api.patch(`/sales/${sale.sale_id}/kot-printed`).catch(() => {});
   };
 
 
@@ -314,7 +357,16 @@ const WalkInOrders = () => {
                             {new Date(sale.sale_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
-                        <span className="bg-emerald-100 text-emerald-700 text-xs px-2.5 py-1 rounded-full font-bold border border-emerald-200 shrink-0">Active</span>
+                        <div className="flex flex-col items-end gap-1.5 shrink-0">
+                          <span className="bg-emerald-100 text-emerald-700 text-xs px-2.5 py-1 rounded-full font-bold border border-emerald-200">Active</span>
+                          {(sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${
+                              sale.kot_printed ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-orange-100 text-orange-700 border border-orange-200'
+                            }`}>
+                              <UtensilsCrossed size={10} />{sale.kot_printed ? 'KOT Sent' : 'KOT Pending'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="py-3 border-t border-b border-gray-100 space-y-2 flex-1">
                         <div className="flex items-center justify-between text-sm">
@@ -346,6 +398,12 @@ const WalkInOrders = () => {
                             <X size={14} />
                           </button>
                         </div>
+                        {isAdmin && (sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
+                          <button onClick={() => handleReprintKOT(sale)}
+                            className="w-full flex items-center justify-center gap-1.5 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-all border border-orange-200 font-medium text-sm">
+                            <UtensilsCrossed size={14} /> Reprint KOT
+                          </button>
+                        )}
                         <button onClick={() => navigate('/pos', { state: { pendingSale: sale } })}
                           className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-2.5 rounded-lg font-bold hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-md flex items-center justify-center gap-2 text-sm">
                           <CreditCard size={16} /> Checkout
@@ -369,6 +427,7 @@ const WalkInOrders = () => {
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date & Time</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Note</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">KOT</th>
                           <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Actions</th>
                         </tr>
                       </thead>
@@ -390,6 +449,15 @@ const WalkInOrders = () => {
                             </td>
                             <td className="px-4 py-3 text-xs text-gray-500 max-w-[150px] truncate">{sale.note || '—'}</td>
                             <td className="px-4 py-3">
+                              {(sale.order_type === 'dine_in' || sale.order_type === 'takeaway') ? (
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 w-fit ${
+                                  sale.kot_printed ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                                }`}>
+                                  <UtensilsCrossed size={10} />{sale.kot_printed ? 'Sent' : 'Pending'}
+                                </span>
+                              ) : <span className="text-gray-300 text-xs">—</span>}
+                            </td>
+                            <td className="px-4 py-3">
                               <div className="flex items-center justify-center gap-1.5">
                                 <button onClick={() => navigate('/pos', { state: { editOrder: sale } })}
                                   className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit">
@@ -399,6 +467,12 @@ const WalkInOrders = () => {
                                   className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="Print">
                                   <Printer size={15} />
                                 </button>
+                                {isAdmin && (sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
+                                  <button onClick={() => handleReprintKOT(sale)}
+                                    className="p-1.5 text-orange-500 hover:bg-orange-50 rounded-lg transition" title="Reprint KOT (Admin)">
+                                    <UtensilsCrossed size={15} />
+                                  </button>
+                                )}
                                 <button onClick={() => navigate('/pos', { state: { pendingSale: sale } })}
                                   className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Checkout">
                                   <CreditCard size={15} />
