@@ -1011,7 +1011,7 @@ exports.getNextPaymentVoucherNumber = async (req, res) => {
 exports.createPaymentVoucher = async (req, res) => {
   const conn = await getConnection();
   try {
-    const { voucher_number, voucher_date, payment_to, payment_type, account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
+    const { voucher_number, voucher_date, payment_to, payment_type, account_id, main_account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
 
     if (!voucher_date || !payment_to || !account_id || !amount) {
       return res.status(400).json({ message: 'Required fields missing' });
@@ -1035,8 +1035,8 @@ exports.createPaymentVoucher = async (req, res) => {
     await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitIncrease ? amount : -amount, account_id]);
 
     const result = await conn.query(
-      'INSERT INTO payment_vouchers (voucher_number, voucher_date, payment_to, payment_type, account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [voucherNumber, voucher_date, payment_to, payment_type || 'expense', account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
+      'INSERT INTO payment_vouchers (voucher_number, voucher_date, payment_to, payment_type, account_id, main_account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [voucherNumber, voucher_date, payment_to, payment_type || 'expense', account_id, main_account_id || null, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
     );
 
     await conn.commit();
@@ -1150,7 +1150,7 @@ exports.getNextReceiptVoucherNumber = async (req, res) => {
 exports.createReceiptVoucher = async (req, res) => {
   const conn = await getConnection();
   try {
-    const { voucher_number, voucher_date, received_from, receipt_type, account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
+    const { voucher_number, voucher_date, received_from, receipt_type, account_id, main_account_id, amount, payment_method, cheque_number, bank_account_id, description } = req.body;
 
     if (!voucher_date || !received_from || !account_id || !amount) {
       return res.status(400).json({ message: 'Required fields missing' });
@@ -1174,8 +1174,8 @@ exports.createReceiptVoucher = async (req, res) => {
     await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitIncrease ? -amount : amount, account_id]);
 
     const result = await conn.query(
-      'INSERT INTO receipt_vouchers (voucher_number, voucher_date, received_from, receipt_type, account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [voucherNumber, voucher_date, received_from, receipt_type || 'customer', account_id, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
+      'INSERT INTO receipt_vouchers (voucher_number, voucher_date, received_from, receipt_type, account_id, main_account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [voucherNumber, voucher_date, received_from, receipt_type || 'customer', account_id, main_account_id || null, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
     );
 
     await conn.commit();

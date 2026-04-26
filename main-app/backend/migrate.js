@@ -88,6 +88,14 @@ async function runMigration(conn, dbName) {
     `ALTER TABLE audit_logs
        ADD COLUMN IF NOT EXISTS old_values JSON NULL,
        ADD COLUMN IF NOT EXISTS new_values JSON NULL`,
+
+    // payment_vouchers - main account
+    `ALTER TABLE payment_vouchers
+       ADD COLUMN IF NOT EXISTS main_account_id INT NULL`,
+
+    // receipt_vouchers - main account
+    `ALTER TABLE receipt_vouchers
+       ADD COLUMN IF NOT EXISTS main_account_id INT NULL`,
   ];
 
   for (const sql of alters) {

@@ -218,7 +218,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       moduleKey: 'accounts',
       color: 'rose',
       children: [
-        { icon: Banknote, label: 'Cash Position', path: '/cash-position', moduleKey: 'accounts.cash-position' },
         { icon: BookOpen, label: 'Chart of Accounts', path: '/chart-of-accounts', moduleKey: 'accounts.chart' },
         { icon: FileText, label: 'Journal Voucher', path: '/journal-entries', moduleKey: 'accounts.journal' },
         { icon: CreditCard, label: 'Cash Payment Voucher (CPV)', path: '/payment-vouchers', moduleKey: 'accounts.payment-vouchers' },

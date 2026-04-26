@@ -84,6 +84,7 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
   const [accounts, setAccounts] = useState<any[]>([]);
   const [date, setDate] = useState(localToday());
   const [voucherNumber, setVoucherNumber] = useState('');
+  const [mainAccountId, setMainAccountId] = useState('');
   const [savedLines, setSavedLines] = useState<SavedLine[]>([]);
   const [entry, setEntry] = useState({ account_id: '', narration: '', amount: '' });
   const [saving, setSaving] = useState(false);
@@ -107,7 +108,8 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
   };
 
   const saveEntry = async () => {
-    if (!date || !entry.account_id || !entry.amount) { toast.error('Account and Amount are required'); return; }
+    if (!date || !mainAccountId) { toast.error('Main Account is required'); return; }
+    if (!entry.account_id || !entry.amount) { toast.error('Account and Amount are required'); return; }
     const amount = parseFloat(entry.amount);
     if (isNaN(amount) || amount <= 0) { toast.error('Enter a valid amount'); return; }
     setSaving(true);
@@ -119,6 +121,7 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
         voucher_number: voucherNumber,
         voucher_date: date, received_from: entry.narration || '—',
         receipt_type: 'customer', account_id: entry.account_id,
+        main_account_id: mainAccountId,
         amount, payment_method: 'cash', description: entry.narration,
       });
       if (!voucherNumber) setVoucherNumber(res.data.voucher_number);
@@ -186,6 +189,25 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
           </div>
+        </div>
+      </div>
+
+      {/* Main Account Row */}
+      <div className="px-4 sm:px-6 py-3 bg-blue-50 border-b border-blue-100 shrink-0">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider whitespace-nowrap">Main Account</span>
+          <div className="flex-1 min-w-[220px] max-w-xs">
+            <AccountSelector
+              value={mainAccountId}
+              onChange={setMainAccountId}
+              accounts={accounts}
+            />
+          </div>
+          {mainAccountId && (
+            <span className="text-xs text-blue-600 font-medium">
+              {accounts.find(a => String(a.account_id) === mainAccountId)?.account_name}
+            </span>
+          )}
         </div>
       </div>
 
