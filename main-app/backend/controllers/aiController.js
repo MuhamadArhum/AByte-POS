@@ -62,11 +62,11 @@ async function getSystemContext() {
       // ── Top 5 Best-Selling Products (this month) ───────────────────
       query(`
         SELECT p.product_name,
-               SUM(si.quantity) as qty_sold,
-               SUM(si.subtotal) as revenue
-        FROM sale_items si
-        JOIN products p ON si.product_id = p.product_id
-        JOIN sales s    ON si.sale_id    = s.sale_id
+               SUM(sd.quantity) as qty_sold,
+               SUM(sd.subtotal) as revenue
+        FROM sale_details sd
+        JOIN products p ON sd.product_id = p.product_id
+        JOIN sales s    ON sd.sale_id    = s.sale_id
         WHERE YEAR(s.sale_date)  = YEAR(CURDATE())
           AND MONTH(s.sale_date) = MONTH(CURDATE())
         GROUP BY p.product_id, p.product_name
@@ -135,13 +135,13 @@ async function getSystemContext() {
         WHERE status = 'active'
       `),
 
-      // ── Expenses: This Month ───────────────────────────────────────
+      // ── Expenses: This Month (via CPV payment vouchers) ───────────
       query(`
         SELECT COALESCE(SUM(amount), 0) as total_expense,
                COUNT(*) as expense_count
-        FROM expenses
-        WHERE YEAR(expense_date)  = YEAR(CURDATE())
-          AND MONTH(expense_date) = MONTH(CURDATE())
+        FROM payment_vouchers
+        WHERE YEAR(voucher_date)  = YEAR(CURDATE())
+          AND MONTH(voucher_date) = MONTH(CURDATE())
       `),
 
       // ── Cash Register Status ───────────────────────────────────────
@@ -181,12 +181,12 @@ async function getSystemContext() {
       // ── Sales by Category (this month) ────────────────────────────
       query(`
         SELECT cat.category_name,
-               SUM(si.quantity) as qty_sold,
-               SUM(si.subtotal) as revenue
-        FROM sale_items si
-        JOIN products  p   ON si.product_id   = p.product_id
+               SUM(sd.quantity) as qty_sold,
+               SUM(sd.subtotal) as revenue
+        FROM sale_details sd
+        JOIN products  p   ON sd.product_id   = p.product_id
         JOIN categories cat ON p.category_id  = cat.category_id
-        JOIN sales      s   ON si.sale_id     = s.sale_id
+        JOIN sales      s   ON sd.sale_id     = s.sale_id
         WHERE YEAR(s.sale_date)  = YEAR(CURDATE())
           AND MONTH(s.sale_date) = MONTH(CURDATE())
         GROUP BY cat.category_id, cat.category_name
