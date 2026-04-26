@@ -157,7 +157,7 @@ function App() {
                       <Route path="/sales-reports" element={<PermissionGuard moduleKey="sales.reports"><SalesReports /></PermissionGuard>} />
                       <Route path="/sales-analytics" element={<PermissionGuard moduleKey="sales.reports"><SalesAnalytics /></PermissionGuard>} />
                       {/* Restaurant */}
-                      <Route path="/restaurant/tables" element={<TableManagement />} />
+                      <Route path="/restaurant/tables" element={<PermissionGuard moduleKey="restaurant.tables"><TableManagement /></PermissionGuard>} />
 
                       {/* Inventory */}
                       <Route path="/inventory" element={<PermissionGuard moduleKey="inventory.products"><Inventory /></PermissionGuard>} />

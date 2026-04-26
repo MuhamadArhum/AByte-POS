@@ -146,7 +146,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: TrendingUp, label: 'Sales Analytics', path: '/sales-analytics', moduleKey: 'sales.reports' },
         // ── RESTAURANT ──
         { icon: UtensilsCrossed, label: 'RESTAURANT', isSection: true } as any,
-        { icon: Table2, label: 'Tables', path: '/restaurant/tables', moduleKey: 'sales.pos' },
+        { icon: Table2, label: 'Tables', path: '/restaurant/tables', moduleKey: 'restaurant.tables' },
         { icon: Users, label: 'Customers', path: '/customers', moduleKey: 'sales.customers' },
       ]
     },
