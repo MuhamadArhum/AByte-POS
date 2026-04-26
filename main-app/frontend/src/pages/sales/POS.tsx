@@ -54,9 +54,9 @@ const TableSearchInput = ({
   };
 
   return (
-    <div className="bg-orange-50 border-b border-orange-100 px-4 py-3 flex-shrink-0">
+    <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex-shrink-0">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-bold text-orange-700 uppercase tracking-wider flex items-center gap-1.5">
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
           <Table2 size={12} /> Table
         </span>
         {selectedTableId && (
@@ -65,26 +65,26 @@ const TableSearchInput = ({
       </div>
 
       {selectedTable ? (
-        <div className="flex items-center gap-2 bg-orange-500 text-white rounded-xl px-3 py-2">
+        <div className="flex items-center gap-2 bg-emerald-600 text-white rounded-lg px-3 py-2">
           <Table2 size={14} />
-          <span className="font-bold text-sm flex-1">{selectedTable.table_name}</span>
-          {selectedTable.floor && <span className="text-orange-200 text-xs">{selectedTable.floor}</span>}
-          <button onClick={onClear} className="text-orange-200 hover:text-white"><X size={14} /></button>
+          <span className="font-semibold text-sm flex-1">{selectedTable.table_name}</span>
+          {selectedTable.floor && <span className="text-emerald-200 text-xs">{selectedTable.floor}</span>}
+          <button onClick={onClear} className="text-emerald-200 hover:text-white"><X size={14} /></button>
         </div>
       ) : (
         <div className="relative" ref={ref}>
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-400 pointer-events-none" size={14} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
           <input
             type="text"
-            placeholder={tables.length === 0 ? 'No tables — add in Restaurant module' : 'Search table number...'}
+            placeholder={tables.length === 0 ? 'No tables — add via Restaurant module' : 'Search table...'}
             disabled={tables.length === 0}
-            className="w-full pl-9 pr-4 py-2 bg-white border border-orange-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 outline-none disabled:opacity-50"
+            className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none disabled:opacity-50"
             value={query}
             onChange={e => { setQuery(e.target.value); setShowDrop(true); setOccupiedAlert(null); }}
             onFocus={() => setShowDrop(true)}
           />
           {showDrop && filtered.length > 0 && (
-            <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-auto z-40">
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-auto z-40">
               {filtered.map((table: any) => {
                 const isOccupied = Number(table.has_pending_order) > 0;
                 return (
@@ -92,15 +92,15 @@ const TableSearchInput = ({
                     key={table.table_id}
                     onClick={() => handlePick(table)}
                     className={`w-full text-left px-3 py-2.5 flex items-center justify-between text-sm border-b border-gray-100 last:border-0 transition-colors ${
-                      isOccupied ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-orange-50'
+                      isOccupied ? 'hover:bg-red-50' : 'hover:bg-emerald-50'
                     }`}
                   >
                     <div>
-                      <span className="font-bold text-gray-800">{table.table_name}</span>
+                      <span className="font-semibold text-gray-800">{table.table_name}</span>
                       {table.floor && <span className="text-xs text-gray-400 ml-2">{table.floor}</span>}
                     </div>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                      isOccupied ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                      isOccupied ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700'
                     }`}>
                       {isOccupied ? 'Busy' : 'Free'}
                     </span>
