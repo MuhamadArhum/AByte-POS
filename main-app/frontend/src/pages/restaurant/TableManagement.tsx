@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, UtensilsCrossed, Table2, Users, X, Check } from 'lucide-react';
 import api from '../../utils/api';
-import toast from 'react-hot-toast';
+import { useToast } from '../../components/Toast';
 
 interface RestaurantTable {
   table_id: number;
@@ -15,6 +15,7 @@ interface RestaurantTable {
 const FLOORS = ['Main', 'Ground Floor', 'First Floor', 'Second Floor', 'Rooftop', 'Outdoor'];
 
 const TableManagement = () => {
+  const { success: toastSuccess, error: toastError } = useToast();
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -28,7 +29,7 @@ const TableManagement = () => {
       const res = await api.get('/restaurant/tables');
       setTables(Array.isArray(res.data) ? res.data : []);
     } catch {
-      toast.error('Failed to load tables');
+      toastError('Failed to load tables');
     } finally {
       setLoading(false);
     }
@@ -54,15 +55,15 @@ const TableManagement = () => {
     try {
       if (editingTable) {
         await api.put(`/restaurant/tables/${editingTable.table_id}`, form);
-        toast.success('Table updated');
+        toastSuccess('Table updated');
       } else {
         await api.post('/restaurant/tables', form);
-        toast.success('Table added');
+        toastSuccess('Table added');
       }
       setShowForm(false);
       fetchTables();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to save');
+      toastError(err.response?.data?.message || 'Failed to save');
     } finally {
       setSaving(false);
     }
@@ -70,16 +71,16 @@ const TableManagement = () => {
 
   const handleDelete = async (table: RestaurantTable) => {
     if (Number(table.has_pending_order) > 0) {
-      toast.error('Cannot delete a table with active orders');
+      toastError('Cannot delete a table with active orders');
       return;
     }
     if (!confirm(`Delete table "${table.table_name}"?`)) return;
     try {
       await api.delete(`/restaurant/tables/${table.table_id}`);
-      toast.success('Table deleted');
+      toastSuccess('Table deleted');
       fetchTables();
     } catch {
-      toast.error('Failed to delete');
+      toastError('Failed to delete');
     }
   };
 
