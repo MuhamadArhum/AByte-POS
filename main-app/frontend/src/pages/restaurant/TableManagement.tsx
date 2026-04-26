@@ -50,7 +50,7 @@ const TableManagement = () => {
   };
 
   const handleSubmit = async () => {
-    if (!form.table_name.trim()) { toast.error('Table name is required'); return; }
+    if (!form.table_name.trim()) { toastError('Table name is required'); return; }
     setSaving(true);
     try {
       if (editingTable) {
