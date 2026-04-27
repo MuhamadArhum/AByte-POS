@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Book, RefreshCw, Printer, Search, ChevronDown, TrendingUp, TrendingDown } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
@@ -85,9 +85,16 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-PK', { day: '2
 const GeneralLedger = () => {
   const toast = useToast();
   const [accounts, setAccounts] = useState<any[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState('');
-  const [fromDate, setFromDate] = useState(localMonthStart());
-  const [toDate, setToDate] = useState(localToday());
+
+  // Read URL params — set by Trial Balance 6 Col when opening in new tab
+  const urlParams  = new URLSearchParams(window.location.search);
+  const paramAccId = urlParams.get('account_id') || '';
+  const paramFrom  = urlParams.get('from_date')  || localMonthStart();
+  const paramTo    = urlParams.get('to_date')    || localToday();
+
+  const [selectedAccount, setSelectedAccount] = useState(paramAccId);
+  const [fromDate, setFromDate] = useState(paramFrom);
+  const [toDate, setToDate]     = useState(paramTo);
 
   const [loading, setLoading] = useState(false);
   const [ledgerData, setLedgerData] = useState<any[]>([]);
@@ -97,11 +104,11 @@ const GeneralLedger = () => {
 
   useEffect(() => {
     api.get('/accounting/accounts', { params: { tree: 1 } })
-      .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active && a.level === 4)))
+      .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active && a.level >= 4)))
       .catch(() => {});
   }, []);
 
-  const fetchLedger = async (page = 1) => {
+  const fetchLedger = useCallback(async (page = 1) => {
     if (!selectedAccount) { toast.error('Please select an account first'); return; }
     setLoading(true);
     try {
@@ -117,7 +124,14 @@ const GeneralLedger = () => {
     } finally {
       setLoading(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAccount, fromDate, toDate]);
+
+  // Auto-load when opened from Trial Balance via URL params
+  useEffect(() => {
+    if (paramAccId && accounts.length > 0) fetchLedger(1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accounts]);
 
   // Compute running balance from opening balance
   const debitIncrease = accountInfo ? ['asset', 'expense'].includes(accountInfo.account_type) : true;

@@ -223,11 +223,17 @@ const TrialBalance6Col = () => {
   const [levels, setLevels] = useState({ l1: true, l2: true, l3: true, l4: true });
   const [showZero, setShowZero] = useState(false);
 
+
   useEffect(() => {
     api.get('/accounting/accounts', { params: { tree: 1 } })
       .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active)))
       .catch(() => {});
   }, []);
+
+  const openLedger = (accountId: number) => {
+    const url = `/general-ledger?account_id=${accountId}&from_date=${fromDate}&to_date=${toDate}`;
+    window.open(url, '_blank');
+  };
 
   const generate = async () => {
     if (!fromDate || !toDate) { toast.error('Select date range'); return; }
@@ -528,7 +534,18 @@ const TrialBalance6Col = () => {
                     {/* Account Description (code + name, indented) */}
                     <td className={descClass(row)}>
                       <span className="font-mono text-gray-400 mr-2 text-xs">{row.account_code}</span>
-                      {row.account_name}
+                      {row.level >= 4 ? (
+                        <button
+                          type="button"
+                          onClick={() => openLedger(row.account_id)}
+                          className="hover:text-emerald-700 hover:underline transition-colors text-left cursor-pointer"
+                          title="Open Ledger in new tab"
+                        >
+                          {row.account_name}
+                        </button>
+                      ) : (
+                        row.account_name
+                      )}
                     </td>
 
                     {/* Opening Balance */}
@@ -588,6 +605,7 @@ const TrialBalance6Col = () => {
           </div>
         )}
       </div>
+
     </div>
   );
 };
