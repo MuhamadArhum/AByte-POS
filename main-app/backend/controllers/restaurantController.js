@@ -41,10 +41,16 @@ exports.updateTable = async (req, res) => {
   try {
     const { id } = req.params;
     const { table_name, floor, capacity } = req.body;
-    await query(
+    if (!table_name || !table_name.trim()) {
+      return res.status(400).json({ message: 'Table name is required' });
+    }
+    const result = await query(
       'UPDATE restaurant_tables SET table_name = ?, floor = ?, capacity = ? WHERE table_id = ?',
-      [table_name, floor || 'Main', parseInt(capacity) || 4, id]
+      [table_name.trim(), floor || 'Main', parseInt(capacity) || 4, id]
     );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Table not found' });
+    }
     res.json({ message: 'Table updated' });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -54,7 +60,10 @@ exports.updateTable = async (req, res) => {
 exports.deleteTable = async (req, res) => {
   try {
     const { id } = req.params;
-    await query('DELETE FROM restaurant_tables WHERE table_id = ?', [id]);
+    const result = await query('DELETE FROM restaurant_tables WHERE table_id = ?', [id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Table not found' });
+    }
     res.json({ message: 'Table deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });

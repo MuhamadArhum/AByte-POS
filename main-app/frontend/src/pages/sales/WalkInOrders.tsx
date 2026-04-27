@@ -177,10 +177,16 @@ const WalkInOrders = () => {
   };
 
   const handleReprintKOT = async (sale: any) => {
-    const tableName = sale.table_name || (sale.order_type === 'takeaway' ? 'TAKEAWAY' : 'DINE-IN');
+    let fullSale = sale;
+    try {
+      const res = await api.get(`/sales/${sale.sale_id}`);
+      fullSale = { ...sale, ...res.data };
+    } catch { /* fallback to header-only data */ }
+
+    const tableName = fullSale.table_name || (fullSale.order_type === 'takeaway' ? 'TAKEAWAY' : 'DINE-IN');
     const kotWin = window.open('', '_blank', 'width=320,height=600');
     if (!kotWin) return;
-    const items: any[] = sale.items || [];
+    const items: any[] = fullSale.items || [];
     kotWin.document.write(`<!DOCTYPE html><html><head><title>KOT</title>
       <style>
         body{font-family:monospace;font-size:13px;padding:12px;margin:0}

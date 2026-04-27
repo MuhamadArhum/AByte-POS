@@ -49,10 +49,16 @@ exports.updatePermissions = async (req, res) => {
   const { role } = req.params;
   const { permissions } = req.body;
 
-  const roleRows = await query("SELECT role_name FROM roles WHERE role_name = ? AND role_name != 'Admin'", [role]);
-  if (roleRows.length === 0) {
-    return res.status(400).json({ message: 'Invalid role.' });
+  try {
+    const roleRows = await query("SELECT role_name FROM roles WHERE role_name = ? AND role_name != 'Admin'", [role]);
+    if (roleRows.length === 0) {
+      return res.status(400).json({ message: 'Invalid role.' });
+    }
+  } catch (err) {
+    console.error('updatePermissions role check error:', err);
+    return res.status(500).json({ message: 'Server error' });
   }
+
   if (!Array.isArray(permissions)) {
     return res.status(400).json({ message: 'permissions must be an array of module keys.' });
   }

@@ -142,12 +142,12 @@ function App() {
                       {/* Unguarded - all authenticated users */}
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/pos" element={<POS />} />
-                      <Route path="/orders" element={<Orders />} />
                       <Route path="/walk-in-orders" element={<WalkInOrders />} />
                       <Route path="/cash-register" element={<CashRegister />} />
-                      <Route path="/customers" element={<PermissionGuard moduleKey="sales.customers"><Customers /></PermissionGuard>} />
 
                       {/* Sales */}
+                      <Route path="/orders" element={<PermissionGuard moduleKey="sales.orders"><Orders /></PermissionGuard>} />
+                      <Route path="/customers" element={<PermissionGuard moduleKey="sales.customers"><Customers /></PermissionGuard>} />
                       <Route path="/returns" element={<PermissionGuard moduleKey="sales.returns"><Returns /></PermissionGuard>} />
                       <Route path="/quotations" element={<PermissionGuard moduleKey="sales.quotations"><Quotations /></PermissionGuard>} />
                       <Route path="/credit-sales" element={<PermissionGuard moduleKey="sales.credit"><CreditSales /></PermissionGuard>} />
