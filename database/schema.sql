@@ -76,16 +76,11 @@ CREATE TABLE IF NOT EXISTS account_groups (
 );
 
 INSERT IGNORE INTO account_groups (group_id, group_name, group_type, description) VALUES
-(1, 'Current Assets', 'asset', 'Cash, inventory, accounts receivable'),
-(2, 'Fixed Assets', 'asset', 'Property, equipment, vehicles'),
-(3, 'Current Liabilities', 'liability', 'Accounts payable, short-term loans'),
-(4, 'Long-term Liabilities', 'liability', 'Long-term loans, mortgages'),
-(5, 'Equity', 'equity', 'Owner equity, retained earnings'),
-(6, 'Sales Revenue', 'revenue', 'Product and service sales'),
-(7, 'Other Revenue', 'revenue', 'Interest, gains'),
-(8, 'Cost of Goods Sold', 'expense', 'Direct costs'),
-(9, 'Operating Expenses', 'expense', 'Salaries, rent, utilities'),
-(10, 'Other Expenses', 'expense', 'Interest, losses');
+(1, 'Assets',      'asset',     'All asset accounts'),
+(2, 'Liabilities', 'liability', 'All liability accounts'),
+(3, 'Equity',      'equity',    'Owner equity and retained earnings'),
+(4, 'Revenue',     'revenue',   'All income and revenue'),
+(5, 'Expenses',    'expense',   'All expense accounts');
 
 -- ============================================================
 -- LEVEL 1: Depends on Level 0
@@ -136,24 +131,12 @@ CREATE TABLE IF NOT EXISTS accounts (
     INDEX idx_level (level)
 );
 
-INSERT IGNORE INTO accounts (account_code, account_name, group_id, account_type, level, is_system, opening_balance) VALUES
-('1001', 'Cash in Hand', 1, 'asset', 1, 1, 0),
-('1002', 'Cash at Bank', 1, 'asset', 1, 1, 0),
-('1003', 'Accounts Receivable', 1, 'asset', 1, 1, 0),
-('1004', 'Inventory', 1, 'asset', 1, 1, 0),
-('1101', 'Furniture & Fixtures', 2, 'asset', 1, 1, 0),
-('1102', 'Equipment', 2, 'asset', 1, 1, 0),
-('2001', 'Accounts Payable', 3, 'liability', 1, 1, 0),
-('2002', 'Short-term Loans', 3, 'liability', 1, 1, 0),
-('3001', 'Owner Capital', 5, 'equity', 1, 1, 0),
-('3002', 'Retained Earnings', 5, 'equity', 1, 1, 0),
-('4001', 'Product Sales', 6, 'revenue', 1, 1, 0),
-('4002', 'Service Revenue', 6, 'revenue', 1, 1, 0),
-('5001', 'Cost of Goods Sold', 8, 'expense', 1, 1, 0),
-('6001', 'Salaries Expense', 9, 'expense', 1, 1, 0),
-('6002', 'Rent Expense', 9, 'expense', 1, 1, 0),
-('6003', 'Utilities Expense', 9, 'expense', 1, 1, 0),
-('6004', 'Office Supplies', 9, 'expense', 1, 1, 0);
+INSERT IGNORE INTO accounts (account_id, account_code, account_name, group_id, account_type, level, is_system, opening_balance) VALUES
+(1, '10000', 'Assets',      1, 'asset',     1, 1, 0),
+(2, '20000', 'Liabilities', 2, 'liability', 1, 1, 0),
+(3, '30000', 'Equity',      3, 'equity',    1, 1, 0),
+(4, '40000', 'Revenue',     4, 'revenue',   1, 1, 0),
+(5, '50000', 'Expenses',    5, 'expense',   1, 1, 0);
 
 -- ============================================================
 -- LEVEL 2: Depends on Level 1
