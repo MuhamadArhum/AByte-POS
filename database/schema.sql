@@ -79,8 +79,8 @@ INSERT IGNORE INTO account_groups (group_id, group_name, group_type, description
 (1, 'Assets',      'asset',     'All asset accounts'),
 (2, 'Liabilities', 'liability', 'All liability accounts'),
 (3, 'Equity',      'equity',    'Owner equity and retained earnings'),
-(4, 'Revenue',     'revenue',   'All income and revenue'),
-(5, 'Expenses',    'expense',   'All expense accounts');
+(4, 'Expenses',    'expense',   'All expense accounts'),
+(5, 'Revenue',     'revenue',   'All income and revenue');
 
 -- ============================================================
 -- LEVEL 1: Depends on Level 0
@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     role_id INT NOT NULL,
     role_name VARCHAR(50) NOT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (role_id) REFERENCES roles(role_id)
 );
@@ -135,8 +136,8 @@ INSERT IGNORE INTO accounts (account_id, account_code, account_name, group_id, a
 (1, '10000', 'Assets',      1, 'asset',     1, 1, 0),
 (2, '20000', 'Liabilities', 2, 'liability', 1, 1, 0),
 (3, '30000', 'Equity',      3, 'equity',    1, 1, 0),
-(4, '40000', 'Revenue',     4, 'revenue',   1, 1, 0),
-(5, '50000', 'Expenses',    5, 'expense',   1, 1, 0);
+(4, '40000', 'Expenses',    4, 'expense',   1, 1, 0),
+(5, '50000', 'Revenue',     5, 'revenue',   1, 1, 0);
 
 -- ============================================================
 -- LEVEL 2: Depends on Level 1

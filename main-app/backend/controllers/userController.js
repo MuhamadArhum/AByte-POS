@@ -15,7 +15,7 @@ const { logAction } = require('../services/auditService');
 exports.getAll = async (req, res) => {
   try {
     const rows = await query(
-      'SELECT u.user_id, u.username, u.name, u.email, u.role_id, r.role_name as role, u.created_at FROM users u JOIN roles r ON u.role_id = r.role_id ORDER BY u.created_at DESC'
+      'SELECT u.user_id, u.username, u.name, u.email, u.role_id, r.role_name as role, u.created_at FROM users u JOIN roles r ON u.role_id = r.role_id WHERE u.is_active = 1 ORDER BY u.created_at DESC'
     );
     res.json({ data: rows });
   } catch (err) {
@@ -129,21 +129,18 @@ exports.update = async (req, res) => {
 };
 
 // --- Delete User ---
-// Deletes a user from the system.
-// SAFETY CHECK: Cannot delete a user who has processed sales (to preserve sale history).
+// Soft-deletes a user by setting is_active = 0.
+// History (sales, vouchers, etc.) remains intact with original user reference.
 exports.remove = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if this user has any sales records
-    // LIMIT 1 for efficiency - we only need to know if at least one exists
-    const sales = await query('SELECT sale_id FROM sales WHERE user_id = ? LIMIT 1', [id]);
-    if (sales.length > 0) {
-      return res.status(400).json({ message: 'Cannot delete user with sales history' });
+    const existing = await query('SELECT user_id FROM users WHERE user_id = ? AND is_active = 1', [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
     }
 
-    // Safe to delete - no sales history
-    await query('DELETE FROM users WHERE user_id = ?', [id]);
+    await query('UPDATE users SET is_active = 0 WHERE user_id = ?', [id]);
 
     await logAction(req.user.user_id, req.user.name, 'USER_DELETED', 'user', parseInt(id), {}, req.ip);
 
