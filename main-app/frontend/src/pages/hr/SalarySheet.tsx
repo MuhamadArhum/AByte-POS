@@ -210,7 +210,7 @@ const SalarySheet = () => {
 
   // ── CSV Export ──
   const exportCSV = () => {
-    const headers = ['Emp ID','Name','Dept','Designation','Present','Absent','Half Days','Allowed Leaves','Holidays','Adjustment','Total Attendance','Basic Salary','Daily Rate','Earned Salary','Salary A/C Code','Salary A/C Balance','Net Pay'];
+    const headers = ['Emp ID','Name','Dept','Designation','Present','Absent','Half Days','Allowed Leaves','Holidays','Adjustment','Total Attendance','Basic Salary','Daily Rate','Earned Salary','A/C Code','Deduction','Net Pay'];
     const rows = filtered.map(r => [
       r.employee_id || '',
       `"${r.full_name}"`,
@@ -271,7 +271,7 @@ const SalarySheet = () => {
         <thead><tr>
           <th>Emp ID</th><th>Name</th><th>Designation</th>
           <th>Present</th><th>Absent</th><th>Allow.Leaves</th><th>Holidays</th><th>Adj.</th><th>Total Att.</th>
-          <th>Basic Salary</th><th>Earned Salary</th><th>Salary A/C</th><th>Net Pay</th>
+          <th>Basic Salary</th><th>Earned Salary</th><th>Deduction</th><th>Net Pay</th>
         </tr></thead>
         <tbody>${rows}
           <tr class="tot">
@@ -401,8 +401,8 @@ const SalarySheet = () => {
                   {/* Salary */}
                   <th className={`${th} text-right text-gray-500`}>Basic<br/>Salary</th>
                   <th className={`${th} text-right text-emerald-600 bg-emerald-50`}>Earned<br/>Salary</th>
-                  {/* Salary Account */}
-                  <th className={`${th} text-right text-violet-600`}>Salary A/C<br/>Balance</th>
+                  {/* Salary Account / Deduction */}
+                  <th className={`${th} text-right text-red-500`}>Deduction</th>
                   {/* Net */}
                   <th className={`${th} text-right text-emerald-700 bg-emerald-50`}>Net Pay</th>
                 </tr>

@@ -674,6 +674,8 @@ exports.getSalarySheet = async (req, res) => {
       const adjustment_days      = Number(r.adjustment_days || 0);
       const loan_deduction       = Number(r.loan_deduction || 0);
       const advance_deduction    = Number(r.advance_deduction || 0);
+      const salary_account_balance = r.salary_account_balance !== null && r.salary_account_balance !== undefined
+                                       ? Number(r.salary_account_balance) : null;
 
       // Total payable days = present (half=0.5) + allowed leaves (fixed quota) + holidays + adjustment
       const present_eq      = present_days + half_days * 0.5;
@@ -682,9 +684,9 @@ exports.getSalarySheet = async (req, res) => {
       // Earned salary = daily_rate × total_attendance
       const earned_salary   = +(daily_rate * total_attendance).toFixed(2);
 
-      // Deductions = loan + advance only (absence is already excluded from total_attendance)
-      const total_deduction = +(loan_deduction + advance_deduction).toFixed(2);
-      const net_salary      = +(earned_salary - total_deduction).toFixed(2);
+      // Deduction = linked salary account balance; Net Pay = Earned - Deduction
+      const deduction  = salary_account_balance !== null ? +salary_account_balance.toFixed(2) : 0;
+      const net_salary = +(earned_salary - deduction).toFixed(2);
 
       return {
         staff_id:   r.staff_id,
@@ -705,13 +707,11 @@ exports.getSalarySheet = async (req, res) => {
         earned_salary,
         loan_deduction,
         advance_deduction,
-        total_deduction,
         net_salary,
         salary_account_id:      r.salary_account_id || null,
         salary_account_name:    r.salary_account_name || null,
         salary_account_code:    r.salary_account_code || null,
-        salary_account_balance: r.salary_account_balance !== null && r.salary_account_balance !== undefined
-                                  ? Number(r.salary_account_balance) : null,
+        salary_account_balance,
       };
     });
 
