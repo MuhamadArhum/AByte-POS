@@ -1,9 +1,58 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useSettings } from '../../context/SettingsContext';
-import { DollarSign, Calendar, Play, Download, CheckCircle, Printer } from 'lucide-react';
+import { DollarSign, Calendar, Play, Download, CheckCircle, Printer, Search, ChevronDown } from 'lucide-react';
 import api from '../../utils/api';
 import { localToday } from '../../utils/dateUtils';
 import { useToast } from '../../components/Toast';
+
+// Inline Level-4 account selector (same pattern as other vouchers)
+const AccountSelector = ({ accounts, value, onChange }: { accounts: any[]; value: number | ''; onChange: (id: number | '') => void }) => {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const level4 = accounts.filter(a => a.is_active && a.level === 4);
+  const filtered = search ? level4.filter(a => `${a.account_code} ${a.account_name}`.toLowerCase().includes(search.toLowerCase())) : level4;
+  const selected = level4.find(a => a.account_id === value);
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+  return (
+    <div ref={ref} className="relative">
+      <div onClick={() => { setOpen(o => !o); setTimeout(() => inputRef.current?.focus(), 50); }}
+        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl cursor-pointer flex items-center justify-between bg-white hover:border-emerald-400 transition text-sm">
+        {selected ? <span className="text-gray-800">{selected.account_code} — {selected.account_name}</span>
+          : <span className="text-gray-400">Select debit account (Level 4)...</span>}
+        <ChevronDown size={14} className="text-gray-400 flex-shrink-0" />
+      </div>
+      {value !== '' && (
+        <button type="button" onClick={e => { e.stopPropagation(); onChange(''); }}
+          className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-300 hover:text-red-400 text-xs">✕</button>
+      )}
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl">
+          <div className="p-2 border-b border-gray-100 flex items-center gap-2">
+            <Search size={13} className="text-gray-400" />
+            <input ref={inputRef} type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search account..." className="flex-1 text-sm outline-none" />
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.length === 0 ? <p className="p-3 text-xs text-gray-400 text-center">No accounts</p>
+              : filtered.map(a => (
+                <div key={a.account_id} onMouseDown={() => { onChange(a.account_id); setOpen(false); setSearch(''); }}
+                  className="px-3 py-2 text-sm cursor-pointer hover:bg-emerald-50 flex items-center gap-2">
+                  <span className="font-mono text-xs text-gray-400">{a.account_code}</span>
+                  <span>{a.account_name}</span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const PayrollProcessing = () => {
   const { currencySymbol: currency } = useSettings();
@@ -17,6 +66,8 @@ const PayrollProcessing = () => {
     payment_date: localToday(),
     department: ''
   });
+  const [debitAccountId, setDebitAccountId] = useState<number | ''>('');
+  const [accounts, setAccounts] = useState<any[]>([]);
 
   const [preview, setPreview] = useState<any[]>([]);
   const [bonusInputs, setBonusInputs] = useState<Record<number, number>>({});
@@ -26,6 +77,13 @@ const PayrollProcessing = () => {
 
   useEffect(() => {
     fetchDepartments();
+    // Fetch accounts for selector
+    api.get('/accounting/accounts', { params: { tree: 1 } }).then(res => {
+      const flat: any[] = [];
+      const flatten = (nodes: any[]) => nodes.forEach(n => { flat.push(n); if (n.children) flatten(n.children); });
+      flatten(res.data.data || []);
+      setAccounts(flat);
+    }).catch(() => {});
   }, []);
 
   const fetchDepartments = async () => {
@@ -42,6 +100,10 @@ const PayrollProcessing = () => {
   const handlePreview = async () => {
     if (!formData.from_date || !formData.to_date || !formData.payment_date) {
       toast.error('Please fill all required fields');
+      return;
+    }
+    if (!debitAccountId) {
+      toast.error('Please select a salary expense (debit) account');
       return;
     }
     if (formData.from_date > formData.to_date) {
@@ -88,7 +150,7 @@ const PayrollProcessing = () => {
         };
       });
 
-      const res = await api.post('/staff/payroll/process', { payments });
+      const res = await api.post('/staff/payroll/process', { payments, debit_account_id: debitAccountId });
       setResult(res.data);
       toast.success(res.data.message);
       setStep('complete');
@@ -225,6 +287,13 @@ const PayrollProcessing = () => {
                 <option value="">All Departments</option>
                 {departments.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Salary Expense Account <span className="text-red-500">*</span>
+                <span className="text-gray-400 font-normal ml-1">[DR] — Total salary will be debited here</span>
+              </label>
+              <AccountSelector accounts={accounts} value={debitAccountId} onChange={setDebitAccountId} />
             </div>
           </div>
           <div className="flex justify-end mt-8">

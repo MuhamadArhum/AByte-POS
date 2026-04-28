@@ -205,7 +205,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         // ── PAYROLL ──
         { icon: DollarSign,  label: 'PAYROLL',           isSection: true } as any,
         { icon: FileText,    label: 'Salary Sheet',      path: '/salary-sheet',     moduleKey: 'hr.salary-sheet' },
-        { icon: Receipt,     label: 'Salary Voucher',    path: '/salary-voucher',   moduleKey: 'hr.salary-sheet' },
+        { icon: Receipt,     label: 'Salary Slips',      path: '/salary-voucher',   moduleKey: 'hr.salary-sheet' },
         { icon: DollarSign,  label: 'Payroll Processing',path: '/payroll',          moduleKey: 'hr.payroll' },
         { icon: TrendingUp,  label: 'Salary Increment',  path: '/increments',       moduleKey: 'hr.increments' },
         // ── HR MANAGEMENT ──

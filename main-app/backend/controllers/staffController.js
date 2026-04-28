@@ -783,14 +783,14 @@ exports.getSalaryVoucher = async (req, res) => {
     const m = parseInt(month) || (now.getMonth() + 1);
     const y = parseInt(year) || now.getFullYear();
 
-    const [staff] = await query('SELECT * FROM staff WHERE staff_id = ?', [staff_id]);
+    const [staff] = await query('SELECT s.*, acc.account_name as salary_account_name, acc.account_code as salary_account_code, acc.current_balance as salary_account_balance FROM staff s LEFT JOIN accounts acc ON s.salary_account_id = acc.account_id WHERE s.staff_id = ?', [staff_id]);
     if (!staff) return res.status(404).json({ message: 'Employee not found' });
 
     const [{ holidays_count }] = await query(
       'SELECT COUNT(*) as holidays_count FROM holidays WHERE MONTH(holiday_date) = ? AND YEAR(holiday_date) = ?', [m, y]
     );
-    const daysInMonth  = new Date(y, m, 0).getDate();
-    const working_days = Math.max(daysInMonth - Number(holidays_count), 1);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const holidays    = Number(holidays_count);
 
     const [att] = await query(`
       SELECT COUNT(CASE WHEN status='present'  THEN 1 END) as present_days,
@@ -800,35 +800,67 @@ exports.getSalaryVoucher = async (req, res) => {
       FROM attendance WHERE staff_id=? AND MONTH(attendance_date)=? AND YEAR(attendance_date)=?
     `, [staff_id, m, y]);
 
-    const [loan] = await query(
-      `SELECT COALESCE(SUM(monthly_deduction),0) as loan_deduction FROM staff_loans WHERE staff_id=? AND status='active'`,
-      [staff_id]
+    const [adjRow] = await query(
+      'SELECT days, reason FROM salary_adjustments WHERE staff_id=? AND month=? AND year=?', [staff_id, m, y]
     );
 
-    const salary       = Number(staff.salary || 0);
-    const daily_rate   = salary / working_days;
-    const absent_days  = Number(att?.absent_days || 0);
-    const half_days    = Number(att?.half_days   || 0);
-    const absent_deduction = +(absent_days * daily_rate + half_days * daily_rate * 0.5).toFixed(2);
-    const loan_deduction   = Number(loan?.loan_deduction || 0);
-    const total_deduction  = +(loan_deduction + absent_deduction).toFixed(2);
+    // Salary components
+    const compRows = await query(`
+      SELECT sc.type, sc.calculation,
+             COALESCE(ssc.custom_value, sc.default_value) as value
+      FROM staff_salary_components ssc
+      JOIN salary_components sc ON ssc.component_id = sc.component_id
+      WHERE ssc.staff_id = ? AND ssc.is_active = 1 AND sc.is_active = 1
+    `, [staff_id]);
+
+    const salary   = Number(staff.salary || 0);
+    const monthly_leave_allowed = Number(staff.monthly_leave_allowed || 2);
+    const daily_rate = daysInMonth > 0 ? salary / daysInMonth : 0;
+
+    const present_days = Number(att?.present_days || 0);
+    const absent_days  = Number(att?.absent_days  || 0);
+    const half_days    = Number(att?.half_days    || 0);
+    const leave_days   = Number(att?.leave_days   || 0);
+    const adjustment_days  = Number(adjRow?.days   || 0);
+    const adjustment_reason = adjRow?.reason || null;
+
+    const present_eq      = present_days + half_days * 0.5;
+    const total_attendance = +(present_eq + monthly_leave_allowed + holidays + adjustment_days).toFixed(2);
+    const earned_salary    = +(daily_rate * total_attendance).toFixed(2);
+
+    let total_allowances = 0, total_comp_deductions = 0;
+    const allowance_items: any[] = [], deduction_items: any[] = [];
+    for (const c of compRows) {
+      const val = c.calculation === 'percentage' ? salary * Number(c.value) / 100 : Number(c.value);
+      if (c.type === 'allowance') { total_allowances += val; allowance_items.push({ name: c.name, value: +val.toFixed(2) }); }
+      else                        { total_comp_deductions += val; deduction_items.push({ name: c.name, value: +val.toFixed(2) }); }
+    }
+
+    const gross_salary = +(earned_salary + total_allowances).toFixed(2);
+    const salary_account_balance = staff.salary_account_balance !== null ? Number(staff.salary_account_balance) : null;
+    const account_deduction = salary_account_balance !== null ? +salary_account_balance.toFixed(2) : 0;
+    const net_pay = +(gross_salary - account_deduction - total_comp_deductions).toFixed(2);
 
     res.json({
-      staff: { staff_id: staff.staff_id, employee_id: staff.employee_id, full_name: staff.full_name,
-               department: staff.department, position: staff.position, salary_type: staff.salary_type },
-      month: m, year: y, days_in_month: daysInMonth,
-      holidays: Number(holidays_count), working_days,
-      present_days : Number(att?.present_days || 0),
-      absent_days, half_days,
-      leave_days   : Number(att?.leave_days   || 0),
-      basic_salary : salary,
-      adjustment   : 0,
-      gross_pay    : salary,
-      loan_deduction,
-      absent_deduction,
-      total_deduction,
-      net_pay      : +(salary - total_deduction).toFixed(2),
-      daily_rate   : +daily_rate.toFixed(2),
+      staff: {
+        staff_id: staff.staff_id, employee_id: staff.employee_id, full_name: staff.full_name,
+        department: staff.department, position: staff.position, salary_type: staff.salary_type,
+        salary_account_id: staff.salary_account_id, salary_account_name: staff.salary_account_name,
+        salary_account_code: staff.salary_account_code,
+      },
+      month: m, year: y, days_in_month: daysInMonth, holidays,
+      present_days, absent_days, half_days, leave_days,
+      monthly_leave_allowed, adjustment_days, adjustment_reason,
+      total_attendance,
+      basic_salary:   salary,
+      daily_rate:     +daily_rate.toFixed(2),
+      earned_salary,
+      allowance_items, total_allowances: +total_allowances.toFixed(2),
+      gross_salary,
+      deduction_items, total_comp_deductions: +total_comp_deductions.toFixed(2),
+      account_deduction,
+      salary_account_balance,
+      net_pay,
     });
   } catch (err) {
     console.error(err);
@@ -1939,8 +1971,8 @@ exports.reviewExitRequest = async (req, res) => {
       [status, review_notes || null, req.user.user_id, final_settlement ?? null, id]
     );
 
-    // If completed → deactivate staff
-    if (status === 'completed') {
+    // Deactivate staff on approved or completed
+    if (status === 'approved' || status === 'completed') {
       await conn.query('UPDATE staff SET is_active = 0 WHERE staff_id = ?', [exit.staff_id]);
     }
 

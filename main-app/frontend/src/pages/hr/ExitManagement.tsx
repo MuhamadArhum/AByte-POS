@@ -148,9 +148,9 @@ const ReviewExitModal = ({ exitReq, onClose, onSuccess }: any) => {
             <textarea value={form.review_notes} onChange={e => setForm({ ...form, review_notes: e.target.value })}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 bg-gray-50/50 outline-none transition resize-none" rows={2} />
           </div>
-          {form.status === 'completed' && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2 text-xs text-orange-700">
-              Marking as "Completed" will deactivate the staff member.
+          {(form.status === 'approved' || form.status === 'completed') && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-700">
+              ⚠ This will immediately <b>deactivate</b> the employee — they will be removed from the salary sheet and all active payrolls.
             </div>
           )}
         </div>
