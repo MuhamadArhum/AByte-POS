@@ -523,14 +523,11 @@ const SalarySheet = () => {
                                   const to   = `${year}-${String(month).padStart(2,'0')}-${String(last).padStart(2,'0')}`;
                                   window.open(`/general-ledger?account_id=${r.salary_account_id}&from_date=${from}&to_date=${to}`, '_blank');
                                 }}
-                                className="group inline-flex flex-col items-end gap-0.5 hover:opacity-80 transition"
+                                className="group inline-flex items-center gap-1 font-semibold text-red-600 hover:opacity-80 transition"
                                 title={`${r.salary_account_code} — ${r.salary_account_name}\nClick to open ledger`}
                               >
-                                <span className="text-xs text-gray-400 font-mono leading-none">{r.salary_account_code}</span>
-                                <span className="flex items-center gap-1 font-semibold text-violet-700">
-                                  {currency}{fmt(n(r.salary_account_balance))}
-                                  <ExternalLink size={10} className="opacity-40 group-hover:opacity-100" />
-                                </span>
+                                {currency}{fmt(n(r.salary_account_balance))}
+                                <ExternalLink size={10} className="opacity-40 group-hover:opacity-100" />
                               </button>
                             ) : (
                               <span className="text-gray-300 text-xs">—</span>
