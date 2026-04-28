@@ -49,8 +49,8 @@ const TrialBalance = () => {
       const res = await api.get('/accounting/reports/trial-balance', {
         params: { as_of_date: asOfDate }
       });
-      setData(res.data.data || []);
-      if ((res.data.data || []).length === 0) {
+      setData(res.data.trial_balance || []);
+      if ((res.data.trial_balance || []).length === 0) {
         toast.info('No data found for selected date');
       }
     } catch (error: any) {
