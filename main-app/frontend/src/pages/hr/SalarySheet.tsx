@@ -168,18 +168,18 @@ const SalarySheet = () => {
     return map;
   }, [filtered]);
 
-  const ZERO = { present_days: 0, absent_days: 0, monthly_leave_allowed: 0, total_attendance: 0, earned_salary: 0, loan_deduction: 0, advance_deduction: 0, total_deduction: 0, net_salary: 0 };
+  const ZERO = { present_days: 0, absent_days: 0, monthly_leave_allowed: 0, total_attendance: 0, earned_salary: 0, total_allowances: 0, gross_salary: 0, total_comp_deductions: 0, net_salary: 0 };
 
   const grandTotal = useMemo(() => filtered.reduce((acc, r) => ({
-    present_days:           acc.present_days           + n(r.present_days),
-    absent_days:            acc.absent_days            + n(r.absent_days),
-    monthly_leave_allowed:  acc.monthly_leave_allowed  + n(r.monthly_leave_allowed),
-    total_attendance:       acc.total_attendance       + n(r.total_attendance),
-    earned_salary:          acc.earned_salary          + n(r.earned_salary),
-    loan_deduction:         acc.loan_deduction         + n(r.loan_deduction),
-    advance_deduction:      acc.advance_deduction      + n(r.advance_deduction),
-    total_deduction:        acc.total_deduction        + n(r.total_deduction),
-    net_salary:             acc.net_salary             + n(r.net_salary),
+    present_days:          acc.present_days          + n(r.present_days),
+    absent_days:           acc.absent_days           + n(r.absent_days),
+    monthly_leave_allowed: acc.monthly_leave_allowed + n(r.monthly_leave_allowed),
+    total_attendance:      acc.total_attendance      + n(r.total_attendance),
+    earned_salary:         acc.earned_salary         + n(r.earned_salary),
+    total_allowances:      acc.total_allowances      + n(r.total_allowances),
+    gross_salary:          acc.gross_salary          + n(r.gross_salary),
+    total_comp_deductions: acc.total_comp_deductions + n(r.total_comp_deductions),
+    net_salary:            acc.net_salary            + n(r.net_salary),
   }), { ...ZERO }), [filtered]);
 
   const fetchSheet = async () => {
@@ -198,19 +198,21 @@ const SalarySheet = () => {
   useEffect(() => { fetchSheet(); }, []);
 
   const deptTotal = (rows: any[]) => rows.reduce((acc, r) => ({
-    present_days:    acc.present_days    + n(r.present_days),
-    absent_days:     acc.absent_days     + n(r.absent_days),
-    total_attendance:acc.total_attendance+ n(r.total_attendance),
-    earned_salary:   acc.earned_salary   + n(r.earned_salary),
-    total_deduction: acc.total_deduction + n(r.total_deduction),
-    net_salary:      acc.net_salary      + n(r.net_salary),
-  }), { present_days: 0, absent_days: 0, total_attendance: 0, earned_salary: 0, total_deduction: 0, net_salary: 0 });
+    present_days:          acc.present_days          + n(r.present_days),
+    absent_days:           acc.absent_days           + n(r.absent_days),
+    total_attendance:      acc.total_attendance      + n(r.total_attendance),
+    earned_salary:         acc.earned_salary         + n(r.earned_salary),
+    total_allowances:      acc.total_allowances      + n(r.total_allowances),
+    gross_salary:          acc.gross_salary          + n(r.gross_salary),
+    total_comp_deductions: acc.total_comp_deductions + n(r.total_comp_deductions),
+    net_salary:            acc.net_salary            + n(r.net_salary),
+  }), { present_days: 0, absent_days: 0, total_attendance: 0, earned_salary: 0, total_allowances: 0, gross_salary: 0, total_comp_deductions: 0, net_salary: 0 });
 
   const toggleDept = (d: string) => setCollapsedDepts(p => ({ ...p, [d]: !p[d] }));
 
   // ── CSV Export ──
   const exportCSV = () => {
-    const headers = ['Emp ID','Name','Dept','Designation','Present','Absent','Half Days','Allowed Leaves','Holidays','Adjustment','Total Attendance','Basic Salary','Daily Rate','Earned Salary','A/C Code','Deduction','Net Pay'];
+    const headers = ['Emp ID','Name','Dept','Designation','Present','Absent','Half Days','Allowed Leaves','Holidays','Adjustment','Total Attendance','Basic Salary','Daily Rate','Earned Salary','Allowances','Gross Salary','Comp.Ded.','A/C Code','Deduction','Net Pay'];
     const rows = filtered.map(r => [
       r.employee_id || '',
       `"${r.full_name}"`,
@@ -224,6 +226,9 @@ const SalarySheet = () => {
       n(r.salary).toFixed(2),
       n(r.daily_rate).toFixed(4),
       n(r.earned_salary).toFixed(2),
+      n(r.total_allowances).toFixed(2),
+      n(r.gross_salary).toFixed(2),
+      n(r.total_comp_deductions).toFixed(2),
       r.salary_account_code || '',
       r.salary_account_id ? n(r.salary_account_balance).toFixed(2) : '',
       n(r.net_salary).toFixed(2),
@@ -251,6 +256,9 @@ const SalarySheet = () => {
         <td align="center" style="font-weight:700">${fmt(n(r.total_attendance), 1)}</td>
         <td align="right">${currency}${fmt(n(r.salary))}</td>
         <td align="right" style="color:#059669;font-weight:700">${currency}${fmt(n(r.earned_salary))}</td>
+        <td align="right" style="color:#2563eb">${n(r.total_allowances) > 0 ? `+${currency}${fmt(n(r.total_allowances))}` : '-'}</td>
+        <td align="right" style="font-weight:700;color:#065f46">${currency}${fmt(n(r.gross_salary))}</td>
+        <td align="right" style="color:#ea580c">${n(r.total_comp_deductions) > 0 ? `-${currency}${fmt(n(r.total_comp_deductions))}` : '-'}</td>
         <td align="right" style="color:#7c3aed">${r.salary_account_id ? `${r.salary_account_code} ${currency}${fmt(n(r.salary_account_balance))}` : '-'}</td>
         <td align="right" style="font-weight:700;color:#059669">${currency}${fmt(n(r.net_salary))}</td>
       </tr>`).join('');
@@ -271,7 +279,7 @@ const SalarySheet = () => {
         <thead><tr>
           <th>Emp ID</th><th>Name</th><th>Designation</th>
           <th>Present</th><th>Absent</th><th>Allow.Leaves</th><th>Holidays</th><th>Adj.</th><th>Total Att.</th>
-          <th>Basic Salary</th><th>Earned Salary</th><th>Deduction</th><th>Net Pay</th>
+          <th>Basic Salary</th><th>Earned Salary</th><th>Allowances</th><th>Gross Salary</th><th>Comp.Ded.</th><th>Deduction</th><th>Net Pay</th>
         </tr></thead>
         <tbody>${rows}
           <tr class="tot">
@@ -282,6 +290,9 @@ const SalarySheet = () => {
             <td align="center">${fmt(grandTotal.total_attendance, 1)}</td>
             <td align="right">${currency}${fmt(grandTotal.earned_salary)}</td>
             <td align="right">${currency}${fmt(grandTotal.earned_salary)}</td>
+            <td align="right">+${currency}${fmt(grandTotal.total_allowances)}</td>
+            <td align="right">${currency}${fmt(grandTotal.gross_salary)}</td>
+            <td align="right">-${currency}${fmt(grandTotal.total_comp_deductions)}</td>
             <td></td>
             <td align="right">${currency}${fmt(grandTotal.net_salary)}</td>
           </tr>
@@ -401,6 +412,9 @@ const SalarySheet = () => {
                   {/* Salary */}
                   <th className={`${th} text-right text-gray-500`}>Basic<br/>Salary</th>
                   <th className={`${th} text-right text-emerald-600 bg-emerald-50`}>Earned<br/>Salary</th>
+                  <th className={`${th} text-right text-blue-600`}>Allowances</th>
+                  <th className={`${th} text-right text-emerald-700 bg-emerald-50`}>Gross<br/>Salary</th>
+                  <th className={`${th} text-right text-orange-500`}>Comp.<br/>Ded.</th>
                   {/* Salary Account / Deduction */}
                   <th className={`${th} text-right text-red-500`}>Deduction</th>
                   {/* Net */}
@@ -415,7 +429,7 @@ const SalarySheet = () => {
                     <>
                       {/* Dept header */}
                       <tr key={`dept-${dept}`} className="bg-emerald-50/60 cursor-pointer select-none" onClick={() => toggleDept(dept)}>
-                        <td colSpan={13} className="px-3 py-2">
+                        <td colSpan={16} className="px-3 py-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               {collapsed ? <ChevronRight size={13} className="text-emerald-600" /> : <ChevronDown size={13} className="text-emerald-600" />}
@@ -425,6 +439,8 @@ const SalarySheet = () => {
                             <div className="flex items-center gap-4 text-xs font-semibold">
                               <span>Att: {fmt(dt.total_attendance, 1)}</span>
                               <span className="text-emerald-700">Earned: {currency}{fmt(dt.earned_salary)}</span>
+                              {dt.total_allowances > 0 && <span className="text-blue-600">Allow: +{currency}{fmt(dt.total_allowances)}</span>}
+                              <span className="text-emerald-800 font-semibold">Gross: {currency}{fmt(dt.gross_salary)}</span>
                               <span className="text-emerald-700 font-bold">Net: {currency}{fmt(dt.net_salary)}</span>
                             </div>
                           </div>
@@ -482,6 +498,19 @@ const SalarySheet = () => {
                           <td className="px-3 py-2.5 text-right text-gray-600">{currency}{fmt(n(r.salary))}</td>
                           <td className="px-3 py-2.5 text-right font-semibold text-emerald-700 bg-emerald-50">{currency}{fmt(n(r.earned_salary))}</td>
 
+                          {/* Allowances */}
+                          <td className="px-3 py-2.5 text-right text-blue-600 font-medium">
+                            {n(r.total_allowances) > 0 ? `+${currency}${fmt(n(r.total_allowances))}` : <span className="text-gray-300">—</span>}
+                          </td>
+
+                          {/* Gross Salary */}
+                          <td className="px-3 py-2.5 text-right font-bold text-emerald-800 bg-emerald-50">{currency}{fmt(n(r.gross_salary))}</td>
+
+                          {/* Component Deductions */}
+                          <td className="px-3 py-2.5 text-right text-orange-600 font-medium">
+                            {n(r.total_comp_deductions) > 0 ? `-${currency}${fmt(n(r.total_comp_deductions))}` : <span className="text-gray-300">—</span>}
+                          </td>
+
                           {/* Salary Account Balance */}
                           <td className="px-3 py-2.5 text-right">
                             {r.salary_account_id ? (
@@ -526,6 +555,9 @@ const SalarySheet = () => {
                   <td className="px-3 py-4 text-center font-bold text-gray-800 bg-gray-100">{fmt(grandTotal.total_attendance, 1)}</td>
                   <td className="px-3 py-4 text-right font-bold text-gray-800">{currency}{fmt(grandTotal.earned_salary)}</td>
                   <td className="px-3 py-4 text-right font-bold text-emerald-700 bg-emerald-50">{currency}{fmt(grandTotal.earned_salary)}</td>
+                  <td className="px-3 py-4 text-right font-bold text-blue-600">+{currency}{fmt(grandTotal.total_allowances)}</td>
+                  <td className="px-3 py-4 text-right font-bold text-emerald-800 bg-emerald-50">{currency}{fmt(grandTotal.gross_salary)}</td>
+                  <td className="px-3 py-4 text-right font-bold text-orange-600">-{currency}{fmt(grandTotal.total_comp_deductions)}</td>
                   <td />
                   <td className="px-3 py-4 text-right font-bold text-emerald-700 text-sm bg-emerald-50">{currency}{fmt(grandTotal.net_salary)}</td>
                 </tr>
@@ -537,7 +569,8 @@ const SalarySheet = () => {
           <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 text-xs text-gray-500 flex flex-wrap gap-x-6 gap-y-1">
             <span><b>Total Attendance</b> = Present + (Half Days × 0.5) + Allowed Leaves + Holidays + Adjustment</span>
             <span><b>Earned Salary</b> = (Basic Salary ÷ Days in Month) × Total Attendance</span>
-            <span><b>Net Pay</b> = Earned Salary − Loan & Advance Deductions</span>
+            <span><b>Gross Salary</b> = Earned Salary + Allowance Components</span>
+            <span><b>Net Pay</b> = Gross Salary − Component Deductions − Account Deduction</span>
           </div>
         </div>
       )}

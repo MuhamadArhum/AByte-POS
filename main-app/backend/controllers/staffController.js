@@ -639,8 +639,8 @@ exports.getSalarySheet = async (req, res) => {
       SELECT s.staff_id, s.employee_id, s.full_name, s.department, s.position,
              s.salary, s.salary_type, COALESCE(s.monthly_leave_allowed, 2) as monthly_leave_allowed,
              s.salary_account_id,
-             acc.account_name  as salary_account_name,
-             acc.account_code  as salary_account_code,
+             acc.account_name    as salary_account_name,
+             acc.account_code    as salary_account_code,
              acc.current_balance as salary_account_balance,
              COUNT(CASE WHEN a.status = 'present'  THEN 1 END) as present_days,
              COUNT(CASE WHEN a.status = 'absent'   THEN 1 END) as absent_days,
@@ -651,7 +651,25 @@ exports.getSalarySheet = async (req, res) => {
              COALESCE((SELECT sa.days FROM salary_adjustments sa
                        WHERE sa.staff_id = s.staff_id AND sa.month = ? AND sa.year = ?), 0) as adjustment_days,
              COALESCE((SELECT sa.reason FROM salary_adjustments sa
-                       WHERE sa.staff_id = s.staff_id AND sa.month = ? AND sa.year = ?), NULL) as adjustment_reason
+                       WHERE sa.staff_id = s.staff_id AND sa.month = ? AND sa.year = ?), NULL) as adjustment_reason,
+             COALESCE((
+               SELECT SUM(CASE WHEN sc.calculation='percentage'
+                               THEN s.salary * COALESCE(ssc.custom_value, sc.default_value) / 100
+                               ELSE COALESCE(ssc.custom_value, sc.default_value) END)
+               FROM staff_salary_components ssc
+               JOIN salary_components sc ON ssc.component_id = sc.component_id
+               WHERE ssc.staff_id = s.staff_id AND ssc.is_active = 1
+                 AND sc.is_active = 1 AND sc.type = 'allowance'
+             ), 0) as total_allowances,
+             COALESCE((
+               SELECT SUM(CASE WHEN sc.calculation='percentage'
+                               THEN s.salary * COALESCE(ssc.custom_value, sc.default_value) / 100
+                               ELSE COALESCE(ssc.custom_value, sc.default_value) END)
+               FROM staff_salary_components ssc
+               JOIN salary_components sc ON ssc.component_id = sc.component_id
+               WHERE ssc.staff_id = s.staff_id AND ssc.is_active = 1
+                 AND sc.is_active = 1 AND sc.type = 'deduction'
+             ), 0) as total_comp_deductions
       FROM staff s
       LEFT JOIN accounts acc ON s.salary_account_id = acc.account_id
       LEFT JOIN attendance a ON s.staff_id = a.staff_id
@@ -674,6 +692,8 @@ exports.getSalarySheet = async (req, res) => {
       const adjustment_days      = Number(r.adjustment_days || 0);
       const loan_deduction       = Number(r.loan_deduction || 0);
       const advance_deduction    = Number(r.advance_deduction || 0);
+      const total_allowances     = Number(r.total_allowances || 0);
+      const total_comp_deductions = Number(r.total_comp_deductions || 0);
       const salary_account_balance = r.salary_account_balance !== null && r.salary_account_balance !== undefined
                                        ? Number(r.salary_account_balance) : null;
 
@@ -684,9 +704,12 @@ exports.getSalarySheet = async (req, res) => {
       // Earned salary = daily_rate × total_attendance
       const earned_salary   = +(daily_rate * total_attendance).toFixed(2);
 
-      // Deduction = linked salary account balance; Net Pay = Earned - Deduction
-      const deduction  = salary_account_balance !== null ? +salary_account_balance.toFixed(2) : 0;
-      const net_salary = +(earned_salary - deduction).toFixed(2);
+      // Gross = earned + allowance components
+      const gross_salary    = +(earned_salary + total_allowances).toFixed(2);
+
+      // Deduction = linked salary account balance; comp deductions = deduction-type components
+      const account_deduction = salary_account_balance !== null ? +salary_account_balance.toFixed(2) : 0;
+      const net_salary = +(gross_salary - account_deduction - total_comp_deductions).toFixed(2);
 
       return {
         staff_id:   r.staff_id,
@@ -705,6 +728,9 @@ exports.getSalarySheet = async (req, res) => {
         adjustment_reason: r.adjustment_reason || null,
         total_attendance,
         earned_salary,
+        total_allowances:       +total_allowances.toFixed(2),
+        gross_salary,
+        total_comp_deductions:  +total_comp_deductions.toFixed(2),
         loan_deduction,
         advance_deduction,
         net_salary,
