@@ -51,6 +51,8 @@ import SupplierWisePurchase from './pages/inventory/SupplierWisePurchase';
 import IssuanceReports from './pages/inventory/IssuanceReports';
 import StockReconciliation from './pages/inventory/StockReconciliation';
 import OpeningStock from './pages/inventory/OpeningStock';
+import Recipes from './pages/inventory/Recipes';
+import ProductionOrders from './pages/inventory/ProductionOrders';
 
 // HR Module
 import Customers from './pages/hr/Customers';
@@ -186,6 +188,8 @@ function App() {
                       <Route path="/issuance-reports" element={<PermissionGuard moduleKey="inventory.reports"><IssuanceReports /></PermissionGuard>} />
                       <Route path="/stock-reconciliation" element={<PermissionGuard moduleKey="inventory.reports"><StockReconciliation /></PermissionGuard>} />
                       <Route path="/opening-stock" element={<PermissionGuard moduleKey="inventory.products"><OpeningStock /></PermissionGuard>} />
+                      <Route path="/recipes" element={<PermissionGuard moduleKey="inventory.products"><Recipes /></PermissionGuard>} />
+                      <Route path="/production-orders" element={<PermissionGuard moduleKey="inventory.products"><ProductionOrders /></PermissionGuard>} />
 
                       {/* HR */}
                       <Route path="/staff" element={<PermissionGuard moduleKey="hr.staff"><Staff /></PermissionGuard>} />

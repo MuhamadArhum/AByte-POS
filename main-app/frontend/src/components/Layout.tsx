@@ -53,6 +53,8 @@ import {
   LogIn,
   UtensilsCrossed,
   Table2,
+  FlaskConical,
+  Factory,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -174,6 +176,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: ArrowDownToLine,label: 'Stock Return',      path: '/stock-return-issuance', moduleKey: 'inventory.adjustments' },
         { icon: ShoppingBag,    label: 'Raw Sale',          path: '/raw-sale',           moduleKey: 'inventory.adjustments' },
         { icon: Warehouse,      label: 'Sections',          path: '/sections',           moduleKey: 'inventory.adjustments' },
+        // ── MANUFACTURING ──
+        { icon: Factory,        label: 'MANUFACTURING',     isSection: true } as any,
+        { icon: FlaskConical,   label: 'Recipes',           path: '/recipes',            moduleKey: 'inventory.products' },
+        { icon: Factory,        label: 'Production Orders', path: '/production-orders',  moduleKey: 'inventory.products' },
         // ── REPORTS ──
         { icon: Package,        label: 'REPORTS',           isSection: true } as any,
         { icon: BookOpen,       label: 'Items Ledger',      path: '/items-ledger',       moduleKey: 'inventory.reports' },

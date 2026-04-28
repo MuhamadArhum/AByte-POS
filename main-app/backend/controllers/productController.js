@@ -269,13 +269,18 @@ exports.remove = async (req, res) => {
 // Used in product forms and filter dropdowns.
 exports.getCategories = async (req, res) => {
   try {
-    const rows = await query(
-      `SELECT c.*, COUNT(p.product_id) as product_count
-       FROM categories c
-       LEFT JOIN products p ON c.category_id = p.category_id
-       GROUP BY c.category_id
-       ORDER BY c.parent_id ASC, c.category_name ASC`
-    );
+    const { type } = req.query;
+    let sql = `SELECT c.*, COUNT(p.product_id) as product_count
+               FROM categories c
+               LEFT JOIN products p ON c.category_id = p.category_id
+               WHERE 1=1`;
+    const params = [];
+    if (type) {
+      sql += ' AND c.category_type = ?';
+      params.push(type);
+    }
+    sql += ' GROUP BY c.category_id ORDER BY c.parent_id ASC, c.category_name ASC';
+    const rows = await query(sql, params);
     res.json({ data: rows });
   } catch (err) {
     console.error(err);

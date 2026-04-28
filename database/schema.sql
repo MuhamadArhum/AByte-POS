@@ -1295,3 +1295,46 @@ CREATE TABLE IF NOT EXISTS printers (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- ── MANUFACTURING / RECIPE SYSTEM ──────────────────────────────
+
+-- Recipes: defines how to produce a finished_good or semi_finished product
+CREATE TABLE IF NOT EXISTS recipes (
+    recipe_id INT PRIMARY KEY AUTO_INCREMENT,
+    recipe_name VARCHAR(255) NOT NULL,
+    output_product_id INT NOT NULL,
+    output_quantity DECIMAL(10,3) NOT NULL DEFAULT 1,
+    notes TEXT,
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (output_product_id) REFERENCES products(product_id) ON DELETE RESTRICT,
+    INDEX idx_recipes_output (output_product_id)
+);
+
+-- Recipe Ingredients: raw_material or semi_finished items needed per batch
+CREATE TABLE IF NOT EXISTS recipe_ingredients (
+    ingredient_id INT PRIMARY KEY AUTO_INCREMENT,
+    recipe_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity DECIMAL(10,3) NOT NULL,
+    unit VARCHAR(50),
+    FOREIGN KEY (recipe_id) REFERENCES recipes(recipe_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE RESTRICT,
+    INDEX idx_recipe_ingredients_recipe (recipe_id)
+);
+
+-- Production Orders: a manufacturing run that consumes ingredients and adds output stock
+CREATE TABLE IF NOT EXISTS production_orders (
+    production_id INT PRIMARY KEY AUTO_INCREMENT,
+    recipe_id INT NOT NULL,
+    batches DECIMAL(10,3) NOT NULL DEFAULT 1,
+    output_quantity DECIMAL(10,3) NOT NULL,
+    status ENUM('completed','cancelled') DEFAULT 'completed',
+    notes TEXT,
+    produced_by INT,
+    produced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (recipe_id) REFERENCES recipes(recipe_id) ON DELETE RESTRICT,
+    FOREIGN KEY (produced_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_production_orders_recipe (recipe_id)
+);

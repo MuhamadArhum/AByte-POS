@@ -74,6 +74,8 @@ const permissionRoutes      = require('./routes/permissionRoutes');
 const tenantRoutes          = require('./routes/tenantRoutes');
 const emailRoutes           = require('./routes/emailRoutes');
 const restaurantRoutes      = require('./routes/restaurantRoutes');
+const recipeRoutes          = require('./routes/recipeRoutes');
+const productionRoutes      = require('./routes/productionRoutes');
 
 // --- Module Guard (plan-based access) ---
 const { requireModule } = require('./middleware/moduleGuard');
@@ -165,6 +167,10 @@ app.use('/api/quotations',      quotationRoutes);
 app.use('/api/price-rules',     priceRuleRoutes);
 app.use('/api/sales-targets',   salesTargetRoutes);
 app.use('/api/deliveries',      deliveryRoutes);
+
+// Manufacturing / Recipe module
+app.use('/api/recipes',             recipeRoutes);
+app.use('/api/production-orders',   productionRoutes);
 
 // Inventory module (basic+)
 app.use('/api/products',            productRoutes);

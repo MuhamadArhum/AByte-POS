@@ -410,7 +410,7 @@ const POS = () => {
     if (!register) return;
     const fetchCategories = async () => {
       try {
-        const res = await api.get('/products/categories');
+        const res = await api.get('/products/categories', { params: { type: 'finished_good' } });
         setCategories(res.data.data || res.data);
       } catch (error) {
         console.error("Failed to fetch categories", error);
