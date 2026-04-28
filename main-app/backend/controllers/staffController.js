@@ -21,6 +21,18 @@ async function ensureTablesAndColumns() {
       UNIQUE KEY unique_desig_name (name),
       INDEX idx_desig_dept (department_id)
     )`);
+    await query(`CREATE TABLE IF NOT EXISTS salary_adjustments (
+      adjustment_id INT PRIMARY KEY AUTO_INCREMENT,
+      staff_id INT NOT NULL,
+      month TINYINT NOT NULL,
+      year SMALLINT NOT NULL,
+      days DECIMAL(5,2) NOT NULL DEFAULT 0,
+      reason TEXT,
+      created_by INT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY unique_adj (staff_id, month, year),
+      FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE
+    )`);
   } catch (e) { /* already exists */ }
 }
 
@@ -618,8 +630,10 @@ exports.getSalarySheet = async (req, res) => {
       'SELECT COUNT(*) as holidays_count FROM holidays WHERE MONTH(holiday_date) = ? AND YEAR(holiday_date) = ?',
       [m, y]
     );
-    const daysInMonth   = new Date(y, m, 0).getDate();
-    const working_days  = Math.max(daysInMonth - Number(holidays_count), 1);
+    const daysInMonth  = new Date(y, m, 0).getDate();
+    const holidays     = Number(holidays_count);
+    // Daily rate denominator = total days in month (holidays are paid so salary / days_in_month)
+    const rate_base    = daysInMonth;
 
     let sql = `
       SELECT s.staff_id, s.employee_id, s.full_name, s.department, s.position,
@@ -627,56 +641,98 @@ exports.getSalarySheet = async (req, res) => {
              COUNT(CASE WHEN a.status = 'present'  THEN 1 END) as present_days,
              COUNT(CASE WHEN a.status = 'absent'   THEN 1 END) as absent_days,
              COUNT(CASE WHEN a.status = 'half_day' THEN 1 END) as half_days,
-             COUNT(CASE WHEN a.status = 'leave'    THEN 1 END) as leave_days,
              COALESCE(SUM(CASE WHEN l.status = 'active' THEN l.monthly_deduction ELSE 0 END), 0) as loan_deduction,
              COALESCE((SELECT SUM(ap.amount) FROM advance_payments ap
-                       WHERE ap.staff_id = s.staff_id AND MONTH(ap.payment_date) = ? AND YEAR(ap.payment_date) = ?), 0) as advance_deduction
+                       WHERE ap.staff_id = s.staff_id AND MONTH(ap.payment_date) = ? AND YEAR(ap.payment_date) = ?), 0) as advance_deduction,
+             COALESCE((SELECT sa.days FROM salary_adjustments sa
+                       WHERE sa.staff_id = s.staff_id AND sa.month = ? AND sa.year = ?), 0) as adjustment_days,
+             COALESCE((SELECT sa.reason FROM salary_adjustments sa
+                       WHERE sa.staff_id = s.staff_id AND sa.month = ? AND sa.year = ?), NULL) as adjustment_reason
       FROM staff s
       LEFT JOIN attendance a ON s.staff_id = a.staff_id
            AND MONTH(a.attendance_date) = ? AND YEAR(a.attendance_date) = ?
       LEFT JOIN staff_loans l ON s.staff_id = l.staff_id AND l.status = 'active'
       WHERE s.is_active = 1
     `;
-    const params = [m, y, m, y];
+    const params = [m, y, m, y, m, y, m, y];
     if (department) { sql += ' AND s.department = ?'; params.push(department); }
     sql += ' GROUP BY s.staff_id ORDER BY s.department, s.full_name';
 
     const data = await query(sql, params);
     const sheet = data.map(r => {
       const salary               = Number(r.salary || 0);
-      const daily_rate           = working_days > 0 ? salary / working_days : 0;
+      const daily_rate           = rate_base > 0 ? salary / rate_base : 0;
+      const present_days         = Number(r.present_days || 0);
       const absent_days          = Number(r.absent_days  || 0);
       const half_days            = Number(r.half_days    || 0);
-      const leave_days           = Number(r.leave_days   || 0);
       const monthly_leave_allowed = Number(r.monthly_leave_allowed || 2);
-      const excess_leave         = Math.max(0, leave_days - monthly_leave_allowed);
-      const absent_deduction     = +(absent_days * daily_rate + half_days * daily_rate * 0.5).toFixed(2);
-      const excess_leave_deduction = +(excess_leave * daily_rate).toFixed(2);
+      const adjustment_days      = Number(r.adjustment_days || 0);
       const loan_deduction       = Number(r.loan_deduction || 0);
       const advance_deduction    = Number(r.advance_deduction || 0);
-      const total_deduction      = +(absent_deduction + excess_leave_deduction + loan_deduction + advance_deduction).toFixed(2);
+
+      // Total payable days = present (half=0.5) + allowed leaves (fixed quota) + holidays + adjustment
+      const present_eq      = present_days + half_days * 0.5;
+      const total_attendance = +(present_eq + monthly_leave_allowed + holidays + adjustment_days).toFixed(2);
+
+      // Earned salary = daily_rate × total_attendance
+      const earned_salary   = +(daily_rate * total_attendance).toFixed(2);
+
+      // Deductions = loan + advance only (absence is already excluded from total_attendance)
+      const total_deduction = +(loan_deduction + advance_deduction).toFixed(2);
+      const net_salary      = +(earned_salary - total_deduction).toFixed(2);
+
       return {
-        ...r,
+        staff_id:   r.staff_id,
+        employee_id: r.employee_id,
+        full_name:  r.full_name,
+        department: r.department,
+        position:   r.position,
         salary,
-        present_days: Number(r.present_days || 0),
-        absent_days, half_days, leave_days,
-        monthly_leave_allowed,
-        excess_leave,
-        gross_pay: salary,
-        absent_deduction,
-        excess_leave_deduction,
+        daily_rate: +daily_rate.toFixed(2),
+        present_days,
+        absent_days,
+        half_days,
+        monthly_leave_allowed,  // fixed quota shown in "Allowed Leaves" column
+        holidays,
+        adjustment_days,
+        adjustment_reason: r.adjustment_reason || null,
+        total_attendance,
+        earned_salary,
         loan_deduction,
         advance_deduction,
         total_deduction,
-        net_salary: +(salary - total_deduction).toFixed(2),
-        daily_rate: +daily_rate.toFixed(2),
+        net_salary,
       };
     });
 
     res.json({
       data: sheet,
-      meta: { month: m, year: y, holidays: Number(holidays_count), working_days, days_in_month: daysInMonth }
+      meta: { month: m, year: y, holidays, days_in_month: daysInMonth }
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.setSalaryAdjustment = async (req, res) => {
+  try {
+    await ensureTablesAndColumns();
+    const { staff_id, month, year, days, reason } = req.body;
+    if (!staff_id || !month || !year) return res.status(400).json({ message: 'staff_id, month, year required' });
+    if (days === 0 || days === null || days === undefined) {
+      await query('DELETE FROM salary_adjustments WHERE staff_id = ? AND month = ? AND year = ?', [staff_id, month, year]);
+    } else {
+      await query(
+        `INSERT INTO salary_adjustments (staff_id, month, year, days, reason, created_by)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE days = ?, reason = ?, created_by = ?`,
+        [staff_id, month, year, days, reason || null, req.user.user_id,
+         days, reason || null, req.user.user_id]
+      );
+    }
+    await logAction(req.user.user_id, req.user.name, 'SALARY_ADJUSTMENT', 'salary_adjustments', staff_id, { month, year, days, reason }, req.ip);
+    res.json({ message: 'Adjustment saved' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

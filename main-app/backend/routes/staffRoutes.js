@@ -10,6 +10,7 @@ router.use(requireModule('hr_payroll'));
 router.get('/reports/attendance-monthly', staffController.getMonthlyAttendanceReport);
 router.get('/reports/salary-summary', staffController.getSalarySummaryReport);
 router.get('/reports/salary-sheet', staffController.getSalarySheet);
+router.post('/reports/salary-adjustment', requirePermission('hr.payroll'), staffController.setSalaryAdjustment);
 router.get('/reports/salary-voucher', staffController.getSalaryVoucher);
 router.get('/reports/daily-attendance', staffController.getDailyAttendance);
 router.get('/reports/employee-ledger/:staffId', staffController.getEmployeeLedger);
