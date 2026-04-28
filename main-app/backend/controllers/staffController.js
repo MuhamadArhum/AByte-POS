@@ -800,13 +800,14 @@ exports.getSalaryVoucher = async (req, res) => {
       FROM attendance WHERE staff_id=? AND MONTH(attendance_date)=? AND YEAR(attendance_date)=?
     `, [staff_id, m, y]);
 
+    await ensureTablesAndColumns();
     const [adjRow] = await query(
       'SELECT days, reason FROM salary_adjustments WHERE staff_id=? AND month=? AND year=?', [staff_id, m, y]
     );
 
     // Salary components
     const compRows = await query(`
-      SELECT sc.type, sc.calculation,
+      SELECT sc.name, sc.type, sc.calculation,
              COALESCE(ssc.custom_value, sc.default_value) as value
       FROM staff_salary_components ssc
       JOIN salary_components sc ON ssc.component_id = sc.component_id
@@ -829,7 +830,7 @@ exports.getSalaryVoucher = async (req, res) => {
     const earned_salary    = +(daily_rate * total_attendance).toFixed(2);
 
     let total_allowances = 0, total_comp_deductions = 0;
-    const allowance_items: any[] = [], deduction_items: any[] = [];
+    const allowance_items = [], deduction_items = [];
     for (const c of compRows) {
       const val = c.calculation === 'percentage' ? salary * Number(c.value) / 100 : Number(c.value);
       if (c.type === 'allowance') { total_allowances += val; allowance_items.push({ name: c.name, value: +val.toFixed(2) }); }

@@ -1,3 +1,0 @@
-Products Module Ko Thora Update krna hai 
-1: Sirf Finish Goods Ko Sale Module main Show Krna hai Or Unki Categry Hi Show Honi Chaye Sale Module main 
-2: Raw Material and Semi Finish Goods Ki Categories bhi Unky Apny Module main Rahain Gi Or Yahan Recipe Based System Bnaye gy Yani Raw material sy Semi Finsih Goods Bany Ga or Or Sale Module main Show Hoga Jo Finsh Goods ka Stock hoga Wo Usi Trha Update hota rahy Ga
