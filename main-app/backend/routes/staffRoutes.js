@@ -52,6 +52,11 @@ router.post('/departments', requirePermission('hr.employees'), staffController.c
 router.put('/departments/:id', requirePermission('hr.employees'), staffController.updateDepartment);
 router.delete('/departments/:id', requirePermission('hr.employees'), staffController.deleteDepartment);
 
+router.get('/designations', staffController.getDesignations);
+router.post('/designations', requirePermission('hr.employees'), staffController.createDesignation);
+router.put('/designations/:id', requirePermission('hr.employees'), staffController.updateDesignation);
+router.delete('/designations/:id', requirePermission('hr.employees'), staffController.deleteDesignation);
+
 router.get('/salary-components', staffController.getSalaryComponents);
 router.post('/salary-components', requirePermission('hr.payroll'), staffController.createSalaryComponent);
 router.put('/salary-components/:id', requirePermission('hr.payroll'), staffController.updateSalaryComponent);

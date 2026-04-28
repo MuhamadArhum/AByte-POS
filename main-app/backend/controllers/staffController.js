@@ -1,6 +1,29 @@
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
+let dbReady = false;
+async function ensureTablesAndColumns() {
+  if (dbReady) return;
+  dbReady = true;
+  try {
+    await query(`ALTER TABLE staff ADD COLUMN IF NOT EXISTS salary_account_id INT DEFAULT NULL`);
+    await query(`ALTER TABLE staff ADD COLUMN IF NOT EXISTS time_in TIME DEFAULT NULL`);
+    await query(`ALTER TABLE staff ADD COLUMN IF NOT EXISTS time_out TIME DEFAULT NULL`);
+    await query(`ALTER TABLE staff ADD COLUMN IF NOT EXISTS monthly_leave_allowed INT DEFAULT 2`);
+    await query(`ALTER TABLE staff ADD COLUMN IF NOT EXISTS grace_time INT DEFAULT 10`);
+    await query(`CREATE TABLE IF NOT EXISTS designations (
+      designation_id INT PRIMARY KEY AUTO_INCREMENT,
+      name VARCHAR(100) NOT NULL,
+      department_id INT DEFAULT NULL,
+      description TEXT,
+      is_active TINYINT(1) DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY unique_desig_name (name),
+      INDEX idx_desig_dept (department_id)
+    )`);
+  } catch (e) { /* already exists */ }
+}
+
 const parsePagination = (page, limit) => {
   const pageNum = parseInt(page) || 1;
   const limitNum = Math.min(parseInt(limit) || 20, 100);
@@ -66,15 +89,22 @@ exports.getById = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { user_id, employee_id, full_name, phone, email, address, position, department, salary, salary_type, hire_date } = req.body;
+    await ensureTablesAndColumns();
+    const { user_id, employee_id, full_name, phone, email, address, position, department, salary, salary_type, hire_date,
+            salary_account_id, time_in, time_out, monthly_leave_allowed, grace_time } = req.body;
     if (!full_name || !hire_date) return res.status(400).json({ message: 'Name and hire date required', field: !full_name ? 'full_name' : 'hire_date' });
     if (phone && !/^[\d+\-() ]{7,20}$/.test(phone)) return res.status(400).json({ message: 'Invalid phone format', field: 'phone' });
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: 'Invalid email format', field: 'email' });
     if (salary !== undefined && salary !== null && Number(salary) < 0) return res.status(400).json({ message: 'Salary cannot be negative', field: 'salary' });
 
     const result = await query(
-      'INSERT INTO staff (user_id, employee_id, full_name, phone, email, address, position, department, salary, salary_type, hire_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [user_id || null, employee_id || null, full_name, phone || null, email || null, address || null, position || null, department || null, salary || null, salary_type || 'monthly', hire_date]
+      `INSERT INTO staff (user_id, employee_id, full_name, phone, email, address, position, department,
+        salary, salary_type, hire_date, salary_account_id, time_in, time_out, monthly_leave_allowed, grace_time)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [user_id || null, employee_id || null, full_name, phone || null, email || null, address || null,
+       position || null, department || null, salary || null, salary_type || 'monthly', hire_date,
+       salary_account_id || null, time_in || null, time_out || null,
+       monthly_leave_allowed != null ? monthly_leave_allowed : 2, grace_time != null ? grace_time : 10]
     );
 
     await logAction(req.user.user_id, req.user.name, 'STAFF_CREATED', 'staff', result.insertId, { full_name }, req.ip);
@@ -87,16 +117,26 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
+    await ensureTablesAndColumns();
     const { id } = req.params;
-    const { employee_id, full_name, phone, email, address, position, department, salary, salary_type, is_active, leave_balance } = req.body;
+    const { employee_id, full_name, phone, email, address, position, department, salary, salary_type, is_active, leave_balance,
+            salary_account_id, time_in, time_out, monthly_leave_allowed, grace_time } = req.body;
     if (!full_name) return res.status(400).json({ message: 'Name required', field: 'full_name' });
     if (phone && !/^[\d+\-() ]{7,20}$/.test(phone)) return res.status(400).json({ message: 'Invalid phone format', field: 'phone' });
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: 'Invalid email format', field: 'email' });
     if (salary !== undefined && salary !== null && Number(salary) < 0) return res.status(400).json({ message: 'Salary cannot be negative', field: 'salary' });
 
     await query(
-      'UPDATE staff SET employee_id=?, full_name=?, phone=?, email=?, address=?, position=?, department=?, salary=?, salary_type=?, is_active=?, leave_balance=?, updated_at=CURRENT_TIMESTAMP WHERE staff_id=?',
-      [employee_id || null, full_name, phone || null, email || null, address || null, position || null, department || null, salary || null, salary_type || 'monthly', is_active ?? 1, leave_balance ?? 20, id]
+      `UPDATE staff SET employee_id=?, full_name=?, phone=?, email=?, address=?, position=?, department=?,
+        salary=?, salary_type=?, is_active=?, leave_balance=?, salary_account_id=?,
+        time_in=?, time_out=?, monthly_leave_allowed=?, grace_time=?, updated_at=CURRENT_TIMESTAMP
+       WHERE staff_id=?`,
+      [employee_id || null, full_name, phone || null, email || null, address || null,
+       position || null, department || null, salary || null, salary_type || 'monthly',
+       is_active ?? 1, leave_balance ?? 20, salary_account_id || null,
+       time_in || null, time_out || null,
+       monthly_leave_allowed != null ? monthly_leave_allowed : 2, grace_time != null ? grace_time : 10,
+       id]
     );
 
     await logAction(req.user.user_id, req.user.name, 'STAFF_UPDATED', 'staff', id, { full_name }, req.ip);
@@ -568,6 +608,7 @@ exports.getSalarySummaryReport = async (req, res) => {
 
 exports.getSalarySheet = async (req, res) => {
   try {
+    await ensureTablesAndColumns();
     const { department, month, year } = req.query;
     const now = new Date();
     const m = parseInt(month) || (now.getMonth() + 1);
@@ -577,50 +618,58 @@ exports.getSalarySheet = async (req, res) => {
       'SELECT COUNT(*) as holidays_count FROM holidays WHERE MONTH(holiday_date) = ? AND YEAR(holiday_date) = ?',
       [m, y]
     );
-    const daysInMonth = new Date(y, m, 0).getDate();
-    const working_days = Math.max(daysInMonth - Number(holidays_count), 1);
+    const daysInMonth   = new Date(y, m, 0).getDate();
+    const working_days  = Math.max(daysInMonth - Number(holidays_count), 1);
 
     let sql = `
       SELECT s.staff_id, s.employee_id, s.full_name, s.department, s.position,
-             s.salary, s.salary_type,
-             COUNT(CASE WHEN a.status = 'present' THEN 1 END) as present_days,
-             COUNT(CASE WHEN a.status = 'absent'  THEN 1 END) as absent_days,
+             s.salary, s.salary_type, COALESCE(s.monthly_leave_allowed, 2) as monthly_leave_allowed,
+             COUNT(CASE WHEN a.status = 'present'  THEN 1 END) as present_days,
+             COUNT(CASE WHEN a.status = 'absent'   THEN 1 END) as absent_days,
              COUNT(CASE WHEN a.status = 'half_day' THEN 1 END) as half_days,
-             COUNT(CASE WHEN a.status = 'leave'   THEN 1 END) as leave_days,
-             COALESCE(SUM(CASE WHEN l.status = 'active' THEN l.monthly_deduction ELSE 0 END), 0) as loan_deduction
+             COUNT(CASE WHEN a.status = 'leave'    THEN 1 END) as leave_days,
+             COALESCE(SUM(CASE WHEN l.status = 'active' THEN l.monthly_deduction ELSE 0 END), 0) as loan_deduction,
+             COALESCE((SELECT SUM(ap.amount) FROM advance_payments ap
+                       WHERE ap.staff_id = s.staff_id AND MONTH(ap.payment_date) = ? AND YEAR(ap.payment_date) = ?), 0) as advance_deduction
       FROM staff s
       LEFT JOIN attendance a ON s.staff_id = a.staff_id
            AND MONTH(a.attendance_date) = ? AND YEAR(a.attendance_date) = ?
       LEFT JOIN staff_loans l ON s.staff_id = l.staff_id AND l.status = 'active'
       WHERE s.is_active = 1
     `;
-    const params = [m, y];
+    const params = [m, y, m, y];
     if (department) { sql += ' AND s.department = ?'; params.push(department); }
     sql += ' GROUP BY s.staff_id ORDER BY s.department, s.full_name';
 
     const data = await query(sql, params);
     const sheet = data.map(r => {
-      const salary       = Number(r.salary || 0);
-      const daily_rate   = salary / working_days;
-      const absent_days  = Number(r.absent_days  || 0);
-      const half_days    = Number(r.half_days    || 0);
-      const absent_deduction = +(absent_days * daily_rate + half_days * daily_rate * 0.5).toFixed(2);
-      const loan_deduction   = Number(r.loan_deduction || 0);
-      const total_deduction  = +(loan_deduction + absent_deduction).toFixed(2);
+      const salary               = Number(r.salary || 0);
+      const daily_rate           = working_days > 0 ? salary / working_days : 0;
+      const absent_days          = Number(r.absent_days  || 0);
+      const half_days            = Number(r.half_days    || 0);
+      const leave_days           = Number(r.leave_days   || 0);
+      const monthly_leave_allowed = Number(r.monthly_leave_allowed || 2);
+      const excess_leave         = Math.max(0, leave_days - monthly_leave_allowed);
+      const absent_deduction     = +(absent_days * daily_rate + half_days * daily_rate * 0.5).toFixed(2);
+      const excess_leave_deduction = +(excess_leave * daily_rate).toFixed(2);
+      const loan_deduction       = Number(r.loan_deduction || 0);
+      const advance_deduction    = Number(r.advance_deduction || 0);
+      const total_deduction      = +(absent_deduction + excess_leave_deduction + loan_deduction + advance_deduction).toFixed(2);
       return {
         ...r,
         salary,
-        present_days : Number(r.present_days || 0),
-        absent_days,
-        half_days,
-        leave_days   : Number(r.leave_days   || 0),
-        adjustment   : 0,
-        gross_pay    : salary,
-        loan_deduction,
+        present_days: Number(r.present_days || 0),
+        absent_days, half_days, leave_days,
+        monthly_leave_allowed,
+        excess_leave,
+        gross_pay: salary,
         absent_deduction,
+        excess_leave_deduction,
+        loan_deduction,
+        advance_deduction,
         total_deduction,
-        net_salary   : +(salary - total_deduction).toFixed(2),
-        daily_rate   : +daily_rate.toFixed(2),
+        net_salary: +(salary - total_deduction).toFixed(2),
+        daily_rate: +daily_rate.toFixed(2),
       };
     });
 
@@ -1427,6 +1476,79 @@ exports.deleteDepartment = async (req, res) => {
     await query('DELETE FROM departments WHERE department_id = ?', [id]);
     await logAction(req.user.user_id, req.user.name, 'DEPT_DELETED', 'departments', id, { name: dept.name }, req.ip);
     res.json({ message: 'Department deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== DESIGNATIONS ==============
+
+exports.getDesignations = async (req, res) => {
+  try {
+    await ensureTablesAndColumns();
+    const { department_id, is_active } = req.query;
+    let sql = `SELECT d.*, dept.name as department_name
+               FROM designations d
+               LEFT JOIN departments dept ON d.department_id = dept.department_id
+               WHERE 1=1`;
+    const params = [];
+    if (department_id) { sql += ' AND d.department_id = ?'; params.push(department_id); }
+    if (is_active !== undefined) { sql += ' AND d.is_active = ?'; params.push(is_active); }
+    sql += ' ORDER BY d.name ASC';
+    res.json({ data: await query(sql, params) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.createDesignation = async (req, res) => {
+  try {
+    await ensureTablesAndColumns();
+    const { name, department_id, description } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ message: 'Designation name required' });
+    const result = await query(
+      'INSERT INTO designations (name, department_id, description) VALUES (?, ?, ?)',
+      [name.trim(), department_id || null, description || null]
+    );
+    await logAction(req.user.user_id, req.user.name, 'DESIGNATION_CREATED', 'designations', result.insertId, { name }, req.ip);
+    res.status(201).json({ message: 'Designation created', designation_id: result.insertId });
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Designation name already exists' });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.updateDesignation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, department_id, description, is_active } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ message: 'Designation name required' });
+    await query(
+      'UPDATE designations SET name=?, department_id=?, description=?, is_active=? WHERE designation_id=?',
+      [name.trim(), department_id || null, description || null, is_active ?? 1, id]
+    );
+    await logAction(req.user.user_id, req.user.name, 'DESIGNATION_UPDATED', 'designations', id, { name }, req.ip);
+    res.json({ message: 'Designation updated' });
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Designation name already exists' });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.deleteDesignation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [desig] = await query('SELECT name FROM designations WHERE designation_id = ?', [id]);
+    if (!desig) return res.status(404).json({ message: 'Designation not found' });
+    const [{ count }] = await query('SELECT COUNT(*) as count FROM staff WHERE position = ? AND is_active = 1', [desig.name]);
+    if (Number(count) > 0) return res.status(400).json({ message: `Cannot delete — ${count} active staff have this designation` });
+    await query('DELETE FROM designations WHERE designation_id = ?', [id]);
+    await logAction(req.user.user_id, req.user.name, 'DESIGNATION_DELETED', 'designations', id, { name: desig.name }, req.ip);
+    res.json({ message: 'Designation deleted' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
