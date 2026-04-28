@@ -15,7 +15,7 @@ const { logAction } = require('../services/auditService');
 exports.getAll = async (req, res) => {
   try {
     const rows = await query(
-      'SELECT u.user_id, u.username, u.name, u.email, u.role_id, r.role_name as role, u.created_at FROM users u JOIN roles r ON u.role_id = r.role_id WHERE u.is_active = 1 ORDER BY u.created_at DESC'
+      'SELECT u.user_id, u.username, u.name, u.email, u.role_id, u.role_name as role, u.created_at FROM users u WHERE u.is_active = 1 ORDER BY u.created_at DESC'
     );
     res.json({ data: rows });
   } catch (err) {
