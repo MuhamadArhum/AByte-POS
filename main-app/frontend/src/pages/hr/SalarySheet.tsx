@@ -495,7 +495,6 @@ const SalarySheet = () => {
                             {r.salary_account_id ? (
                               <button
                                 onClick={() => {
-                                  const now = new Date();
                                   const from = `${year}-${String(month).padStart(2,'0')}-01`;
                                   const last = new Date(year, month, 0).getDate();
                                   const to   = `${year}-${String(month).padStart(2,'0')}-${String(last).padStart(2,'0')}`;
