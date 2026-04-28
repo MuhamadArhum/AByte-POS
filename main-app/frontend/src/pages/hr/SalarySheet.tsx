@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSettings } from '../../context/SettingsContext';
-import { FileText, Download, Filter, Printer, ChevronDown, ChevronRight, PlusCircle, X, Check } from 'lucide-react';
+import { FileText, Download, Filter, Printer, ChevronDown, ChevronRight, PlusCircle, X, Check, ExternalLink } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 
@@ -210,7 +210,7 @@ const SalarySheet = () => {
 
   // ── CSV Export ──
   const exportCSV = () => {
-    const headers = ['Emp ID','Name','Dept','Designation','Present','Absent','Half Days','Allowed Leaves','Holidays','Adjustment','Total Attendance','Basic Salary','Daily Rate','Earned Salary','Loan Ded.','Advance Ded.','Total Ded.','Net Pay'];
+    const headers = ['Emp ID','Name','Dept','Designation','Present','Absent','Half Days','Allowed Leaves','Holidays','Adjustment','Total Attendance','Basic Salary','Daily Rate','Earned Salary','Salary A/C Code','Salary A/C Balance','Loan Ded.','Advance Ded.','Total Ded.','Net Pay'];
     const rows = filtered.map(r => [
       r.employee_id || '',
       `"${r.full_name}"`,
@@ -224,6 +224,8 @@ const SalarySheet = () => {
       n(r.salary).toFixed(2),
       n(r.daily_rate).toFixed(4),
       n(r.earned_salary).toFixed(2),
+      r.salary_account_code || '',
+      r.salary_account_id ? n(r.salary_account_balance).toFixed(2) : '',
       n(r.loan_deduction).toFixed(2),
       n(r.advance_deduction).toFixed(2),
       n(r.total_deduction).toFixed(2),
@@ -252,6 +254,7 @@ const SalarySheet = () => {
         <td align="center" style="font-weight:700">${fmt(n(r.total_attendance), 1)}</td>
         <td align="right">${currency}${fmt(n(r.salary))}</td>
         <td align="right" style="color:#059669;font-weight:700">${currency}${fmt(n(r.earned_salary))}</td>
+        <td align="right" style="color:#7c3aed">${r.salary_account_id ? `${r.salary_account_code}<br/>${currency}${fmt(n(r.salary_account_balance))}` : '-'}</td>
         <td align="right" style="color:#dc2626">${n(r.total_deduction) > 0 ? `-${currency}${fmt(n(r.total_deduction))}` : '-'}</td>
         <td align="right" style="font-weight:700;color:#059669">${currency}${fmt(n(r.net_salary))}</td>
       </tr>`).join('');
@@ -272,7 +275,7 @@ const SalarySheet = () => {
         <thead><tr>
           <th>Emp ID</th><th>Name</th><th>Designation</th>
           <th>Present</th><th>Absent</th><th>Allow.Leaves</th><th>Holidays</th><th>Adj.</th><th>Total Att.</th>
-          <th>Basic Salary</th><th>Earned Salary</th><th>Deductions</th><th>Net Pay</th>
+          <th>Basic Salary</th><th>Earned Salary</th><th>Salary A/C</th><th>Deductions</th><th>Net Pay</th>
         </tr></thead>
         <tbody>${rows}
           <tr class="tot">
@@ -283,6 +286,7 @@ const SalarySheet = () => {
             <td align="center">${fmt(grandTotal.total_attendance, 1)}</td>
             <td align="right">${currency}${fmt(grandTotal.earned_salary)}</td>
             <td align="right">${currency}${fmt(grandTotal.earned_salary)}</td>
+            <td></td>
             <td align="right">-${currency}${fmt(grandTotal.total_deduction)}</td>
             <td align="right">${currency}${fmt(grandTotal.net_salary)}</td>
           </tr>
@@ -402,6 +406,8 @@ const SalarySheet = () => {
                   {/* Salary */}
                   <th className={`${th} text-right text-gray-500`}>Basic<br/>Salary</th>
                   <th className={`${th} text-right text-emerald-600 bg-emerald-50`}>Earned<br/>Salary</th>
+                  {/* Salary Account */}
+                  <th className={`${th} text-right text-violet-600`}>Salary A/C<br/>Balance</th>
                   {/* Deductions */}
                   <th className={`${th} text-right text-red-500`}>Deductions</th>
                   {/* Net */}
@@ -416,7 +422,7 @@ const SalarySheet = () => {
                     <>
                       {/* Dept header */}
                       <tr key={`dept-${dept}`} className="bg-emerald-50/60 cursor-pointer select-none" onClick={() => toggleDept(dept)}>
-                        <td colSpan={13} className="px-3 py-2">
+                        <td colSpan={14} className="px-3 py-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               {collapsed ? <ChevronRight size={13} className="text-emerald-600" /> : <ChevronDown size={13} className="text-emerald-600" />}
@@ -484,6 +490,31 @@ const SalarySheet = () => {
                           <td className="px-3 py-2.5 text-right text-gray-600">{currency}{fmt(n(r.salary))}</td>
                           <td className="px-3 py-2.5 text-right font-semibold text-emerald-700 bg-emerald-50">{currency}{fmt(n(r.earned_salary))}</td>
 
+                          {/* Salary Account Balance */}
+                          <td className="px-3 py-2.5 text-right">
+                            {r.salary_account_id ? (
+                              <button
+                                onClick={() => {
+                                  const now = new Date();
+                                  const from = `${year}-${String(month).padStart(2,'0')}-01`;
+                                  const last = new Date(year, month, 0).getDate();
+                                  const to   = `${year}-${String(month).padStart(2,'0')}-${String(last).padStart(2,'0')}`;
+                                  window.open(`/general-ledger?account_id=${r.salary_account_id}&from_date=${from}&to_date=${to}`, '_blank');
+                                }}
+                                className="group inline-flex flex-col items-end gap-0.5 hover:opacity-80 transition"
+                                title={`${r.salary_account_code} — ${r.salary_account_name}\nClick to open ledger`}
+                              >
+                                <span className="text-xs text-gray-400 font-mono leading-none">{r.salary_account_code}</span>
+                                <span className="flex items-center gap-1 font-semibold text-violet-700">
+                                  {currency}{fmt(n(r.salary_account_balance))}
+                                  <ExternalLink size={10} className="opacity-40 group-hover:opacity-100" />
+                                </span>
+                              </button>
+                            ) : (
+                              <span className="text-gray-300 text-xs">—</span>
+                            )}
+                          </td>
+
                           {/* Deductions */}
                           <td className="px-3 py-2.5 text-right">
                             {n(r.total_deduction) > 0 ? (
@@ -516,6 +547,7 @@ const SalarySheet = () => {
                   <td className="px-3 py-4 text-center font-bold text-gray-800 bg-gray-100">{fmt(grandTotal.total_attendance, 1)}</td>
                   <td className="px-3 py-4 text-right font-bold text-gray-800">{currency}{fmt(grandTotal.earned_salary)}</td>
                   <td className="px-3 py-4 text-right font-bold text-emerald-700 bg-emerald-50">{currency}{fmt(grandTotal.earned_salary)}</td>
+                  <td />
                   <td className="px-3 py-4 text-right font-bold text-red-600">-{currency}{fmt(grandTotal.total_deduction)}</td>
                   <td className="px-3 py-4 text-right font-bold text-emerald-700 text-sm bg-emerald-50">{currency}{fmt(grandTotal.net_salary)}</td>
                 </tr>

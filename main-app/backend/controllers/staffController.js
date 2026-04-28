@@ -638,6 +638,10 @@ exports.getSalarySheet = async (req, res) => {
     let sql = `
       SELECT s.staff_id, s.employee_id, s.full_name, s.department, s.position,
              s.salary, s.salary_type, COALESCE(s.monthly_leave_allowed, 2) as monthly_leave_allowed,
+             s.salary_account_id,
+             acc.account_name  as salary_account_name,
+             acc.account_code  as salary_account_code,
+             acc.current_balance as salary_account_balance,
              COUNT(CASE WHEN a.status = 'present'  THEN 1 END) as present_days,
              COUNT(CASE WHEN a.status = 'absent'   THEN 1 END) as absent_days,
              COUNT(CASE WHEN a.status = 'half_day' THEN 1 END) as half_days,
@@ -649,6 +653,7 @@ exports.getSalarySheet = async (req, res) => {
              COALESCE((SELECT sa.reason FROM salary_adjustments sa
                        WHERE sa.staff_id = s.staff_id AND sa.month = ? AND sa.year = ?), NULL) as adjustment_reason
       FROM staff s
+      LEFT JOIN accounts acc ON s.salary_account_id = acc.account_id
       LEFT JOIN attendance a ON s.staff_id = a.staff_id
            AND MONTH(a.attendance_date) = ? AND YEAR(a.attendance_date) = ?
       LEFT JOIN staff_loans l ON s.staff_id = l.staff_id AND l.status = 'active'
@@ -692,7 +697,7 @@ exports.getSalarySheet = async (req, res) => {
         present_days,
         absent_days,
         half_days,
-        monthly_leave_allowed,  // fixed quota shown in "Allowed Leaves" column
+        monthly_leave_allowed,
         holidays,
         adjustment_days,
         adjustment_reason: r.adjustment_reason || null,
@@ -702,6 +707,11 @@ exports.getSalarySheet = async (req, res) => {
         advance_deduction,
         total_deduction,
         net_salary,
+        salary_account_id:      r.salary_account_id || null,
+        salary_account_name:    r.salary_account_name || null,
+        salary_account_code:    r.salary_account_code || null,
+        salary_account_balance: r.salary_account_balance !== null && r.salary_account_balance !== undefined
+                                  ? Number(r.salary_account_balance) : null,
       };
     });
 
