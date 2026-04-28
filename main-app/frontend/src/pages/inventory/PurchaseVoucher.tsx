@@ -1,5 +1,5 @@
-﻿import { useState, useEffect, useCallback } from 'react';
-import { Plus, Eye, Trash2, X, Search, ShoppingCart, Printer, Pencil } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Plus, Eye, Trash2, X, Search, ShoppingCart, Printer, Pencil, ChevronDown } from 'lucide-react';
 import api from '../../utils/api';
 import { printGRN } from '../../utils/printUtils';
 import { localToday, localMonthStart } from '../../utils/dateUtils';
@@ -7,23 +7,96 @@ import { useToast } from '../../components/Toast';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import Pagination from '../../components/Pagination';
 
-interface Supplier { supplier_id: number; supplier_name: string; }
-interface PO { po_id: number; po_number: string; supplier_id: number; supplier_name: string; }
+// ── AccountSelector — searchable Level 4 account picker ──────────────────────
+const AccountSelector = ({
+  value, onChange, accounts, placeholder = 'Select Account…',
+}: {
+  value: string; onChange: (id: string) => void; accounts: any[]; placeholder?: string;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [hi, setHi] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const selected = accounts.find(a => String(a.account_id) === String(value));
+  const filtered = accounts.filter(a =>
+    !search ||
+    a.account_name.toLowerCase().includes(search.toLowerCase()) ||
+    (a.account_code || '').includes(search)
+  );
+
+  useEffect(() => { setHi(0); }, [search]);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const select = (id: string) => { onChange(id); setOpen(false); setSearch(''); setHi(0); };
+
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-left transition">
+        <span className={selected ? 'text-gray-900 font-medium truncate' : 'text-gray-400'}>
+          {selected ? `${selected.account_code} — ${selected.account_name}` : placeholder}
+        </span>
+        <ChevronDown size={13} className="text-gray-400 shrink-0 ml-1" />
+      </button>
+      {open && (
+        <div className="absolute z-50 left-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-xl shadow-2xl">
+          <div className="p-2 border-b border-gray-100">
+            <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 rounded-lg">
+              <Search size={13} className="text-gray-400 shrink-0" />
+              <input autoFocus type="text" value={search}
+                onChange={e => setSearch(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setHi(h => Math.min(h + 1, filtered.length - 1)); }
+                  else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(h => Math.max(h - 1, 0)); }
+                  else if (e.key === 'Enter') { e.preventDefault(); if (filtered[hi]) select(String(filtered[hi].account_id)); }
+                  else if (e.key === 'Escape') setOpen(false);
+                }}
+                className="bg-transparent text-sm outline-none w-full placeholder-gray-400"
+                placeholder="Search by name or code…" />
+            </div>
+          </div>
+          <ul className="max-h-52 overflow-y-auto py-1">
+            {filtered.length === 0
+              ? <li className="px-3 py-3 text-sm text-gray-400 text-center">No accounts found</li>
+              : filtered.map((a, idx) => (
+                <li key={a.account_id}>
+                  <button type="button" onClick={() => select(String(a.account_id))}
+                    className={`w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition ${idx === hi ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-gray-50'}`}>
+                    <span className="font-mono text-xs text-gray-400 shrink-0">{a.account_code}</span>
+                    <span className="text-gray-800 truncate">{a.account_name}</span>
+                  </button>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface PO { po_id: number; po_number: string; supplier_name: string; }
 interface Product { product_id: number; product_name: string; barcode?: string; cost_price?: number; }
 interface VoucherItem { product_id: number; product_name: string; quantity_received: number; unit_price: number; }
-interface PayableAccount { account_id: number; account_name: string; account_code: string; }
 
+// ── Component ─────────────────────────────────────────────────────────────────
 const PurchaseVoucher = () => {
   const [vouchers, setVouchers]   = useState<any[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [payableAccounts, setPayableAccounts] = useState<PayableAccount[]>([]);
+  const [accounts, setAccounts]   = useState<any[]>([]);   // Level 4 accounts
   const [loading, setLoading]     = useState(true);
   const [showForm, setShowForm]   = useState(false);
-  const [editingPV, setEditingPV] = useState<any>(null); // null = create, object = edit
+  const [editingPV, setEditingPV] = useState<any>(null);
   const [viewVoucher, setViewVoucher] = useState<any>(null);
   const [dateFrom, setDateFrom]   = useState(localMonthStart());
   const [dateTo, setDateTo]       = useState(localToday());
-  const [supplierFilter, setSupplierFilter] = useState('');
   const [page, setPage]           = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -33,15 +106,16 @@ const PurchaseVoucher = () => {
   const [mode, setMode]             = useState<'po' | 'manual'>('manual');
   const [pos, setPOs]               = useState<PO[]>([]);
   const [selectedPO, setSelectedPO] = useState('');
-  const [formSupplier, setFormSupplier] = useState('');
   const [formDate, setFormDate]     = useState(localToday());
   const [formNotes, setFormNotes]   = useState('');
-  const [formShipping, setFormShipping]         = useState<number>(0);
-  const [formExtra, setFormExtra]               = useState<number>(0);
-  const [formOther, setFormOther]               = useState<number>(0);
-  const [formDiscountPct, setFormDiscountPct]   = useState<number>(0);
-  const [formTaxPct, setFormTaxPct]             = useState<number>(0);
-  const [formPayableAccountId, setFormPayableAccountId] = useState('');
+  const [formShipping, setFormShipping]       = useState<number>(0);
+  const [formExtra, setFormExtra]             = useState<number>(0);
+  const [formOther, setFormOther]             = useState<number>(0);
+  const [formDiscountPct, setFormDiscountPct] = useState<number>(0);
+  const [formTaxPct, setFormTaxPct]           = useState<number>(0);
+  // Two accounts: DR (purchase) and CR (supplier)
+  const [formPurchaseAccountId, setFormPurchaseAccountId] = useState('');
+  const [formSupplierAccountId, setFormSupplierAccountId] = useState('');
   const [items, setItems]           = useState<VoucherItem[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [productResults, setProductResults] = useState<Product[]>([]);
@@ -51,30 +125,27 @@ const PurchaseVoucher = () => {
     setLoading(true);
     try {
       const params: any = { from_date: dateFrom, to_date: dateTo, page, limit: 20 };
-      if (supplierFilter) params.supplier_id = supplierFilter;
       const res = await api.get('/purchase-vouchers', { params });
       setVouchers(res.data.data || []);
       setTotalPages(res.data.pagination?.totalPages || 1);
       setTotalItems(res.data.pagination?.total || 0);
     } catch { error('Failed to load'); }
     finally { setLoading(false); }
-  }, [dateFrom, dateTo, supplierFilter, page]);
+  }, [dateFrom, dateTo, page]);
 
   useEffect(() => {
-    api.get('/suppliers', { params: { limit: 200 } }).then(r => setSuppliers(r.data.data || []));
-    api.get('/accounts', { params: { search: 'L-01-01-', limit: 200 } }).then(r => setPayableAccounts(r.data.data || []));
-    api.get('/purchase-orders', { params: { limit: 200 } }).then(r =>
-      setPOs((r.data.data || []).filter((p: any) => p.status !== 'received' && p.status !== 'cancelled'))
-    );
+    // Fetch all Level 4 accounts (same as CPV/CRV)
+    api.get('/accounting/accounts', { params: { tree: 1 } })
+      .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active && a.level === 4)));
+    api.get('/purchase-orders', { params: { limit: 200 } })
+      .then(r => setPOs((r.data.data || []).filter((p: any) => p.status !== 'received' && p.status !== 'cancelled')));
   }, []);
   useEffect(() => { fetchVouchers(); }, [fetchVouchers]);
 
   const loadPOItems = async (poId: string) => {
-    if (!poId) { setItems([]); setFormSupplier(''); return; }
+    if (!poId) { setItems([]); return; }
     try {
       const res = await api.get(`/purchase-vouchers/po-items/${poId}`);
-      const po = pos.find(p => String(p.po_id) === poId);
-      if (po) setFormSupplier(String(po.supplier_id));
       setItems((res.data.data || []).map((i: any) => ({
         product_id: i.product_id,
         product_name: i.product_name,
@@ -101,10 +172,11 @@ const PurchaseVoucher = () => {
     setItems(prev => prev.map(i => i.product_id === id ? { ...i, [field]: val } : i));
 
   const resetForm = () => {
-    setMode('manual'); setSelectedPO(''); setFormSupplier('');
+    setMode('manual'); setSelectedPO('');
     setFormDate(localToday()); setFormNotes('');
     setFormShipping(0); setFormExtra(0); setFormOther(0);
-    setFormDiscountPct(0); setFormTaxPct(0); setFormPayableAccountId('');
+    setFormDiscountPct(0); setFormTaxPct(0);
+    setFormPurchaseAccountId(''); setFormSupplierAccountId('');
     setItems([]); setProductSearch(''); setProductResults([]);
     setEditingPV(null);
   };
@@ -116,9 +188,7 @@ const PurchaseVoucher = () => {
       const res = await api.get(`/purchase-vouchers/${pv.pv_id}`);
       const data = res.data;
       setEditingPV(data);
-      setMode('manual');
-      setSelectedPO('');
-      setFormSupplier(data.supplier_id ? String(data.supplier_id) : '');
+      setMode('manual'); setSelectedPO('');
       setFormDate(data.voucher_date?.split('T')[0] || localToday());
       setFormNotes(data.notes || '');
       setFormShipping(Number(data.shipping_cost) || 0);
@@ -126,7 +196,8 @@ const PurchaseVoucher = () => {
       setFormOther(Number(data.other_charges) || 0);
       setFormDiscountPct(Number(data.discount_percent) || 0);
       setFormTaxPct(Number(data.tax_percent) || 0);
-      setFormPayableAccountId(data.payable_account_id ? String(data.payable_account_id) : '');
+      setFormPurchaseAccountId(data.purchase_account_id ? String(data.purchase_account_id) : '');
+      setFormSupplierAccountId(data.payable_account_id ? String(data.payable_account_id) : '');
       setItems((data.items || []).map((i: any) => ({
         product_id: i.product_id,
         product_name: i.product_name,
@@ -138,20 +209,22 @@ const PurchaseVoucher = () => {
     } catch { error('Failed to load voucher'); }
   };
 
-  const itemsTotal      = items.reduce((s, i) => s + i.quantity_received * i.unit_price, 0);
-  const chargesTotal    = formShipping + formExtra + formOther;
-  const subtotal        = itemsTotal + chargesTotal;
-  const discountAmount  = subtotal * formDiscountPct / 100;
-  const taxable         = subtotal - discountAmount;
-  const taxAmount       = taxable * formTaxPct / 100;
-  const grandTotal      = taxable + taxAmount;
+  // Totals
+  const itemsTotal     = items.reduce((s, i) => s + i.quantity_received * i.unit_price, 0);
+  const chargesTotal   = formShipping + formExtra + formOther;
+  const subtotal       = itemsTotal + chargesTotal;
+  const discountAmount = subtotal * formDiscountPct / 100;
+  const taxable        = subtotal - discountAmount;
+  const taxAmount      = taxable * formTaxPct / 100;
+  const grandTotal     = taxable + taxAmount;
 
   const handleSubmit = async () => {
     if (!items.length) return error('Add at least one item');
+    if (!formPurchaseAccountId) return error('Select a Purchase Account (Debit)');
+    if (!formSupplierAccountId) return error('Select a Supplier Account (Credit)');
     setSaving(true);
     try {
       const payload: any = {
-        supplier_id: formSupplier || null,
         voucher_date: formDate,
         notes: formNotes,
         shipping_cost: formShipping,
@@ -159,7 +232,8 @@ const PurchaseVoucher = () => {
         other_charges: formOther,
         discount_percent: formDiscountPct,
         tax_percent: formTaxPct,
-        payable_account_id: formPayableAccountId || null,
+        purchase_account_id: formPurchaseAccountId,
+        payable_account_id: formSupplierAccountId,
         items,
       };
       if (!editingPV && mode === 'po' && selectedPO) payload.po_id = selectedPO;
@@ -196,6 +270,11 @@ const PurchaseVoucher = () => {
 
   const fmt = (n: any) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  const purchaseAccName = (pv: any) => pv.purchase_account_name
+    ? `${pv.purchase_account_code} — ${pv.purchase_account_name}` : '—';
+  const supplierAccName = (pv: any) => pv.payable_account_name
+    ? `${pv.payable_account_code} — ${pv.payable_account_name}` : '—';
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -203,7 +282,7 @@ const PurchaseVoucher = () => {
           <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
             <ShoppingCart size={20} className="text-indigo-600" /> Purchase Voucher
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Receive goods from PO or create manual purchase entry</p>
+          <p className="text-sm text-gray-500 mt-0.5">Receive goods and post double-entry journal via Level 4 accounts</p>
         </div>
         <button onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium">
@@ -211,7 +290,7 @@ const PurchaseVoucher = () => {
         </button>
       </div>
 
-      {/* Create / Edit Form Modal */}
+      {/* ── Create / Edit Modal ─────────────────────────────────────── */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
@@ -221,12 +300,13 @@ const PurchaseVoucher = () => {
               </h2>
               <button onClick={() => { setShowForm(false); resetForm(); }}><X size={20} className="text-gray-400" /></button>
             </div>
-            <div className="p-6 overflow-y-auto flex-1">
 
-              {/* Mode tabs — only for new voucher */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-5">
+
+              {/* Mode tabs — new voucher only */}
               {!editingPV && (
-                <div className="flex gap-2 mb-5">
-                  <button onClick={() => { setMode('manual'); setSelectedPO(''); setItems([]); setFormSupplier(''); }}
+                <div className="flex gap-2">
+                  <button onClick={() => { setMode('manual'); setSelectedPO(''); setItems([]); }}
                     className={`px-4 py-2 rounded-lg text-sm font-medium border ${mode === 'manual' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>
                     Manual Entry
                   </button>
@@ -238,30 +318,46 @@ const PurchaseVoucher = () => {
               )}
 
               {!editingPV && mode === 'po' && (
-                <div className="mb-4">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Select Purchase Order *</label>
                   <select value={selectedPO} onChange={e => { setSelectedPO(e.target.value); loadPOItems(e.target.value); }}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                    <option value="">-- Select PO --</option>
+                    <option value="">— Select PO —</option>
                     {pos.map(p => <option key={p.po_id} value={p.po_id}>{p.po_number} — {p.supplier_name}</option>)}
                   </select>
                 </div>
               )}
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Party / Payable Account <span className="text-red-500">*</span>
-                  <span className="text-xs text-gray-400 ml-1">— Auto credit on save</span>
-                </label>
-                <select value={formPayableAccountId} onChange={e => setFormPayableAccountId(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                  <option value="">-- Select Party --</option>
-                  {payableAccounts.map(a => (
-                    <option key={a.account_id} value={a.account_id}>{a.account_name}</option>
-                  ))}
-                </select>
+              {/* ── Double-Entry Accounts ─────────────────────────────── */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+                <div>
+                  <label className="block text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-1.5">
+                    Purchase Account <span className="bg-indigo-200 text-indigo-800 px-1.5 py-0.5 rounded text-xs ml-1">DR</span>
+                  </label>
+                  <AccountSelector
+                    value={formPurchaseAccountId}
+                    onChange={setFormPurchaseAccountId}
+                    accounts={accounts}
+                    placeholder="Select Purchase Account…"
+                  />
+                  <p className="text-xs text-indigo-500 mt-1">e.g. Purchases, Inventory Expense</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-1.5">
+                    Supplier Account <span className="bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded text-xs ml-1">CR</span>
+                  </label>
+                  <AccountSelector
+                    value={formSupplierAccountId}
+                    onChange={setFormSupplierAccountId}
+                    accounts={accounts}
+                    placeholder="Select Supplier Account…"
+                  />
+                  <p className="text-xs text-indigo-500 mt-1">e.g. Accounts Payable, Supplier A</p>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-4 mb-5">
+
+              {/* Date & Notes */}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Voucher Date *</label>
                   <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)}
@@ -274,14 +370,14 @@ const PurchaseVoucher = () => {
                 </div>
               </div>
 
-              {/* Product Search (manual mode or edit mode) */}
+              {/* Product Search */}
               {(editingPV || mode === 'manual') && (
-                <div className="relative mb-4">
+                <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Add Products</label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input type="text" value={productSearch} onChange={e => searchProducts(e.target.value)}
-                      placeholder="Search by name or barcode..."
+                      placeholder="Search by name or barcode…"
                       className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
                   </div>
                   {productResults.length > 0 && (
@@ -300,7 +396,7 @@ const PurchaseVoucher = () => {
 
               {/* Items Table */}
               {items.length > 0 && (
-                <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden mb-4">
+                <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
@@ -335,47 +431,30 @@ const PurchaseVoucher = () => {
                 </table>
               )}
 
-              {/* Additional Charges + Tax/Discount */}
+              {/* Charges + Tax/Discount */}
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Charges, Discount & Tax</p>
                 <div className="grid grid-cols-3 gap-4 mb-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Shipping Cost</label>
-                    <input type="number" min="0" step="0.01" value={formShipping}
-                      onChange={e => setFormShipping(parseFloat(e.target.value) || 0)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-right focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0.00" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Extra Charges</label>
-                    <input type="number" min="0" step="0.01" value={formExtra}
-                      onChange={e => setFormExtra(parseFloat(e.target.value) || 0)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-right focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0.00" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Other Charges</label>
-                    <input type="number" min="0" step="0.01" value={formOther}
-                      onChange={e => setFormOther(parseFloat(e.target.value) || 0)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-right focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0.00" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-red-600 mb-1">Discount %</label>
-                    <input type="number" min="0" max="100" step="0.01" value={formDiscountPct}
-                      onChange={e => setFormDiscountPct(parseFloat(e.target.value) || 0)}
-                      className="w-full border border-red-200 rounded-lg px-3 py-2 text-sm text-right focus:ring-2 focus:ring-red-400 outline-none" placeholder="0.00" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-blue-600 mb-1">Tax %</label>
-                    <input type="number" min="0" step="0.01" value={formTaxPct}
-                      onChange={e => setFormTaxPct(parseFloat(e.target.value) || 0)}
-                      className="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm text-right focus:ring-2 focus:ring-blue-400 outline-none" placeholder="0.00" />
-                  </div>
+                  {[
+                    { label: 'Shipping Cost', value: formShipping, set: setFormShipping, cls: 'focus:ring-indigo-500 border-gray-300' },
+                    { label: 'Extra Charges', value: formExtra,    set: setFormExtra,    cls: 'focus:ring-indigo-500 border-gray-300' },
+                    { label: 'Other Charges', value: formOther,    set: setFormOther,    cls: 'focus:ring-indigo-500 border-gray-300' },
+                    { label: 'Discount %',    value: formDiscountPct, set: setFormDiscountPct, cls: 'focus:ring-red-400 border-red-200' },
+                    { label: 'Tax %',         value: formTaxPct,   set: setFormTaxPct,   cls: 'focus:ring-blue-400 border-blue-200' },
+                  ].map(f => (
+                    <div key={f.label}>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{f.label}</label>
+                      <input type="number" min="0" step="0.01" value={f.value}
+                        onChange={e => f.set(parseFloat(e.target.value) || 0)}
+                        className={`w-full border rounded-lg px-3 py-2 text-sm text-right focus:ring-2 outline-none ${f.cls}`}
+                        placeholder="0.00" />
+                    </div>
+                  ))}
                 </div>
                 <div className="border-t border-gray-200 pt-3 space-y-1 text-sm">
                   <div className="flex justify-end gap-6">
                     <span className="text-gray-600">Items Sub-total: <strong>{fmt(itemsTotal)}</strong></span>
-                    {chargesTotal > 0 && (
-                      <span className="text-gray-600">+ Charges: <strong>{fmt(chargesTotal)}</strong></span>
-                    )}
+                    {chargesTotal > 0 && <span className="text-gray-600">+ Charges: <strong>{fmt(chargesTotal)}</strong></span>}
                   </div>
                   {discountAmount > 0 && (
                     <div className="flex justify-end">
@@ -399,17 +478,17 @@ const PurchaseVoucher = () => {
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">Cancel</button>
               <button onClick={handleSubmit} disabled={saving}
                 className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-60">
-                {saving ? 'Saving...' : editingPV ? 'Update Voucher' : 'Create Voucher'}
+                {saving ? 'Saving…' : editingPV ? 'Update Voucher' : 'Create Voucher'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* View Modal */}
+      {/* ── View Modal ──────────────────────────────────────────────── */}
       {viewVoucher && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center px-6 py-4 border-b">
               <h2 className="font-semibold text-gray-800">Voucher: {viewVoucher.pv_number}</h2>
               <div className="flex items-center gap-2">
@@ -422,21 +501,25 @@ const PurchaseVoucher = () => {
             </div>
             <div className="p-6">
               <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
-                <div><span className="text-gray-500">Party:</span> <span className="font-medium">{viewVoucher.payable_account_name || viewVoucher.supplier_name || '—'}</span></div>
                 <div><span className="text-gray-500">Date:</span> <span className="font-medium">{viewVoucher.voucher_date}</span></div>
-                {viewVoucher.payable_account_name && (
-                  <div className="col-span-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                    <span className="text-amber-700 text-xs font-semibold">Payable Account (Credit):</span>
-                    <span className="ml-2 font-bold text-amber-900">{viewVoucher.payable_account_name}</span>
-                  </div>
-                )}
+                <div><span className="text-gray-500">By:</span> <span className="font-medium">{viewVoucher.created_by_name}</span></div>
                 {viewVoucher.po_number && (
                   <div className="col-span-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                    <span className="text-blue-600 text-xs font-semibold">Received Against PO:</span>
+                    <span className="text-blue-600 text-xs font-semibold">Against PO:</span>
                     <span className="ml-2 font-bold text-blue-800">{viewVoucher.po_number}</span>
                   </div>
                 )}
-                <div><span className="text-gray-500">By:</span> <span className="font-medium">{viewVoucher.created_by_name}</span></div>
+              </div>
+              {/* Journal Entry summary */}
+              <div className="mb-4 grid grid-cols-2 gap-3">
+                <div className="bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-3">
+                  <p className="text-xs font-semibold text-indigo-500 uppercase mb-1">Purchase Account <span className="bg-indigo-200 text-indigo-800 px-1.5 py-0.5 rounded ml-1">DR</span></p>
+                  <p className="font-bold text-indigo-900 text-sm">{purchaseAccName(viewVoucher)}</p>
+                </div>
+                <div className="bg-amber-50 border border-amber-100 rounded-lg px-4 py-3">
+                  <p className="text-xs font-semibold text-amber-500 uppercase mb-1">Supplier Account <span className="bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded ml-1">CR</span></p>
+                  <p className="font-bold text-amber-900 text-sm">{supplierAccName(viewVoucher)}</p>
+                </div>
               </div>
               <table className="w-full text-sm mb-3">
                 <thead className="bg-gray-50 border-b">
@@ -458,27 +541,18 @@ const PurchaseVoucher = () => {
                   ))}
                 </tbody>
               </table>
-              {/* Charges breakdown */}
               <div className="border-t border-gray-200 pt-2 text-sm space-y-1">
-                {Number(viewVoucher.shipping_cost) > 0 && (
-                  <div className="flex justify-between text-gray-600 px-4"><span>Shipping Cost</span><span>{fmt(viewVoucher.shipping_cost)}</span></div>
-                )}
-                {Number(viewVoucher.extra_charges) > 0 && (
-                  <div className="flex justify-between text-gray-600 px-4"><span>Extra Charges</span><span>{fmt(viewVoucher.extra_charges)}</span></div>
-                )}
-                {Number(viewVoucher.other_charges) > 0 && (
-                  <div className="flex justify-between text-gray-600 px-4"><span>Other Charges</span><span>{fmt(viewVoucher.other_charges)}</span></div>
-                )}
+                {Number(viewVoucher.shipping_cost) > 0 && <div className="flex justify-between text-gray-600 px-4"><span>Shipping</span><span>{fmt(viewVoucher.shipping_cost)}</span></div>}
+                {Number(viewVoucher.extra_charges) > 0 && <div className="flex justify-between text-gray-600 px-4"><span>Extra Charges</span><span>{fmt(viewVoucher.extra_charges)}</span></div>}
+                {Number(viewVoucher.other_charges) > 0 && <div className="flex justify-between text-gray-600 px-4"><span>Other Charges</span><span>{fmt(viewVoucher.other_charges)}</span></div>}
                 {Number(viewVoucher.discount_amount) > 0 && (
                   <div className="flex justify-between text-red-600 px-4">
-                    <span>Discount ({fmt(viewVoucher.discount_percent)}%)</span>
-                    <span>- {fmt(viewVoucher.discount_amount)}</span>
+                    <span>Discount ({fmt(viewVoucher.discount_percent)}%)</span><span>- {fmt(viewVoucher.discount_amount)}</span>
                   </div>
                 )}
                 {Number(viewVoucher.tax_amount) > 0 && (
                   <div className="flex justify-between text-blue-600 px-4">
-                    <span>Tax ({fmt(viewVoucher.tax_percent)}%)</span>
-                    <span>{fmt(viewVoucher.tax_amount)}</span>
+                    <span>Tax ({fmt(viewVoucher.tax_percent)}%)</span><span>{fmt(viewVoucher.tax_amount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-indigo-700 px-4 pt-1 border-t border-gray-200">
@@ -491,17 +565,12 @@ const PurchaseVoucher = () => {
         </div>
       )}
 
-      {/* Filters */}
+      {/* ── Filters ─────────────────────────────────────────────────── */}
       <div className="mb-4 flex flex-wrap gap-3 items-center">
         <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} onApply={fetchVouchers} />
-        <select value={supplierFilter} onChange={e => { setSupplierFilter(e.target.value); setPage(1); }}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none">
-          <option value="">All Parties</option>
-          {suppliers.map(s => <option key={s.supplier_id} value={s.supplier_id}>{s.supplier_name}</option>)}
-        </select>
       </div>
 
-      {/* List */}
+      {/* ── List ────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" /></div>
@@ -511,11 +580,11 @@ const PurchaseVoucher = () => {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Voucher #</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">PO #</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Party</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Purchase A/C (DR)</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Supplier A/C (CR)</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Items</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">By</th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
@@ -530,11 +599,11 @@ const PurchaseVoucher = () => {
                       ? <span className="text-blue-600 font-medium text-xs bg-blue-50 px-2 py-0.5 rounded">{v.po_number}</span>
                       : <span className="text-gray-400">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-gray-800">{v.payable_account_name || v.supplier_name || '—'}</td>
+                  <td className="px-4 py-3 text-gray-800 text-xs">{purchaseAccName(v)}</td>
+                  <td className="px-4 py-3 text-gray-800 text-xs">{supplierAccName(v)}</td>
                   <td className="px-4 py-3 text-gray-600">{v.voucher_date}</td>
                   <td className="px-4 py-3 text-right">{v.item_count}</td>
                   <td className="px-4 py-3 text-right font-medium text-gray-900">{fmt(v.total_amount)}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{v.created_by_name}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1">
                       <button onClick={() => openView(v.pv_id)} title="View"
@@ -552,7 +621,8 @@ const PurchaseVoucher = () => {
             </tbody>
           </table>
         )}
-        <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} totalItems={totalItems} itemsPerPage={20} onItemsPerPageChange={() => {}} />
+        <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage}
+          totalItems={totalItems} itemsPerPage={20} onItemsPerPageChange={() => {}} />
       </div>
     </div>
   );

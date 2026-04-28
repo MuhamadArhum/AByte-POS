@@ -817,8 +817,14 @@ CREATE TABLE IF NOT EXISTS inv_purchase_vouchers (
     pv_number VARCHAR(30) NOT NULL UNIQUE,
     po_id INT,
     supplier_id INT,
+    purchase_account_id INT,
+    payable_account_id INT,
+    journal_entry_id INT,
     voucher_date DATE NOT NULL,
     total_amount DECIMAL(15,2) DEFAULT 0,
+    shipping_cost DECIMAL(15,2) NOT NULL DEFAULT 0,
+    extra_charges DECIMAL(15,2) NOT NULL DEFAULT 0,
+    other_charges DECIMAL(15,2) NOT NULL DEFAULT 0,
     discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
     discount_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
     tax_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
@@ -828,6 +834,8 @@ CREATE TABLE IF NOT EXISTS inv_purchase_vouchers (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (po_id) REFERENCES purchase_orders(po_id),
     FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id),
+    FOREIGN KEY (purchase_account_id) REFERENCES accounts(account_id),
+    FOREIGN KEY (payable_account_id) REFERENCES accounts(account_id),
     FOREIGN KEY (created_by) REFERENCES users(user_id)
 );
 

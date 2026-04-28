@@ -3,6 +3,18 @@ const { logAction } = require('../services/auditService');
 
 const pad = (n) => String(n).padStart(6, '0');
 
+// Ensure purchase_account_id column exists for existing tenants
+async function ensureColumns() {
+  try {
+    await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS purchase_account_id INT DEFAULT NULL`);
+    await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS payable_account_id INT DEFAULT NULL`);
+    await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS journal_entry_id INT DEFAULT NULL`);
+    await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS shipping_cost DECIMAL(15,2) NOT NULL DEFAULT 0`);
+    await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS extra_charges DECIMAL(15,2) NOT NULL DEFAULT 0`);
+    await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS other_charges DECIMAL(15,2) NOT NULL DEFAULT 0`);
+  } catch (_) { /* columns already exist */ }
+}
+
 async function nextPVNumber() {
   const [last] = await query('SELECT pv_number FROM inv_purchase_vouchers ORDER BY pv_id DESC LIMIT 1');
   if (last?.pv_number) {
@@ -30,13 +42,10 @@ async function reverseStockForPV(conn, pvId) {
 }
 
 // ── Helper: auto-create purchase JV ──────────────────────────
-async function createPurchaseJV(conn, pvId, pvNumber, voucherDate, payableAccountId, total, userId) {
-  if (!payableAccountId || total <= 0) return null;
-
-  const [purchaseAcc] = await conn.query(
-    "SELECT account_id FROM accounts WHERE account_code = 'X-01-01-001' LIMIT 1"
-  );
-  if (!purchaseAcc) return null;
+// purchaseAccountId → DR (purchases/expense account)
+// payableAccountId  → CR (supplier/creditor account)
+async function createPurchaseJV(conn, pvId, pvNumber, voucherDate, purchaseAccountId, payableAccountId, total, userId) {
+  if (!purchaseAccountId || !payableAccountId || total <= 0) return null;
 
   const [last] = await conn.query("SELECT entry_number FROM journal_entries ORDER BY entry_id DESC LIMIT 1");
   let nextNum = 1;
@@ -50,18 +59,23 @@ async function createPurchaseJV(conn, pvId, pvNumber, voucherDate, payableAccoun
   );
   const entryId = Number(result.insertId);
 
+  // DR: Purchase Account
   await conn.query(
     'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, ?, 0)',
-    [entryId, purchaseAcc.account_id, `Purchase - ${pvNumber}`, total]
+    [entryId, purchaseAccountId, `Purchase - ${pvNumber}`, total]
   );
+  // CR: Supplier Account
   await conn.query(
     'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, 0, ?)',
     [entryId, payableAccountId, `Purchase - ${pvNumber}`, total]
   );
 
-  await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [total, purchaseAcc.account_id]);
+  await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [total, purchaseAccountId]);
   await conn.query('UPDATE accounts SET current_balance = current_balance - ? WHERE account_id = ?', [total, payableAccountId]);
-  await conn.query('UPDATE inv_purchase_vouchers SET journal_entry_id = ?, payable_account_id = ? WHERE pv_id = ?', [entryId, payableAccountId, pvId]);
+  await conn.query(
+    'UPDATE inv_purchase_vouchers SET journal_entry_id = ?, purchase_account_id = ?, payable_account_id = ? WHERE pv_id = ?',
+    [entryId, purchaseAccountId, payableAccountId, pvId]
+  );
 
   return entryId;
 }
@@ -115,26 +129,29 @@ async function applyStockForItems(conn, pvId, items, voucher_date) {
 // GET all purchase vouchers
 exports.getAll = async (req, res) => {
   try {
-    const { supplier_id, from_date, to_date, po_id } = req.query;
+    await ensureColumns();
+    const { from_date, to_date, po_id } = req.query;
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const offset = (page - 1) * limit;
 
     let where = 'WHERE 1=1';
     const params = [];
-    if (supplier_id) { where += ' AND pv.supplier_id = ?';    params.push(supplier_id); }
-    if (po_id)       { where += ' AND pv.po_id = ?';          params.push(po_id); }
-    if (from_date)   { where += ' AND pv.voucher_date >= ?';  params.push(from_date); }
-    if (to_date)     { where += ' AND pv.voucher_date <= ?';  params.push(to_date); }
+    if (po_id)     { where += ' AND pv.po_id = ?';         params.push(po_id); }
+    if (from_date) { where += ' AND pv.voucher_date >= ?'; params.push(from_date); }
+    if (to_date)   { where += ' AND pv.voucher_date <= ?'; params.push(to_date); }
 
-    const sql = `SELECT pv.*, s.supplier_name, u.name as created_by_name,
-                   po.po_number, pa.account_name as payable_account_name,
+    const sql = `SELECT pv.*, u.name as created_by_name, po.po_number,
+                   puracc.account_name as purchase_account_name,
+                   puracc.account_code as purchase_account_code,
+                   suracc.account_name as payable_account_name,
+                   suracc.account_code as payable_account_code,
                    COUNT(pvi.item_id) as item_count
                  FROM inv_purchase_vouchers pv
-                 LEFT JOIN suppliers s ON pv.supplier_id = s.supplier_id
                  LEFT JOIN purchase_orders po ON pv.po_id = po.po_id
                  JOIN users u ON pv.created_by = u.user_id
-                 LEFT JOIN accounts pa ON pv.payable_account_id = pa.account_id
+                 LEFT JOIN accounts puracc ON pv.purchase_account_id = puracc.account_id
+                 LEFT JOIN accounts suracc ON pv.payable_account_id = suracc.account_id
                  LEFT JOIN inv_purchase_voucher_items pvi ON pv.pv_id = pvi.pv_id
                  ${where} GROUP BY pv.pv_id ORDER BY pv.voucher_date DESC, pv.created_at DESC
                  LIMIT ? OFFSET ?`;
@@ -152,13 +169,16 @@ exports.getAll = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
     const [pv] = await query(
-      `SELECT pv.*, s.supplier_name, u.name as created_by_name, po.po_number,
-              pa.account_name as payable_account_name
+      `SELECT pv.*, u.name as created_by_name, po.po_number,
+              puracc.account_name as purchase_account_name,
+              puracc.account_code as purchase_account_code,
+              suracc.account_name as payable_account_name,
+              suracc.account_code as payable_account_code
        FROM inv_purchase_vouchers pv
-       LEFT JOIN suppliers s ON pv.supplier_id = s.supplier_id
        LEFT JOIN purchase_orders po ON pv.po_id = po.po_id
        JOIN users u ON pv.created_by = u.user_id
-       LEFT JOIN accounts pa ON pv.payable_account_id = pa.account_id
+       LEFT JOIN accounts puracc ON pv.purchase_account_id = puracc.account_id
+       LEFT JOIN accounts suracc ON pv.payable_account_id = suracc.account_id
        WHERE pv.pv_id = ?`, [req.params.id]
     );
     if (!pv) return res.status(404).json({ message: 'Purchase voucher not found' });
@@ -191,9 +211,12 @@ exports.getPOItems = async (req, res) => {
 exports.create = async (req, res) => {
   const conn = await getConnection();
   try {
-    const { po_id, supplier_id, voucher_date, notes, items, shipping_cost, extra_charges, other_charges, discount_percent, tax_percent, payable_account_id } = req.body;
+    const { po_id, voucher_date, notes, items, shipping_cost, extra_charges, other_charges, discount_percent, tax_percent, purchase_account_id, payable_account_id } = req.body;
     if (!voucher_date || !items?.length) {
       return res.status(400).json({ message: 'voucher_date and items are required' });
+    }
+    if (!purchase_account_id || !payable_account_id) {
+      return res.status(400).json({ message: 'Purchase Account and Supplier Account are required' });
     }
 
     await conn.beginTransaction();
@@ -212,8 +235,8 @@ exports.create = async (req, res) => {
     const total           = taxable + tax_amount;
 
     const result = await conn.query(
-      'INSERT INTO inv_purchase_vouchers (pv_number, po_id, supplier_id, voucher_date, total_amount, shipping_cost, extra_charges, other_charges, discount_percent, discount_amount, tax_percent, tax_amount, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [pv_number, po_id || null, supplier_id || null, voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, req.user.user_id]
+      'INSERT INTO inv_purchase_vouchers (pv_number, po_id, voucher_date, total_amount, shipping_cost, extra_charges, other_charges, discount_percent, discount_amount, tax_percent, tax_amount, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [pv_number, po_id || null, voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, req.user.user_id]
     );
     const pvId = Number(result.insertId);
 
@@ -230,13 +253,10 @@ exports.create = async (req, res) => {
       await conn.query("UPDATE purchase_orders SET status = 'received', received_date = ? WHERE po_id = ?", [voucher_date, po_id]);
     }
 
-    if (payable_account_id) {
-      await createPurchaseJV(conn, pvId, pv_number, voucher_date, parseInt(payable_account_id), total, req.user.user_id);
-    }
+    await createPurchaseJV(conn, pvId, pv_number, voucher_date, parseInt(purchase_account_id), parseInt(payable_account_id), total, req.user.user_id);
 
     await conn.commit();
 
-    // Get PO number for audit log
     let po_number = null;
     if (po_id) {
       const [po] = await query('SELECT po_number FROM purchase_orders WHERE po_id = ?', [po_id]);
@@ -258,9 +278,12 @@ exports.update = async (req, res) => {
   const conn = await getConnection();
   try {
     const { id } = req.params;
-    const { supplier_id, voucher_date, notes, items, shipping_cost, extra_charges, other_charges, discount_percent, tax_percent, payable_account_id } = req.body;
+    const { voucher_date, notes, items, shipping_cost, extra_charges, other_charges, discount_percent, tax_percent, purchase_account_id, payable_account_id } = req.body;
     if (!voucher_date || !items?.length) {
       return res.status(400).json({ message: 'voucher_date and items are required' });
+    }
+    if (!purchase_account_id || !payable_account_id) {
+      return res.status(400).json({ message: 'Purchase Account and Supplier Account are required' });
     }
 
     const [pv] = await query('SELECT * FROM inv_purchase_vouchers WHERE pv_id = ?', [id]);
@@ -268,12 +291,10 @@ exports.update = async (req, res) => {
 
     await conn.beginTransaction();
 
-    // Reverse old JV first, then old stock
     await reversePurchaseJV(conn, parseInt(id));
     await reverseStockForPV(conn, id);
     await conn.query('DELETE FROM inv_purchase_voucher_items WHERE pv_id = ?', [id]);
 
-    // Calculate new total
     const shipping        = Number(shipping_cost)    || 0;
     const extra           = Number(extra_charges)    || 0;
     const other           = Number(other_charges)    || 0;
@@ -286,18 +307,13 @@ exports.update = async (req, res) => {
     const tax_amount      = taxable * tax_pct / 100;
     const total           = taxable + tax_amount;
 
-    // Update PV header
     await conn.query(
-      'UPDATE inv_purchase_vouchers SET supplier_id=?, voucher_date=?, total_amount=?, shipping_cost=?, extra_charges=?, other_charges=?, discount_percent=?, discount_amount=?, tax_percent=?, tax_amount=?, notes=? WHERE pv_id=?',
-      [supplier_id || null, voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, id]
+      'UPDATE inv_purchase_vouchers SET voucher_date=?, total_amount=?, shipping_cost=?, extra_charges=?, other_charges=?, discount_percent=?, discount_amount=?, tax_percent=?, tax_amount=?, notes=? WHERE pv_id=?',
+      [voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, id]
     );
 
-    // Apply new stock
     await applyStockForItems(conn, parseInt(id), items, voucher_date);
-
-    if (payable_account_id) {
-      await createPurchaseJV(conn, parseInt(id), pv.pv_number, voucher_date, parseInt(payable_account_id), total, req.user.user_id);
-    }
+    await createPurchaseJV(conn, parseInt(id), pv.pv_number, voucher_date, parseInt(purchase_account_id), parseInt(payable_account_id), total, req.user.user_id);
 
     await conn.commit();
     await logAction(req.user.user_id, req.user.name, 'PURCHASE_VOUCHER_UPDATED', 'inv_purchase_vouchers', parseInt(id),
