@@ -210,7 +210,7 @@ const SalarySheet = () => {
 
   // ── CSV Export ──
   const exportCSV = () => {
-    const headers = ['Emp ID','Name','Dept','Designation','Present','Absent','Half Days','Allowed Leaves','Holidays','Adjustment','Total Attendance','Basic Salary','Daily Rate','Earned Salary','Salary A/C Code','Salary A/C Balance','Loan Ded.','Advance Ded.','Total Ded.','Net Pay'];
+    const headers = ['Emp ID','Name','Dept','Designation','Present','Absent','Half Days','Allowed Leaves','Holidays','Adjustment','Total Attendance','Basic Salary','Daily Rate','Earned Salary','Salary A/C Code','Salary A/C Balance','Net Pay'];
     const rows = filtered.map(r => [
       r.employee_id || '',
       `"${r.full_name}"`,
@@ -226,9 +226,6 @@ const SalarySheet = () => {
       n(r.earned_salary).toFixed(2),
       r.salary_account_code || '',
       r.salary_account_id ? n(r.salary_account_balance).toFixed(2) : '',
-      n(r.loan_deduction).toFixed(2),
-      n(r.advance_deduction).toFixed(2),
-      n(r.total_deduction).toFixed(2),
       n(r.net_salary).toFixed(2),
     ]);
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -254,8 +251,7 @@ const SalarySheet = () => {
         <td align="center" style="font-weight:700">${fmt(n(r.total_attendance), 1)}</td>
         <td align="right">${currency}${fmt(n(r.salary))}</td>
         <td align="right" style="color:#059669;font-weight:700">${currency}${fmt(n(r.earned_salary))}</td>
-        <td align="right" style="color:#7c3aed">${r.salary_account_id ? `${r.salary_account_code}<br/>${currency}${fmt(n(r.salary_account_balance))}` : '-'}</td>
-        <td align="right" style="color:#dc2626">${n(r.total_deduction) > 0 ? `-${currency}${fmt(n(r.total_deduction))}` : '-'}</td>
+        <td align="right" style="color:#7c3aed">${r.salary_account_id ? `${r.salary_account_code} ${currency}${fmt(n(r.salary_account_balance))}` : '-'}</td>
         <td align="right" style="font-weight:700;color:#059669">${currency}${fmt(n(r.net_salary))}</td>
       </tr>`).join('');
 
@@ -275,7 +271,7 @@ const SalarySheet = () => {
         <thead><tr>
           <th>Emp ID</th><th>Name</th><th>Designation</th>
           <th>Present</th><th>Absent</th><th>Allow.Leaves</th><th>Holidays</th><th>Adj.</th><th>Total Att.</th>
-          <th>Basic Salary</th><th>Earned Salary</th><th>Salary A/C</th><th>Deductions</th><th>Net Pay</th>
+          <th>Basic Salary</th><th>Earned Salary</th><th>Salary A/C</th><th>Net Pay</th>
         </tr></thead>
         <tbody>${rows}
           <tr class="tot">
@@ -287,7 +283,6 @@ const SalarySheet = () => {
             <td align="right">${currency}${fmt(grandTotal.earned_salary)}</td>
             <td align="right">${currency}${fmt(grandTotal.earned_salary)}</td>
             <td></td>
-            <td align="right">-${currency}${fmt(grandTotal.total_deduction)}</td>
             <td align="right">${currency}${fmt(grandTotal.net_salary)}</td>
           </tr>
         </tbody>
@@ -408,8 +403,6 @@ const SalarySheet = () => {
                   <th className={`${th} text-right text-emerald-600 bg-emerald-50`}>Earned<br/>Salary</th>
                   {/* Salary Account */}
                   <th className={`${th} text-right text-violet-600`}>Salary A/C<br/>Balance</th>
-                  {/* Deductions */}
-                  <th className={`${th} text-right text-red-500`}>Deductions</th>
                   {/* Net */}
                   <th className={`${th} text-right text-emerald-700 bg-emerald-50`}>Net Pay</th>
                 </tr>
@@ -422,7 +415,7 @@ const SalarySheet = () => {
                     <>
                       {/* Dept header */}
                       <tr key={`dept-${dept}`} className="bg-emerald-50/60 cursor-pointer select-none" onClick={() => toggleDept(dept)}>
-                        <td colSpan={14} className="px-3 py-2">
+                        <td colSpan={13} className="px-3 py-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               {collapsed ? <ChevronRight size={13} className="text-emerald-600" /> : <ChevronDown size={13} className="text-emerald-600" />}
@@ -432,7 +425,6 @@ const SalarySheet = () => {
                             <div className="flex items-center gap-4 text-xs font-semibold">
                               <span>Att: {fmt(dt.total_attendance, 1)}</span>
                               <span className="text-emerald-700">Earned: {currency}{fmt(dt.earned_salary)}</span>
-                              <span className="text-red-500">Ded: -{currency}{fmt(dt.total_deduction)}</span>
                               <span className="text-emerald-700 font-bold">Net: {currency}{fmt(dt.net_salary)}</span>
                             </div>
                           </div>
@@ -514,18 +506,6 @@ const SalarySheet = () => {
                             )}
                           </td>
 
-                          {/* Deductions */}
-                          <td className="px-3 py-2.5 text-right">
-                            {n(r.total_deduction) > 0 ? (
-                              <span
-                                className="text-red-500 font-semibold cursor-help"
-                                title={`Loan: ${currency}${fmt(n(r.loan_deduction))}  |  Advance: ${currency}${fmt(n(r.advance_deduction))}`}
-                              >
-                                -{currency}{fmt(n(r.total_deduction))}
-                              </span>
-                            ) : <span className="text-gray-300">-</span>}
-                          </td>
-
                           {/* Net Pay */}
                           <td className="px-3 py-2.5 text-right font-bold text-emerald-700 bg-emerald-50">{currency}{fmt(n(r.net_salary))}</td>
                         </tr>
@@ -547,7 +527,6 @@ const SalarySheet = () => {
                   <td className="px-3 py-4 text-right font-bold text-gray-800">{currency}{fmt(grandTotal.earned_salary)}</td>
                   <td className="px-3 py-4 text-right font-bold text-emerald-700 bg-emerald-50">{currency}{fmt(grandTotal.earned_salary)}</td>
                   <td />
-                  <td className="px-3 py-4 text-right font-bold text-red-600">-{currency}{fmt(grandTotal.total_deduction)}</td>
                   <td className="px-3 py-4 text-right font-bold text-emerald-700 text-sm bg-emerald-50">{currency}{fmt(grandTotal.net_salary)}</td>
                 </tr>
               </tbody>
@@ -558,8 +537,7 @@ const SalarySheet = () => {
           <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 text-xs text-gray-500 flex flex-wrap gap-x-6 gap-y-1">
             <span><b>Total Attendance</b> = Present + (Half Days × 0.5) + Allowed Leaves + Holidays + Adjustment</span>
             <span><b>Earned Salary</b> = (Basic Salary ÷ Days in Month) × Total Attendance</span>
-            <span><b>Deductions</b> = Loan installment + Advance payments (hover to see breakdown)</span>
-            <span><b>Net Pay</b> = Earned Salary − Deductions</span>
+            <span><b>Net Pay</b> = Earned Salary − Loan & Advance Deductions</span>
           </div>
         </div>
       )}
