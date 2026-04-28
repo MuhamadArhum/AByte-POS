@@ -1,12 +1,11 @@
 ﻿import { useState, useEffect, useMemo } from 'react';
 import { useSettings } from '../../context/SettingsContext';
-import { Plus, Eye, Edit, Trash2, DollarSign, User, Search, Filter, RotateCcw, TrendingUp } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, User, Search, Filter, RotateCcw, TrendingUp } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 import AddStaffModal from '../../components/AddStaffModal';
 import StaffDetailsModal from '../../components/StaffDetailsModal';
-import SalaryPaymentModal from '../../components/SalaryPaymentModal';
 import SalaryIncrementModal from '../../components/SalaryIncrementModal';
 import { SkeletonTable } from '../../components/Skeleton';
 
@@ -20,7 +19,6 @@ const Staff = () => {
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [showSalaryModal, setShowSalaryModal] = useState(false);
   const [showIncrementModal, setShowIncrementModal] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<any>(null);
   const [staffToEdit, setStaffToEdit] = useState<any>(null);
@@ -88,11 +86,6 @@ const Staff = () => {
   const handleEdit = (staffMember: any) => {
     setStaffToEdit(staffMember);
     setShowAddModal(true);
-  };
-
-  const handlePaySalary = (staffMember: any) => {
-    setSelectedStaff(staffMember);
-    setShowSalaryModal(true);
   };
 
   const handleDelete = async (staffId: number, name: string) => {
@@ -285,13 +278,6 @@ const Staff = () => {
                         {member.is_active === 1 ? (
                           <>
                             <button
-                              onClick={() => handlePaySalary(member)}
-                              className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                              title="Pay Salary"
-                            >
-                              <DollarSign size={16} />
-                            </button>
-                            <button
                               onClick={() => { setSelectedStaff(member); setShowIncrementModal(true); }}
                               className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
                               title="Salary Increment"
@@ -361,16 +347,6 @@ const Staff = () => {
               setSelectedStaff(null);
             }}
             staffId={selectedStaff.staff_id}
-          />
-
-          <SalaryPaymentModal
-            isOpen={showSalaryModal}
-            onClose={() => {
-              setShowSalaryModal(false);
-              setSelectedStaff(null);
-            }}
-            onSuccess={fetchStaff}
-            staffMember={selectedStaff}
           />
 
           <SalaryIncrementModal

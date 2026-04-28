@@ -168,13 +168,14 @@ const SalarySheet = () => {
     return map;
   }, [filtered]);
 
-  const ZERO = { present_days: 0, absent_days: 0, monthly_leave_allowed: 0, total_attendance: 0, earned_salary: 0, total_allowances: 0, gross_salary: 0, total_comp_deductions: 0, net_salary: 0 };
+  const ZERO = { present_days: 0, absent_days: 0, monthly_leave_allowed: 0, total_attendance: 0, salary: 0, earned_salary: 0, total_allowances: 0, gross_salary: 0, total_comp_deductions: 0, net_salary: 0 };
 
   const grandTotal = useMemo(() => filtered.reduce((acc, r) => ({
     present_days:          acc.present_days          + n(r.present_days),
     absent_days:           acc.absent_days           + n(r.absent_days),
     monthly_leave_allowed: acc.monthly_leave_allowed + n(r.monthly_leave_allowed),
     total_attendance:      acc.total_attendance      + n(r.total_attendance),
+    salary:                acc.salary                + n(r.salary),
     earned_salary:         acc.earned_salary         + n(r.earned_salary),
     total_allowances:      acc.total_allowances      + n(r.total_allowances),
     gross_salary:          acc.gross_salary          + n(r.gross_salary),
@@ -201,12 +202,13 @@ const SalarySheet = () => {
     present_days:          acc.present_days          + n(r.present_days),
     absent_days:           acc.absent_days           + n(r.absent_days),
     total_attendance:      acc.total_attendance      + n(r.total_attendance),
+    salary:                acc.salary                + n(r.salary),
     earned_salary:         acc.earned_salary         + n(r.earned_salary),
     total_allowances:      acc.total_allowances      + n(r.total_allowances),
     gross_salary:          acc.gross_salary          + n(r.gross_salary),
     total_comp_deductions: acc.total_comp_deductions + n(r.total_comp_deductions),
     net_salary:            acc.net_salary            + n(r.net_salary),
-  }), { present_days: 0, absent_days: 0, total_attendance: 0, earned_salary: 0, total_allowances: 0, gross_salary: 0, total_comp_deductions: 0, net_salary: 0 });
+  }), { present_days: 0, absent_days: 0, total_attendance: 0, salary: 0, earned_salary: 0, total_allowances: 0, gross_salary: 0, total_comp_deductions: 0, net_salary: 0 });
 
   const toggleDept = (d: string) => setCollapsedDepts(p => ({ ...p, [d]: !p[d] }));
 
@@ -370,7 +372,7 @@ const SalarySheet = () => {
             { label: 'Total Staff',     value: filtered.length,                        cls: 'text-gray-800' },
             { label: 'Days in Month',   value: meta.days_in_month,                     cls: 'text-gray-600' },
             { label: 'Public Holidays', value: meta.holidays,                          cls: 'text-purple-600' },
-            { label: 'Total Gross',     value: `${currency}${fmt(grandTotal.earned_salary)}`, cls: 'text-gray-700' },
+            { label: 'Total Gross',     value: `${currency}${fmt(grandTotal.gross_salary)}`,  cls: 'text-gray-700' },
             { label: 'Net Payable',     value: `${currency}${fmt(grandTotal.net_salary)}`,    cls: 'text-emerald-600' },
           ].map(c => (
             <div key={c.label} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
@@ -553,7 +555,7 @@ const SalarySheet = () => {
                   <td className="px-3 py-4 text-center font-bold text-blue-600">{grandTotal.monthly_leave_allowed}</td>
                   <td colSpan={2} />
                   <td className="px-3 py-4 text-center font-bold text-gray-800 bg-gray-100">{fmt(grandTotal.total_attendance, 1)}</td>
-                  <td className="px-3 py-4 text-right font-bold text-gray-800">{currency}{fmt(grandTotal.earned_salary)}</td>
+                  <td className="px-3 py-4 text-right font-bold text-gray-800">{currency}{fmt(grandTotal.salary)}</td>
                   <td className="px-3 py-4 text-right font-bold text-emerald-700 bg-emerald-50">{currency}{fmt(grandTotal.earned_salary)}</td>
                   <td className="px-3 py-4 text-right font-bold text-blue-600">+{currency}{fmt(grandTotal.total_allowances)}</td>
                   <td className="px-3 py-4 text-right font-bold text-emerald-800 bg-emerald-50">{currency}{fmt(grandTotal.gross_salary)}</td>

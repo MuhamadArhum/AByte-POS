@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, User, Briefcase, DollarSign, Calendar, Mail, Phone, MapPin, Clock, Search, ChevronDown } from 'lucide-react';
+import { X, User, Briefcase, DollarSign, Calendar, Mail, Phone, MapPin, Clock, Search, ChevronDown, TrendingUp, TrendingDown } from 'lucide-react';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
 import { useToast } from './Toast';
@@ -89,6 +89,16 @@ const AccountSelector = ({
 };
 // ──────────────────────────────────────────────────────────────────────────────
 
+interface CompState {
+  component_id: number;
+  name: string;
+  type: 'allowance' | 'deduction';
+  calculation: 'fixed' | 'percentage';
+  default_value: number;
+  custom_value: string;
+  is_enabled: boolean;
+}
+
 interface StaffMember {
   staff_id: number;
   user_id: number | null;
@@ -130,13 +140,14 @@ const EMPTY_FORM = {
 
 const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: Props) => {
   const toast = useToast();
-  const [loading, setLoading]       = useState(false);
-  const [users, setUsers]           = useState<any[]>([]);
+  const [loading, setLoading]         = useState(false);
+  const [users, setUsers]             = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [designations, setDesignations] = useState<any[]>([]);
-  const [accounts, setAccounts]     = useState<Account[]>([]);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [formData, setFormData]     = useState({ ...EMPTY_FORM });
+  const [accounts, setAccounts]       = useState<Account[]>([]);
+  const [components, setComponents]   = useState<CompState[]>([]);
+  const [formErrors, setFormErrors]   = useState<Record<string, string>>({});
+  const [formData, setFormData]       = useState({ ...EMPTY_FORM });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -176,10 +187,11 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: Props) => {
 
   const fetchDropdowns = async () => {
     try {
-      const [usersRes, deptsRes, accsRes] = await Promise.all([
+      const [usersRes, deptsRes, accsRes, compsRes] = await Promise.all([
         api.get('/users').catch(() => ({ data: { data: [] } })),
         api.get('/staff/departments', { params: { is_active: 1 } }),
         api.get('/accounting/accounts', { params: { tree: 1 } }).catch(() => ({ data: { data: [] } })),
+        api.get('/staff/salary-components').catch(() => ({ data: { data: [] } })),
       ]);
       setUsers(usersRes.data.data || []);
       setDepartments(deptsRes.data.data || []);
@@ -191,6 +203,35 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: Props) => {
       });
       flatten(accsRes.data.data || []);
       setAccounts(flatAccounts);
+
+      const allComps: any[] = (compsRes.data.data || []).filter((c: any) => c.is_active);
+
+      if (staffToEdit) {
+        const scRes = await api.get(`/staff/staff-components/${staffToEdit.staff_id}`).catch(() => ({ data: { data: [] } }));
+        const staffComps: any[] = scRes.data.data || [];
+        setComponents(allComps.map(c => {
+          const sc = staffComps.find((s: any) => s.component_id === c.component_id);
+          return {
+            component_id:  c.component_id,
+            name:          c.name,
+            type:          c.type,
+            calculation:   c.calculation,
+            default_value: Number(c.default_value),
+            custom_value:  sc ? String(sc.effective_value) : String(c.default_value),
+            is_enabled:    sc ? sc.staff_active === 1 : false,
+          };
+        }));
+      } else {
+        setComponents(allComps.map(c => ({
+          component_id:  c.component_id,
+          name:          c.name,
+          type:          c.type,
+          calculation:   c.calculation,
+          default_value: Number(c.default_value),
+          custom_value:  String(c.default_value),
+          is_enabled:    false,
+        })));
+      }
     } catch (err) {
       console.error(err);
     }
@@ -246,15 +287,30 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: Props) => {
         monthly_leave_allowed: parseInt(formData.monthly_leave_allowed) || 2,
         grace_time:            parseInt(formData.grace_time) || 10,
       };
+
+      let staffId: number;
       if (staffToEdit) {
         payload.leave_balance = parseInt(formData.leave_balance);
         await api.put(`/staff/${staffToEdit.staff_id}`, payload);
+        staffId = staffToEdit.staff_id;
         toast.success('Staff member updated successfully');
       } else {
         delete payload.leave_balance;
-        await api.post('/staff', payload);
+        const res = await api.post('/staff', payload);
+        staffId = res.data.staff_id;
         toast.success('Staff member added successfully');
       }
+
+      if (components.length > 0) {
+        await api.post(`/staff/staff-components/${staffId}`, {
+          components: components.map(c => ({
+            component_id: c.component_id,
+            custom_value: c.is_enabled && c.custom_value !== '' ? parseFloat(c.custom_value) : null,
+            is_active:    c.is_enabled ? 1 : 0,
+          })),
+        });
+      }
+
       setFormData({ ...EMPTY_FORM, hire_date: localToday() });
       onSuccess();
       onClose();
@@ -454,6 +510,112 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: Props) => {
               </div>
             </div>
           </div>
+
+          {/* ── Salary Components ── */}
+          {components.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide border-l-4 border-violet-500 pl-3 mb-4">
+                <DollarSign className="inline mr-1.5" size={14} />Salary Components
+              </h3>
+              <p className="text-xs text-gray-500 mb-4 bg-violet-50 px-3 py-2 rounded-lg border border-violet-100">
+                Enable the allowances and deductions that apply to this employee. Enabled components will be included in the salary sheet calculation.
+              </p>
+
+              {/* Allowances */}
+              {components.filter(c => c.type === 'allowance').length > 0 && (
+                <div className="mb-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp size={13} className="text-blue-500" />
+                    <span className="text-xs font-bold text-blue-600 uppercase tracking-wide">Allowances</span>
+                  </div>
+                  <div className="space-y-2">
+                    {components.filter(c => c.type === 'allowance').map(comp => (
+                      <div key={comp.component_id}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition ${comp.is_enabled ? 'border-blue-200 bg-blue-50' : 'border-gray-100 bg-gray-50'}`}>
+                        <input
+                          type="checkbox"
+                          checked={comp.is_enabled}
+                          onChange={e => setComponents(prev => prev.map(c =>
+                            c.component_id === comp.component_id ? { ...c, is_enabled: e.target.checked } : c
+                          ))}
+                          className="w-4 h-4 accent-blue-500 cursor-pointer"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800">{comp.name}</p>
+                          <p className="text-xs text-gray-400">{comp.calculation === 'percentage' ? `% of basic salary` : 'Fixed amount'}</p>
+                        </div>
+                        {comp.is_enabled && (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={comp.custom_value}
+                              onChange={e => setComponents(prev => prev.map(c =>
+                                c.component_id === comp.component_id ? { ...c, custom_value: e.target.value } : c
+                              ))}
+                              className="w-28 px-2.5 py-1.5 border border-blue-200 rounded-lg text-sm text-right focus:ring-2 focus:ring-blue-400 outline-none"
+                            />
+                            {comp.calculation === 'percentage' && <span className="text-xs text-gray-400">%</span>}
+                          </div>
+                        )}
+                        {!comp.is_enabled && (
+                          <span className="text-xs text-gray-400 font-mono">{comp.calculation === 'percentage' ? `${comp.default_value}%` : comp.default_value.toLocaleString()}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Deductions */}
+              {components.filter(c => c.type === 'deduction').length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingDown size={13} className="text-orange-500" />
+                    <span className="text-xs font-bold text-orange-600 uppercase tracking-wide">Deductions</span>
+                  </div>
+                  <div className="space-y-2">
+                    {components.filter(c => c.type === 'deduction').map(comp => (
+                      <div key={comp.component_id}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition ${comp.is_enabled ? 'border-orange-200 bg-orange-50' : 'border-gray-100 bg-gray-50'}`}>
+                        <input
+                          type="checkbox"
+                          checked={comp.is_enabled}
+                          onChange={e => setComponents(prev => prev.map(c =>
+                            c.component_id === comp.component_id ? { ...c, is_enabled: e.target.checked } : c
+                          ))}
+                          className="w-4 h-4 accent-orange-500 cursor-pointer"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800">{comp.name}</p>
+                          <p className="text-xs text-gray-400">{comp.calculation === 'percentage' ? `% of basic salary` : 'Fixed amount'}</p>
+                        </div>
+                        {comp.is_enabled && (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={comp.custom_value}
+                              onChange={e => setComponents(prev => prev.map(c =>
+                                c.component_id === comp.component_id ? { ...c, custom_value: e.target.value } : c
+                              ))}
+                              className="w-28 px-2.5 py-1.5 border border-orange-200 rounded-lg text-sm text-right focus:ring-2 focus:ring-orange-400 outline-none"
+                            />
+                            {comp.calculation === 'percentage' && <span className="text-xs text-gray-400">%</span>}
+                          </div>
+                        )}
+                        {!comp.is_enabled && (
+                          <span className="text-xs text-gray-400 font-mono">{comp.calculation === 'percentage' ? `${comp.default_value}%` : comp.default_value.toLocaleString()}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
         </form>
 
