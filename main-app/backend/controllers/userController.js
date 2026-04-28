@@ -9,11 +9,25 @@ const bcrypt = require('bcryptjs');          // Library to hash passwords before
 const { query } = require('../config/database');  // Database query helper
 const { logAction } = require('../services/auditService');
 
+// Ensure required columns exist for older tenant DBs that predate schema updates
+let columnsEnsured = false;
+async function ensureColumns() {
+  if (columnsEnsured) return;
+  columnsEnsured = true;
+  try {
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active TINYINT(1) NOT NULL DEFAULT 1`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role_name VARCHAR(50) NOT NULL DEFAULT 'Cashier'`);
+  } catch (e) {
+    // Columns already exist or DB doesn't support IF NOT EXISTS — safe to ignore
+  }
+}
+
 // --- Get All Users ---
 // Returns a list of all users with their roles, ordered by newest first.
 // Used on the User Management page to display the users table.
 exports.getAll = async (req, res) => {
   try {
+    await ensureColumns();
     const rows = await query(
       'SELECT u.user_id, u.username, u.name, u.email, u.role_id, u.role_name as role, u.created_at FROM users u WHERE u.is_active = 1 ORDER BY u.created_at DESC'
     );
@@ -133,6 +147,7 @@ exports.update = async (req, res) => {
 // History (sales, vouchers, etc.) remains intact with original user reference.
 exports.remove = async (req, res) => {
   try {
+    await ensureColumns();
     const { id } = req.params;
 
     const existing = await query('SELECT user_id FROM users WHERE user_id = ? AND is_active = 1', [id]);
