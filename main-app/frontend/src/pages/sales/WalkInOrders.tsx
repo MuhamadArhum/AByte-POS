@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   ShoppingBag, Clock, CheckCircle, DollarSign, User, Calendar, CreditCard,
   Package, RefreshCw, Edit2, X, Hash, Printer, Archive, LayoutGrid, List,
-  UtensilsCrossed,
+  UtensilsCrossed, Coffee, Truck, Filter,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
@@ -123,6 +123,9 @@ const WalkInOrders = () => {
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
   const [cs, setCs] = useState('Rs.');
 
+  // Category filter for active orders
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+
   // Active (pending) tab
   const [activeSales, setActiveSales] = useState<any[]>([]);
   const [activeLoading, setActiveLoading] = useState(false);
@@ -150,7 +153,9 @@ const WalkInOrders = () => {
   const fetchActive = useCallback(async () => {
     setActiveLoading(true);
     try {
-      const res = await api.get('/sales/pending', { params: { page: activePage, limit: activePerPage } });
+      const params: any = { page: activePage, limit: activePerPage };
+      if (categoryFilter !== 'all') params.order_type = categoryFilter;
+      const res = await api.get('/sales/pending', { params });
       setActiveSales(res.data.data || res.data);
       if (res.data.pagination) {
         setActiveTotalItems(res.data.pagination.total);
@@ -164,7 +169,7 @@ const WalkInOrders = () => {
     }
   }, [activePage, activePerPage]);
 
-  useEffect(() => { if (activeTab === 'active') fetchActive(); }, [activeTab, fetchActive]);
+  useEffect(() => { if (activeTab === 'active') fetchActive(); }, [activeTab, fetchActive, categoryFilter]);
 
   const handleDeleteActive = async (sale: any) => {
     if (!confirm(`Delete Order${sale.token_no ? ` Token ${sale.token_no}` : ` #${sale.sale_id}`}? Stock will be restored.`)) return;
@@ -299,7 +304,38 @@ const WalkInOrders = () => {
 
         {/* ── ACTIVE TAB ────────────────────────────────────────── */}
         {activeTab === 'active' && (
-          activeLoading ? (
+          <>
+          {/* Category Filter */}
+          <div className="flex items-center gap-2 mb-5 flex-wrap">
+            <Filter size={14} className="text-gray-400 shrink-0" />
+            {[
+              { key: 'all',      label: 'All Orders',  icon: Package,        color: 'gray'    },
+              { key: 'dine_in',  label: 'Dine-In',     icon: UtensilsCrossed,color: 'orange'  },
+              { key: 'takeaway', label: 'Takeaway',     icon: Coffee,         color: 'yellow'  },
+              { key: 'delivery', label: 'Delivery',     icon: Truck,          color: 'blue'    },
+              { key: 'on_spot',  label: 'Walk-In',      icon: ShoppingBag,    color: 'emerald' },
+            ].map(f => {
+              const Icon = f.icon;
+              const active = categoryFilter === f.key;
+              const colorMap: Record<string, string> = {
+                gray:    active ? 'bg-gray-700 text-white border-gray-700'        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400',
+                orange:  active ? 'bg-orange-500 text-white border-orange-500'   : 'bg-white text-orange-600 border-orange-200 hover:border-orange-400',
+                yellow:  active ? 'bg-yellow-500 text-white border-yellow-500'   : 'bg-white text-yellow-600 border-yellow-200 hover:border-yellow-400',
+                blue:    active ? 'bg-blue-500 text-white border-blue-500'       : 'bg-white text-blue-600 border-blue-200 hover:border-blue-400',
+                emerald: active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-600 border-emerald-200 hover:border-emerald-400',
+              };
+              return (
+                <button
+                  key={f.key}
+                  onClick={() => { setCategoryFilter(f.key); setActivePage(1); }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-semibold text-sm transition-all ${colorMap[f.color]}`}
+                >
+                  <Icon size={14} /> {f.label}
+                </button>
+              );
+            })}
+          </div>
+          {activeLoading ? (
             <div className="flex items-center justify-center h-[55vh]">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-14 w-14 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-4"></div>
@@ -365,9 +401,30 @@ const WalkInOrders = () => {
                         </div>
                         <div className="flex flex-col items-end gap-1.5 shrink-0">
                           <span className="bg-emerald-100 text-emerald-700 text-xs px-2.5 py-1 rounded-full font-bold border border-emerald-200">Active</span>
+                          {/* Order type badge */}
+                          {sale.order_type === 'dine_in' && (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200">
+                              <UtensilsCrossed size={10} /> Dine-In {sale.table_name ? `· ${sale.table_name}` : ''}
+                            </span>
+                          )}
+                          {sale.order_type === 'takeaway' && (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 bg-yellow-100 text-yellow-700 border border-yellow-200">
+                              <Coffee size={10} /> Takeaway
+                            </span>
+                          )}
+                          {sale.order_type === 'delivery' && (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 bg-blue-100 text-blue-700 border border-blue-200">
+                              <Truck size={10} /> Delivery
+                            </span>
+                          )}
+                          {(!sale.order_type || sale.order_type === 'on_spot') && (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 bg-gray-100 text-gray-600 border border-gray-200">
+                              <ShoppingBag size={10} /> Walk-In
+                            </span>
+                          )}
                           {(sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
                             <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${
-                              sale.kot_printed ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-orange-100 text-orange-700 border border-orange-200'
+                              sale.kot_printed ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'
                             }`}>
                               <UtensilsCrossed size={10} />{sale.kot_printed ? 'KOT Sent' : 'KOT Pending'}
                             </span>
@@ -428,11 +485,11 @@ const WalkInOrders = () => {
                       <thead className="bg-gray-50 border-b border-gray-100">
                         <tr>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Token</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Type</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Invoice</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Customer</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date & Time</th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Note</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">KOT</th>
                           <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Actions</th>
                         </tr>
@@ -444,6 +501,12 @@ const WalkInOrders = () => {
                               {sale.token_no
                                 ? <span className="font-bold text-emerald-600">{sale.token_no}</span>
                                 : <span className="text-gray-400 text-sm">—</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              {sale.order_type === 'dine_in' && <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-orange-100 text-orange-700 flex items-center gap-1 w-fit"><UtensilsCrossed size={9}/> Dine</span>}
+                              {sale.order_type === 'takeaway' && <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-yellow-100 text-yellow-700 flex items-center gap-1 w-fit"><Coffee size={9}/> TA</span>}
+                              {sale.order_type === 'delivery' && <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-700 flex items-center gap-1 w-fit"><Truck size={9}/> DL</span>}
+                              {(!sale.order_type || sale.order_type === 'on_spot') && <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-600 flex items-center gap-1 w-fit"><ShoppingBag size={9}/> WI</span>}
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-600 font-medium">{sale.invoice_no || `#${sale.sale_id}`}</td>
                             <td className="px-4 py-3 text-sm text-gray-800">{sale.customer_name || 'Walk-in'}</td>
@@ -522,6 +585,8 @@ const WalkInOrders = () => {
               )}
             </>
           )
+          }
+          </>
         )}
 
         {/* ── HISTORY TAB ───────────────────────────────────────── */}

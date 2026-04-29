@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
 import { useSettings } from '../../context/SettingsContext';
-import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Download } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Download, UtensilsCrossed, Coffee, Truck, ShoppingBag, Layers } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../../utils/api';
@@ -20,12 +20,13 @@ const SalesReports = () => {
   const [cashierPerf, setCashierPerf] = useState<any[]>([]);
   const [dailyTrend, setDailyTrend] = useState<any[]>([]);
   const [topCustomers, setTopCustomers] = useState<any[]>([]);
+  const [categoryBreakdown, setCategoryBreakdown] = useState<any[]>([]);
 
   const fetchReports = async () => {
     setLoading(true);
     try {
       const params = { date_from: dateFrom, date_to: dateTo };
-      const [sumRes, compRes, hourRes, payRes, cashRes, trendRes, custRes] = await Promise.all([
+      const [sumRes, compRes, hourRes, payRes, cashRes, trendRes, custRes, catRes] = await Promise.all([
         api.get('/sales-reports/summary', { params }),
         api.get('/sales-reports/comparison', { params }),
         api.get('/sales-reports/hourly', { params: { date: dateFrom } }),
@@ -33,6 +34,7 @@ const SalesReports = () => {
         api.get('/sales-reports/cashier-performance', { params }),
         api.get('/sales-reports/daily-trend', { params }),
         api.get('/sales-reports/top-customers', { params }),
+        api.get('/sales-reports/category-breakdown', { params }),
       ]);
       setSummary(sumRes.data);
       setComparison(compRes.data);
@@ -41,6 +43,7 @@ const SalesReports = () => {
       setCashierPerf(cashRes.data.data || []);
       setDailyTrend(trendRes.data.data || []);
       setTopCustomers(custRes.data.data || []);
+      setCategoryBreakdown(catRes.data.data || []);
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
@@ -175,6 +178,73 @@ const SalesReports = () => {
                 ))}</div>
               )}
             </div>
+          </div>
+
+          {/* ── Category Breakdown ── */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
+            <div className="flex justify-between items-center mb-5">
+              <div className="flex items-center gap-2">
+                <Layers size={18} className="text-emerald-600" />
+                <h3 className="font-semibold text-gray-800">Sales by Category</h3>
+              </div>
+              <button onClick={() => exportCSV(categoryBreakdown, 'category_breakdown.csv')} className="text-xs text-gray-500 hover:text-emerald-600 flex items-center gap-1"><Download size={14} /> CSV</button>
+            </div>
+            {categoryBreakdown.length === 0 ? (
+              <p className="text-center text-gray-400 py-8">No completed sales in this period</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 rounded-xl">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-600">Category</th>
+                      <th className="px-4 py-3 text-right font-semibold text-gray-600">Orders</th>
+                      <th className="px-4 py-3 text-right font-semibold text-gray-600">Revenue</th>
+                      <th className="px-4 py-3 text-right font-semibold text-gray-600">Tax</th>
+                      <th className="px-4 py-3 text-right font-semibold text-gray-600">Charges</th>
+                      <th className="px-4 py-3 text-right font-semibold text-gray-600">Avg Order</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {categoryBreakdown.map(row => {
+                      const iconMap: Record<string, any> = {
+                        dine_in: { Icon: UtensilsCrossed, color: 'bg-orange-100 text-orange-600' },
+                        takeaway: { Icon: Coffee, color: 'bg-yellow-100 text-yellow-600' },
+                        delivery: { Icon: Truck, color: 'bg-blue-100 text-blue-600' },
+                      };
+                      const meta = iconMap[row.order_type] || { Icon: ShoppingBag, color: 'bg-gray-100 text-gray-600' };
+                      const { Icon } = meta;
+                      return (
+                        <tr key={row.order_type} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${meta.color}`}>
+                                <Icon size={14} />
+                              </div>
+                              <span className="font-semibold text-gray-800">{row.category}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-gray-700">{row.total_orders}</td>
+                          <td className="px-4 py-3 text-right font-bold text-emerald-600">{currency}{Number(row.total_sales).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right text-gray-600">{currency}{Number(row.total_tax).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right text-gray-600">{currency}{Number(row.total_charges).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right text-gray-600">{currency}{Number(row.avg_order).toFixed(2)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+                    <tr>
+                      <td className="px-4 py-3 font-bold text-gray-700">Total</td>
+                      <td className="px-4 py-3 text-right font-bold text-gray-700">{categoryBreakdown.reduce((s, r) => s + r.total_orders, 0)}</td>
+                      <td className="px-4 py-3 text-right font-bold text-emerald-700">{currency}{categoryBreakdown.reduce((s, r) => s + Number(r.total_sales), 0).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-bold text-gray-700">{currency}{categoryBreakdown.reduce((s, r) => s + Number(r.total_tax), 0).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-bold text-gray-700">{currency}{categoryBreakdown.reduce((s, r) => s + Number(r.total_charges), 0).toFixed(2)}</td>
+                      <td className="px-4 py-3"></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
           </div>
         </>
       )}

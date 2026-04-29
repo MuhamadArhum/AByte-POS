@@ -15,7 +15,12 @@ exports.getSettings = async (req, res) => {
         receipt_footer: 'Thank you!'
       });
     }
-    res.json(rows[0]);
+    const row = rows[0];
+    // Parse pos_tax_config JSON
+    if (row.pos_tax_config && typeof row.pos_tax_config === 'string') {
+      try { row.pos_tax_config = JSON.parse(row.pos_tax_config); } catch { row.pos_tax_config = null; }
+    }
+    res.json(row);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -39,7 +44,8 @@ exports.updateSettings = async (req, res) => {
       printer_type, printer_ip, printer_port, printer_name, printer_paper_width,
       view_completed_orders_password, refund_password, reports_password,
       jv_delete_password,
-      default_delivery_charges
+      default_delivery_charges,
+      pos_mode, pos_tax_config
     } = req.body;
 
     // Build dynamic SET clause to handle optional columns gracefully
@@ -104,6 +110,18 @@ exports.updateSettings = async (req, res) => {
       );
     } catch (dcErr) {
       console.warn('default_delivery_charges column not found. Run migrate_delivery_charges_setting.js');
+    }
+
+    // Update POS mode and per-category tax configuration
+    try {
+      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS pos_mode VARCHAR(10) DEFAULT 'simple'`);
+      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS pos_tax_config TEXT NULL`);
+      await query(
+        `UPDATE store_settings SET pos_mode=?, pos_tax_config=? WHERE setting_id=1`,
+        [pos_mode || 'simple', pos_tax_config ? JSON.stringify(pos_tax_config) : null]
+      );
+    } catch (pmErr) {
+      console.warn('pos_mode/pos_tax_config column error:', pmErr.message);
     }
 
     await logAction(req.user.user_id, req.user.name, 'SETTINGS_UPDATED', 'settings', 1, { store_name }, req.ip);

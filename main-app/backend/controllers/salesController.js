@@ -124,17 +124,20 @@ exports.createSale = async (req, res) => {
     const invoice_no = `INV-${String(invResult[0].next_inv).padStart(5, '0')}`;
 
     if (status === 'pending') {
-      // Walk-in token: WI-01, WI-02 … resets per shift
+      // Token prefix by order type: DIN = dine_in, TA = takeaway, DL = delivery, WI = on_spot/walk_in
+      const prefixMap = { dine_in: 'DIN', takeaway: 'TA', delivery: 'DL' };
+      const prefix = prefixMap[order_type] || 'WI';
+
       const shiftRows = await conn.query(
         `SELECT opened_at FROM cash_registers WHERE status = 'open' ORDER BY register_id DESC LIMIT 1`
       );
       const shiftStart = shiftRows.length > 0 ? shiftRows[0].opened_at : new Date().toISOString().slice(0, 10);
       const tokenResult = await conn.query(
-        `SELECT COALESCE(MAX(CAST(REPLACE(token_no, 'WI-', '') AS UNSIGNED)), 0) + 1 as next_token
-         FROM sales WHERE token_no LIKE 'WI-%' AND sale_date >= ?`,
-        [shiftStart]
+        `SELECT COALESCE(MAX(CAST(REPLACE(token_no, ?, '') AS UNSIGNED)), 0) + 1 as next_token
+         FROM sales WHERE token_no LIKE ? AND sale_date >= ?`,
+        [`${prefix}-`, `${prefix}-%`, shiftStart]
       );
-      token_no = `WI-${String(tokenResult[0].next_token).padStart(2, '0')}`;
+      token_no = `${prefix}-${String(tokenResult[0].next_token).padStart(2, '0')}`;
     }
 
     // Step 4: Insert the sale header record
@@ -264,13 +267,27 @@ exports.createSale = async (req, res) => {
 // --- Get Pending Sales ---
 exports.getPending = async (req, res) => {
   try {
-    const { page, limit } = req.query;
+    const { page, limit, order_type } = req.query;
 
-    // Always compute summary — exclude delivery orders
+    // Map frontend 'on_spot' filter to include both 'on_spot' and NULL order_type rows
+    let orderTypeClause = '';
+    const filterParams = [];
+    if (order_type && order_type !== 'all') {
+      if (order_type === 'on_spot') {
+        orderTypeClause = `AND (s.order_type = 'on_spot' OR s.order_type IS NULL OR s.order_type = '')`;
+      } else {
+        orderTypeClause = `AND s.order_type = ?`;
+        filterParams.push(order_type);
+      }
+    }
+
+    // Always compute summary (filtered)
     const summaryResult = await query(
       `SELECT COUNT(*) as order_count, COALESCE(SUM(total_amount), 0) as total_amount
-       FROM sales WHERE status = 'pending'
-       AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = sales.sale_id)`
+       FROM sales s WHERE status = 'pending'
+       AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)
+       ${orderTypeClause}`,
+      filterParams
     );
     const summary = {
       order_count: Number(summaryResult[0].order_count),
@@ -278,14 +295,17 @@ exports.getPending = async (req, res) => {
     };
 
     let sql = `
-      SELECT s.*, c.customer_name, u.name as cashier_name
+      SELECT s.*, c.customer_name, u.name as cashier_name,
+        rt.table_name
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
+      LEFT JOIN restaurant_tables rt ON s.table_id = rt.table_id
       WHERE s.status = 'pending'
       AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)
+      ${orderTypeClause}
     `;
-    const params = [];
+    const params = [...filterParams];
 
     if (page && limit) {
       const pg = parsePagination(page, limit);

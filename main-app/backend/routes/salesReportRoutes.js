@@ -13,5 +13,6 @@ router.get('/cashier-performance', controller.getCashierPerformance);
 router.get('/daily-trend', controller.getDailyTrend);
 router.get('/top-customers', controller.getTopCustomers);
 router.get('/comparison', controller.getSalesComparison);
+router.get('/category-breakdown', controller.getCategoryBreakdown);
 
 module.exports = router;

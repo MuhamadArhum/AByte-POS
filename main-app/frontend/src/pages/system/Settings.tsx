@@ -36,7 +36,12 @@ import {
   Tag,
   RotateCcw,
   CreditCard,
-  Truck
+  Truck,
+  UtensilsCrossed,
+  Coffee,
+  Percent,
+  ShoppingBag,
+  Layers,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -73,8 +78,41 @@ const Settings = () => {
     receipt_paper_width: '80mm',
     printer_type: 'none', printer_ip: '', printer_port: 9100, printer_name: '', printer_paper_width: 80,
     view_completed_orders_password: '', refund_password: '', reports_password: '',
-    jv_delete_password: ''
+    jv_delete_password: '',
+    pos_mode: 'simple',
+    pos_tax_config: null,
   });
+
+  const defaultCategoryConfig = () => ({
+    tax_enabled: false, tax_rate: 0,
+    service_enabled: false, service_rate: 0,
+    other_enabled: false, other_rate: 0, other_label: 'Other Charges',
+  });
+
+  const getPosCategories = (): Record<string, any> => {
+    const cfg = settings.pos_tax_config;
+    const def = {
+      dine_in: defaultCategoryConfig(),
+      takeaway: defaultCategoryConfig(),
+      delivery: defaultCategoryConfig(),
+      walk_in: defaultCategoryConfig(),
+    };
+    if (!cfg || typeof cfg !== 'object') return def;
+    return {
+      dine_in: { ...def.dine_in, ...(cfg.dine_in || {}) },
+      takeaway: { ...def.takeaway, ...(cfg.takeaway || {}) },
+      delivery: { ...def.delivery, ...(cfg.delivery || {}) },
+      walk_in: { ...def.walk_in, ...(cfg.walk_in || {}) },
+    };
+  };
+
+  const setCategoryConfig = (cat: string, field: string, value: any) => {
+    const current = getPosCategories();
+    setSettings((prev: any) => ({
+      ...prev,
+      pos_tax_config: { ...current, [cat]: { ...current[cat], [field]: value } },
+    }));
+  };
 
   // Show/hide state for POS security password fields
   const [showViewCompletedPw, setShowViewCompletedPw] = useState(false);
@@ -840,6 +878,172 @@ const Settings = () => {
           {activeTab === 'pos' && (
             <form onSubmit={handleSaveSettings} className="space-y-6">
               <h2 className="text-base font-semibold text-gray-800 mb-4">POS Configuration</h2>
+
+              {/* ── POS Sale Mode ── */}
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-2xl p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Layers size={18} className="text-emerald-600" />
+                  <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-wider">POS Sale Mode</h3>
+                </div>
+                <p className="text-xs text-gray-600 mb-4">Choose how sales are processed at the POS terminal</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    {
+                      value: 'simple',
+                      label: 'Simple Mode (Walk-In)',
+                      desc: 'Basic walk-in sales only. Token: WI-01',
+                      icon: ShoppingBag,
+                      color: 'emerald',
+                    },
+                    {
+                      value: 'category',
+                      label: 'Category Mode',
+                      desc: 'Dine-In (DIN-01), Takeaway (TA-01), Delivery (DL-01), Walk-In (WI-01)',
+                      icon: Layers,
+                      color: 'teal',
+                    },
+                  ].map(opt => {
+                    const Icon = opt.icon;
+                    const active = settings.pos_mode === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSettings({ ...settings, pos_mode: opt.value })}
+                        className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+                          active
+                            ? 'border-emerald-500 bg-white shadow-md shadow-emerald-100'
+                            : 'border-gray-200 bg-white/60 hover:border-emerald-300'
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${active ? 'bg-emerald-500' : 'bg-gray-100'}`}>
+                          <Icon size={20} className={active ? 'text-white' : 'text-gray-500'} />
+                        </div>
+                        <div>
+                          <p className={`font-bold text-sm ${active ? 'text-emerald-700' : 'text-gray-700'}`}>{opt.label}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
+                        </div>
+                        {active && <CheckCircle size={16} className="text-emerald-500 ml-auto shrink-0 mt-1" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── Per-Category Tax Configuration ── */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Percent size={18} className="text-gray-600" />
+                  <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Per-Category Tax & Charges Configuration</h3>
+                </div>
+                <p className="text-xs text-gray-500 mb-4">Configure default Tax, Service Charges, and Other Charges for each order category. These auto-apply in POS when the order type is selected.</p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {[
+                    { key: 'dine_in',  label: 'Dine-In',   token: 'DIN-01', icon: UtensilsCrossed, color: 'orange' },
+                    { key: 'takeaway', label: 'Takeaway',  token: 'TA-01',  icon: Coffee,           color: 'yellow' },
+                    { key: 'delivery', label: 'Delivery',  token: 'DL-01',  icon: Truck,            color: 'blue'   },
+                    { key: 'walk_in',  label: 'Walk-In',   token: 'WI-01',  icon: ShoppingBag,      color: 'emerald'},
+                  ].map(cat => {
+                    const cfg = getPosCategories()[cat.key];
+                    const Icon = cat.icon;
+                    const colorMap: Record<string, string> = {
+                      orange: 'bg-orange-100 text-orange-600 border-orange-200',
+                      yellow: 'bg-yellow-100 text-yellow-600 border-yellow-200',
+                      blue:   'bg-blue-100 text-blue-600 border-blue-200',
+                      emerald:'bg-emerald-100 text-emerald-600 border-emerald-200',
+                    };
+                    const headerColor: Record<string, string> = {
+                      orange: 'from-orange-50 to-orange-100 border-orange-200',
+                      yellow: 'from-yellow-50 to-yellow-100 border-yellow-200',
+                      blue:   'from-blue-50 to-blue-100 border-blue-200',
+                      emerald:'from-emerald-50 to-emerald-100 border-emerald-200',
+                    };
+                    return (
+                      <div key={cat.key} className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden">
+                        <div className={`flex items-center gap-3 px-4 py-3 bg-gradient-to-r ${headerColor[cat.color]} border-b`}>
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${colorMap[cat.color]}`}>
+                            <Icon size={16} />
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm text-gray-800">{cat.label}</p>
+                            <p className="text-xs text-gray-500">Token: {cat.token}</p>
+                          </div>
+                        </div>
+                        <div className="p-4 space-y-3">
+                          {/* Tax */}
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 flex-1">
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" className="sr-only peer"
+                                  checked={!!cfg.tax_enabled}
+                                  onChange={e => setCategoryConfig(cat.key, 'tax_enabled', e.target.checked)} />
+                                <div className="w-9 h-5 bg-gray-200 peer-checked:bg-emerald-500 rounded-full transition-colors"></div>
+                                <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
+                              </label>
+                              <span className="text-sm font-medium text-gray-700">Tax</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <input type="number" min="0" max="100" step="0.1"
+                                disabled={!cfg.tax_enabled}
+                                value={cfg.tax_rate}
+                                onChange={e => setCategoryConfig(cat.key, 'tax_rate', parseFloat(e.target.value) || 0)}
+                                className="w-20 px-2 py-1.5 border border-gray-200 rounded-lg text-sm text-center font-bold disabled:opacity-40 focus:ring-2 focus:ring-emerald-500 outline-none" />
+                              <span className="text-xs text-gray-500">%</span>
+                            </div>
+                          </div>
+                          {/* Service Charges */}
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 flex-1">
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" className="sr-only peer"
+                                  checked={!!cfg.service_enabled}
+                                  onChange={e => setCategoryConfig(cat.key, 'service_enabled', e.target.checked)} />
+                                <div className="w-9 h-5 bg-gray-200 peer-checked:bg-emerald-500 rounded-full transition-colors"></div>
+                                <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
+                              </label>
+                              <span className="text-sm font-medium text-gray-700">Service Charges</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <input type="number" min="0" max="100" step="0.1"
+                                disabled={!cfg.service_enabled}
+                                value={cfg.service_rate}
+                                onChange={e => setCategoryConfig(cat.key, 'service_rate', parseFloat(e.target.value) || 0)}
+                                className="w-20 px-2 py-1.5 border border-gray-200 rounded-lg text-sm text-center font-bold disabled:opacity-40 focus:ring-2 focus:ring-emerald-500 outline-none" />
+                              <span className="text-xs text-gray-500">%</span>
+                            </div>
+                          </div>
+                          {/* Other Charges */}
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 flex-1">
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" className="sr-only peer"
+                                  checked={!!cfg.other_enabled}
+                                  onChange={e => setCategoryConfig(cat.key, 'other_enabled', e.target.checked)} />
+                                <div className="w-9 h-5 bg-gray-200 peer-checked:bg-emerald-500 rounded-full transition-colors"></div>
+                                <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
+                              </label>
+                              <input type="text"
+                                placeholder="Other Charges"
+                                disabled={!cfg.other_enabled}
+                                value={cfg.other_label}
+                                onChange={e => setCategoryConfig(cat.key, 'other_label', e.target.value)}
+                                className="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-xs disabled:opacity-40 focus:ring-2 focus:ring-emerald-500 outline-none min-w-0" />
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <input type="number" min="0" max="100" step="0.1"
+                                disabled={!cfg.other_enabled}
+                                value={cfg.other_rate}
+                                onChange={e => setCategoryConfig(cat.key, 'other_rate', parseFloat(e.target.value) || 0)}
+                                className="w-20 px-2 py-1.5 border border-gray-200 rounded-lg text-sm text-center font-bold disabled:opacity-40 focus:ring-2 focus:ring-emerald-500 outline-none" />
+                              <span className="text-xs text-gray-500">%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>

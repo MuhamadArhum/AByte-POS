@@ -201,14 +201,54 @@ const POS = () => {
   // Default delivery charges from store settings
   const [defaultDeliveryCharges, setDefaultDeliveryCharges] = useState(0);
 
+  // POS mode & per-category tax config from settings
+  const [posMode, setPosMode] = useState<'simple' | 'category'>('simple');
+  const [posTaxConfig, setPosTaxConfig] = useState<any>(null);
+
+  // Per-category charges (local UI state - combined into taxRate/additionalRate)
+  const [serviceRate, setServiceRate] = useState(0);
+  const [otherRate, setOtherRate] = useState(0);
+  const [otherLabel, setOtherLabel] = useState('Other Charges');
+
   // Delivery customer — 3 simple fields
   const [delivName, setDelivName] = useState('');
   const [delivMatchedCust, setDelivMatchedCust] = useState<any>(null);
   const [delivPhoneSuggestions, setDelivPhoneSuggestions] = useState<any[]>([]);
 
-  // Order type: dine_in, takeaway, or delivery
-  type OrderType = 'dine_in' | 'takeaway' | 'delivery';
+  // Order type: dine_in, takeaway, delivery, or on_spot (walk_in)
+  type OrderType = 'dine_in' | 'takeaway' | 'delivery' | 'on_spot';
   const [orderType, setOrderType] = useState<OrderType>('dine_in');
+
+  // When pos mode changes, reset to correct default order type
+  useEffect(() => {
+    if (posMode === 'simple') {
+      setOrderType('on_spot');
+      applyTaxConfig(posTaxConfig, 'walk_in');
+    } else {
+      setOrderType('dine_in');
+      applyTaxConfig(posTaxConfig, 'dine_in');
+    }
+  }, [posMode]);
+
+  const applyTaxConfig = (config: any, catKey: string) => {
+    if (!config || typeof config !== 'object') return;
+    const cat = config[catKey] || {};
+    setTaxRate(cat.tax_enabled ? (parseFloat(cat.tax_rate) || 0) : 0);
+    setServiceRate(cat.service_enabled ? (parseFloat(cat.service_rate) || 0) : 0);
+    setOtherRate(cat.other_enabled ? (parseFloat(cat.other_rate) || 0) : 0);
+    setOtherLabel(cat.other_label || 'Other Charges');
+    setAdditionalRate(
+      (cat.service_enabled ? (parseFloat(cat.service_rate) || 0) : 0) +
+      (cat.other_enabled ? (parseFloat(cat.other_rate) || 0) : 0)
+    );
+  };
+
+  const handleOrderTypeChange = (type: OrderType) => {
+    setOrderType(type);
+    setSelectedTableId(null);
+    const catKey = type === 'on_spot' ? 'walk_in' : type;
+    applyTaxConfig(posTaxConfig, catKey);
+  };
 
   // Restaurant tables
   const [tables, setTables] = useState<any[]>([]);
@@ -219,7 +259,8 @@ const POS = () => {
     estimated_delivery: '', notes: '',
   });
   const resetDelivery = () => {
-    setOrderType('dine_in');
+    const defaultType: OrderType = posMode === 'category' ? 'dine_in' : 'on_spot';
+    setOrderType(defaultType);
     setSelectedTableId(null);
     setDeliveryInfo({ delivery_address: '', delivery_city: '', delivery_phone: '', rider_name: '', rider_phone: '', delivery_charges: '', estimated_delivery: '', notes: '' });
     setDelivName('');
@@ -277,6 +318,10 @@ const POS = () => {
       const dc = parseFloat(res.data.default_delivery_charges) || 0;
       setDefaultDeliveryCharges(dc);
       setStoreSettings(res.data);
+      setPosMode(res.data.pos_mode === 'category' ? 'category' : 'simple');
+      setPosTaxConfig(res.data.pos_tax_config || null);
+      // Apply default category rates based on current order type
+      applyTaxConfig(res.data.pos_tax_config, res.data.pos_mode === 'category' ? 'dine_in' : 'walk_in');
     }).catch(() => {});
   }, []);
 
@@ -1091,7 +1136,9 @@ const POS = () => {
                 ? <Truck size={18} className="text-emerald-400" />
                 : orderType === 'dine_in'
                 ? <UtensilsCrossed size={18} className="text-orange-400" />
-                : <Coffee size={18} className="text-yellow-400" />}
+                : orderType === 'takeaway'
+                ? <Coffee size={18} className="text-yellow-400" />
+                : <ShoppingBag size={18} className="text-blue-400" />}
             </div>
             <div>
               <h2 className="text-white font-bold text-sm leading-tight">
@@ -1099,7 +1146,8 @@ const POS = () => {
                   ? <span className="text-amber-400">Editing Token #{editingTokenNo || editingSaleId}</span>
                   : orderType === 'delivery' ? 'Delivery Order'
                   : orderType === 'dine_in' ? `Dine-In${selectedTableId ? ` · ${tables.find(t => t.table_id === selectedTableId)?.table_name || ''}` : ''}`
-                  : 'Takeaway'}
+                  : orderType === 'takeaway' ? 'Takeaway'
+                  : 'Walk-In'}
               </h2>
               <p className="text-gray-400 text-xs">
                 {cart.length === 0 ? 'No items' : `${cart.length} item${cart.length > 1 ? 's' : ''} · Rs. ${subtotal.toFixed(2)}`}
@@ -1114,33 +1162,43 @@ const POS = () => {
             >
               <X size={16} />
             </button>
-            {/* Order Type Toggle in header */}
-            <div className="flex bg-white/10 rounded-lg p-0.5 gap-0.5">
-              <button
-                onClick={() => { setOrderType('dine_in'); setSelectedTableId(null); }}
-                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  orderType === 'dine_in' ? 'bg-orange-500 text-white' : 'text-gray-300 hover:text-white'
-                }`}
-              >
-                <UtensilsCrossed size={10} /> Dine-In
-              </button>
-              <button
-                onClick={() => { setOrderType('takeaway'); setSelectedTableId(null); }}
-                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  orderType === 'takeaway' ? 'bg-yellow-500 text-white' : 'text-gray-300 hover:text-white'
-                }`}
-              >
-                <ShoppingBag size={10} /> Takeaway
-              </button>
-              <button
-                onClick={() => setOrderType('delivery')}
-                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  orderType === 'delivery' ? 'bg-emerald-500 text-white' : 'text-gray-300 hover:text-white'
-                }`}
-              >
-                <Truck size={10} /> Delivery
-              </button>
-            </div>
+            {/* Order Type Toggle in header — only in Category mode */}
+            {posMode === 'category' && (
+              <div className="flex bg-white/10 rounded-lg p-0.5 gap-0.5">
+                <button
+                  onClick={() => handleOrderTypeChange('dine_in')}
+                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    orderType === 'dine_in' ? 'bg-orange-500 text-white' : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  <UtensilsCrossed size={10} /> Dine
+                </button>
+                <button
+                  onClick={() => handleOrderTypeChange('takeaway')}
+                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    orderType === 'takeaway' ? 'bg-yellow-500 text-white' : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  <Coffee size={10} /> TA
+                </button>
+                <button
+                  onClick={() => handleOrderTypeChange('delivery')}
+                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    orderType === 'delivery' ? 'bg-emerald-500 text-white' : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  <Truck size={10} /> DL
+                </button>
+                <button
+                  onClick={() => handleOrderTypeChange('on_spot')}
+                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    orderType === 'on_spot' ? 'bg-blue-500 text-white' : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  <ShoppingBag size={10} /> WI
+                </button>
+              </div>
+            )}
             {cart.length > 0 && (
               <button
                 onClick={() => { clearCart(); setEditingSaleId(null); setEditingTokenNo(null); resetDelivery(); }}
@@ -1182,7 +1240,7 @@ const POS = () => {
         )}
 
         {/* ── Dine-In / Takeaway: Customer Panel ── */}
-        {(orderType === 'dine_in' || orderType === 'takeaway') && (
+        {(orderType === 'dine_in' || orderType === 'takeaway' || orderType === 'on_spot') && (
           <div className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -1426,6 +1484,7 @@ const POS = () => {
               <span className="text-gray-500">Subtotal</span>
               <span className="font-bold text-gray-700">Rs. {subtotal.toFixed(2)}</span>
             </div>
+            {/* Tax row */}
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-1.5 text-gray-500">
                 <Percent size={12} />
@@ -1441,20 +1500,45 @@ const POS = () => {
               </div>
               <span className="font-medium text-gray-600 text-sm">Rs. {taxAmount.toFixed(2)}</span>
             </div>
+            {/* Service Charges row */}
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-1.5 text-gray-500">
                 <Tag size={12} />
-                <span>Charges</span>
+                <span>Service</span>
                 <input
                   type="number"
-                  value={additionalRate}
-                  onChange={(e) => setAdditionalRate(Number(e.target.value))}
+                  value={serviceRate}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    setServiceRate(v);
+                    setAdditionalRate(v + otherRate);
+                  }}
                   className="w-11 px-1.5 py-0.5 border border-gray-200 rounded-lg text-center text-xs font-bold bg-gray-50 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                   step="0.1"
                 />
                 <span className="text-gray-400 text-xs">%</span>
               </div>
-              <span className="font-medium text-gray-600 text-sm">Rs. {additionalAmount.toFixed(2)}</span>
+              <span className="font-medium text-gray-600 text-sm">Rs. {(subtotal * serviceRate / 100).toFixed(2)}</span>
+            </div>
+            {/* Other Charges row */}
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-1.5 text-gray-500">
+                <Tag size={12} />
+                <span className="truncate max-w-[60px]" title={otherLabel}>{otherLabel.length > 6 ? otherLabel.slice(0, 6) + '…' : otherLabel}</span>
+                <input
+                  type="number"
+                  value={otherRate}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    setOtherRate(v);
+                    setAdditionalRate(serviceRate + v);
+                  }}
+                  className="w-11 px-1.5 py-0.5 border border-gray-200 rounded-lg text-center text-xs font-bold bg-gray-50 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  step="0.1"
+                />
+                <span className="text-gray-400 text-xs">%</span>
+              </div>
+              <span className="font-medium text-gray-600 text-sm">Rs. {(subtotal * otherRate / 100).toFixed(2)}</span>
             </div>
             {orderType === 'delivery' && delivCharges > 0 && (
               <div className="flex justify-between items-center text-sm">
@@ -1561,10 +1645,16 @@ const POS = () => {
                     className={`flex items-center justify-center gap-2 text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${
                       orderType === 'dine_in'
                         ? 'bg-orange-500 hover:bg-orange-600'
-                        : 'bg-amber-500 hover:bg-amber-600'
+                        : orderType === 'takeaway'
+                        ? 'bg-amber-500 hover:bg-amber-600'
+                        : 'bg-blue-500 hover:bg-blue-600'
                     }`}
                   >
-                    {orderType === 'dine_in' ? <><UtensilsCrossed size={15} /> KOT + Hold</> : <><Archive size={15} /> Punch/Hold</>}
+                    {orderType === 'dine_in'
+                      ? <><UtensilsCrossed size={15} /> KOT + Hold</>
+                      : orderType === 'takeaway'
+                      ? <><Coffee size={15} /> Punch/Hold</>
+                      : <><Archive size={15} /> Hold Order</>}
                     <span className="text-white/50 text-xs">F8</span>
                   </button>
                   <button

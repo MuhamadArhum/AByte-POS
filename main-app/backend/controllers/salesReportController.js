@@ -135,3 +135,44 @@ exports.getSalesComparison = async (req, res) => {
     res.json({ current_period: { total: currentTotal, orders: Number(current.orders) }, previous_period: { total: prevTotal, orders: Number(previous.orders) }, change_percent: change });
   } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
 };
+
+
+exports.getCategoryBreakdown = async (req, res) => {
+  try {
+    const { date_from, date_to } = req.query;
+    const from = date_from || new Date().toISOString().split('T')[0];
+    const to = date_to || new Date().toISOString().split('T')[0];
+
+    const rows = await query(`
+      SELECT
+        CASE
+          WHEN order_type = 'dine_in'  THEN 'Dine-In'
+          WHEN order_type = 'takeaway' THEN 'Takeaway'
+          WHEN order_type = 'delivery' THEN 'Delivery'
+          ELSE 'Walk-In'
+        END as category,
+        order_type,
+        COUNT(*) as total_orders,
+        COALESCE(SUM(net_amount), 0) as total_sales,
+        COALESCE(SUM(tax_amount), 0) as total_tax,
+        COALESCE(SUM(additional_charges_amount), 0) as total_charges,
+        COALESCE(AVG(net_amount), 0) as avg_order
+      FROM sales
+      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?
+      GROUP BY order_type
+      ORDER BY total_sales DESC
+    `, [from, to]);
+
+    res.json({
+      data: rows.map(r => ({
+        category: r.category,
+        order_type: r.order_type,
+        total_orders: Number(r.total_orders),
+        total_sales: Number(r.total_sales),
+        total_tax: Number(r.total_tax),
+        total_charges: Number(r.total_charges),
+        avg_order: Number(r.avg_order),
+      }))
+    });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+};
