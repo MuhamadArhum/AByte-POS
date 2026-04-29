@@ -125,7 +125,8 @@
       "Bash(echo \"SHOW CREATE TABLE payment_vouchers\\\\\\\\G\")",
       "Bash(echo \"SHOW CREATE TABLE receipt_vouchers\\\\\\\\G\")",
       "Bash(git rm *)",
-      "Bash(echo \"EXIT: $?\")"
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(pm2 list *)"
     ]
   }
 }

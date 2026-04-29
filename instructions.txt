@@ -1,1 +1,7 @@
 cd /var/www/AByte-POS && bash main-app/deploy.sh
+
+
+
+
+
+
