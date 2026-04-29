@@ -131,7 +131,7 @@ const POS = () => {
     subtotal, total,
     taxRate, setTaxRate,
     additionalRate, setAdditionalRate,
-    taxAmount, additionalAmount,
+    taxAmount,
     appliedBundles, setAppliedBundles, bundleDiscount
   } = useCart();
   const { user } = useAuth();
