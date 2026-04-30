@@ -15,6 +15,9 @@ const settingsRoutes = require('./routes/settingsRoutes');
 
 const app = express();
 
+// Trust nginx reverse proxy (required for express-rate-limit behind nginx)
+app.set('trust proxy', 1);
+
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
   : ['http://localhost:5174'];

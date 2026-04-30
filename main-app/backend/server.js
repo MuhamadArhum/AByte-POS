@@ -82,6 +82,9 @@ const { requireModule } = require('./middleware/moduleGuard');
 
 const app = express();
 
+// Trust nginx reverse proxy (required for express-rate-limit behind nginx)
+app.set('trust proxy', 1);
+
 // ── CORS Configuration ───────────────────────────────────────
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
@@ -253,12 +256,39 @@ cron.schedule('0 2 * * *', async () => {
   }
 });
 
+// ── Startup Migration: add multi-branch columns to all tenant DBs ──
+const { queryDb } = require('./config/database');
+const MASTER_DB = process.env.MASTER_DB_NAME || 'abyte_master';
+
+async function runStartupMigrations() {
+  try {
+    // Get all active tenant DBs from master
+    const tenants = await queryDb(MASTER_DB, 'SELECT db_name FROM tenants WHERE is_active = 1');
+    for (const t of tenants) {
+      try {
+        await queryDb(t.db_name, `ALTER TABLE stores ADD COLUMN IF NOT EXISTS monthly_charge DECIMAL(10,2) DEFAULT 0.00`);
+        await queryDb(t.db_name, `ALTER TABLE users  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+        await queryDb(t.db_name, `ALTER TABLE sales  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+        await queryDb(t.db_name, `ALTER TABLE staff  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+      } catch (e) {
+        logger.warn(`[Migration] Could not migrate ${t.db_name}: ${e.message}`);
+      }
+    }
+    logger.info('[Migration] Multi-branch column migration complete');
+  } catch (e) {
+    // Non-fatal — if master DB unreachable, skip
+    logger.warn('[Migration] Startup migration skipped', { error: e.message });
+  }
+}
+
 // ── Start Server ─────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   logger.info(`AByte ERP backend started`, {
     port:    PORT,
     db:      process.env.DB_NAME || 'abyte_pos',
     origins: allowedOrigins,
   });
+  // Run after server is accepting requests so DB pool is ready
+  runStartupMigrations();
 });
