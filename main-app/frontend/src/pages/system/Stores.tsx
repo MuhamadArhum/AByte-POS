@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
-import { Store, Plus, Pencil, Trash2, Search, MapPin, Phone, Mail, X, Building2, User, TrendingUp, Users, DollarSign, Info } from 'lucide-react';
+import { Store, Plus, Pencil, Trash2, Search, MapPin, Phone, Mail, X, Building2, User, TrendingUp, Info } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
