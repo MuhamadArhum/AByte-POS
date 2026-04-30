@@ -9,6 +9,16 @@
 const { getConnection, query } = require('../config/database');  // DB helpers (getConnection for transactions)
 const { logAction } = require('../services/auditService');
 
+// Ensure branch_id column exists on older tenant DBs
+let salesColumnsEnsured = false;
+async function ensureSalesColumns() {
+  if (salesColumnsEnsured) return;
+  salesColumnsEnsured = true;
+  try {
+    await query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+  } catch (e) { /* safe to ignore */ }
+}
+
 // Helper: Round to 2 decimal places for currency
 const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
 
@@ -25,6 +35,7 @@ const parsePagination = (page, limit) => {
 
 // --- Create Sale (Checkout) ---
 exports.createSale = async (req, res) => {
+  await ensureSalesColumns();
   let conn;  // Database connection for the transaction
   try {
     const {
@@ -142,14 +153,15 @@ exports.createSale = async (req, res) => {
 
     // Step 4: Insert the sale header record
     const finalAmountPaid = is_credit ? 0 : (status === 'completed' ? (amount_paid || total_amount) : 0);
+    const branch_id = req.user.branch_id || null;
 
     const saleResult = await conn.query(
       `INSERT INTO sales (
         sub_total, total_amount, discount, bundle_discount, bundle_count, net_amount, user_id, customer_id,
         payment_method, amount_paid, status,
         tax_percent, tax_amount, additional_charges_percent, additional_charges_amount, note,
-        token_no, invoice_no, table_id, order_type
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        token_no, invoice_no, table_id, order_type, branch_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         subtotal,
         total_amount,
@@ -171,6 +183,7 @@ exports.createSale = async (req, res) => {
         invoice_no,
         table_id || null,
         order_type || 'on_spot',
+        branch_id,
       ]
     );
 
@@ -281,12 +294,19 @@ exports.getPending = async (req, res) => {
       }
     }
 
+    // Branch isolation for pending sales
+    let branchClause = '';
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      branchClause = ' AND s.branch_id = ?';
+      filterParams.push(req.user.branch_id);
+    }
+
     // Always compute summary (filtered)
     const summaryResult = await query(
       `SELECT COUNT(*) as order_count, COALESCE(SUM(total_amount), 0) as total_amount
        FROM sales s WHERE status = 'pending'
        AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)
-       ${orderTypeClause}`,
+       ${orderTypeClause}${branchClause}`,
       filterParams
     );
     const summary = {
@@ -303,7 +323,7 @@ exports.getPending = async (req, res) => {
       LEFT JOIN restaurant_tables rt ON s.table_id = rt.table_id
       WHERE s.status = 'pending'
       AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)
-      ${orderTypeClause}
+      ${orderTypeClause}${branchClause}
     `;
     const params = [...filterParams];
 
@@ -532,14 +552,22 @@ exports.deleteSale = async (req, res) => {
 exports.getToday = async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
+    const activeBranch = (req.user.role_name !== 'Admin' && req.user.branch_id)
+      ? req.user.branch_id
+      : (req.user.role_name === 'Admin' && req.query.filter_branch ? req.query.filter_branch : null);
+    const branchFilter = activeBranch ? ' AND s.branch_id = ?' : '';
+    const branchParam  = activeBranch ? [activeBranch] : [];
+
     const sales = await query(`
-      SELECT s.*, c.customer_name, u.name as cashier_name 
+      SELECT s.*, c.customer_name, u.name as cashier_name
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
-      WHERE s.sale_date >= ? AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY) AND (s.status = 'completed' OR s.status = 'refunded')
+      WHERE s.sale_date >= ? AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY)
+        AND (s.status = 'completed' OR s.status = 'refunded')
+        ${branchFilter}
       ORDER BY s.sale_date DESC
-    `, [today, today]);
+    `, [today, today, ...branchParam]);
     res.json(sales);
   } catch (error) {
     console.error('Get today sales error:', error);
@@ -561,6 +589,15 @@ exports.getAll = async (req, res) => {
       WHERE 1=1
     `;
     const params = [];
+
+    // Branch isolation: non-admin sees their branch; admin can filter via ?filter_branch
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      sql += ' AND s.branch_id = ?';
+      params.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      sql += ' AND s.branch_id = ?';
+      params.push(req.query.filter_branch);
+    }
 
     // Filter by order type: walkin = no linked delivery, delivery = has linked delivery
     if (order_type === 'delivery') {
@@ -603,6 +640,15 @@ exports.getAll = async (req, res) => {
         WHERE 1=1
       `;
       const countParams = [];
+
+      // Branch isolation for count query
+      if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+        countSql += ' AND s.branch_id = ?';
+        countParams.push(req.user.branch_id);
+      } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+        countSql += ' AND s.branch_id = ?';
+        countParams.push(req.query.filter_branch);
+      }
 
       if (order_type === 'delivery') {
         countSql += ' AND EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)';

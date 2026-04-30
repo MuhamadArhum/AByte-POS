@@ -1,17 +1,41 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
-import { Store, Plus, Pencil, Trash2, Search, MapPin, Phone, Mail, X, Building2, User } from 'lucide-react';
+import { Store, Plus, Pencil, Trash2, Search, MapPin, Phone, Mail, X, Building2, User, TrendingUp, Users, DollarSign, Info } from 'lucide-react';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 
 interface StoreData {
-  store_id: number;
-  store_name: string;
-  store_code: string;
-  address: string | null;
-  phone: string | null;
-  email: string | null;
-  manager_id: number | null;
-  manager_name: string | null;
-  is_active: number;
+  store_id:       number;
+  store_name:     string;
+  store_code:     string;
+  address:        string | null;
+  phone:          string | null;
+  email:          string | null;
+  manager_id:     number | null;
+  manager_name:   string | null;
+  monthly_charge: number;
+  is_active:      number;
+}
+
+interface ConsolidatedBranch {
+  store_id:        number;
+  store_name:      string;
+  store_code:      string;
+  monthly_charge:  number;
+  manager_name:    string | null;
+  today_sale_count: number;
+  today_revenue:   number;
+  month_revenue:   number;
+  total_staff:     number;
+  total_users:     number;
+}
+
+interface ConsolidatedTotals {
+  today_revenue:   number;
+  month_revenue:   number;
+  today_sales:     number;
+  total_staff:     number;
+  total_users:     number;
+  monthly_charges: number;
 }
 
 interface UserOption {
@@ -29,13 +53,14 @@ interface StoreModalProps {
 
 const StoreModal = ({ store, users, onClose, onSave }: StoreModalProps) => {
   const [form, setForm] = useState({
-    store_name: store?.store_name || '',
-    store_code: store?.store_code || '',
-    address: store?.address || '',
-    phone: store?.phone || '',
-    email: store?.email || '',
-    manager_id: store?.manager_id || '',
-    is_active: store ? store.is_active : 1,
+    store_name:     store?.store_name || '',
+    store_code:     store?.store_code || '',
+    address:        store?.address || '',
+    phone:          store?.phone || '',
+    email:          store?.email || '',
+    manager_id:     store?.manager_id || '',
+    monthly_charge: store?.monthly_charge ?? 0,
+    is_active:      store ? store.is_active : 1,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -151,20 +176,31 @@ const StoreModal = ({ store, users, onClose, onSave }: StoreModalProps) => {
                 ))}
               </select>
             </div>
-            {store && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  value={form.is_active}
-                  onChange={(e) => setForm({ ...form, is_active: Number(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-                >
-                  <option value={1}>Active</option>
-                  <option value={0}>Inactive</option>
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Charge (Rs.)</label>
+              <input
+                type="number"
+                min="0"
+                value={form.monthly_charge}
+                onChange={(e) => setForm({ ...form, monthly_charge: Number(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                placeholder="0"
+              />
+            </div>
           </div>
+          {store && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={form.is_active}
+                onChange={(e) => setForm({ ...form, is_active: Number(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+              >
+                <option value={1}>Active</option>
+                <option value={0}>Inactive</option>
+              </select>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
             <button
@@ -189,6 +225,7 @@ const StoreModal = ({ store, users, onClose, onSave }: StoreModalProps) => {
 };
 
 const Stores = () => {
+  const { isAdmin } = useAuth();
   const [stores, setStores] = useState<StoreData[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -196,18 +233,28 @@ const Stores = () => {
   const [showModal, setShowModal] = useState(false);
   const [editStore, setEditStore] = useState<StoreData | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [consolidated, setConsolidated] = useState<ConsolidatedBranch[]>([]);
+  const [consolidatedTotals, setConsolidatedTotals] = useState<ConsolidatedTotals | null>(null);
+  const [showConsolidated, setShowConsolidated] = useState(false);
 
   const fetchStores = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/stores');
-      setStores(res.data.data || []);
+      const [storeRes, consolidRes] = await Promise.all([
+        api.get('/stores'),
+        isAdmin ? api.get('/stores/consolidated-summary').catch(() => ({ data: { data: [], totals: null } })) : Promise.resolve({ data: { data: [], totals: null } }),
+      ]);
+      setStores(storeRes.data.data || []);
+      if (isAdmin) {
+        setConsolidated(consolidRes.data.data || []);
+        setConsolidatedTotals(consolidRes.data.totals || null);
+      }
     } catch (error) {
       console.error('Failed to fetch stores', error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAdmin]);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -259,22 +306,82 @@ const Stores = () => {
   return (
     <div className="p-8">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
             <Store className="text-emerald-600" size={20} />
-            Store Management
+            Branch / Store Management
           </h1>
-          <p className="text-gray-500 mt-1">{stores.length} stores configured</p>
+          <p className="text-gray-500 mt-1">{stores.length} branches configured</p>
         </div>
-        <button
-          onClick={() => { setEditStore(null); setShowModal(true); }}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors"
-        >
-          <Plus size={20} />
-          Add Store
-        </button>
+        <div className="flex items-center gap-3">
+          {isAdmin && stores.length > 1 && (
+            <button
+              onClick={() => setShowConsolidated(!showConsolidated)}
+              className={`px-4 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors text-sm border ${showConsolidated ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}`}
+            >
+              <TrendingUp size={16} />
+              Consolidated Summary
+            </button>
+          )}
+          <button
+            onClick={() => { setEditStore(null); setShowModal(true); }}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors"
+          >
+            <Plus size={20} />
+            Add Branch
+          </button>
+        </div>
       </div>
+
+      {/* Super Admin note */}
+      <div className="mb-6 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+        <Info size={15} className="flex-shrink-0 mt-0.5" />
+        <span>New branches are provisioned and billed through the <strong>Super Admin Panel</strong>. Use this page to manage settings for existing branches.</span>
+      </div>
+
+      {/* Consolidated Summary Panel */}
+      {isAdmin && showConsolidated && consolidated.length > 0 && (
+        <div className="mb-6 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between">
+            <h2 className="font-semibold text-sm flex items-center gap-2"><TrendingUp size={16} /> Consolidated Branch Summary</h2>
+            {consolidatedTotals && (
+              <div className="flex gap-6 text-xs text-blue-100">
+                <span>Today Revenue: <strong className="text-white">Rs. {consolidatedTotals.today_revenue.toLocaleString()}</strong></span>
+                <span>Month Revenue: <strong className="text-white">Rs. {consolidatedTotals.month_revenue.toLocaleString()}</strong></span>
+                <span>Total Staff: <strong className="text-white">{consolidatedTotals.total_staff}</strong></span>
+                <span>Monthly Charges: <strong className="text-white">Rs. {consolidatedTotals.monthly_charges.toLocaleString()}</strong></span>
+              </div>
+            )}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-100">
+              <thead className="bg-gray-50">
+                <tr>
+                  {['Branch', 'Code', 'Manager', "Today's Sales", "Today's Revenue", 'Month Revenue', 'Staff', 'Users', 'Monthly Charge'].map(h => (
+                    <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {consolidated.map(b => (
+                  <tr key={b.store_id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 font-medium text-gray-800 text-sm">{b.store_name}</td>
+                    <td className="px-4 py-3 text-xs font-mono text-gray-500">{b.store_code}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{b.manager_name || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{b.today_sale_count}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-emerald-700">Rs. {Number(b.today_revenue).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-blue-700">Rs. {Number(b.month_revenue).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{b.total_staff}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{b.total_users}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">Rs. {Number(b.monthly_charge).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

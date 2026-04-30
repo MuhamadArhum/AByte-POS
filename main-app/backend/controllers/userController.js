@@ -17,6 +17,7 @@ async function ensureColumns() {
   try {
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active TINYINT(1) NOT NULL DEFAULT 1`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role_name VARCHAR(50) NOT NULL DEFAULT 'Cashier'`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
   } catch (e) {
     // Columns already exist or DB doesn't support IF NOT EXISTS — safe to ignore
   }
@@ -28,9 +29,25 @@ async function ensureColumns() {
 exports.getAll = async (req, res) => {
   try {
     await ensureColumns();
-    const rows = await query(
-      'SELECT u.user_id, u.username, u.name, u.email, u.role_id, u.role_name as role, u.created_at FROM users u WHERE u.is_active = 1 ORDER BY u.created_at DESC'
-    );
+
+    let sql = `SELECT u.user_id, u.username, u.name, u.email, u.role_id, u.role_name as role,
+                      u.branch_id, s.store_name as branch_name, u.created_at
+               FROM users u
+               LEFT JOIN stores s ON u.branch_id = s.store_id
+               WHERE u.is_active = 1`;
+    const params = [];
+
+    // Branch isolation: non-admin sees their branch; admin can filter via ?filter_branch
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      sql += ' AND u.branch_id = ?';
+      params.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      sql += ' AND u.branch_id = ?';
+      params.push(req.query.filter_branch);
+    }
+
+    sql += ' ORDER BY u.created_at DESC';
+    const rows = await query(sql, params);
     res.json({ data: rows });
   } catch (err) {
     console.error(err);
@@ -44,7 +61,7 @@ exports.getAll = async (req, res) => {
 // Validates: all fields required, password min 8 chars, email must be unique.
 exports.create = async (req, res) => {
   try {
-    const { username, name, email, password, role_id } = req.body;
+    const { username, name, email, password, role_id, branch_id } = req.body;
 
     // Validate all required fields are present
     if (!username || !name || !email || !password || !role_id) {
@@ -69,13 +86,16 @@ exports.create = async (req, res) => {
     const roleRow = await query('SELECT role_name FROM roles WHERE role_id = ?', [role_id]);
     const role_name = roleRow.length > 0 ? roleRow[0].role_name : 'Cashier';
 
+    // Admins have NULL branch_id (all branches access); others must be assigned a branch
+    const assignedBranch = role_name === 'Admin' ? null : (branch_id || null);
+
     const result = await query(
-      'INSERT INTO users (username, name, email, password_hash, role_id, role_name) VALUES (?, ?, ?, ?, ?, ?)',
-      [username, name, email, password_hash, role_id, role_name]
+      'INSERT INTO users (username, name, email, password_hash, role_id, role_name, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [username, name, email, password_hash, role_id, role_name, assignedBranch]
     );
 
     const newUserId = Number(result.insertId);
-    await logAction(req.user.user_id, req.user.name, 'USER_CREATED', 'user', newUserId, { username, name, email, role_id }, req.ip);
+    await logAction(req.user.user_id, req.user.name, 'USER_CREATED', 'user', newUserId, { username, name, email, role_id, branch_id: assignedBranch }, req.ip);
 
     // Return success with the new user's ID
     res.status(201).json({ message: 'User created', user_id: newUserId });
@@ -91,9 +111,9 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, name, email, password, role_id } = req.body;
+    const { username, name, email, password, role_id, branch_id } = req.body;
 
-    const existing = await query('SELECT user_id FROM users WHERE user_id = ?', [id]);
+    const existing = await query('SELECT user_id, role_name FROM users WHERE user_id = ?', [id]);
     if (existing.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -105,15 +125,25 @@ exports.update = async (req, res) => {
     if (username !== undefined) { updates.push('username = ?'); params.push(username); }
     if (name !== undefined) { updates.push('name = ?'); params.push(name); }
     if (email !== undefined) { updates.push('email = ?'); params.push(email); }
+
+    let resolvedRoleName = existing[0].role_name;
     if (role_id !== undefined) {
       updates.push('role_id = ?');
       params.push(role_id);
       // Also update the denormalized role_name
       const roleRow = await query('SELECT role_name FROM roles WHERE role_id = ?', [role_id]);
       if (roleRow.length > 0) {
+        resolvedRoleName = roleRow[0].role_name;
         updates.push('role_name = ?');
-        params.push(roleRow[0].role_name);
+        params.push(resolvedRoleName);
       }
+    }
+
+    // branch_id: Admins always get NULL; others get assigned branch
+    if (branch_id !== undefined) {
+      const assignedBranch = resolvedRoleName === 'Admin' ? null : (branch_id || null);
+      updates.push('branch_id = ?');
+      params.push(assignedBranch);
     }
 
     if (password) {

@@ -12,12 +12,20 @@ const api = axios.create({
   },
 });
 
+// Mutable ref so AuthContext can update it without re-importing
+// Admin-selected branch filter — null means all branches
+export const branchFilter = { id: null as number | null };
+
 // ── Request interceptor ───────────────────────────────────────
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // When admin has selected a specific branch, pass it as a query param on GET requests
+    if (branchFilter.id !== null && config.method?.toLowerCase() === 'get') {
+      config.params = { ...config.params, filter_branch: branchFilter.id };
     }
     return config;
   },

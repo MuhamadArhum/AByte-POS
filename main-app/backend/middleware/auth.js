@@ -27,7 +27,7 @@ const authenticate = async (req, res, next) => {
 
     const rows = await queryDb(
       tenantDb,
-      'SELECT user_id, username, name, email, role_name FROM users WHERE user_id = ?',
+      'SELECT user_id, username, name, email, role_name, branch_id FROM users WHERE user_id = ?',
       [decoded.user_id]
     );
 
@@ -35,10 +35,11 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ message: 'User not found' });
     }
 
-    req.user      = rows[0];
+    req.user      = rows[0]; // includes branch_id
     req.tenantDb  = tenantDb;
     req.tenantId  = decoded.tenant_id;
     req.modules   = decoded.modules || [];
+    req.branchId  = rows[0].branch_id || null; // null = Admin (sees all branches)
 
     // Run inside tenant storage context so query() works in all controllers
     tenantStorage.run(tenantDb, next);

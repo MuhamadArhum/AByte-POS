@@ -3,6 +3,7 @@ import { useSettings } from '../context/SettingsContext';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { Store, Building2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DollarSign, ShoppingBag, ShoppingCart, AlertTriangle, TrendingUp,
@@ -96,7 +97,7 @@ const fadeItem = {
 
 const Dashboard = () => {
   const { currencySymbol: currency } = useSettings();
-  const { user } = useAuth();
+  const { user, isAdmin, activeBranchId } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalSales: 0, orderCount: 0, lowStockCount: 0, customerCount: 0,
     todayRevenue: 0, weekRevenue: 0, monthRevenue: 0, revenueGrowth: 0, ordersGrowth: 0, pendingDeliveries: 0
@@ -111,7 +112,7 @@ const Dashboard = () => {
   const [chartPeriod, setChartPeriod]       = useState<'week' | 'month' | 'year'>('week');
   const today = new Date().toISOString().split('T')[0];
 
-  useEffect(() => { fetchDashboardData(); }, [chartPeriod]);
+  useEffect(() => { fetchDashboardData(); }, [chartPeriod, activeBranchId]);
 
   const fetchDashboardData = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
@@ -193,6 +194,17 @@ const Dashboard = () => {
           <p className="text-sm text-gray-500 mt-0.5">
             Welcome back, <span className="font-semibold text-emerald-600">{user?.name}</span>. Here's what's happening today.
           </p>
+          {/* Branch indicator */}
+          {user?.branch_name && (
+            <span className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-medium border border-blue-100">
+              <Store size={11} />{user.branch_name}
+            </span>
+          )}
+          {isAdmin && activeBranchId === null && (
+            <span className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium border border-emerald-100">
+              <Building2 size={11} />All Branches (Consolidated)
+            </span>
+          )}
         </motion.div>
         <motion.button
           initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35 }}

@@ -1,13 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { branchFilter } from '../utils/api';
 
 // ─── Types ────────────────────────────────────────────────────
 interface User {
-  user_id:   number;
-  username?: string;
-  name:      string;
-  email:     string;
-  role?:     string;
-  role_name: string;
+  user_id:     number;
+  username?:   string;
+  name:        string;
+  email:       string;
+  role?:       string;
+  role_name:   string;
+  branch_id?:  number | null;
+  branch_name?: string | null;
 }
 
 // Kept for invoice template compatibility
@@ -34,33 +37,43 @@ export interface TenantConfig {
 }
 
 interface AuthContextType {
-  user:            User | null;
-  token:           string | null;
-  tenantConfig:    TenantConfig | null;
-  login:           (token: string, user: User, permissions: string[] | null, modules?: string[]) => void;
-  logout:          () => void;
-  updateUser:      (patch: Partial<User>) => void;
-  setTenantConfig: (config: TenantConfig) => void;
-  isAuthenticated: boolean;
-  isLoading:       boolean;
-  permissions:     string[] | null;
-  modules:         string[];
-  hasPermission:   (moduleKey: string) => boolean;
-  hasModule:       (moduleName: string) => boolean;
-  currentPlan:     string;
-  currencySymbol:  string;
+  user:              User | null;
+  token:             string | null;
+  tenantConfig:      TenantConfig | null;
+  login:             (token: string, user: User, permissions: string[] | null, modules?: string[]) => void;
+  logout:            () => void;
+  updateUser:        (patch: Partial<User>) => void;
+  setTenantConfig:   (config: TenantConfig) => void;
+  isAuthenticated:   boolean;
+  isLoading:         boolean;
+  permissions:       string[] | null;
+  modules:           string[];
+  hasPermission:     (moduleKey: string) => boolean;
+  hasModule:         (moduleName: string) => boolean;
+  currentPlan:       string;
+  currencySymbol:    string;
+  // Multi-branch: admin can select a specific branch to view, or null = all branches
+  activeBranchId:    number | null;
+  setActiveBranchId: (id: number | null) => void;
+  isAdmin:           boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // ─── Provider ─────────────────────────────────────────────────
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user,         setUser]         = useState<User | null>(null);
-  const [token,        setToken]        = useState<string | null>(null);
-  const [permissions,  setPermissions]  = useState<string[] | null>(null);
-  const [modules,      setModules]      = useState<string[]>([]);
-  const [tenantConfig, setTenantConfig] = useState<TenantConfig | null>(null);
-  const [isLoading,    setIsLoading]    = useState(true);
+  const [user,           setUser]           = useState<User | null>(null);
+  const [token,          setToken]          = useState<string | null>(null);
+  const [permissions,    setPermissions]    = useState<string[] | null>(null);
+  const [modules,        setModules]        = useState<string[]>([]);
+  const [tenantConfig,   setTenantConfig]   = useState<TenantConfig | null>(null);
+  const [isLoading,      setIsLoading]      = useState(true);
+  const [activeBranchId, _setActiveBranchId] = useState<number | null>(null);
+
+  const setActiveBranchId = useCallback((id: number | null) => {
+    branchFilter.id = id;  // sync axios interceptor
+    _setActiveBranchId(id);
+  }, []);
 
   // Restore session from localStorage on app load, then refresh permissions from server
   useEffect(() => {
@@ -163,6 +176,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const currentPlan    = modules.length > 0 ? 'active' : 'enterprise';
   const currencySymbol = tenantConfig?.currency_symbol || 'Rs.';
+  const isAdmin        = user?.role_name === 'Admin';
 
   const value = useMemo(() => ({
     user,
@@ -180,7 +194,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     hasModule,
     currentPlan,
     currencySymbol,
-  }), [user, token, tenantConfig, login, logout, updateUser, saveTenantConfig, isLoading, permissions, modules, hasPermission, hasModule, currencySymbol]);
+    activeBranchId,
+    setActiveBranchId,
+    isAdmin,
+  }), [user, token, tenantConfig, login, logout, updateUser, saveTenantConfig, isLoading, permissions, modules, hasPermission, hasModule, currencySymbol, activeBranchId, isAdmin]);
 
   return (
     <AuthContext.Provider value={value}>

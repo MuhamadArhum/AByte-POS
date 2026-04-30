@@ -2,6 +2,11 @@ cd /var/www/AByte-POS && bash main-app/deploy.sh
 
 
 
+1:Main Chahta Hun System Main Multi Store bhi Manage HOna Chaye 
+2:agr Single Store hai to bhi Thik hai lkin Agr multi Store hai to sary stores ki summary aik consolidated summary show honi chaye unki sari reports bhi aik hi jagha show ho jani chaye lkin sirf admin ko show honi chaye 
+3: or har client apna 2nd store khud ni create kr skta ye super admin pannel sy create hoga or uski charges bhi add hongy 
+4: or inko Branch wise module bnanan hai Yani aik sy zyada store ya branches hongi to har branch ka staff alehda ho jaye ga us main branch id unique ho jaye gi system main pory main branch id bhi unique hogi jis sy reporting easy hogi 
+
 
 
 

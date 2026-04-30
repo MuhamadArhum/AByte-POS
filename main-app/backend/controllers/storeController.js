@@ -1,8 +1,22 @@
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
+// Ensure new columns exist on older tenant DBs
+let storeColumnsEnsured = false;
+async function ensureStoreColumns() {
+  if (storeColumnsEnsured) return;
+  storeColumnsEnsured = true;
+  try {
+    await query(`ALTER TABLE stores ADD COLUMN IF NOT EXISTS monthly_charge DECIMAL(10,2) DEFAULT 0.00`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+    await query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+    await query(`ALTER TABLE staff ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+  } catch (e) { /* safe to ignore */ }
+}
+
 exports.getAll = async (req, res) => {
   try {
+    await ensureStoreColumns();
     const stores = await query('SELECT s.*, u.name as manager_name FROM stores s LEFT JOIN users u ON s.manager_id = u.user_id ORDER BY s.store_name');
     res.json({ data: stores });
   } catch (err) {
@@ -13,15 +27,15 @@ exports.getAll = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { store_name, store_code, address, phone, email, manager_id } = req.body;
+    const { store_name, store_code, address, phone, email, manager_id, monthly_charge } = req.body;
     if (!store_name || !store_code) return res.status(400).json({ message: 'Name and code required' });
 
     const result = await query(
-      'INSERT INTO stores (store_name, store_code, address, phone, email, manager_id) VALUES (?, ?, ?, ?, ?, ?)',
-      [store_name, store_code, address || null, phone || null, email || null, manager_id || null]
+      'INSERT INTO stores (store_name, store_code, address, phone, email, manager_id, monthly_charge) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [store_name, store_code, address || null, phone || null, email || null, manager_id || null, monthly_charge || 0]
     );
 
-    await logAction(req.user.user_id, req.user.name, 'STORE_CREATED', 'store', result.insertId, { store_name }, req.ip);
+    await logAction(req.user.user_id, req.user.name, 'STORE_CREATED', 'store', result.insertId, { store_name, monthly_charge }, req.ip);
     res.status(201).json({ message: 'Store created', store_id: result.insertId });
   } catch (err) {
     console.error(err);
@@ -47,15 +61,15 @@ exports.getById = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { store_name, store_code, address, phone, email, manager_id, is_active } = req.body;
+    const { store_name, store_code, address, phone, email, manager_id, is_active, monthly_charge } = req.body;
     if (!store_name || !store_code) return res.status(400).json({ message: 'Name and code are required' });
 
     const [existing] = await query('SELECT store_id FROM stores WHERE store_id = ?', [id]);
     if (!existing) return res.status(404).json({ message: 'Store not found' });
 
     await query(
-      'UPDATE stores SET store_name=?, store_code=?, address=?, phone=?, email=?, manager_id=?, is_active=? WHERE store_id=?',
-      [store_name, store_code, address || null, phone || null, email || null, manager_id || null, is_active !== undefined ? is_active : 1, id]
+      'UPDATE stores SET store_name=?, store_code=?, address=?, phone=?, email=?, manager_id=?, is_active=?, monthly_charge=? WHERE store_id=?',
+      [store_name, store_code, address || null, phone || null, email || null, manager_id || null, is_active !== undefined ? is_active : 1, monthly_charge || 0, id]
     );
 
     await logAction(req.user.user_id, req.user.name, 'STORE_UPDATED', 'store', id, { store_name }, req.ip);
@@ -82,6 +96,81 @@ exports.deleteStore = async (req, res) => {
     await query('DELETE FROM stores WHERE store_id = ?', [id]);
     await logAction(req.user.user_id, req.user.name, 'STORE_DELETED', 'store', id, { store_name: store.store_name }, req.ip);
     res.json({ message: 'Store deleted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Consolidated Branch Summary (Admin only) ---
+exports.getConsolidatedSummary = async (req, res) => {
+  try {
+    if (req.user.role_name !== 'Admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const summary = await query(`
+      SELECT
+        s.store_id,
+        s.store_name,
+        s.store_code,
+        s.monthly_charge,
+        s.is_active,
+        u.name AS manager_name,
+        COALESCE(today_sales.sale_count, 0)    AS today_sale_count,
+        COALESCE(today_sales.today_revenue, 0)  AS today_revenue,
+        COALESCE(month_sales.month_revenue, 0)  AS month_revenue,
+        COALESCE(staff_count.total_staff, 0)    AS total_staff,
+        COALESCE(user_count.total_users, 0)     AS total_users
+      FROM stores s
+      LEFT JOIN users u ON s.manager_id = u.user_id
+      LEFT JOIN (
+        SELECT branch_id,
+               COUNT(*) AS sale_count,
+               COALESCE(SUM(net_amount), 0) AS today_revenue
+        FROM sales
+        WHERE DATE(sale_date) = ? AND status = 'completed'
+        GROUP BY branch_id
+      ) today_sales ON today_sales.branch_id = s.store_id
+      LEFT JOIN (
+        SELECT branch_id,
+               COALESCE(SUM(net_amount), 0) AS month_revenue
+        FROM sales
+        WHERE MONTH(sale_date) = MONTH(CURDATE())
+          AND YEAR(sale_date) = YEAR(CURDATE())
+          AND status = 'completed'
+        GROUP BY branch_id
+      ) month_sales ON month_sales.branch_id = s.store_id
+      LEFT JOIN (
+        SELECT branch_id, COUNT(*) AS total_staff
+        FROM staff
+        WHERE is_active = 1
+        GROUP BY branch_id
+      ) staff_count ON staff_count.branch_id = s.store_id
+      LEFT JOIN (
+        SELECT branch_id, COUNT(*) AS total_users
+        FROM users
+        WHERE is_active = 1
+        GROUP BY branch_id
+      ) user_count ON user_count.branch_id = s.store_id
+      WHERE s.is_active = 1
+      ORDER BY s.store_name
+    `, [today]);
+
+    // Overall totals
+    const totals = summary.reduce((acc, branch) => {
+      acc.today_revenue  += Number(branch.today_revenue);
+      acc.month_revenue  += Number(branch.month_revenue);
+      acc.today_sales    += Number(branch.today_sale_count);
+      acc.total_staff    += Number(branch.total_staff);
+      acc.total_users    += Number(branch.total_users);
+      acc.monthly_charges += Number(branch.monthly_charge);
+      return acc;
+    }, { today_revenue: 0, month_revenue: 0, today_sales: 0, total_staff: 0, total_users: 0, monthly_charges: 0 });
+
+    res.json({ data: summary, totals });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

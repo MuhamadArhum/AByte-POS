@@ -95,9 +95,11 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     role_id INT NOT NULL,
     role_name VARCHAR(50) NOT NULL,
+    branch_id INT NULL,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (role_id) REFERENCES roles(role_id)
+    -- branch_id FK added after stores table: FOREIGN KEY (branch_id) REFERENCES stores(store_id) ON DELETE SET NULL
 );
 
 -- Variant Values (e.g. Small, Medium, Red, Blue)
@@ -214,6 +216,7 @@ CREATE TABLE IF NOT EXISTS stores (
     phone VARCHAR(20),
     email VARCHAR(100),
     manager_id INT,
+    monthly_charge DECIMAL(10,2) DEFAULT 0.00,
     is_active TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -355,14 +358,17 @@ CREATE TABLE IF NOT EXISTS staff (
     salary DECIMAL(10, 2),
     salary_type ENUM('hourly', 'daily', 'monthly') DEFAULT 'monthly',
     hire_date DATE NOT NULL,
+    branch_id INT NULL,
     is_active TINYINT(1) DEFAULT 1,
     leave_balance INT DEFAULT 20,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (branch_id) REFERENCES stores(store_id) ON DELETE SET NULL,
     INDEX idx_staff_active (is_active),
     INDEX idx_staff_name (full_name),
-    INDEX idx_staff_employee_id (employee_id)
+    INDEX idx_staff_employee_id (employee_id),
+    INDEX idx_staff_branch (branch_id)
 );
 
 -- Staff Loans
@@ -955,12 +961,15 @@ CREATE TABLE IF NOT EXISTS sales (
     amount_paid DECIMAL(10, 2) DEFAULT 0.00,
     token_no VARCHAR(20) NULL,
     invoice_no VARCHAR(20) NULL,
+    branch_id INT NULL,
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    FOREIGN KEY (branch_id) REFERENCES stores(store_id) ON DELETE SET NULL,
     INDEX idx_sale_date (sale_date),
     INDEX idx_sale_status (status),
     INDEX idx_sale_payment_method (payment_method),
-    INDEX idx_sale_date_status (sale_date, status)
+    INDEX idx_sale_date_status (sale_date, status),
+    INDEX idx_sale_branch (branch_id)
 );
 
 -- Sale Details

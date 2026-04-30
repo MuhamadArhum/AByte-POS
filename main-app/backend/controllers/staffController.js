@@ -11,6 +11,7 @@ async function ensureTablesAndColumns() {
     await query(`ALTER TABLE staff ADD COLUMN IF NOT EXISTS time_out TIME DEFAULT NULL`);
     await query(`ALTER TABLE staff ADD COLUMN IF NOT EXISTS monthly_leave_allowed INT DEFAULT 2`);
     await query(`ALTER TABLE staff ADD COLUMN IF NOT EXISTS grace_time INT DEFAULT 10`);
+    await query(`ALTER TABLE staff ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
     await query(`CREATE TABLE IF NOT EXISTS designations (
       designation_id INT PRIMARY KEY AUTO_INCREMENT,
       name VARCHAR(100) NOT NULL,
@@ -44,36 +45,50 @@ const parsePagination = (page, limit) => {
 
 exports.getAll = async (req, res) => {
   try {
+    await ensureTablesAndColumns();
     const { is_active, search = '', department } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 
-    let sql = 'SELECT * FROM staff WHERE 1=1';
-    let countSql = 'SELECT COUNT(*) as total FROM staff WHERE 1=1';
+    let sql = `SELECT st.*, s.store_name as branch_name FROM staff st LEFT JOIN stores s ON st.branch_id = s.store_id WHERE 1=1`;
+    let countSql = 'SELECT COUNT(*) as total FROM staff st WHERE 1=1';
     const params = [], countParams = [];
 
+    // Branch isolation: non-admin sees their branch; admin can filter via ?filter_branch
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      sql += ' AND st.branch_id = ?';
+      countSql += ' AND st.branch_id = ?';
+      params.push(req.user.branch_id);
+      countParams.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      sql += ' AND st.branch_id = ?';
+      countSql += ' AND st.branch_id = ?';
+      params.push(req.query.filter_branch);
+      countParams.push(req.query.filter_branch);
+    }
+
     if (is_active !== undefined) {
-      sql += ' AND is_active = ?';
-      countSql += ' AND is_active = ?';
+      sql += ' AND st.is_active = ?';
+      countSql += ' AND st.is_active = ?';
       params.push(is_active);
       countParams.push(is_active);
     }
 
     if (department) {
-      sql += ' AND department = ?';
-      countSql += ' AND department = ?';
+      sql += ' AND st.department = ?';
+      countSql += ' AND st.department = ?';
       params.push(department);
       countParams.push(department);
     }
 
     if (search) {
       const pattern = `%${search}%`;
-      sql += ' AND (full_name LIKE ? OR email LIKE ? OR position LIKE ?)';
-      countSql += ' AND (full_name LIKE ? OR email LIKE ? OR position LIKE ?)';
+      sql += ' AND (st.full_name LIKE ? OR st.email LIKE ? OR st.position LIKE ?)';
+      countSql += ' AND (st.full_name LIKE ? OR st.email LIKE ? OR st.position LIKE ?)';
       params.push(pattern, pattern, pattern);
       countParams.push(pattern, pattern, pattern);
     }
 
-    sql += ' ORDER BY full_name ASC LIMIT ? OFFSET ?';
+    sql += ' ORDER BY st.full_name ASC LIMIT ? OFFSET ?';
     params.push(limit, offset);
 
     const [staff, [{total}]] = await Promise.all([
@@ -103,23 +118,27 @@ exports.create = async (req, res) => {
   try {
     await ensureTablesAndColumns();
     const { user_id, employee_id, full_name, phone, email, address, position, department, salary, salary_type, hire_date,
-            salary_account_id, time_in, time_out, monthly_leave_allowed, grace_time } = req.body;
+            salary_account_id, time_in, time_out, monthly_leave_allowed, grace_time, branch_id } = req.body;
     if (!full_name || !hire_date) return res.status(400).json({ message: 'Name and hire date required', field: !full_name ? 'full_name' : 'hire_date' });
     if (phone && !/^[\d+\-() ]{7,20}$/.test(phone)) return res.status(400).json({ message: 'Invalid phone format', field: 'phone' });
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: 'Invalid email format', field: 'email' });
     if (salary !== undefined && salary !== null && Number(salary) < 0) return res.status(400).json({ message: 'Salary cannot be negative', field: 'salary' });
 
+    // Non-admin users can only create staff in their own branch
+    const assignedBranch = req.user.role_name !== 'Admin' ? (req.user.branch_id || null) : (branch_id || null);
+
     const result = await query(
       `INSERT INTO staff (user_id, employee_id, full_name, phone, email, address, position, department,
-        salary, salary_type, hire_date, salary_account_id, time_in, time_out, monthly_leave_allowed, grace_time)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        salary, salary_type, hire_date, salary_account_id, time_in, time_out, monthly_leave_allowed, grace_time, branch_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [user_id || null, employee_id || null, full_name, phone || null, email || null, address || null,
        position || null, department || null, salary || null, salary_type || 'monthly', hire_date,
        salary_account_id || null, time_in || null, time_out || null,
-       monthly_leave_allowed != null ? monthly_leave_allowed : 2, grace_time != null ? grace_time : 10]
+       monthly_leave_allowed != null ? monthly_leave_allowed : 2, grace_time != null ? grace_time : 10,
+       assignedBranch]
     );
 
-    await logAction(req.user.user_id, req.user.name, 'STAFF_CREATED', 'staff', result.insertId, { full_name }, req.ip);
+    await logAction(req.user.user_id, req.user.name, 'STAFF_CREATED', 'staff', result.insertId, { full_name, branch_id: assignedBranch }, req.ip);
     res.status(201).json({ message: 'Staff created', staff_id: result.insertId });
   } catch (err) {
     console.error(err);

@@ -5,6 +5,7 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 
 router.use(authenticate);
 
+router.get('/consolidated-summary', storeController.getConsolidatedSummary);
 router.get('/', storeController.getAll);
 router.post('/', requirePermission('system.stores'), storeController.create);
 router.post('/transfer', requirePermission('system.stores'), storeController.transferStock);

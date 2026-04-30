@@ -67,7 +67,7 @@ exports.login = async (req, res) => {
       return res.status(403).json({ message: 'Your account has been deactivated. Contact admin.' });
     }
 
-    // Generate JWT — includes tenant_db so middleware can route correctly
+    // Generate JWT — includes tenant_db and branch_id so middleware can route correctly
     const token = jwt.sign(
       {
         user_id:    user.user_id,
@@ -76,6 +76,7 @@ exports.login = async (req, res) => {
         tenant_db:  tenantDb,
         tenant_id:  tenant.tenant_id,
         modules:    modulesEnabled,
+        branch_id:  user.branch_id || null,
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
@@ -102,14 +103,23 @@ exports.login = async (req, res) => {
       });
     } catch { /* audit failure must not block login */ }
 
+    // Fetch branch name if user is assigned to a branch
+    let branch_name = null;
+    if (user.branch_id) {
+      const branchRows = await queryDb(tenantDb, 'SELECT store_name FROM stores WHERE store_id = ?', [user.branch_id]);
+      if (branchRows.length > 0) branch_name = branchRows[0].store_name;
+    }
+
     res.json({
       token,
       user: {
-        user_id:   user.user_id,
-        username:  user.username,
-        name:      user.name,
-        email:     user.email,
-        role_name: user.role_name,
+        user_id:     user.user_id,
+        username:    user.username,
+        name:        user.name,
+        email:       user.email,
+        role_name:   user.role_name,
+        branch_id:   user.branch_id || null,
+        branch_name: branch_name,
       },
       permissions,
       modules: modulesEnabled,
@@ -134,13 +144,25 @@ exports.verify = async (req, res) => {
       permissions = permRows.map(r => r.module_key);
     }
 
+    let branch_name = null;
+    if (req.user.branch_id) {
+      const branchRows = await queryDb(
+        req.tenantDb,
+        'SELECT store_name FROM stores WHERE store_id = ?',
+        [req.user.branch_id]
+      );
+      if (branchRows.length > 0) branch_name = branchRows[0].store_name;
+    }
+
     res.json({
       user: {
-        user_id:   req.user.user_id,
-        username:  req.user.username,
-        name:      req.user.name,
-        email:     req.user.email,
-        role_name: req.user.role_name,
+        user_id:     req.user.user_id,
+        username:    req.user.username,
+        name:        req.user.name,
+        email:       req.user.email,
+        role_name:   req.user.role_name,
+        branch_id:   req.user.branch_id || null,
+        branch_name: branch_name,
       },
       permissions,
       modules: req.modules || [],
