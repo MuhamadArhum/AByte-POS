@@ -421,6 +421,116 @@ exports.getActivity = async (req, res) => {
   }
 };
 
+// GET /api/tenants/:id/branches — List all branches in tenant DB
+exports.getBranches = async (req, res) => {
+  try {
+    const tenants = await query('SELECT db_name FROM tenants WHERE tenant_id = ?', [req.params.id]);
+    if (tenants.length === 0) return res.status(404).json({ message: 'Client not found' });
+    const { db_name } = tenants[0];
+
+    try {
+      await tenantQuery(db_name, `ALTER TABLE \`${db_name}\`.stores ADD COLUMN IF NOT EXISTS monthly_charge DECIMAL(10,2) DEFAULT 0.00`);
+      await tenantQuery(db_name, `ALTER TABLE \`${db_name}\`.staff  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+      await tenantQuery(db_name, `ALTER TABLE \`${db_name}\`.sales  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+    } catch {}
+
+    const branches = await tenantQuery(db_name, `
+      SELECT s.store_id, s.store_name, s.store_code, s.address, s.phone, s.email,
+             s.is_active, s.monthly_charge,
+             u.name AS manager_name,
+             (SELECT COUNT(*) FROM \`${db_name}\`.staff st WHERE st.branch_id = s.store_id) AS total_staff,
+             (SELECT COUNT(*) FROM \`${db_name}\`.sales sa WHERE sa.branch_id = s.store_id AND DATE(sa.created_at) = CURDATE()) AS today_sales,
+             (SELECT COALESCE(SUM(sa.net_amount),0) FROM \`${db_name}\`.sales sa WHERE sa.branch_id = s.store_id AND MONTH(sa.created_at) = MONTH(CURDATE()) AND YEAR(sa.created_at) = YEAR(CURDATE())) AS month_revenue
+      FROM \`${db_name}\`.stores s
+      LEFT JOIN \`${db_name}\`.users u ON u.user_id = s.manager_id
+      ORDER BY s.store_id ASC
+    `);
+
+    res.json({ data: branches || [] });
+  } catch (err) {
+    logger.error('getBranches error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// POST /api/tenants/:id/branches — Create branch in tenant DB
+exports.createBranch = async (req, res) => {
+  try {
+    const tenants = await query('SELECT db_name FROM tenants WHERE tenant_id = ?', [req.params.id]);
+    if (tenants.length === 0) return res.status(404).json({ message: 'Client not found' });
+    const { db_name } = tenants[0];
+
+    const { store_name, store_code, address, phone, email, monthly_charge = 0 } = req.body;
+    if (!store_name || !store_code) {
+      return res.status(400).json({ message: 'store_name and store_code are required' });
+    }
+
+    try {
+      await tenantQuery(db_name, `ALTER TABLE \`${db_name}\`.stores ADD COLUMN IF NOT EXISTS monthly_charge DECIMAL(10,2) DEFAULT 0.00`);
+    } catch {}
+
+    const existing = await tenantQuery(db_name, `SELECT store_id FROM \`${db_name}\`.stores WHERE store_code = ?`, [store_code.toUpperCase()]);
+    if (existing.length > 0) {
+      return res.status(400).json({ message: 'Store code already exists for this client' });
+    }
+
+    await tenantQuery(db_name, `
+      INSERT INTO \`${db_name}\`.stores (store_name, store_code, address, phone, email, monthly_charge, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, 1)
+    `, [store_name, store_code.toUpperCase(), address || null, phone || null, email || null, monthly_charge]);
+
+    res.status(201).json({ message: 'Branch created successfully' });
+  } catch (err) {
+    logger.error('createBranch error', { error: err.message });
+    res.status(500).json({ message: 'Failed to create branch: ' + err.message });
+  }
+};
+
+// PUT /api/tenants/:id/branches/:branchId — Update branch in tenant DB
+exports.updateBranch = async (req, res) => {
+  try {
+    const tenants = await query('SELECT db_name FROM tenants WHERE tenant_id = ?', [req.params.id]);
+    if (tenants.length === 0) return res.status(404).json({ message: 'Client not found' });
+    const { db_name } = tenants[0];
+
+    const { store_name, store_code, address, phone, email, monthly_charge, is_active } = req.body;
+    if (!store_name || !store_code) {
+      return res.status(400).json({ message: 'store_name and store_code are required' });
+    }
+
+    await tenantQuery(db_name, `
+      UPDATE \`${db_name}\`.stores
+      SET store_name = ?, store_code = ?, address = ?, phone = ?, email = ?, monthly_charge = ?, is_active = ?
+      WHERE store_id = ?
+    `, [store_name, store_code.toUpperCase(), address || null, phone || null, email || null, monthly_charge ?? 0, is_active ?? 1, req.params.branchId]);
+
+    res.json({ message: 'Branch updated successfully' });
+  } catch (err) {
+    logger.error('updateBranch error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// DELETE /api/tenants/:id/branches/:branchId — Delete branch from tenant DB
+exports.deleteBranch = async (req, res) => {
+  try {
+    const tenants = await query('SELECT db_name FROM tenants WHERE tenant_id = ?', [req.params.id]);
+    if (tenants.length === 0) return res.status(404).json({ message: 'Client not found' });
+    const { db_name } = tenants[0];
+
+    const countRows = await tenantQuery(db_name, `SELECT COUNT(*) as cnt FROM \`${db_name}\`.stores`);
+    if ((countRows[0]?.cnt || 0) <= 1) {
+      return res.status(400).json({ message: 'Cannot delete the only branch. A client must have at least one branch.' });
+    }
+
+    await tenantQuery(db_name, `DELETE FROM \`${db_name}\`.stores WHERE store_id = ?`, [req.params.branchId]);
+    res.json({ message: 'Branch deleted successfully' });
+  } catch (err) {
+    logger.error('deleteBranch error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // GET /api/tenants/:id/activity — Detailed login history for one tenant
 exports.getTenantActivity = async (req, res) => {
   try {

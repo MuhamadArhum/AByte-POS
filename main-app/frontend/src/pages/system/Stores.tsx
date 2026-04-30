@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
-import { Store, Plus, Pencil, Trash2, Search, MapPin, Phone, Mail, X, Building2, User, TrendingUp, Info } from 'lucide-react';
+import { Store, Pencil, Search, MapPin, Phone, Mail, X, Building2, User, TrendingUp, Info } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -270,16 +270,6 @@ const Stores = () => {
     fetchUsers();
   }, [fetchStores, fetchUsers]);
 
-  const handleDelete = async (store: StoreData) => {
-    if (!window.confirm(`Delete store "${store.store_name}"? This cannot be undone.`)) return;
-    try {
-      await api.delete(`/stores/${store.store_id}`);
-      fetchStores();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete store');
-    }
-  };
-
   const handleModalSave = () => {
     setShowModal(false);
     setEditStore(null);
@@ -324,13 +314,6 @@ const Stores = () => {
               Consolidated Summary
             </button>
           )}
-          <button
-            onClick={() => { setEditStore(null); setShowModal(true); }}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors"
-          >
-            <Plus size={20} />
-            Add Branch
-          </button>
         </div>
       </div>
 
@@ -520,13 +503,6 @@ const Stores = () => {
                   title="Edit Store"
                 >
                   <Pencil size={16} />
-                </button>
-                <button
-                  onClick={() => handleDelete(store)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Delete Store"
-                >
-                  <Trash2 size={16} />
                 </button>
               </div>
             </div>
