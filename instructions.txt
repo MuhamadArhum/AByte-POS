@@ -2,3 +2,13 @@ For main App
 cd /var/www/AByte-POS && bash main-app/deploy.sh
 For Admin Panel
 cd /var/www/AByte-POS && bash admin-panel/deploy.sh
+
+
+
+Admin Panel Sy Sb Kuch Manage hona chaye Sary Clients and unki Branches Wagera 
+Or Han Kuch Chezain hain JO Make SUre krni hain System main 
+
+1: Har Client k User uski apni Branch main Data Save krain gy yani Agr Branch A ka User hai to wo Dosri main ni ja skta or agr branch B k user hai to wo Branch A main ni ja Skta Har Entry Branch Wise Porcess Hogi 
+2: Jis Branch ka User HOga usi Branch main Login HOga Or usi Branch ka Data Usky Pass Show hoga 
+3: Admin k Pass Sari Branches Show Hongi WO Kisi Ka Bhi Data Dekh Skta hai Single Single Bhi Or Sbka Aik Sath bhi Jama kr k Dekh SKta Hai Sary Modules main (Sales,Inventory,HR,Accounts)
+4: Pory System Main Branch Wise kaam Hona Chaye
