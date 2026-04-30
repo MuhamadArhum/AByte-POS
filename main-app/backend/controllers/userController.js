@@ -86,8 +86,11 @@ exports.create = async (req, res) => {
     const roleRow = await query('SELECT role_name FROM roles WHERE role_id = ?', [role_id]);
     const role_name = roleRow.length > 0 ? roleRow[0].role_name : 'Cashier';
 
-    // Admins have NULL branch_id (all branches access); others must be assigned a branch
-    const assignedBranch = role_name === 'Admin' ? null : (branch_id || null);
+    // Admins have NULL branch_id (all branches access); others MUST have a branch
+    if (role_name !== 'Admin' && !branch_id) {
+      return res.status(400).json({ message: 'Branch is required for non-admin users' });
+    }
+    const assignedBranch = role_name === 'Admin' ? null : branch_id;
 
     const result = await query(
       'INSERT INTO users (username, name, email, password_hash, role_id, role_name, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -139,9 +142,12 @@ exports.update = async (req, res) => {
       }
     }
 
-    // branch_id: Admins always get NULL; others get assigned branch
+    // branch_id: Admins always get NULL; others MUST have a branch
     if (branch_id !== undefined) {
-      const assignedBranch = resolvedRoleName === 'Admin' ? null : (branch_id || null);
+      if (resolvedRoleName !== 'Admin' && !branch_id) {
+        return res.status(400).json({ message: 'Branch is required for non-admin users' });
+      }
+      const assignedBranch = resolvedRoleName === 'Admin' ? null : branch_id;
       updates.push('branch_id = ?');
       params.push(assignedBranch);
     }

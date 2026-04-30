@@ -1,6 +1,4 @@
+For main App
 cd /var/www/AByte-POS && bash main-app/deploy.sh
-
-
-
-
-
+For Admin Panel
+cd /var/www/AByte-POS && bash admin-panel/deploy.sh

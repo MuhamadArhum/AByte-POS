@@ -113,6 +113,9 @@ export default function Users() {
     if (!form.username.trim() || !form.name.trim() || !form.email.trim() || !form.role_id) {
       return setFormError('Username, name, email and role are required.');
     }
+    if (selectedRoleName !== 'Admin' && !form.branch_id) {
+      return setFormError('Branch is required. Please select a branch for this user.');
+    }
     if (!editingUser && form.password.length < 8) {
       return setFormError('Password must be at least 8 characters.');
     }
@@ -127,7 +130,7 @@ export default function Users() {
         name: form.name.trim(),
         email: form.email.trim(),
         role_id: Number(form.role_id),
-        branch_id: selectedRoleName === 'Admin' ? null : (form.branch_id ? Number(form.branch_id) : null),
+        branch_id: selectedRoleName === 'Admin' ? null : Number(form.branch_id),
       };
       if (form.password) payload.password = form.password;
 
@@ -382,7 +385,11 @@ export default function Users() {
                 <label className="block text-xs font-medium text-gray-600 mb-1">Role *</label>
                 <select
                   value={form.role_id}
-                  onChange={e => setForm(f => ({ ...f, role_id: e.target.value, branch_id: '' }))}
+                  onChange={e => {
+                    const newRoleName = roles.find(r => String(r.role_id) === e.target.value)?.role_name ?? '';
+                    const autoBranch = newRoleName !== 'Admin' && branches.length === 1 ? String(branches[0].store_id) : '';
+                    setForm(f => ({ ...f, role_id: e.target.value, branch_id: autoBranch }));
+                  }}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 bg-white"
                 >
                   <option value="">Select role...</option>
@@ -392,18 +399,18 @@ export default function Users() {
                 </select>
               </div>
 
-              {/* Branch assignment — hidden for Admin (Admin sees all branches) */}
+              {/* Branch assignment — required for all non-Admin roles */}
               {selectedRoleName && selectedRoleName !== 'Admin' && branches.length > 0 && (
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Assign Branch {branches.length > 1 ? '*' : ''}
+                    Assign Branch <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={form.branch_id}
                     onChange={e => setForm(f => ({ ...f, branch_id: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 bg-white"
+                    className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 bg-white ${!form.branch_id ? 'border-red-300' : 'border-gray-200'}`}
                   >
-                    <option value="">Select branch...</option>
+                    <option value="">— Select branch —</option>
                     {branches.map(b => (
                       <option key={b.store_id} value={b.store_id}>{b.store_name}</option>
                     ))}
