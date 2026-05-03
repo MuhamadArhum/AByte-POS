@@ -21,4 +21,9 @@ router.post('/:id/branches',           tenantController.createBranch);
 router.put('/:id/branches/:branchId',  tenantController.updateBranch);
 router.delete('/:id/branches/:branchId', tenantController.deleteBranch);
 
+router.get('/:id/users',               tenantController.getUsers);
+router.post('/:id/users',              tenantController.createUser);
+router.put('/:id/users/:userId',       tenantController.updateUser);
+router.delete('/:id/users/:userId',    tenantController.deleteUser);
+
 module.exports = router;

@@ -258,7 +258,7 @@ exports.getDetails = async (req, res) => {
     const safe = async (fn) => { try { return await fn(); } catch { return null; } };
 
     const [userRows, salesRow, revenueRow, dbSizeRow, recentLogins] = await Promise.all([
-      safe(() => tenantQuery(db, `SELECT user_id, username, name, email, role_name, created_at FROM \`${db}\`.users ORDER BY created_at DESC`)),
+      safe(() => tenantQuery(db, `SELECT u.user_id, u.username, u.name, u.email, u.role_name, u.branch_id, u.created_at, s.store_name AS branch_name FROM \`${db}\`.users u LEFT JOIN \`${db}\`.stores s ON s.store_id = u.branch_id ORDER BY u.role_name ASC, u.created_at DESC`)),
       safe(() => tenantQuery(db, `SELECT COUNT(*) as cnt FROM \`${db}\`.sales`)),
       safe(() => tenantQuery(db, `SELECT COALESCE(SUM(net_amount),0) as total FROM \`${db}\`.sales WHERE status='completed'`)),
       safe(() => tenantQuery(db, `SELECT ROUND(SUM(data_length+index_length)/1024/1024,2) as mb FROM information_schema.tables WHERE table_schema=?`, [db])),
@@ -527,6 +527,149 @@ exports.deleteBranch = async (req, res) => {
     res.json({ message: 'Branch deleted successfully' });
   } catch (err) {
     logger.error('deleteBranch error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /api/tenants/:id/users — List all users for a client with branch info
+exports.getUsers = async (req, res) => {
+  try {
+    const tenants = await query('SELECT db_name FROM tenants WHERE tenant_id = ?', [req.params.id]);
+    if (tenants.length === 0) return res.status(404).json({ message: 'Client not found' });
+    const { db_name } = tenants[0];
+
+    try {
+      await tenantQuery(db_name, `ALTER TABLE \`${db_name}\`.users ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+    } catch {}
+
+    const users = await tenantQuery(db_name, `
+      SELECT u.user_id, u.username, u.name, u.email, u.role_name, u.branch_id, u.created_at,
+             s.store_name AS branch_name
+      FROM \`${db_name}\`.users u
+      LEFT JOIN \`${db_name}\`.stores s ON s.store_id = u.branch_id
+      ORDER BY u.role_name ASC, u.name ASC
+    `);
+
+    res.json({ data: users || [] });
+  } catch (err) {
+    logger.error('getUsers error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// POST /api/tenants/:id/users — Create user for a client
+exports.createUser = async (req, res) => {
+  try {
+    const tenants = await query('SELECT db_name FROM tenants WHERE tenant_id = ?', [req.params.id]);
+    if (tenants.length === 0) return res.status(404).json({ message: 'Client not found' });
+    const { db_name } = tenants[0];
+
+    const { username, name, email, password, role_name, branch_id } = req.body;
+    if (!username || !name || !email || !password) {
+      return res.status(400).json({ message: 'username, name, email, password are required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
+
+    try {
+      await tenantQuery(db_name, `ALTER TABLE \`${db_name}\`.users ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+    } catch {}
+
+    // Check unique username
+    const existUname = await tenantQuery(db_name, `SELECT user_id FROM \`${db_name}\`.users WHERE username = ?`, [username.trim()]);
+    if (existUname.length > 0) return res.status(400).json({ message: 'Username already exists' });
+
+    // Check unique email
+    const existEmail = await tenantQuery(db_name, `SELECT user_id FROM \`${db_name}\`.users WHERE email = ?`, [email.trim().toLowerCase()]);
+    if (existEmail.length > 0) return res.status(400).json({ message: 'Email already exists' });
+
+    const hash = await bcrypt.hash(password, 10);
+    const roleMap = { Admin: 1, Manager: 2, Cashier: 3, Accountant: 4 };
+    const role_id = roleMap[role_name] || 3;
+    const assignedBranch = role_name === 'Admin' ? null : (branch_id || null);
+
+    const result = await tenantQuery(db_name,
+      `INSERT INTO \`${db_name}\`.users (username, name, email, password_hash, role_id, role_name, branch_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [username.trim(), name.trim(), email.trim().toLowerCase(), hash, role_id, role_name || 'Cashier', assignedBranch]
+    );
+
+    res.status(201).json({ message: 'User created', user_id: result.insertId });
+  } catch (err) {
+    logger.error('createUser error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PUT /api/tenants/:id/users/:userId — Update user (role, branch, name, email, password)
+exports.updateUser = async (req, res) => {
+  try {
+    const tenants = await query('SELECT db_name FROM tenants WHERE tenant_id = ?', [req.params.id]);
+    if (tenants.length === 0) return res.status(404).json({ message: 'Client not found' });
+    const { db_name } = tenants[0];
+
+    const { userId } = req.params;
+    const { name, email, role_name, branch_id, password } = req.body;
+
+    const existing = await tenantQuery(db_name, `SELECT * FROM \`${db_name}\`.users WHERE user_id = ?`, [userId]);
+    if (existing.length === 0) return res.status(404).json({ message: 'User not found' });
+
+    if (email) {
+      const emailCheck = await tenantQuery(db_name,
+        `SELECT user_id FROM \`${db_name}\`.users WHERE email = ? AND user_id != ?`,
+        [email.trim().toLowerCase(), userId]
+      );
+      if (emailCheck.length > 0) return res.status(400).json({ message: 'Email already in use' });
+    }
+
+    const roleMap = { Admin: 1, Manager: 2, Cashier: 3, Accountant: 4 };
+    const role_id = roleMap[role_name] || existing[0].role_id;
+    const assignedBranch = role_name === 'Admin' ? null : (branch_id !== undefined ? branch_id : existing[0].branch_id);
+
+    await tenantQuery(db_name,
+      `UPDATE \`${db_name}\`.users SET name=?, email=?, role_id=?, role_name=?, branch_id=? WHERE user_id=?`,
+      [name || existing[0].name, email ? email.trim().toLowerCase() : existing[0].email,
+       role_id, role_name || existing[0].role_name, assignedBranch, userId]
+    );
+
+    if (password && password.length >= 8) {
+      const hash = await bcrypt.hash(password, 10);
+      await tenantQuery(db_name, `UPDATE \`${db_name}\`.users SET password_hash=? WHERE user_id=?`, [hash, userId]);
+    }
+
+    res.json({ message: 'User updated' });
+  } catch (err) {
+    logger.error('updateUser error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// DELETE /api/tenants/:id/users/:userId — Delete user
+exports.deleteUser = async (req, res) => {
+  try {
+    const tenants = await query('SELECT db_name FROM tenants WHERE tenant_id = ?', [req.params.id]);
+    if (tenants.length === 0) return res.status(404).json({ message: 'Client not found' });
+    const { db_name } = tenants[0];
+
+    const { userId } = req.params;
+    const existing = await tenantQuery(db_name, `SELECT * FROM \`${db_name}\`.users WHERE user_id = ?`, [userId]);
+    if (existing.length === 0) return res.status(404).json({ message: 'User not found' });
+
+    // Prevent deleting last admin
+    if (existing[0].role_name === 'Admin') {
+      const adminCount = await tenantQuery(db_name,
+        `SELECT COUNT(*) as cnt FROM \`${db_name}\`.users WHERE role_name = 'Admin'`
+      );
+      if ((adminCount[0]?.cnt || 0) <= 1) {
+        return res.status(400).json({ message: 'Cannot delete the last admin user' });
+      }
+    }
+
+    await tenantQuery(db_name, `DELETE FROM \`${db_name}\`.users WHERE user_id = ?`, [userId]);
+    res.json({ message: 'User deleted' });
+  } catch (err) {
+    logger.error('deleteUser error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };
