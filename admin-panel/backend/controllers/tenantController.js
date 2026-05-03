@@ -468,8 +468,8 @@ exports.getBranches = async (req, res) => {
              s.is_active, s.monthly_charge,
              u.name AS manager_name,
              (SELECT COUNT(*) FROM \`${db_name}\`.staff st WHERE st.branch_id = s.store_id) AS total_staff,
-             (SELECT COUNT(*) FROM \`${db_name}\`.sales sa WHERE sa.branch_id = s.store_id AND DATE(sa.created_at) = CURDATE()) AS today_sales,
-             (SELECT COALESCE(SUM(sa.net_amount),0) FROM \`${db_name}\`.sales sa WHERE sa.branch_id = s.store_id AND MONTH(sa.created_at) = MONTH(CURDATE()) AND YEAR(sa.created_at) = YEAR(CURDATE())) AS month_revenue
+             (SELECT COUNT(*) FROM \`${db_name}\`.sales sa WHERE sa.branch_id = s.store_id AND DATE(sa.sale_date) = CURDATE()) AS today_sales,
+             (SELECT COALESCE(SUM(sa.net_amount),0) FROM \`${db_name}\`.sales sa WHERE sa.branch_id = s.store_id AND MONTH(sa.sale_date) = MONTH(CURDATE()) AND YEAR(sa.sale_date) = YEAR(CURDATE())) AS month_revenue
       FROM \`${db_name}\`.stores s
       LEFT JOIN \`${db_name}\`.users u ON u.user_id = s.manager_id
       ORDER BY s.store_id ASC

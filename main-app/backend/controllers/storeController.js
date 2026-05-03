@@ -42,7 +42,7 @@ async function ensureStoreColumns() {
 exports.getAll = async (req, res) => {
   try {
     await ensureStoreColumns();
-    const stores = await query('SELECT s.*, COALESCE(s.is_active, 1) as is_active, u.name as manager_name FROM stores s LEFT JOIN users u ON s.manager_id = u.user_id ORDER BY s.store_name');
+    const stores = await query('SELECT s.store_id, s.store_name, s.store_code, s.address, s.phone, s.email, s.manager_id, s.monthly_charge, COALESCE(s.is_active, 1) as is_active, s.created_at, s.updated_at, u.name as manager_name FROM stores s LEFT JOIN users u ON s.manager_id = u.user_id ORDER BY s.store_name');
     res.json({ data: stores });
   } catch (err) {
     console.error(err);
