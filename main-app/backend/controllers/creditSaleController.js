@@ -7,6 +7,12 @@
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
+async function ensureColumns() {
+  try {
+    await query(`ALTER TABLE credit_sales ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+  } catch (_) {}
+}
+
 const parsePagination = (page, limit) => {
   const pageNum = parseInt(page) || 1;
   const limitNum = Math.min(parseInt(limit) || 20, 100);
@@ -17,6 +23,7 @@ const parsePagination = (page, limit) => {
 
 exports.getAll = async (req, res) => {
   try {
+    await ensureColumns();
     const { status, customer_id, overdue, search } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 
@@ -32,6 +39,18 @@ exports.getAll = async (req, res) => {
                     JOIN customers c ON cs.customer_id = c.customer_id
                     WHERE 1=1`;
     const params = [], countParams = [];
+
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      sql += ' AND cs.branch_id = ?';
+      countSql += ' AND cs.branch_id = ?';
+      params.push(req.user.branch_id);
+      countParams.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      sql += ' AND cs.branch_id = ?';
+      countSql += ' AND cs.branch_id = ?';
+      params.push(req.query.filter_branch);
+      countParams.push(req.query.filter_branch);
+    }
 
     if (status) {
       sql += ' AND cs.status = ?';
@@ -145,10 +164,11 @@ exports.create = async (req, res) => {
     try {
       await conn.beginTransaction();
 
+      const branch_id = req.user.branch_id || null;
       const result = await conn.query(
-        `INSERT INTO credit_sales (sale_id, customer_id, total_amount, paid_amount, balance_due, due_date, status, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [sale_id, customer_id, totalAmt, paidAmt, balanceDue, due_date, status, req.user.user_id]
+        `INSERT INTO credit_sales (sale_id, customer_id, total_amount, paid_amount, balance_due, due_date, status, created_by, branch_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [sale_id, customer_id, totalAmt, paidAmt, balanceDue, due_date, status, req.user.user_id, branch_id]
       );
 
       const creditSaleId = Number(result.insertId);

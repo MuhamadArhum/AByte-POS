@@ -217,20 +217,36 @@ exports.getAttendance = async (req, res) => {
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 
     let sql = 'SELECT a.*, s.full_name, s.position FROM attendance a JOIN staff s ON a.staff_id = s.staff_id WHERE 1=1';
-    let countSql = 'SELECT COUNT(*) as total FROM attendance a WHERE 1=1';
+    let countSql = 'SELECT COUNT(*) as total FROM attendance a JOIN staff s ON a.staff_id = s.staff_id WHERE 1=1';
     let summarySql = `SELECT
-      SUM(status = 'present') as present,
-      SUM(status = 'absent') as absent,
-      SUM(status = 'half_day') as half_day,
-      SUM(status = 'leave') as on_leave,
+      SUM(a.status = 'present') as present,
+      SUM(a.status = 'absent') as absent,
+      SUM(a.status = 'half_day') as half_day,
+      SUM(a.status = 'leave') as on_leave,
       COUNT(*) as total
-      FROM attendance WHERE 1=1`;
+      FROM attendance a JOIN staff s ON a.staff_id = s.staff_id WHERE 1=1`;
     const params = [], countParams = [], summaryParams = [];
+
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      sql += ' AND s.branch_id = ?';
+      countSql += ' AND s.branch_id = ?';
+      summarySql += ' AND s.branch_id = ?';
+      params.push(req.user.branch_id);
+      countParams.push(req.user.branch_id);
+      summaryParams.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      sql += ' AND s.branch_id = ?';
+      countSql += ' AND s.branch_id = ?';
+      summarySql += ' AND s.branch_id = ?';
+      params.push(req.query.filter_branch);
+      countParams.push(req.query.filter_branch);
+      summaryParams.push(req.query.filter_branch);
+    }
 
     if (staff_id) {
       sql += ' AND a.staff_id = ?';
       countSql += ' AND a.staff_id = ?';
-      summarySql += ' AND staff_id = ?';
+      summarySql += ' AND a.staff_id = ?';
       params.push(staff_id);
       countParams.push(staff_id);
       summaryParams.push(staff_id);
@@ -509,6 +525,16 @@ exports.getMonthlyAttendanceReport = async (req, res) => {
 
     const startDate = `${month}-01`;
 
+    let branchWhere = 's.is_active = 1';
+    const branchParams = [startDate, startDate];
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      branchWhere += ' AND s.branch_id = ?';
+      branchParams.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      branchWhere += ' AND s.branch_id = ?';
+      branchParams.push(req.query.filter_branch);
+    }
+
     const data = await query(`
       SELECT
         s.staff_id, s.full_name, s.department, s.position, s.leave_balance,
@@ -525,10 +551,10 @@ exports.getMonthlyAttendanceReport = async (req, res) => {
       FROM staff s
       LEFT JOIN attendance a ON s.staff_id = a.staff_id
         AND a.attendance_date BETWEEN ? AND LAST_DAY(?)
-      WHERE s.is_active = 1
+      WHERE ${branchWhere}
       GROUP BY s.staff_id
       ORDER BY s.full_name
-    `, [startDate, startDate]);
+    `, branchParams);
 
     res.json({
       month,
@@ -556,6 +582,19 @@ exports.getSalarySummaryReport = async (req, res) => {
       return res.status(400).json({ message: 'from_date and to_date required' });
     }
 
+    let branchJoin = '';
+    const paidParams = [from_date, to_date];
+    const expParams = [];
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      branchJoin = ' AND s.branch_id = ?';
+      paidParams.push(req.user.branch_id);
+      expParams.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      branchJoin = ' AND s.branch_id = ?';
+      paidParams.push(req.query.filter_branch);
+      expParams.push(req.query.filter_branch);
+    }
+
     const byDepartment = await query(`
       SELECT
         COALESCE(s.department, 'Unassigned') as department,
@@ -566,9 +605,9 @@ exports.getSalarySummaryReport = async (req, res) => {
         SUM(sp.net_amount) as total_net_paid
       FROM salary_payments sp
       JOIN staff s ON sp.staff_id = s.staff_id
-      WHERE sp.payment_date BETWEEN ? AND ?
+      WHERE sp.payment_date BETWEEN ? AND ?${branchJoin}
       GROUP BY s.department
-    `, [from_date, to_date]);
+    `, paidParams);
 
     const expected = await query(`
       SELECT
@@ -576,9 +615,9 @@ exports.getSalarySummaryReport = async (req, res) => {
         COUNT(*) as total_staff,
         SUM(salary) as total_expected_salary
       FROM staff
-      WHERE is_active = 1 AND salary IS NOT NULL
+      WHERE is_active = 1 AND salary IS NOT NULL${branchJoin ? ' AND branch_id = ?' : ''}
       GROUP BY department
-    `);
+    `, expParams);
 
     // Merge expected into byDepartment
     const deptMap = {};

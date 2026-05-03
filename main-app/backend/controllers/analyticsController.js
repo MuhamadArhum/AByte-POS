@@ -1,15 +1,20 @@
-// =============================================================
-// analyticsController.js - Analytics & Dashboard Stats Controller
-// Provides sales trends, category breakdowns, customer analytics,
-// payment method stats, and hourly sales data.
-// Used by: /api/analytics routes
-// =============================================================
-
 const { query } = require('../config/database');
+
+function getBranchFilter(req, alias) {
+  const col = alias ? `${alias}.branch_id` : 'branch_id';
+  if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+    return { clause: ` AND ${col} = ?`, param: req.user.branch_id };
+  } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+    return { clause: ` AND ${col} = ?`, param: req.query.filter_branch };
+  }
+  return { clause: '', param: null };
+}
 
 exports.getCustomerAnalytics = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
+    const bf = getBranchFilter(req);
+    const params = [start_date, end_date, ...(bf.param ? [bf.param] : [])];
 
     const topCustomers = await query(`
       SELECT
@@ -19,11 +24,11 @@ exports.getCustomerAnalytics = async (req, res) => {
         AVG(net_amount) as avg_order_value,
         MAX(sale_date) as last_purchase
       FROM sales
-      WHERE sale_date BETWEEN ? AND ?
+      WHERE sale_date BETWEEN ? AND ?${bf.clause}
       GROUP BY COALESCE(customer_name, 'Walk-in')
       ORDER BY total_spent DESC
       LIMIT 10
-    `, [start_date, end_date]);
+    `, params);
 
     const [customerCounts] = await query(`
       SELECT
@@ -31,8 +36,8 @@ exports.getCustomerAnalytics = async (req, res) => {
         COUNT(CASE WHEN customer_name IS NULL OR customer_name = '' THEN 1 END) as walkin_count,
         COUNT(*) as total_transactions
       FROM sales
-      WHERE sale_date BETWEEN ? AND ?
-    `, [start_date, end_date]);
+      WHERE sale_date BETWEEN ? AND ?${bf.clause}
+    `, params);
 
     res.json({ top_customers: topCustomers, summary: customerCounts || {} });
   } catch (err) {
@@ -44,6 +49,8 @@ exports.getCustomerAnalytics = async (req, res) => {
 exports.getPaymentMethods = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
+    const bf = getBranchFilter(req);
+    const params = [start_date, end_date, ...(bf.param ? [bf.param] : [])];
 
     const methods = await query(`
       SELECT
@@ -52,10 +59,10 @@ exports.getPaymentMethods = async (req, res) => {
         SUM(net_amount) as total_amount,
         ROUND(SUM(net_amount) * 100.0 / SUM(SUM(net_amount)) OVER (), 1) as percentage
       FROM sales
-      WHERE sale_date BETWEEN ? AND ?
+      WHERE sale_date BETWEEN ? AND ?${bf.clause}
       GROUP BY COALESCE(payment_method, 'Cash')
       ORDER BY total_amount DESC
-    `, [start_date, end_date]);
+    `, params);
 
     res.json({ data: methods });
   } catch (err) {
@@ -67,6 +74,8 @@ exports.getPaymentMethods = async (req, res) => {
 exports.getHourlySales = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
+    const bf = getBranchFilter(req);
+    const params = [start_date, end_date, ...(bf.param ? [bf.param] : [])];
 
     const hourly = await query(`
       SELECT
@@ -74,10 +83,10 @@ exports.getHourlySales = async (req, res) => {
         COUNT(*) as transaction_count,
         SUM(net_amount) as total_sales
       FROM sales
-      WHERE sale_date BETWEEN ? AND ?
+      WHERE sale_date BETWEEN ? AND ?${bf.clause}
       GROUP BY HOUR(sale_date)
       ORDER BY hour ASC
-    `, [start_date, end_date]);
+    `, params);
 
     const allHours = Array.from({ length: 24 }, (_, h) => {
       const found = hourly.find(r => Number(r.hour) === h);
@@ -95,6 +104,8 @@ exports.getHourlySales = async (req, res) => {
 exports.getDashboardStats = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
+    const bf = getBranchFilter(req, 's');
+    const salesParams = [start_date, end_date, ...(bf.param ? [bf.param] : [])];
 
     const [salesStats] = await query(`
       SELECT
@@ -103,9 +114,9 @@ exports.getDashboardStats = async (req, res) => {
         SUM(discount) as total_discount,
         SUM(net_amount) as net_sales,
         AVG(net_amount) as avg_transaction
-      FROM sales
-      WHERE sale_date BETWEEN ? AND ?
-    `, [start_date, end_date]);
+      FROM sales s
+      WHERE sale_date BETWEEN ? AND ?${bf.clause}
+    `, salesParams);
 
     const [expenseStats] = await query(`
       SELECT SUM(amount) as total_expenses
@@ -118,11 +129,11 @@ exports.getDashboardStats = async (req, res) => {
       FROM sale_details sd
       JOIN products p ON sd.product_id = p.product_id
       JOIN sales s ON sd.sale_id = s.sale_id
-      WHERE s.sale_date BETWEEN ? AND ?
+      WHERE s.sale_date BETWEEN ? AND ?${bf.clause}
       GROUP BY sd.product_id, p.product_name
       ORDER BY revenue DESC
       LIMIT 5
-    `, [start_date, end_date]);
+    `, salesParams);
 
     const profit = (salesStats?.net_sales || 0) - (expenseStats?.total_expenses || 0);
 
@@ -141,6 +152,8 @@ exports.getDashboardStats = async (req, res) => {
 exports.getSalesTrend = async (req, res) => {
   try {
     const { period = 'daily', start_date, end_date } = req.query;
+    const bf = getBranchFilter(req);
+    const params = [start_date, end_date, ...(bf.param ? [bf.param] : [])];
 
     let groupBy;
     if (period === 'daily') groupBy = 'DATE(sale_date)';
@@ -154,10 +167,10 @@ exports.getSalesTrend = async (req, res) => {
         SUM(total_amount) as total_sales,
         SUM(net_amount) as net_sales
       FROM sales
-      WHERE sale_date BETWEEN ? AND ?
+      WHERE sale_date BETWEEN ? AND ?${bf.clause}
       GROUP BY ${groupBy}
       ORDER BY period ASC
-    `, [start_date, end_date]);
+    `, params);
 
     res.json({ data: trend });
   } catch (err) {
@@ -169,6 +182,8 @@ exports.getSalesTrend = async (req, res) => {
 exports.getCategoryBreakdown = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
+    const bf = getBranchFilter(req, 's');
+    const params = [start_date, end_date, ...(bf.param ? [bf.param] : [])];
 
     const breakdown = await query(`
       SELECT c.category_name, SUM(sd.total_price) as revenue, SUM(sd.quantity) as units_sold
@@ -176,10 +191,10 @@ exports.getCategoryBreakdown = async (req, res) => {
       JOIN products p ON sd.product_id = p.product_id
       JOIN categories c ON p.category_id = c.category_id
       JOIN sales s ON sd.sale_id = s.sale_id
-      WHERE s.sale_date BETWEEN ? AND ?
+      WHERE s.sale_date BETWEEN ? AND ?${bf.clause}
       GROUP BY c.category_id, c.category_name
       ORDER BY revenue DESC
-    `, [start_date, end_date]);
+    `, params);
 
     res.json({ data: breakdown });
   } catch (err) {

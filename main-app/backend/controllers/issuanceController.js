@@ -3,6 +3,12 @@ const { logAction } = require('../services/auditService');
 
 const pad = (n, len = 6) => String(n).padStart(len, '0');
 
+async function ensureColumns() {
+  try {
+    await query(`ALTER TABLE stock_issues ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+  } catch (_) {}
+}
+
 // ============ HELPERS ============
 async function nextNumber(prefix, table, column) {
   const [last] = await query(`SELECT ${column} FROM ${table} ORDER BY ${column} DESC LIMIT 1`);
@@ -17,6 +23,7 @@ async function nextNumber(prefix, table, column) {
 
 exports.getIssues = async (req, res) => {
   try {
+    await ensureColumns();
     const { section_id, from_date, to_date } = req.query;
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
@@ -24,6 +31,11 @@ exports.getIssues = async (req, res) => {
 
     let where = 'WHERE 1=1';
     const params = [];
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      where += ' AND si.branch_id = ?'; params.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      where += ' AND si.branch_id = ?'; params.push(req.query.filter_branch);
+    }
     if (section_id) { where += ' AND si.section_id = ?'; params.push(section_id); }
     if (from_date)  { where += ' AND si.issue_date >= ?'; params.push(from_date); }
     if (to_date)    { where += ' AND si.issue_date <= ?'; params.push(to_date); }
@@ -78,9 +90,10 @@ exports.createIssue = async (req, res) => {
     await conn.beginTransaction();
     const issue_number = await nextNumber('ISS', 'stock_issues', 'issue_number');
 
+    const branch_id = req.user.branch_id || null;
     const result = await conn.query(
-      'INSERT INTO stock_issues (issue_number, section_id, issue_date, notes, created_by) VALUES (?, ?, ?, ?, ?)',
-      [issue_number, section_id, issue_date, notes || null, req.user.user_id]
+      'INSERT INTO stock_issues (issue_number, section_id, issue_date, notes, created_by, branch_id) VALUES (?, ?, ?, ?, ?, ?)',
+      [issue_number, section_id, issue_date, notes || null, req.user.user_id, branch_id]
     );
     const issueId = Number(result.insertId);
 

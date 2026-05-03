@@ -1,10 +1,21 @@
 const { query } = require('../config/database');
 
+function getBranchFilter(req) {
+  if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+    return { clause: ' AND branch_id = ?', param: req.user.branch_id };
+  } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+    return { clause: ' AND branch_id = ?', param: req.query.filter_branch };
+  }
+  return { clause: '', param: null };
+}
+
 exports.getSalesSummary = async (req, res) => {
   try {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date().toISOString().split('T')[0];
     const to = date_to || new Date().toISOString().split('T')[0];
+    const bf = getBranchFilter(req);
+    const params = [from, to, ...(bf.param ? [bf.param] : [])];
 
     const [summary] = await query(`
       SELECT
@@ -14,8 +25,8 @@ exports.getSalesSummary = async (req, res) => {
         COALESCE(SUM(discount), 0) as total_discount,
         COALESCE(SUM(tax_amount), 0) as total_tax
       FROM sales
-      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?
-    `, [from, to]);
+      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}
+    `, params);
 
     res.json({
       total_orders: Number(summary.total_orders) || 0,
@@ -30,11 +41,14 @@ exports.getSalesSummary = async (req, res) => {
 exports.getHourlySales = async (req, res) => {
   try {
     const date = req.query.date || new Date().toISOString().split('T')[0];
+    const bf = getBranchFilter(req);
+    const params = [date, ...(bf.param ? [bf.param] : [])];
+
     const rows = await query(`
       SELECT HOUR(sale_date) as hour, COUNT(*) as orders, COALESCE(SUM(net_amount), 0) as revenue
-      FROM sales WHERE status = 'completed' AND DATE(sale_date) = ?
+      FROM sales WHERE status = 'completed' AND DATE(sale_date) = ?${bf.clause}
       GROUP BY HOUR(sale_date) ORDER BY hour
-    `, [date]);
+    `, params);
 
     const hourly = Array.from({ length: 24 }, (_, i) => {
       const found = rows.find(r => Number(r.hour) === i);
@@ -49,12 +63,14 @@ exports.getPaymentBreakdown = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date().toISOString().split('T')[0];
     const to = date_to || new Date().toISOString().split('T')[0];
+    const bf = getBranchFilter(req);
+    const params = [from, to, ...(bf.param ? [bf.param] : [])];
 
     const rows = await query(`
       SELECT payment_method, COUNT(*) as count, COALESCE(SUM(net_amount), 0) as total
-      FROM sales WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?
+      FROM sales WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}
       GROUP BY payment_method ORDER BY total DESC
-    `, [from, to]);
+    `, params);
 
     const grandTotal = rows.reduce((s, r) => s + Number(r.total), 0);
     const data = rows.map(r => ({ method: r.payment_method, count: Number(r.count), total: Number(r.total), percentage: grandTotal > 0 ? Math.round((Number(r.total) / grandTotal) * 100) : 0 }));
@@ -67,14 +83,16 @@ exports.getCashierPerformance = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date().toISOString().split('T')[0];
     const to = date_to || new Date().toISOString().split('T')[0];
+    const bf = getBranchFilter(req);
+    const params = [from, to, ...(bf.param ? [bf.param] : [])];
 
     const rows = await query(`
       SELECT s.user_id, u.name as cashier_name, COUNT(*) as order_count,
         COALESCE(SUM(s.net_amount), 0) as total_sales, COALESCE(AVG(s.net_amount), 0) as avg_sale
       FROM sales s JOIN users u ON s.user_id = u.user_id
-      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?
+      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?${bf.clause ? bf.clause.replace('branch_id', 's.branch_id') : ''}
       GROUP BY s.user_id ORDER BY total_sales DESC
-    `, [from, to]);
+    `, params);
 
     res.json({ data: rows.map(r => ({ ...r, total_sales: Number(r.total_sales), avg_sale: Number(r.avg_sale), order_count: Number(r.order_count) })) });
   } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
@@ -85,12 +103,14 @@ exports.getDailyTrend = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const to = date_to || new Date().toISOString().split('T')[0];
+    const bf = getBranchFilter(req);
+    const params = [from, to, ...(bf.param ? [bf.param] : [])];
 
     const rows = await query(`
       SELECT DATE(sale_date) as date, COUNT(*) as orders, COALESCE(SUM(net_amount), 0) as revenue
-      FROM sales WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?
+      FROM sales WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}
       GROUP BY DATE(sale_date) ORDER BY date
-    `, [from, to]);
+    `, params);
 
     res.json({ data: rows.map(r => ({ date: r.date, orders: Number(r.orders), revenue: Number(r.revenue) })) });
   } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
@@ -101,13 +121,15 @@ exports.getTopCustomers = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const to = date_to || new Date().toISOString().split('T')[0];
+    const bf = getBranchFilter(req);
+    const params = [from, to, ...(bf.param ? [bf.param] : [])];
 
     const rows = await query(`
       SELECT s.customer_id, c.customer_name, COUNT(*) as order_count, COALESCE(SUM(s.net_amount), 0) as total_spent
       FROM sales s JOIN customers c ON s.customer_id = c.customer_id
-      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?
+      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?${bf.clause ? bf.clause.replace('branch_id', 's.branch_id') : ''}
       GROUP BY s.customer_id ORDER BY total_spent DESC LIMIT 15
-    `, [from, to]);
+    `, params);
 
     res.json({ data: rows.map(r => ({ ...r, total_spent: Number(r.total_spent), order_count: Number(r.order_count) })) });
   } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
@@ -119,13 +141,17 @@ exports.getSalesComparison = async (req, res) => {
     const from = new Date(date_from || new Date().toISOString().split('T')[0]);
     const to = new Date(date_to || new Date().toISOString().split('T')[0]);
     const days = Math.max(1, Math.ceil((to - from) / 86400000) + 1);
+    const bf = getBranchFilter(req);
 
     const prevFrom = new Date(from.getTime() - days * 86400000).toISOString().split('T')[0];
     const prevTo = new Date(from.getTime() - 86400000).toISOString().split('T')[0];
 
+    const currentParams = ['completed', from.toISOString().split('T')[0], to.toISOString().split('T')[0], ...(bf.param ? [bf.param] : [])];
+    const prevParams = ['completed', prevFrom, prevTo, ...(bf.param ? [bf.param] : [])];
+
     const [[current], [previous]] = await Promise.all([
-      query('SELECT COALESCE(SUM(net_amount), 0) as total, COUNT(*) as orders FROM sales WHERE status = ? AND DATE(sale_date) BETWEEN ? AND ?', ['completed', from.toISOString().split('T')[0], to.toISOString().split('T')[0]]),
-      query('SELECT COALESCE(SUM(net_amount), 0) as total, COUNT(*) as orders FROM sales WHERE status = ? AND DATE(sale_date) BETWEEN ? AND ?', ['completed', prevFrom, prevTo])
+      query(`SELECT COALESCE(SUM(net_amount), 0) as total, COUNT(*) as orders FROM sales WHERE status = ? AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}`, currentParams),
+      query(`SELECT COALESCE(SUM(net_amount), 0) as total, COUNT(*) as orders FROM sales WHERE status = ? AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}`, prevParams)
     ]);
 
     const currentTotal = Number(current.total);
@@ -142,6 +168,8 @@ exports.getCategoryBreakdown = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date().toISOString().split('T')[0];
     const to = date_to || new Date().toISOString().split('T')[0];
+    const bf = getBranchFilter(req);
+    const params = [from, to, ...(bf.param ? [bf.param] : [])];
 
     const rows = await query(`
       SELECT
@@ -158,10 +186,10 @@ exports.getCategoryBreakdown = async (req, res) => {
         COALESCE(SUM(additional_charges_amount), 0) as total_charges,
         COALESCE(AVG(net_amount), 0) as avg_order
       FROM sales
-      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?
+      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}
       GROUP BY order_type
       ORDER BY total_sales DESC
-    `, [from, to]);
+    `, params);
 
     res.json({
       data: rows.map(r => ({

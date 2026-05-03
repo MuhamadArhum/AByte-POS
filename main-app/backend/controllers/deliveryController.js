@@ -8,6 +8,12 @@
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
+async function ensureColumns() {
+  try {
+    await query(`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+  } catch (_) {}
+}
+
 const parsePagination = (q) => {
   const page  = Math.max(1, parseInt(q.page)  || 1);
   const limit = Math.min(100, Math.max(1, parseInt(q.limit) || 20));
@@ -30,15 +36,26 @@ async function generateDeliveryNumber() {
 // GET /api/deliveries/stats
 exports.getStats = async (req, res) => {
   try {
+    await ensureColumns();
     const today = new Date().toISOString().split('T')[0];
 
+    let branchWhere = '';
+    const branchParam = [];
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      branchWhere = ' AND branch_id = ?';
+      branchParam.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      branchWhere = ' AND branch_id = ?';
+      branchParam.push(req.query.filter_branch);
+    }
+
     const [total, byStatus, deliveredToday, charges] = await Promise.all([
-      query('SELECT COUNT(*) as count FROM deliveries'),
-      query(`SELECT status, COUNT(*) as count FROM deliveries GROUP BY status`),
+      query(`SELECT COUNT(*) as count FROM deliveries WHERE 1=1${branchWhere}`, branchParam),
+      query(`SELECT status, COUNT(*) as count FROM deliveries WHERE 1=1${branchWhere} GROUP BY status`, branchParam),
       query(`SELECT COUNT(*) as count FROM deliveries
-             WHERE status = 'delivered' AND DATE(actual_delivery) = ?`, [today]),
+             WHERE status = 'delivered' AND DATE(actual_delivery) = ?${branchWhere}`, [today, ...branchParam]),
       query(`SELECT COALESCE(SUM(delivery_charges), 0) as total FROM deliveries
-             WHERE MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())`),
+             WHERE MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())${branchWhere}`, branchParam),
     ]);
 
     const statusMap = {};
@@ -70,6 +87,14 @@ exports.getAll = async (req, res) => {
 
     const conditions = [];
     const params = [];
+
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      conditions.push('d.branch_id = ?');
+      params.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      conditions.push('d.branch_id = ?');
+      params.push(req.query.filter_branch);
+    }
 
     if (search) {
       conditions.push('(d.delivery_number LIKE ? OR c.customer_name LIKE ? OR d.rider_name LIKE ? OR d.delivery_city LIKE ?)');
@@ -187,12 +212,13 @@ exports.create = async (req, res) => {
     const delivery_number = await generateDeliveryNumber();
     const status = (rider_name && rider_name.trim()) ? 'assigned' : 'pending';
 
+    const branch_id = req.user.branch_id || null;
     const result = await conn.query(`
       INSERT INTO deliveries
         (delivery_number, sale_id, customer_id, delivery_address, delivery_city,
          delivery_phone, rider_name, rider_phone, status, delivery_charges,
-         estimated_delivery, notes, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         estimated_delivery, notes, created_by, branch_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       delivery_number,
       sale_id || null,
@@ -207,6 +233,7 @@ exports.create = async (req, res) => {
       estimated_delivery || null,
       notes || '',
       req.user.user_id,
+      branch_id,
     ]);
 
     const newId = Number(result.insertId);

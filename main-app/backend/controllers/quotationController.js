@@ -1,6 +1,12 @@
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
+async function ensureColumns() {
+  try {
+    await query(`ALTER TABLE quotations ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+  } catch (_) {}
+}
+
 const parsePagination = (page, limit) => {
   const p = Math.max(1, parseInt(page) || 1);
   const l = Math.min(Math.max(1, parseInt(limit) || 20), 100);
@@ -12,11 +18,20 @@ const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
 // GET /api/quotations?page=&limit=&status=&customer_id=&search=
 const getAll = async (req, res) => {
   try {
+    await ensureColumns();
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
     const { status, customer_id, search } = req.query;
 
     let where = 'WHERE 1=1';
     const params = [];
+
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      where += ' AND q.branch_id = ?';
+      params.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      where += ' AND q.branch_id = ?';
+      params.push(req.query.filter_branch);
+    }
 
     if (status) {
       where += ' AND q.status = ?';
@@ -120,10 +135,11 @@ const create = async (req, res) => {
     const taxAmt = round2(tax_amount || 0);
     const total = round2(subtotal + taxAmt - discountAmt);
 
+    const branch_id = req.user.branch_id || null;
     const result = await conn.query(
-      `INSERT INTO quotations (quotation_number, customer_id, created_by, subtotal, discount, tax_amount, total_amount, notes, valid_until, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
-      [quotation_number, customer_id || 1, req.user.user_id, subtotal, discountAmt, taxAmt, total, notes || null, valid_until || null]
+      `INSERT INTO quotations (quotation_number, customer_id, created_by, subtotal, discount, tax_amount, total_amount, notes, valid_until, status, branch_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)`,
+      [quotation_number, customer_id || 1, req.user.user_id, subtotal, discountAmt, taxAmt, total, notes || null, valid_until || null, branch_id]
     );
 
     const quotation_id = Number(result.insertId);
@@ -391,6 +407,13 @@ const deleteFn = async (req, res) => {
 // GET /api/quotations/stats
 const getStats = async (req, res) => {
   try {
+    let where = 'WHERE 1=1';
+    const params = [];
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      where += ' AND branch_id = ?'; params.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      where += ' AND branch_id = ?'; params.push(req.query.filter_branch);
+    }
     const rows = await query(
       `SELECT
          COUNT(*) AS total,
@@ -398,7 +421,8 @@ const getStats = async (req, res) => {
          SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) AS sent,
          SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) AS accepted,
          SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END) AS converted
-       FROM quotations`
+       FROM quotations ${where}`,
+      params
     );
 
     res.json(rows[0]);

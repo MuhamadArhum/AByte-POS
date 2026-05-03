@@ -12,6 +12,7 @@ async function ensureColumns() {
     await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS shipping_cost DECIMAL(15,2) NOT NULL DEFAULT 0`);
     await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS extra_charges DECIMAL(15,2) NOT NULL DEFAULT 0`);
     await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS other_charges DECIMAL(15,2) NOT NULL DEFAULT 0`);
+    await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
   } catch (_) { /* columns already exist */ }
 }
 
@@ -137,6 +138,15 @@ exports.getAll = async (req, res) => {
 
     let where = 'WHERE 1=1';
     const params = [];
+
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      where += ' AND pv.branch_id = ?';
+      params.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      where += ' AND pv.branch_id = ?';
+      params.push(req.query.filter_branch);
+    }
+
     if (po_id)     { where += ' AND pv.po_id = ?';         params.push(po_id); }
     if (from_date) { where += ' AND pv.voucher_date >= ?'; params.push(from_date); }
     if (to_date)   { where += ' AND pv.voucher_date <= ?'; params.push(to_date); }
@@ -234,9 +244,10 @@ exports.create = async (req, res) => {
     const tax_amount      = taxable * tax_pct / 100;
     const total           = taxable + tax_amount;
 
+    const branch_id = req.user.branch_id || null;
     const result = await conn.query(
-      'INSERT INTO inv_purchase_vouchers (pv_number, po_id, voucher_date, total_amount, shipping_cost, extra_charges, other_charges, discount_percent, discount_amount, tax_percent, tax_amount, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [pv_number, po_id || null, voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, req.user.user_id]
+      'INSERT INTO inv_purchase_vouchers (pv_number, po_id, voucher_date, total_amount, shipping_cost, extra_charges, other_charges, discount_percent, discount_amount, tax_percent, tax_amount, notes, created_by, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [pv_number, po_id || null, voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, req.user.user_id, branch_id]
     );
     const pvId = Number(result.insertId);
 

@@ -1,6 +1,12 @@
 const { getConnection, query } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
+async function ensureColumns() {
+  try {
+    await query(`ALTER TABLE cash_registers ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+  } catch (_) {}
+}
+
 // Helper: Round to 2 decimal places for currency
 const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
 
@@ -17,12 +23,18 @@ const parsePagination = (page, limit) => {
 
 exports.getCurrentRegister = async (req, res) => {
   try {
+    await ensureColumns();
+    const branchId = req.user.branch_id || null;
+    const branchClause = branchId ? ' AND cr.branch_id = ?' : '';
+    const branchParam = branchId ? [branchId] : [];
+
     const register = await query(
       `SELECT cr.*, u.name as opened_by_name
        FROM cash_registers cr
        JOIN users u ON cr.opened_by = u.user_id
-       WHERE cr.status = 'open'
-       LIMIT 1`
+       WHERE cr.status = 'open'${branchClause}
+       LIMIT 1`,
+      branchParam
     );
 
     if (register.length === 0) {
@@ -63,8 +75,12 @@ exports.openRegister = async (req, res) => {
   try {
     const { opening_balance } = req.body;
 
-    // Check if a register is already open
-    const existing = await query("SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1");
+    const branch_id = req.user.branch_id || null;
+    const branchClause = branch_id ? ' AND branch_id = ?' : '';
+    const branchParam = branch_id ? [branch_id] : [];
+
+    // Check if a register is already open for this branch
+    const existing = await query(`SELECT register_id FROM cash_registers WHERE status = 'open'${branchClause} LIMIT 1`, branchParam);
     if (existing.length > 0) {
       return res.status(400).json({ message: 'A register is already open. Close it before opening a new one.' });
     }
@@ -74,8 +90,8 @@ exports.openRegister = async (req, res) => {
     }
 
     const result = await query(
-      'INSERT INTO cash_registers (opened_by, opening_balance) VALUES (?, ?)',
-      [req.user.user_id, opening_balance]
+      'INSERT INTO cash_registers (opened_by, opening_balance, branch_id) VALUES (?, ?, ?)',
+      [req.user.user_id, opening_balance, branch_id]
     );
 
     const registerId = Number(result.insertId);
