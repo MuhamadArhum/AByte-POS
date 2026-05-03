@@ -421,6 +421,39 @@ exports.getActivity = async (req, res) => {
   }
 };
 
+// Ensure stores table exists in tenant DB (older tenants may not have it)
+async function ensureStoresTable(db_name) {
+  try {
+    await tenantQuery(db_name, `
+      CREATE TABLE IF NOT EXISTS \`${db_name}\`.stores (
+        store_id   INT PRIMARY KEY AUTO_INCREMENT,
+        store_name VARCHAR(200) NOT NULL,
+        store_code VARCHAR(20)  NOT NULL UNIQUE,
+        address    TEXT,
+        phone      VARCHAR(20),
+        email      VARCHAR(100),
+        manager_id INT,
+        monthly_charge DECIMAL(10,2) DEFAULT 0.00,
+        is_active  TINYINT(1) DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_store_active (is_active),
+        INDEX idx_store_code   (store_code)
+      )
+    `);
+    // Seed default store if table is empty
+    await tenantQuery(db_name, `
+      INSERT IGNORE INTO \`${db_name}\`.stores (store_id, store_name, store_code, is_active)
+      VALUES (1, 'Main Store', 'MAIN', 1)
+    `);
+    // Ensure columns added in later schema versions
+    await tenantQuery(db_name, `ALTER TABLE \`${db_name}\`.stores ADD COLUMN IF NOT EXISTS monthly_charge DECIMAL(10,2) DEFAULT 0.00`);
+    await tenantQuery(db_name, `ALTER TABLE \`${db_name}\`.users  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+    await tenantQuery(db_name, `ALTER TABLE \`${db_name}\`.staff  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+    await tenantQuery(db_name, `ALTER TABLE \`${db_name}\`.sales  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+  } catch (e) { /* ignore — columns/table already exist */ }
+}
+
 // GET /api/tenants/:id/branches — List all branches in tenant DB
 exports.getBranches = async (req, res) => {
   try {
@@ -428,11 +461,7 @@ exports.getBranches = async (req, res) => {
     if (tenants.length === 0) return res.status(404).json({ message: 'Client not found' });
     const { db_name } = tenants[0];
 
-    try {
-      await tenantQuery(db_name, `ALTER TABLE \`${db_name}\`.stores ADD COLUMN IF NOT EXISTS monthly_charge DECIMAL(10,2) DEFAULT 0.00`);
-      await tenantQuery(db_name, `ALTER TABLE \`${db_name}\`.staff  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-      await tenantQuery(db_name, `ALTER TABLE \`${db_name}\`.sales  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-    } catch {}
+    await ensureStoresTable(db_name);
 
     const branches = await tenantQuery(db_name, `
       SELECT s.store_id, s.store_name, s.store_code, s.address, s.phone, s.email,
@@ -465,9 +494,7 @@ exports.createBranch = async (req, res) => {
       return res.status(400).json({ message: 'store_name and store_code are required' });
     }
 
-    try {
-      await tenantQuery(db_name, `ALTER TABLE \`${db_name}\`.stores ADD COLUMN IF NOT EXISTS monthly_charge DECIMAL(10,2) DEFAULT 0.00`);
-    } catch {}
+    await ensureStoresTable(db_name);
 
     const existing = await tenantQuery(db_name, `SELECT store_id FROM \`${db_name}\`.stores WHERE store_code = ?`, [store_code.toUpperCase()]);
     if (existing.length > 0) {
@@ -493,6 +520,7 @@ exports.updateBranch = async (req, res) => {
     if (tenants.length === 0) return res.status(404).json({ message: 'Client not found' });
     const { db_name } = tenants[0];
 
+    await ensureStoresTable(db_name);
     const { store_name, store_code, address, phone, email, monthly_charge, is_active } = req.body;
     if (!store_name || !store_code) {
       return res.status(400).json({ message: 'store_name and store_code are required' });
@@ -518,6 +546,7 @@ exports.deleteBranch = async (req, res) => {
     if (tenants.length === 0) return res.status(404).json({ message: 'Client not found' });
     const { db_name } = tenants[0];
 
+    await ensureStoresTable(db_name);
     const countRows = await tenantQuery(db_name, `SELECT COUNT(*) as cnt FROM \`${db_name}\`.stores`);
     if ((countRows[0]?.cnt || 0) <= 1) {
       return res.status(400).json({ message: 'Cannot delete the only branch. A client must have at least one branch.' });
