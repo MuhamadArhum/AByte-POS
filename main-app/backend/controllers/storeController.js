@@ -1,16 +1,41 @@
-const { query, getConnection } = require('../config/database');
+const { query, getConnection, tenantStorage } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
-// Ensure new columns exist on older tenant DBs
-let storeColumnsEnsured = false;
+// Track per-tenant so every tenant DB gets migrated, not just the first one
+const ensuredTenants = new Set();
 async function ensureStoreColumns() {
-  if (storeColumnsEnsured) return;
-  storeColumnsEnsured = true;
+  const db = tenantStorage.getStore() || 'default';
+  if (ensuredTenants.has(db)) return;
+  ensuredTenants.add(db);
   try {
+    // Create stores table if it doesn't exist (older tenants may not have it)
+    await query(`
+      CREATE TABLE IF NOT EXISTS stores (
+        store_id   INT PRIMARY KEY AUTO_INCREMENT,
+        store_name VARCHAR(200) NOT NULL,
+        store_code VARCHAR(20)  NOT NULL UNIQUE,
+        address    TEXT,
+        phone      VARCHAR(20),
+        email      VARCHAR(100),
+        manager_id INT,
+        monthly_charge DECIMAL(10,2) DEFAULT 0.00,
+        is_active  TINYINT(1) DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_store_active (is_active),
+        INDEX idx_store_code   (store_code)
+      )
+    `);
+    // Seed a default store if table was just created and is empty
+    await query(`
+      INSERT IGNORE INTO stores (store_id, store_name, store_code, is_active)
+      VALUES (1, 'Main Store', 'MAIN', 1)
+    `);
+    // Add columns that may be missing on older schemas
     await query(`ALTER TABLE stores ADD COLUMN IF NOT EXISTS monthly_charge DECIMAL(10,2) DEFAULT 0.00`);
-    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-    await query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-    await query(`ALTER TABLE staff ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+    await query(`ALTER TABLE users  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+    await query(`ALTER TABLE sales  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+    await query(`ALTER TABLE staff  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
   } catch (e) { /* safe to ignore */ }
 }
 
@@ -27,6 +52,7 @@ exports.getAll = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
+    await ensureStoreColumns();
     const { store_name, store_code, address, phone, email, manager_id, monthly_charge } = req.body;
     if (!store_name || !store_code) return res.status(400).json({ message: 'Name and code required' });
 
@@ -46,6 +72,7 @@ exports.create = async (req, res) => {
 
 exports.getById = async (req, res) => {
   try {
+    await ensureStoreColumns();
     const [store] = await query(
       'SELECT s.*, u.name as manager_name FROM stores s LEFT JOIN users u ON s.manager_id = u.user_id WHERE s.store_id = ?',
       [req.params.id]
@@ -60,6 +87,7 @@ exports.getById = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
+    await ensureStoreColumns();
     const { id } = req.params;
     const { store_name, store_code, address, phone, email, manager_id, is_active, monthly_charge } = req.body;
     if (!store_name || !store_code) return res.status(400).json({ message: 'Name and code are required' });
@@ -83,6 +111,7 @@ exports.update = async (req, res) => {
 
 exports.deleteStore = async (req, res) => {
   try {
+    await ensureStoreColumns();
     const { id } = req.params;
     const [store] = await query('SELECT store_name FROM stores WHERE store_id = ?', [id]);
     if (!store) return res.status(404).json({ message: 'Store not found' });
