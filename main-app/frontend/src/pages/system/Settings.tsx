@@ -55,6 +55,8 @@ interface User {
   email: string;
   role: string;
   role_id: number;
+  branch_id: number | null;
+  branch_name: string | null;
   created_at: string;
 }
 
@@ -122,7 +124,9 @@ const Settings = () => {
 
   // Roles
   interface Role { role_id: number; role_name: string; }
+  interface Branch { store_id: number; store_name: string; }
   const [roles, setRoles] = useState<Role[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [newRoleName, setNewRoleName] = useState('');
   const [roleError, setRoleError] = useState('');
@@ -132,7 +136,7 @@ const Settings = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [userForm, setUserForm] = useState({ username: '', name: '', email: '', password: '', role_id: 0 });
+  const [userForm, setUserForm] = useState({ username: '', name: '', email: '', password: '', role_id: 0, branch_id: '' as string });
   const [showUserPassword, setShowUserPassword] = useState(false);
 
   // Password
@@ -205,6 +209,7 @@ const Settings = () => {
     if (currentUser?.role_name === 'Admin') {
       fetchUsers();
       fetchRoles();
+      fetchBranches();
       fetchPrinters();
     }
   }, [currentUser]);
@@ -252,6 +257,15 @@ const Settings = () => {
       setRoles(res.data.data || []);
     } catch (err) {
       console.error('Failed to load roles', err);
+    }
+  };
+
+  const fetchBranches = async () => {
+    try {
+      const res = await api.get('/stores');
+      setBranches((res.data.data || []).filter((s: any) => s.is_active !== 0));
+    } catch (err) {
+      console.error('Failed to load branches', err);
     }
   };
 
@@ -345,21 +359,28 @@ const Settings = () => {
 
   const handleUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const selectedRoleName = roles.find(r => r.role_id === userForm.role_id)?.role_name ?? '';
+    if (selectedRoleName !== 'Admin' && !userForm.branch_id) {
+      toast.error('Branch is required for non-admin users');
+      return;
+    }
     setSaving(true);
     try {
+      const branch_id = selectedRoleName === 'Admin' ? null : Number(userForm.branch_id);
       if (editingUser) {
-        const payload: any = { username: userForm.username, name: userForm.name, email: userForm.email, role_id: userForm.role_id };
+        const payload: any = { username: userForm.username, name: userForm.name, email: userForm.email, role_id: userForm.role_id, branch_id };
         if (userForm.password) payload.password = userForm.password;
         await api.put(`/users/${editingUser.user_id}`, payload);
         toast.success('User updated');
       } else {
-        await api.post('/users', userForm);
+        const payload: any = { ...userForm, branch_id };
+        await api.post('/users', payload);
         toast.success('User created');
       }
       setShowUserModal(false);
       setEditingUser(null);
       const defaultRoleId = roles.find(r => r.role_name === 'Cashier')?.role_id || roles.find(r => r.role_name !== 'Admin')?.role_id || 0;
-      setUserForm({ username: '', name: '', email: '', password: '', role_id: defaultRoleId });
+      setUserForm({ username: '', name: '', email: '', password: '', role_id: defaultRoleId, branch_id: '' });
       setShowUserPassword(false);
       fetchUsers();
     } catch (err: any) {
@@ -437,10 +458,10 @@ const Settings = () => {
     const defaultRoleId = roles.find(r => r.role_name === 'Cashier')?.role_id || roles.find(r => r.role_name !== 'Admin')?.role_id || 0;
     if (user) {
       setEditingUser(user);
-      setUserForm({ username: user.username, name: user.name, email: user.email, password: '', role_id: user.role_id });
+      setUserForm({ username: user.username, name: user.name, email: user.email, password: '', role_id: user.role_id, branch_id: user.branch_id ? String(user.branch_id) : '' });
     } else {
       setEditingUser(null);
-      setUserForm({ username: '', name: '', email: '', password: '', role_id: defaultRoleId });
+      setUserForm({ username: '', name: '', email: '', password: '', role_id: defaultRoleId, branch_id: '' });
     }
     setShowUserModal(true);
   };
@@ -1963,13 +1984,50 @@ const Settings = () => {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Role <span className="text-red-500">*</span></label>
                 <select value={userForm.role_id}
-                  onChange={e => setUserForm({ ...userForm, role_id: parseInt(e.target.value) })}
+                  onChange={e => setUserForm({ ...userForm, role_id: parseInt(e.target.value), branch_id: '' })}
                   className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                   {roles.map(r => (
                     <option key={r.role_id} value={r.role_id}>{r.role_name}</option>
                   ))}
                 </select>
               </div>
+
+              {/* Branch selection — required for non-Admin roles */}
+              {(() => {
+                const selectedRoleName = roles.find(r => r.role_id === userForm.role_id)?.role_name ?? '';
+                if (!selectedRoleName || selectedRoleName === 'Admin') {
+                  return selectedRoleName === 'Admin' ? (
+                    <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs text-blue-600">
+                      Admin users have access to all branches and cannot be restricted to a single branch.
+                    </div>
+                  ) : null;
+                }
+                return (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Assign Branch <span className="text-red-500">*</span>
+                    </label>
+                    {branches.length === 0 ? (
+                      <div className="w-full border border-red-200 rounded-lg px-3 py-2 text-sm text-red-500 bg-red-50">
+                        No active branches found. Please create a branch first.
+                      </div>
+                    ) : (
+                      <select
+                        value={userForm.branch_id}
+                        onChange={e => setUserForm({ ...userForm, branch_id: e.target.value })}
+                        className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none ${!userForm.branch_id ? 'border-red-300' : 'border-gray-200'}`}
+                      >
+                        <option value="">— Select branch —</option>
+                        {branches.map(b => (
+                          <option key={b.store_id} value={b.store_id}>{b.store_name}</option>
+                        ))}
+                      </select>
+                    )}
+                    <p className="text-xs text-gray-400 mt-1">User will only see data for this branch.</p>
+                  </div>
+                );
+              })()}
+
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={() => { setShowUserModal(false); setEditingUser(null); setShowUserPassword(false); }}
                   className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold transition">
