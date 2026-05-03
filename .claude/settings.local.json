@@ -126,7 +126,9 @@
       "Bash(echo \"SHOW CREATE TABLE receipt_vouchers\\\\\\\\G\")",
       "Bash(git rm *)",
       "Bash(echo \"EXIT: $?\")",
-      "Bash(pm2 list *)"
+      "Bash(pm2 list *)",
+      "Bash(awk '/^CREATE TABLE.*branch_id/ {flag=1} flag {print; if\\(/;$/\\) flag=0}' /d/AByte-POS/database/schema.sql)",
+      "Bash(awk ' *)"
     ]
   }
 }
