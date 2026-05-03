@@ -197,7 +197,7 @@ const Dashboard = () => {
           {/* Branch indicator */}
           {user?.branch_name && (
             <span className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-medium border border-blue-100">
-              <Store size={11} />{user.branch_name}
+              <Store size={16} />{user.branch_name}
             </span>
           )}
           {isAdmin && activeBranchId === null && (
