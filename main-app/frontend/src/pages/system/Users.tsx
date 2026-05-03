@@ -59,20 +59,15 @@ export default function Users() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    try {
-      const [usersRes, rolesRes, branchRes] = await Promise.all([
-        api.get('/users'),
-        api.get('/users/roles'),
-        api.get('/stores'),
-      ]);
-      setUsers(usersRes.data.data || []);
-      setRoles(rolesRes.data.data || []);
-      setBranches((branchRes.data.data || []).filter((s: any) => s.is_active));
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
+    const [usersRes, rolesRes, branchRes] = await Promise.all([
+      api.get('/users').catch(() => ({ data: { data: [] } })),
+      api.get('/users/roles').catch(() => ({ data: { data: [] } })),
+      api.get('/stores').catch(() => ({ data: { data: [] } })),
+    ]);
+    setUsers(usersRes.data.data || []);
+    setRoles(rolesRes.data.data || []);
+    setBranches((branchRes.data.data || []).filter((s: any) => s.is_active !== 0));
+    setLoading(false);
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -400,21 +395,27 @@ export default function Users() {
               </div>
 
               {/* Branch assignment — required for all non-Admin roles */}
-              {selectedRoleName && selectedRoleName !== 'Admin' && branches.length > 0 && (
+              {selectedRoleName && selectedRoleName !== 'Admin' && (
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Assign Branch <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={form.branch_id}
-                    onChange={e => setForm(f => ({ ...f, branch_id: e.target.value }))}
-                    className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 bg-white ${!form.branch_id ? 'border-red-300' : 'border-gray-200'}`}
-                  >
-                    <option value="">— Select branch —</option>
-                    {branches.map(b => (
-                      <option key={b.store_id} value={b.store_id}>{b.store_name}</option>
-                    ))}
-                  </select>
+                  {branches.length === 0 ? (
+                    <div className="w-full border border-red-200 rounded-lg px-3 py-2 text-sm text-red-500 bg-red-50">
+                      No active branches found. Please create a branch first.
+                    </div>
+                  ) : (
+                    <select
+                      value={form.branch_id}
+                      onChange={e => setForm(f => ({ ...f, branch_id: e.target.value }))}
+                      className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 bg-white ${!form.branch_id ? 'border-red-300' : 'border-gray-200'}`}
+                    >
+                      <option value="">— Select branch —</option>
+                      {branches.map(b => (
+                        <option key={b.store_id} value={b.store_id}>{b.store_name}</option>
+                      ))}
+                    </select>
+                  )}
                   <p className="text-xs text-gray-400 mt-1">User will only see data for this branch.</p>
                 </div>
               )}

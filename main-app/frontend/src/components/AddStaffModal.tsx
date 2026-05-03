@@ -3,6 +3,7 @@ import { X, User, Briefcase, DollarSign, Calendar, Mail, Phone, MapPin, Clock, S
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
 import { useToast } from './Toast';
+import { useAuth } from '../context/AuthContext';
 
 // ── Inline AccountSelector (same pattern as CPV/CRV) ──────────────────────────
 interface Account { account_id: number; account_code: string; account_name: string; level: number; is_active: boolean; }
@@ -119,6 +120,7 @@ interface StaffMember {
   time_out?: string;
   monthly_leave_allowed?: number;
   grace_time?: number;
+  branch_id?: number | null;
 }
 
 interface Props {
@@ -136,12 +138,16 @@ const EMPTY_FORM = {
   time_in: '', time_out: '',
   monthly_leave_allowed: '2',
   grace_time: '10',
+  branch_id: '',
 };
 
 const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: Props) => {
   const toast = useToast();
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role_name === 'Admin';
   const [loading, setLoading]         = useState(false);
   const [users, setUsers]             = useState<any[]>([]);
+  const [branches, setBranches]       = useState<{ store_id: number; store_name: string }[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [designations, setDesignations] = useState<any[]>([]);
   const [accounts, setAccounts]       = useState<Account[]>([]);
@@ -173,6 +179,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: Props) => {
         time_out:              staffToEdit.time_out || '',
         monthly_leave_allowed: (staffToEdit.monthly_leave_allowed ?? 2).toString(),
         grace_time:            (staffToEdit.grace_time ?? 10).toString(),
+        branch_id:             staffToEdit.branch_id?.toString() || '',
       });
     } else {
       setFormData({ ...EMPTY_FORM, hire_date: localToday() });
@@ -187,14 +194,16 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: Props) => {
 
   const fetchDropdowns = async () => {
     try {
-      const [usersRes, deptsRes, accsRes, compsRes] = await Promise.all([
+      const [usersRes, deptsRes, accsRes, compsRes, branchRes] = await Promise.all([
         api.get('/users').catch(() => ({ data: { data: [] } })),
         api.get('/staff/departments', { params: { is_active: 1 } }),
         api.get('/accounting/accounts', { params: { tree: 1 } }).catch(() => ({ data: { data: [] } })),
         api.get('/staff/salary-components').catch(() => ({ data: { data: [] } })),
+        api.get('/stores').catch(() => ({ data: { data: [] } })),
       ]);
       setUsers(usersRes.data.data || []);
       setDepartments(deptsRes.data.data || []);
+      setBranches((branchRes.data.data || []).filter((s: any) => s.is_active !== 0));
 
       const flatAccounts: Account[] = [];
       const flatten = (nodes: any[]) => nodes.forEach(n => {
@@ -267,6 +276,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: Props) => {
     if (formData.phone && !/^[\d+\-() ]{7,20}$/.test(formData.phone)) errors.phone = 'Invalid phone format';
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errors.email = 'Invalid email format';
     if (formData.salary && Number(formData.salary) < 0) errors.salary = 'Salary cannot be negative';
+    if (isAdmin && !formData.branch_id) errors.branch_id = 'Branch is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -286,6 +296,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: Props) => {
         time_out:              formData.time_out || null,
         monthly_leave_allowed: parseInt(formData.monthly_leave_allowed) || 2,
         grace_time:            parseInt(formData.grace_time) || 10,
+        branch_id:             formData.branch_id ? parseInt(formData.branch_id) : null,
       };
 
       let staffId: number;
@@ -432,6 +443,25 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: Props) => {
                   <option value={0}>Inactive</option>
                 </select>
               </div>
+              {isAdmin && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Assign Branch <span className="text-red-500">*</span></label>
+                  {branches.length === 0 ? (
+                    <div className="w-full border border-red-200 rounded-lg px-3 py-2 text-sm text-red-500 bg-red-50">
+                      No active branches found.
+                    </div>
+                  ) : (
+                    <select name="branch_id" value={formData.branch_id} onChange={handleChange} className={`${sel} ${formErrors.branch_id ? 'border-red-400' : ''}`}>
+                      <option value="">— Select branch —</option>
+                      {branches.map(b => (
+                        <option key={b.store_id} value={b.store_id}>{b.store_name}</option>
+                      ))}
+                    </select>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">Staff will be assigned to this branch.</p>
+                  {formErrors.branch_id && <p className="text-red-500 text-xs mt-1">{formErrors.branch_id}</p>}
+                </div>
+              )}
             </div>
           </div>
 

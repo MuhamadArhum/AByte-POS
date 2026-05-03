@@ -128,7 +128,8 @@
       "Bash(echo \"EXIT: $?\")",
       "Bash(pm2 list *)",
       "Bash(awk '/^CREATE TABLE.*branch_id/ {flag=1} flag {print; if\\(/;$/\\) flag=0}' /d/AByte-POS/database/schema.sql)",
-      "Bash(awk ' *)"
+      "Bash(awk ' *)",
+      "Bash(pm2 restart *)"
     ]
   }
 }
