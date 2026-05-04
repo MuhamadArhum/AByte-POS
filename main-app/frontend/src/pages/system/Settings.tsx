@@ -28,8 +28,6 @@ import {
   Hash,
   DollarSign,
   Package,
-  Wifi,
-  Usb,
   CheckCircle,
   Truck,
   UtensilsCrossed,
