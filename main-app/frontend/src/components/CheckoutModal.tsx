@@ -200,12 +200,12 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   }
 
   const finalTotal = Math.max(0, baseTotal - discountValue - couponDiscount - loyaltyDiscount);
-  const effectiveAmountPaid = amountPaid !== '' ? parseFloat(amountPaid) : finalTotal;
-  const changeDue = paymentMethod === 'split' || paymentMethod === 'credit'
+  const effectiveAmountPaid = parseFloat(amountPaid) || 0;
+  const changeDue = (paymentMethod === 'split' || paymentMethod === 'credit' || amountPaid === '')
     ? 0
     : Math.max(0, effectiveAmountPaid - finalTotal);
 
-  const handleCheckout = async () => {
+  const handleCheckout = async (withSync: boolean = false) => {
     // Validate credit sale
     if (paymentMethod === 'credit') {
       if (!selectedCustomer || selectedCustomer.customer_id === 1) {
@@ -256,8 +256,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
         }
         const fullSaleRes = await api.get(`/sales/${pendingSale.sale_id}`);
         const completedSale = fullSaleRes.data;
+        if (withSync) {
+          await api.post(`/sales/${pendingSale.sale_id}/sync-tax`).catch(() => {});
+          setSynced(true);
+        } else {
+          setSynced(false);
+        }
         setSuccessSale(completedSale);
-        setSynced(false);
         if (settings?.auto_print_receipt) setTimeout(() => doPrint(completedSale), 300);
       } else {
         // Build loyalty redeem points
@@ -308,8 +313,14 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
 
         const res = await api.post('/sales', payload);
         const newSale = { ...res.data, sale_id: res.data.sale_id || res.data.id, amount_paid: finalAmountPaid };
+        if (withSync) {
+          const newSaleId = newSale.sale_id;
+          if (newSaleId) await api.post(`/sales/${newSaleId}/sync-tax`).catch(() => {});
+          setSynced(true);
+        } else {
+          setSynced(false);
+        }
         setSuccessSale(newSale);
-        setSynced(false);
         if (settings?.auto_print_receipt) setTimeout(() => doPrint(newSale), 300);
 
         clearCart();
@@ -818,11 +829,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-sm">Rs.</span>
                  <input
                    type="number"
-                   value={amountPaid !== '' ? amountPaid : finalTotal > 0 ? finalTotal.toFixed(2) : ''}
+                   value={amountPaid}
                    onChange={(e) => setAmountPaid(e.target.value)}
-                   onFocus={(e) => { if (amountPaid === '') e.target.select(); }}
                    className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all font-bold text-lg"
-                   placeholder="0.00"
+                   placeholder="Enter amount..."
                  />
                </div>
                <div className="flex justify-between items-center text-sm">
@@ -832,24 +842,37 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
              </div>
           )}
 
-          <button
-            onClick={handleCheckout}
-            disabled={isProcessing || (paymentMethod !== 'credit' && paymentMethod !== 'split' && amountPaid ? parseFloat(amountPaid) < finalTotal : false)}
-            className={`w-full font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 ${
-              paymentMethod === 'credit'
-                ? 'bg-orange-600 hover:bg-orange-700 shadow-orange-600/20 text-white disabled:bg-gray-300 disabled:cursor-not-allowed'
-                : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20 text-white disabled:bg-gray-300 disabled:cursor-not-allowed'
-            }`}
-          >
-            {isProcessing ? (
-              <Loader2 className="animate-spin" size={24} />
-            ) : (
-              <>
-                <Check size={24} />
-                {paymentMethod === 'credit' ? 'Record Credit Sale' : 'Complete Payment'}
-              </>
-            )}
-          </button>
+          {paymentMethod === 'credit' ? (
+            <button
+              onClick={() => handleCheckout(false)}
+              disabled={isProcessing}
+              className="w-full font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 shadow-orange-600/20 text-white disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              {isProcessing ? <Loader2 className="animate-spin" size={22} /> : <Check size={22} />}
+              Record Credit Sale
+            </button>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {/* Complete Payment — no FBR sync */}
+              <button
+                onClick={() => handleCheckout(false)}
+                disabled={isProcessing || (paymentMethod !== 'split' && (amountPaid === '' || parseFloat(amountPaid) < finalTotal))}
+                className="font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20 text-white disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <Check size={20} />}
+                <span className="text-sm">Complete Payment</span>
+              </button>
+              {/* Pay + Sync FBR — pays and auto-syncs invoice */}
+              <button
+                onClick={() => handleCheckout(true)}
+                disabled={isProcessing || (paymentMethod !== 'split' && (amountPaid === '' || parseFloat(amountPaid) < finalTotal))}
+                className="font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 shadow-purple-600/20 text-white disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <CloudUpload size={20} />}
+                <span className="text-sm">Pay + Sync FBR</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

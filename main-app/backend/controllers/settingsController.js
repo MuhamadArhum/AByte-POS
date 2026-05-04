@@ -6,6 +6,11 @@ const net = require('net');
 // --- Get Store Settings ---
 exports.getSettings = async (req, res) => {
   try {
+    // Ensure payment-method tax columns exist (idempotent)
+    await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_on_cash DECIMAL(5,2) DEFAULT 16`).catch(() => {});
+    await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_on_card DECIMAL(5,2) DEFAULT 5`).catch(() => {});
+    await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_on_online DECIMAL(5,2) DEFAULT 5`).catch(() => {});
+
     const rows = await query('SELECT * FROM store_settings WHERE setting_id = 1');
     if (rows.length === 0) {
       return res.json({
