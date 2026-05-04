@@ -124,6 +124,20 @@ exports.updateSettings = async (req, res) => {
       console.warn('pos_mode/pos_tax_config column error:', pmErr.message);
     }
 
+    // Update payment-method-specific tax rates
+    try {
+      const { tax_on_cash, tax_on_card, tax_on_online } = req.body;
+      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_on_cash DECIMAL(5,2) DEFAULT 16`);
+      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_on_card DECIMAL(5,2) DEFAULT 5`);
+      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_on_online DECIMAL(5,2) DEFAULT 5`);
+      await query(
+        `UPDATE store_settings SET tax_on_cash=?, tax_on_card=?, tax_on_online=? WHERE setting_id=1`,
+        [parseFloat(tax_on_cash) || 0, parseFloat(tax_on_card) || 0, parseFloat(tax_on_online) || 0]
+      );
+    } catch (txErr) {
+      console.warn('tax_on_cash/card/online column error:', txErr.message);
+    }
+
     await logAction(req.user.user_id, req.user.name, 'SETTINGS_UPDATED', 'settings', 1, { store_name }, req.ip);
     res.json({ message: 'Settings updated successfully' });
   } catch (err) {

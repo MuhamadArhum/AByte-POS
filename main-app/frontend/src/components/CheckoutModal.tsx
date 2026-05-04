@@ -161,9 +161,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
 
   if (!isOpen) return null;
 
-  // GST derived from paymentMethod + settings (card/online fixed at 5%, cash uses settings.tax_rate)
-  const settingsTaxRate = parseFloat(settings?.tax_rate || 16);
-  const gstRate   = (paymentMethod === 'card' || paymentMethod === 'online') ? 5 : settingsTaxRate;
+  // GST derived from paymentMethod + settings (each method has its own configured rate)
+  const taxOnCash   = parseFloat(settings?.tax_on_cash   ?? 16);
+  const taxOnCard   = parseFloat(settings?.tax_on_card   ?? 5);
+  const taxOnOnline = parseFloat(settings?.tax_on_online ?? 5);
+  const gstRate = paymentMethod === 'card' ? taxOnCard
+                : paymentMethod === 'online' ? taxOnOnline
+                : taxOnCash;
   const gstAmount = subtotal * gstRate / 100;
 
   // For pending sales, recalculate from items + editable rates
@@ -700,7 +704,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
               >
                 <Banknote size={20} />
                 <span className="text-xs font-medium">Cash</span>
-                <span className="text-[10px] font-bold text-orange-500">GST {settingsTaxRate}%</span>
+                <span className="text-[10px] font-bold text-orange-500">GST {taxOnCash}%</span>
               </button>
               <button
                 onClick={() => setPaymentMethod('card')}
@@ -712,7 +716,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
               >
                 <CreditCard size={20} />
                 <span className="text-xs font-medium">Card</span>
-                <span className="text-[10px] font-bold text-blue-500">GST 5%</span>
+                <span className="text-[10px] font-bold text-blue-500">GST {taxOnCard}%</span>
               </button>
               <button
                 onClick={() => setPaymentMethod('online')}
@@ -724,7 +728,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
               >
                 <Smartphone size={20} />
                 <span className="text-xs font-medium">Online</span>
-                <span className="text-[10px] font-bold text-blue-500">GST 5%</span>
+                <span className="text-[10px] font-bold text-blue-500">GST {taxOnOnline}%</span>
               </button>
               <button
                 onClick={() => setPaymentMethod('credit')}
