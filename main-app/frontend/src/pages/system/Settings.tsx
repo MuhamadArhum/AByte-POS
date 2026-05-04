@@ -526,7 +526,6 @@ const Settings = () => {
     { id: 'printer',    name: 'Printer',           icon: Printer, adminOnly: true },
     { id: 'security',   name: 'Security',          icon: Shield },
     { id: 'system',     name: 'System',            icon: Server,  adminOnly: true },
-    { id: 'access',     name: 'Access Control',    icon: Lock,    adminOnly: true },
   ];
 
   return (
@@ -1648,113 +1647,6 @@ const Settings = () => {
             </div>
           )}
 
-          {/* ========== ACCESS CONTROL TAB ========== */}
-          {activeTab === 'access' && currentUser?.role_name === 'Admin' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-base font-semibold text-gray-800 mb-1">Access Control</h2>
-                <p className="text-sm text-gray-500 mb-6">
-                  Configure module access for each role. Admin always has full access.
-                </p>
-              </div>
-
-              {permLoading ? (
-                <div className="flex items-center justify-center py-16">
-                  <Loader2 className="animate-spin text-emerald-600 mr-3" size={24} />
-                  <span className="text-gray-600">Loading permissions...</span>
-                </div>
-              ) : (() => {
-                const nonAdminRoles = roles.filter(r => r.role_name !== 'Admin');
-                return (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border border-gray-200 rounded-xl overflow-hidden">
-                      <thead>
-                        <tr className="bg-gray-50">
-                          <th className="text-left px-6 py-4 text-sm font-semibold text-gray-700 w-1/2">Module</th>
-                          {nonAdminRoles.map(r => (
-                            <th key={r.role_id} className="text-center px-4 py-4 text-sm font-semibold text-gray-700 whitespace-nowrap">{r.role_name}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {MODULE_TREE.map(parent => {
-                          const childKeys = parent.children.map(c => c.key);
-                          return (
-                            <React.Fragment key={parent.key}>
-                              <tr className="bg-gray-50/70">
-                                <td className="px-6 py-3">
-                                  <span className="text-sm font-bold text-gray-800 uppercase tracking-wide">{parent.label}</span>
-                                </td>
-                                {nonAdminRoles.map(r => (
-                                  <td key={r.role_id} className="px-4 py-3 text-center">
-                                    <button
-                                      type="button"
-                                      onClick={() => togglePerm(r.role_name, parent.key, true, childKeys)}
-                                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${
-                                        (perms[r.role_name] || new Set()).has(parent.key) ? 'bg-emerald-500' : 'bg-gray-300'
-                                      }`}
-                                    >
-                                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                                        (perms[r.role_name] || new Set()).has(parent.key) ? 'translate-x-6' : 'translate-x-1'
-                                      }`} />
-                                    </button>
-                                  </td>
-                                ))}
-                              </tr>
-                              {parent.children.map(child => (
-                                <tr key={child.key} className="hover:bg-gray-50/50">
-                                  <td className="pl-12 pr-6 py-2.5">
-                                    <span className="text-sm text-gray-600">{child.label}</span>
-                                  </td>
-                                  {nonAdminRoles.map(r => {
-                                    const rolePerms = perms[r.role_name] || new Set();
-                                    const parentEnabled = rolePerms.has(parent.key);
-                                    const childEnabled = rolePerms.has(child.key);
-                                    return (
-                                      <td key={r.role_id} className="px-4 py-2.5 text-center">
-                                        <button
-                                          type="button"
-                                          onClick={() => parentEnabled ? togglePerm(r.role_name, child.key, false, childKeys) : undefined}
-                                          disabled={!parentEnabled}
-                                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 focus:outline-none ${
-                                            !parentEnabled ? 'bg-gray-200 opacity-50 cursor-not-allowed'
-                                              : childEnabled ? 'bg-emerald-500' : 'bg-gray-300'
-                                          }`}
-                                        >
-                                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                                            childEnabled && parentEnabled ? 'translate-x-4' : 'translate-x-1'
-                                          }`} />
-                                        </button>
-                                      </td>
-                                    );
-                                  })}
-                                </tr>
-                              ))}
-                            </React.Fragment>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-
-                    <div className="flex flex-wrap items-center justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
-                      {nonAdminRoles.map(r => (
-                        <button
-                          key={r.role_id}
-                          type="button"
-                          onClick={() => savePermissions(r.role_name)}
-                          disabled={!!permSaving[r.role_name]}
-                          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 font-semibold shadow transition-all"
-                        >
-                          {permSaving[r.role_name] ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-                          Save {r.role_name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          )}
 
         </div>
       </div>
