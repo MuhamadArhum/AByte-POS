@@ -158,10 +158,11 @@ const Settings = () => {
     printer_type: 'invoice' | 'kot';
     branch_id: number | null;
     branch_name: string | null;
+    is_master: number;
     is_active: number;
     categories: { category_id: number; category_name: string }[];
   }
-  const EMPTY_PRINTER_FORM = { name: '', type: 'network' as 'network' | 'usb', ip_address: '', port: 9100, printer_share_name: '', paper_width: 80, printer_type: 'invoice' as 'invoice' | 'kot', branch_id: '' as string, is_active: true, category_ids: [] as number[] };
+  const EMPTY_PRINTER_FORM = { name: '', type: 'network' as 'network' | 'usb', ip_address: '', port: 9100, printer_share_name: '', paper_width: 80, printer_type: 'invoice' as 'invoice' | 'kot', branch_id: '' as string, is_master: false, is_active: true, category_ids: [] as number[] };
   const [printers, setPrinters] = useState<PrinterEntry[]>([]);
   const [showPrinterModal, setShowPrinterModal] = useState(false);
   const [editingPrinter, setEditingPrinter] = useState<PrinterEntry | null>(null);
@@ -283,6 +284,7 @@ const Settings = () => {
         paper_width: printer.paper_width || 80,
         printer_type: printer.printer_type || 'invoice',
         branch_id: printer.branch_id ? String(printer.branch_id) : '',
+        is_master: printer.is_master === 1,
         is_active: printer.is_active === 1,
         category_ids: (printer.categories || []).map(c => c.category_id),
       });
@@ -1262,6 +1264,9 @@ const Settings = () => {
                             <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${isKOT ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}`}>
                               {isKOT ? 'KOT' : 'Invoice'}
                             </span>
+                            {isKOT && printer.is_master === 1 && (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-700">XPR / Master</span>
+                            )}
                             <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-100 text-sky-700">
                               {printer.type === 'network' ? 'Network' : 'USB'}
                             </span>
@@ -1274,7 +1279,10 @@ const Settings = () => {
                             {printer.type === 'network' ? `${printer.ip_address}:${printer.port}` : printer.printer_share_name}
                             {' · '}{printer.paper_width}mm
                           </p>
-                          {isKOT && printer.categories && printer.categories.length > 0 && (
+                          {isKOT && printer.is_master === 1 && (
+                            <p className="text-xs text-violet-700 mt-1 font-medium">Receives complete order (all items)</p>
+                          )}
+                          {isKOT && printer.is_master !== 1 && printer.categories && printer.categories.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1.5">
                               {printer.categories.map(c => (
                                 <span key={c.category_id} className="px-1.5 py-0.5 bg-orange-50 border border-orange-200 text-orange-700 text-xs rounded">
@@ -1283,7 +1291,7 @@ const Settings = () => {
                               ))}
                             </div>
                           )}
-                          {isKOT && (!printer.categories || printer.categories.length === 0) && (
+                          {isKOT && printer.is_master !== 1 && (!printer.categories || printer.categories.length === 0) && (
                             <p className="text-xs text-amber-600 mt-1">Catch-all — receives items not matched by other KOT printers</p>
                           )}
                           {testResult && (
@@ -2104,8 +2112,23 @@ const Settings = () => {
                 </div>
               )}
 
-              {/* KOT Category Mapping */}
+              {/* KOT Options */}
               {printerForm.printer_type === 'kot' && (
+                <div className="p-3 rounded-xl border-2 border-violet-200 bg-violet-50 flex items-start gap-3">
+                  <input type="checkbox" id="isMaster" checked={printerForm.is_master}
+                    onChange={e => setPrinterForm({ ...printerForm, is_master: e.target.checked })}
+                    className="w-4 h-4 mt-0.5 text-violet-600 rounded" />
+                  <div>
+                    <label htmlFor="isMaster" className="text-sm font-semibold text-gray-800 cursor-pointer">Master / XPR Printer</label>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Receives <strong>complete order</strong> (all items). Use this for the expeditor printer that shows the full order to the kitchen manager. Section printers still get their own category-filtered tickets.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* KOT Category Mapping */}
+              {printerForm.printer_type === 'kot' && !printerForm.is_master && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Category Routing</label>
                   <p className="text-xs text-gray-500 mb-2">

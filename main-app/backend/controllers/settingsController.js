@@ -254,6 +254,7 @@ async function ensurePrinterSchema() {
   try {
     await query(`ALTER TABLE printers ADD COLUMN IF NOT EXISTS printer_type ENUM('invoice','kot') NOT NULL DEFAULT 'invoice'`);
     await query(`ALTER TABLE printers ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+    await query(`ALTER TABLE printers ADD COLUMN IF NOT EXISTS is_master TINYINT(1) DEFAULT 0`);
     await query(`
       CREATE TABLE IF NOT EXISTS printer_category_mappings (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -302,14 +303,15 @@ exports.getPrinters = async (req, res) => {
 exports.createPrinter = async (req, res) => {
   try {
     await ensurePrinterSchema();
-    const { name, type, ip_address, port, printer_share_name, paper_width, printer_type, branch_id, category_ids } = req.body;
+    const { name, type, ip_address, port, printer_share_name, paper_width, printer_type, branch_id, category_ids, is_master } = req.body;
     if (!name || !type) return res.status(400).json({ message: 'Name and type are required' });
     if (!['network', 'usb'].includes(type)) return res.status(400).json({ message: 'type must be network or usb' });
     const pType = ['invoice', 'kot'].includes(printer_type) ? printer_type : 'invoice';
+    const masterFlag = pType === 'kot' && is_master ? 1 : 0;
 
     const result = await query(
-      'INSERT INTO printers (name, type, ip_address, port, printer_share_name, paper_width, printer_type, branch_id, purpose, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)',
-      [name, type, ip_address || null, port || 9100, printer_share_name || null, paper_width || 80, pType, branch_id || null, pType]
+      'INSERT INTO printers (name, type, ip_address, port, printer_share_name, paper_width, printer_type, branch_id, is_master, purpose, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)',
+      [name, type, ip_address || null, port || 9100, printer_share_name || null, paper_width || 80, pType, branch_id || null, masterFlag, pType]
     );
     const printerId = result.insertId;
 
@@ -333,12 +335,13 @@ exports.updatePrinter = async (req, res) => {
   try {
     await ensurePrinterSchema();
     const { id } = req.params;
-    const { name, type, ip_address, port, printer_share_name, paper_width, printer_type, branch_id, is_active, category_ids } = req.body;
+    const { name, type, ip_address, port, printer_share_name, paper_width, printer_type, branch_id, is_active, category_ids, is_master } = req.body;
     const pType = ['invoice', 'kot'].includes(printer_type) ? printer_type : 'invoice';
+    const masterFlag = pType === 'kot' && is_master ? 1 : 0;
 
     await query(
-      'UPDATE printers SET name=?, type=?, ip_address=?, port=?, printer_share_name=?, paper_width=?, printer_type=?, branch_id=?, purpose=?, is_active=? WHERE printer_id=?',
-      [name, type, ip_address || null, port || 9100, printer_share_name || null, paper_width || 80, pType, branch_id || null, pType, is_active ? 1 : 0, id]
+      'UPDATE printers SET name=?, type=?, ip_address=?, port=?, printer_share_name=?, paper_width=?, printer_type=?, branch_id=?, is_master=?, purpose=?, is_active=? WHERE printer_id=?',
+      [name, type, ip_address || null, port || 9100, printer_share_name || null, paper_width || 80, pType, branch_id || null, masterFlag, pType, is_active ? 1 : 0, id]
     );
 
     // Replace category mappings

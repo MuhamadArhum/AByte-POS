@@ -298,7 +298,7 @@ app.get('/printers', (req, res) => {
 
 // Add printer
 app.post('/printers', (req, res) => {
-  const { name, type, connection, ip, port, com, baud, printer_name, paper_width, categories, cut_paper, open_drawer } = req.body;
+  const { name, type, connection, ip, port, com, baud, printer_name, paper_width, categories, cut_paper, open_drawer, is_master } = req.body;
   if (!name || !type || !connection) return res.status(400).json({ error: 'name, type, and connection are required' });
   if (!['invoice', 'kot'].includes(type)) return res.status(400).json({ error: 'type must be invoice or kot' });
   if (!['network', 'usb', 'windows'].includes(connection)) return res.status(400).json({ error: 'connection must be network | usb | windows' });
@@ -315,6 +315,7 @@ app.post('/printers', (req, res) => {
     printer_name: printer_name || null,
     paper_width:  paper_width || 80,
     categories:   type === 'kot' ? (categories || []) : [],
+    is_master:    type === 'kot' ? (is_master || false) : false,
     cut_paper:    cut_paper !== false,
     open_drawer:  open_drawer || false,
   };
@@ -332,7 +333,7 @@ app.put('/printers/:id', (req, res) => {
   const idx = printers.findIndex(p => p.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Printer not found' });
 
-  const { name, type, connection, ip, port, com, baud, printer_name, paper_width, categories, cut_paper, open_drawer } = req.body;
+  const { name, type, connection, ip, port, com, baud, printer_name, paper_width, categories, cut_paper, open_drawer, is_master } = req.body;
   printers[idx] = {
     ...printers[idx],
     name:         name         ?? printers[idx].name,
@@ -345,6 +346,7 @@ app.put('/printers/:id', (req, res) => {
     printer_name: printer_name !== undefined ? printer_name : printers[idx].printer_name,
     paper_width:  paper_width  ?? printers[idx].paper_width,
     categories:   printers[idx].type === 'kot' ? (categories ?? printers[idx].categories) : [],
+    is_master:    printers[idx].type === 'kot' ? (is_master  ?? printers[idx].is_master ?? false) : false,
     cut_paper:    cut_paper    !== undefined ? cut_paper : printers[idx].cut_paper,
     open_drawer:  open_drawer  !== undefined ? open_drawer : printers[idx].open_drawer,
   };
@@ -376,7 +378,7 @@ app.post('/printers/:id/test', async (req, res) => {
         tokenNo:      'TEST',
         date:         new Date().toLocaleString(),
         cashierName:  'System',
-        categoryName: 'All Categories',
+        categoryName: printer.is_master ? 'XPR / Complete Order' : 'Section Test',
         items:        [{ name: 'Test Item', quantity: 2 }, { name: 'Another Item', quantity: 1 }],
       }, printer);
     } else {
@@ -425,48 +427,71 @@ app.post('/print/invoice', async (req, res) => {
   }
 });
 
-// Print KOT — routes items to printers by category
+// Print KOT — master (XPR) gets all items, section printers get their categories
 app.post('/print/kot', async (req, res) => {
   const { kotData } = req.body;
   if (!kotData) return res.status(400).json({ error: 'kotData is required' });
 
-  const kotPrinters = getPrinters().filter(p => p.type === 'kot');
-  if (kotPrinters.length === 0) return res.status(400).json({ error: 'No KOT printer configured. Add one in Printer settings.' });
+  const allKOT = getPrinters().filter(p => p.type === 'kot');
+  if (allKOT.length === 0) return res.status(400).json({ error: 'No KOT printer configured. Add one in Printer settings.' });
 
-  // Group items by which printer should handle them
-  // Items with no category or unmatched category go to any printer with empty categories array (catch-all)
-  const printerJobs = new Map(); // printer.id → { printer, items }
+  const masterPrinters  = allKOT.filter(p => p.is_master);
+  const sectionPrinters = allKOT.filter(p => !p.is_master);
+  const items           = kotData.items || [];
+  const results         = [];
 
-  for (const item of (kotData.items || [])) {
-    const catId = item.category_id ? Number(item.category_id) : null;
-
-    // Find a KOT printer that handles this category
-    let matched = null;
-    for (const p of kotPrinters) {
-      if (!p.categories || p.categories.length === 0) continue; // catch-all — check later
-      if (catId && p.categories.map(Number).includes(catId)) { matched = p; break; }
+  // ── 1. Master / XPR printers — receive COMPLETE order ────────────
+  for (const printer of masterPrinters) {
+    try {
+      const buf = buildKOTESCPOS({ ...kotData, items, categoryName: 'Complete Order' }, printer);
+      await sendToPrinter(printer, buf);
+      results.push({ printer: printer.name, role: 'master', items: items.length, success: true });
+      console.log(`[print/kot] MASTER OK — ${printer.name}: all ${items.length} items`);
+    } catch (e) {
+      results.push({ printer: printer.name, role: 'master', items: items.length, success: false, error: e.message });
+      console.error(`[print/kot] MASTER FAIL — ${printer.name}:`, e.message);
     }
-    // Fallback: first catch-all printer (empty categories = handles everything)
-    if (!matched) {
-      matched = kotPrinters.find(p => !p.categories || p.categories.length === 0) || kotPrinters[0];
-    }
-
-    if (!printerJobs.has(matched.id)) {
-      printerJobs.set(matched.id, { printer: matched, items: [] });
-    }
-    printerJobs.get(matched.id).items.push(item);
   }
 
-  const results = [];
-  for (const { printer, items } of printerJobs.values()) {
-    try {
-      const buf = buildKOTESCPOS({ ...kotData, items }, printer);
-      await sendToPrinter(printer, buf);
-      results.push({ printer: printer.name, items: items.length, success: true });
-      console.log(`[print/kot] OK — ${printer.name}: ${items.length} items`);
-    } catch (e) {
-      results.push({ printer: printer.name, items: items.length, success: false, error: e.message });
-      console.error(`[print/kot] FAIL — ${printer.name}:`, e.message);
+  // ── 2. Section printers — routed by category ──────────────────────
+  if (sectionPrinters.length > 0) {
+    const printerJobs = new Map(); // printer.id → { printer, items }
+
+    for (const item of items) {
+      const catId = item.category_id ? Number(item.category_id) : null;
+
+      // Find section printer that handles this category
+      let matched = null;
+      for (const p of sectionPrinters) {
+        if (!p.categories || p.categories.length === 0) continue; // catch-all — prefer specific match first
+        if (catId && p.categories.map(Number).includes(catId)) { matched = p; break; }
+      }
+      // Fallback: catch-all section printer (empty categories)
+      if (!matched) {
+        matched = sectionPrinters.find(p => !p.categories || p.categories.length === 0);
+      }
+      // Last resort: first section printer
+      if (!matched) matched = sectionPrinters[0];
+
+      if (!printerJobs.has(matched.id)) {
+        printerJobs.set(matched.id, { printer: matched, items: [] });
+      }
+      printerJobs.get(matched.id).items.push(item);
+    }
+
+    for (const { printer, items: sectionItems } of printerJobs.values()) {
+      // Derive section label from matched categories
+      const catNames = [...new Set(sectionItems.map(i => i.category_name).filter(Boolean))];
+      const label    = catNames.length > 0 ? catNames.join(' / ') : printer.name;
+      try {
+        const buf = buildKOTESCPOS({ ...kotData, items: sectionItems, categoryName: label }, printer);
+        await sendToPrinter(printer, buf);
+        results.push({ printer: printer.name, role: 'section', items: sectionItems.length, success: true });
+        console.log(`[print/kot] SECTION OK — ${printer.name} [${label}]: ${sectionItems.length} items`);
+      } catch (e) {
+        results.push({ printer: printer.name, role: 'section', items: sectionItems.length, success: false, error: e.message });
+        console.error(`[print/kot] SECTION FAIL — ${printer.name}:`, e.message);
+      }
     }
   }
 
