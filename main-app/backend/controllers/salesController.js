@@ -528,8 +528,12 @@ exports.updateSaleItems = async (req, res) => {
 exports.deleteSale = async (req, res) => {
   let conn;
   try {
+    if (req.user.role_name !== 'Admin') {
+      return res.status(403).json({ message: 'Only Admin can delete orders' });
+    }
+
     const { id } = req.params;
-    
+
     conn = await getConnection();
     await conn.beginTransaction();
 

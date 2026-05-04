@@ -202,6 +202,25 @@ exports.remove = async (req, res) => {
   }
 };
 
+// --- Assign / Remove User from Branch ---
+exports.assignBranch = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { branch_id } = req.body; // null = unassign
+
+    const [user] = await query('SELECT user_id, role_name FROM users WHERE user_id = ?', [id]);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.role_name === 'Admin') return res.status(400).json({ message: 'Admin cannot be assigned to a branch' });
+
+    await query('UPDATE users SET branch_id = ? WHERE user_id = ?', [branch_id || null, id]);
+    await logAction(req.user.user_id, req.user.name, 'USER_BRANCH_CHANGED', 'users', id, { branch_id }, req.ip);
+    res.json({ message: 'Branch assignment updated' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // --- Get All Roles ---
 exports.getRoles = async (req, res) => {
   try {

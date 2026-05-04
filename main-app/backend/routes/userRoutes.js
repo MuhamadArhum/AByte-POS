@@ -23,12 +23,13 @@ const { authenticate, authorize } = require('../middleware/auth');
 router.use(authenticate);
 router.use(authorize('Admin'));
 
-router.get('/roles', userController.getRoles);          // Get list of roles
-router.post('/roles', userController.createRole);       // Create new role
-router.delete('/roles/:id', userController.deleteRole); // Delete a custom role
-router.get('/', userController.getAll);                 // Get all users
-router.post('/', userController.create);                // Create new user
-router.put('/:id', userController.update);              // Update user by ID
-router.delete('/:id', userController.remove);           // Delete user by ID
+router.get('/roles', userController.getRoles);              // Get list of roles
+router.post('/roles', userController.createRole);           // Create new role
+router.delete('/roles/:id', userController.deleteRole);     // Delete a custom role
+router.get('/', userController.getAll);                     // Get all users
+router.post('/', userController.create);                    // Create new user
+router.put('/:id', userController.update);                  // Update user by ID
+router.delete('/:id', userController.remove);               // Delete user by ID
+router.patch('/:id/branch', userController.assignBranch);   // Assign user to branch
 
 module.exports = router;

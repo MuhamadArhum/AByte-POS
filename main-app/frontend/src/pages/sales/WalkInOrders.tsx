@@ -456,10 +456,12 @@ const WalkInOrders = () => {
                             className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-all border border-gray-200 font-medium text-sm">
                             <Printer size={14} /> Print
                           </button>
-                          <button onClick={() => handleDeleteActive(sale)}
-                            className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-all border border-red-200">
-                            <X size={14} />
-                          </button>
+                          {isAdmin && (
+                            <button onClick={() => handleDeleteActive(sale)}
+                              className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-all border border-red-200">
+                              <X size={14} />
+                            </button>
+                          )}
                         </div>
                         {isAdmin && (sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
                           <button onClick={() => handleReprintKOT(sale)}
@@ -546,10 +548,12 @@ const WalkInOrders = () => {
                                   className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Checkout">
                                   <CreditCard size={15} />
                                 </button>
-                                <button onClick={() => handleDeleteActive(sale)}
-                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete">
-                                  <X size={15} />
-                                </button>
+                                {isAdmin && (
+                                  <button onClick={() => handleDeleteActive(sale)}
+                                    className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete">
+                                    <X size={15} />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>

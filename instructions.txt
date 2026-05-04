@@ -6,14 +6,3 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
-
-Ok Kuch Behtr hai Lkin Ab Kuch Changes krni hai 
-Sirf Admin Order Delete kr skta hai 
-1: Baqi Kisi Bhi user ko Ye Right ni dena k wo order cancel kr sky 
-2: Jab bhi Order New Punhc hoga to uski KOT Print LAzmi Hogi or agr order update hua to uski jo chiz update hogi wo uski KOT dobara print Hogi Lkin Just Wo Item Print Hogi jo Add ya Minus HOgi (Hum Do Trha K OCncept Use Krain Gy Agr koi Chiz add hui to us main + ka Nishan aye ga ya Sath Runnig Order main Addition Likha HOga or agr koi Chiz Minus Hogi To us main Cancel likha aye ga with -
-3: or han Access control main Kuch Permission Control Bnana hai k Kon Order Create kr skta or kon delete kr skta kon update kr skta kon cancel kr skta har user k rights usko diye jain gy 
-4: KOnsa user shift open kr skta or konsa close kr skta ye sary permission control main add kro chezain 
-5: Or ADmin jab branch change kry to toggle sy to sath load ka button lga do ya phir jsy hi barnch change kry ga system us branch ka data load kr dy ga 
-6: Sari chezain har moduel ka data branch wise kaam kry ga (sale,Inventory,HR,Accounts)
-7: Har branch ki products different ho skti hain iss liye or same bhi ho skti hain staff bhi different ho skta to data ko proper isolate rakhna hai 
-8: App ko Proper Ab Branch wise py bnao Jo batain Btai hain Unko Follow kro or Mujy Final Btao 
