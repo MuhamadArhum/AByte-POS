@@ -137,7 +137,6 @@ const AccessControl = () => {
   const [search, setSearch]             = useState('');
   const [copyFrom, setCopyFrom]         = useState('');
 
-  // Current role's permission set (live, editable)
   const permissions: Set<string> = allPerms[selectedRole] || new Set();
 
   const setPermissions = useCallback((updater: (prev: Set<string>) => Set<string>) => {
@@ -148,7 +147,6 @@ const AccessControl = () => {
     setSaved(false);
   }, [selectedRole]);
 
-  // ── Load roles + all permissions in parallel ──────────────────────────────
   useEffect(() => {
     setLoading(true);
     Promise.all([api.get('/users/roles'), api.get('/permissions')])
@@ -171,16 +169,14 @@ const AccessControl = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  // ── Unsaved detection ─────────────────────────────────────────────────────
   const isDirty = useCallback((role: string) => {
-    const curr = allPerms[role]  || new Set<string>();
+    const curr = allPerms[role]   || new Set<string>();
     const orig = savedPerms[role] || new Set<string>();
     if (curr.size !== orig.size) return true;
     for (const k of curr) if (!orig.has(k)) return true;
     return false;
   }, [allPerms, savedPerms]);
 
-  // ── Toggle helpers ────────────────────────────────────────────────────────
   const toggle = (key: string) => {
     setPermissions(prev => {
       const next = new Set(prev);
@@ -209,7 +205,6 @@ const AccessControl = () => {
     setCopyFrom('');
   };
 
-  // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -224,7 +219,6 @@ const AccessControl = () => {
     }
   };
 
-  // ── Filtered tree (search) ────────────────────────────────────────────────
   const filteredTree = useMemo(() => {
     if (!search.trim()) return MODULE_TREE;
     const q = search.toLowerCase();
@@ -233,18 +227,16 @@ const AccessControl = () => {
       .filter(s => s.keys.length > 0);
   }, [search]);
 
-  // ── Permission stats for a role ───────────────────────────────────────────
   const roleStats = useCallback((role: string) => {
     const cnt = (allPerms[role] || new Set()).size;
     return { count: cnt, pct: Math.round((cnt / TOTAL) * 100) };
   }, [allPerms]);
 
-  // ── Loading screen ────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="p-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Loader2 size={40} className="animate-spin text-violet-500 mx-auto mb-3" />
+          <Loader2 size={40} className="animate-spin text-emerald-600 mx-auto mb-4" />
           <p className="text-gray-600 font-medium">Loading access control...</p>
         </div>
       </div>
@@ -256,254 +248,251 @@ const AccessControl = () => {
   const dirty        = isDirty(selectedRole);
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="p-8 max-w-7xl mx-auto">
 
-      {/* ── Sticky Header ─────────────────────────────────────────────────── */}
-      <div className="bg-white border-b-2 border-gray-200 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-violet-500 to-violet-700 p-2.5 rounded-xl shadow-lg">
-              <Shield size={24} className="text-white" />
+      {/* Page header */}
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-gray-900 mb-2 flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+              <Shield className="text-white" size={24} />
             </div>
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight text-gray-900">Access Control</h1>
-              <p className="text-sm text-gray-500">Configure module permissions per role — Admin always has full access</p>
-            </div>
-          </div>
+            Access Control
+          </h1>
+          <p className="text-gray-600">Configure module permissions per role — Admin always has full access</p>
+        </div>
 
-          <div className="flex items-center gap-3">
-            {selectedRole && (
-              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-violet-50 border border-violet-200 rounded-xl">
-                <span className="text-xs font-semibold text-violet-600">{selectedRole}</span>
-                <span className="text-xs text-gray-400">{currentCount}/{TOTAL}</span>
-                <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${currentPct}%` }} />
-                </div>
+        <div className="flex items-center gap-3">
+          {selectedRole && (
+            <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm">
+              <span className="text-sm font-semibold text-gray-700">{selectedRole}</span>
+              <span className="text-xs text-gray-400">{currentCount}/{TOTAL}</span>
+              <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${currentPct}%` }} />
               </div>
-            )}
-            {dirty && (
-              <span className="flex items-center gap-1.5 text-xs text-amber-600 font-semibold bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl">
-                <AlertCircle size={13} /> Unsaved changes
-              </span>
-            )}
-            <button
-              onClick={handleSave}
-              disabled={saving || !selectedRole || !dirty}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${
-                saved
-                  ? 'bg-green-100 text-green-700 border border-green-300'
-                  : 'bg-violet-600 hover:bg-violet-700 text-white'
-              }`}
-            >
-              {saving ? <Loader2 size={15} className="animate-spin" /> : saved ? <Check size={15} /> : <Save size={15} />}
-              {saved ? 'Saved!' : 'Save Permissions'}
-            </button>
-          </div>
+              <span className="text-xs font-semibold text-emerald-600">{currentPct}%</span>
+            </div>
+          )}
+          {dirty && (
+            <span className="flex items-center gap-1.5 text-xs text-amber-600 font-semibold bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl">
+              <AlertCircle size={13} /> Unsaved changes
+            </span>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={saving || !selectedRole || !dirty}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${
+              saved
+                ? 'bg-emerald-50 text-emerald-700 border-2 border-emerald-300'
+                : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow'
+            }`}
+          >
+            {saving ? <Loader2 size={15} className="animate-spin" /> : saved ? <Check size={15} /> : <Save size={15} />}
+            {saved ? 'Saved!' : 'Save Permissions'}
+          </button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6 flex gap-6">
+      {/* Main card */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="flex gap-0 min-h-[600px]">
 
-        {/* ── Left: Role sidebar ──────────────────────────────────────────── */}
-        <div className="w-60 shrink-0 space-y-2">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider px-1 mb-3">
-            <Users size={13} /> Roles
-          </div>
+          {/* ── Left: Role sidebar ─────────────────────────────────────────── */}
+          <div className="w-56 shrink-0 border-r border-gray-100 p-4 space-y-2 bg-gray-50/50">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider px-1 mb-3">
+              <Users size={12} /> Roles
+            </div>
 
-          {roles.length === 0 ? (
-            <p className="text-xs text-gray-400 px-1">No non-Admin roles found.</p>
-          ) : (
-            roles.map(role => {
+            {roles.length === 0 ? (
+              <p className="text-xs text-gray-400 px-1">No non-Admin roles found.</p>
+            ) : roles.map(role => {
               const { count, pct } = roleStats(role);
-              const active  = selectedRole === role;
-              const hasDirt = isDirty(role);
+              const active   = selectedRole === role;
+              const hasDirt  = isDirty(role);
               return (
                 <button
                   key={role}
                   onClick={() => setSelectedRole(role)}
-                  className={`w-full text-left px-4 py-3 rounded-xl transition-all group ${
+                  className={`w-full text-left px-3 py-3 rounded-xl transition-all ${
                     active
-                      ? 'bg-violet-600 text-white shadow-md shadow-violet-200'
-                      : 'bg-white text-gray-700 border border-gray-200 hover:border-violet-300 hover:bg-violet-50'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+                      : 'bg-white text-gray-700 border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-1.5">
                     <span className="font-semibold text-sm">{role}</span>
                     {hasDirt && (
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${active ? 'bg-amber-300' : 'bg-amber-500'}`} title="Unsaved changes" />
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-amber-300' : 'bg-amber-500'}`} />
                     )}
                   </div>
-                  <div className={`w-full h-1.5 rounded-full overflow-hidden mb-1 ${active ? 'bg-violet-400' : 'bg-gray-100'}`}>
+                  <div className={`w-full h-1 rounded-full overflow-hidden mb-1 ${active ? 'bg-white/30' : 'bg-gray-100'}`}>
                     <div
-                      className={`h-full rounded-full transition-all ${active ? 'bg-white' : 'bg-violet-500'}`}
+                      className={`h-full rounded-full transition-all ${active ? 'bg-white' : 'bg-emerald-500'}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <span className={`text-xs ${active ? 'text-violet-200' : 'text-gray-400'}`}>
-                    {count} / {TOTAL} permissions ({pct}%)
+                  <span className={`text-xs ${active ? 'text-emerald-100' : 'text-gray-400'}`}>
+                    {count}/{TOTAL} · {pct}%
                   </span>
                 </button>
               );
-            })
-          )}
-        </div>
-
-        {/* ── Right: Permission editor ─────────────────────────────────────── */}
-        <div className="flex-1 min-w-0">
-
-          {/* Toolbar */}
-          <div className="flex flex-wrap items-center gap-3 mb-4">
-            {/* Search */}
-            <div className="relative flex-1 min-w-48">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search permissions..."
-                className="w-full pl-8 pr-8 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  <X size={13} />
-                </button>
-              )}
-            </div>
-
-            {/* Copy from role */}
-            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2">
-              <Copy size={14} className="text-gray-400 shrink-0" />
-              <select
-                value={copyFrom}
-                onChange={e => { setCopyFrom(e.target.value); handleCopyFrom(e.target.value); }}
-                className="text-sm text-gray-600 bg-transparent outline-none cursor-pointer"
-              >
-                <option value="">Copy from role...</option>
-                {roles.filter(r => r !== selectedRole).map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Select All / Clear All */}
-            <button
-              onClick={selectAll}
-              className="text-xs px-3 py-2 bg-violet-50 text-violet-700 rounded-xl border border-violet-200 hover:bg-violet-100 font-semibold transition-all"
-            >
-              Select All
-            </button>
-            <button
-              onClick={clearAll}
-              className="text-xs px-3 py-2 bg-gray-100 text-gray-600 rounded-xl border border-gray-200 hover:bg-gray-200 font-semibold transition-all"
-            >
-              Clear All
-            </button>
+            })}
           </div>
 
-          {/* Sections */}
-          {filteredTree.length === 0 ? (
-            <div className="text-center py-16 text-gray-400">
-              <Search size={32} className="mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No modules match &ldquo;{search}&rdquo;</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredTree.map(({ section, Icon, color, lightColor, textColor, keys }) => {
-                const keyList  = keys.map(k => k.key);
-                const enabled  = keyList.filter(k => permissions.has(k)).length;
-                const allOn    = enabled === keyList.length;
-                const someOn   = enabled > 0 && !allOn;
-                const isCollapsed = collapsed[section];
+          {/* ── Right: Permission editor ─────────────────────────────────── */}
+          <div className="flex-1 min-w-0 p-6">
 
-                return (
-                  <div key={section} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center gap-3 mb-5">
+              <div className="relative flex-1 min-w-44">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search permissions..."
+                  className="w-full pl-8 pr-8 py-2 border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                />
+                {search && (
+                  <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
 
-                    {/* Section header */}
-                    <div className={`flex items-center px-4 py-3 border-b border-gray-100 ${allOn ? lightColor : 'bg-gray-50'}`}>
-                      <button
-                        onClick={() => setCollapsed(p => ({ ...p, [section]: !p[section] }))}
-                        className="flex items-center gap-2.5 flex-1 text-left min-w-0"
-                      >
-                        {isCollapsed
-                          ? <ChevronRight size={15} className="text-gray-400 shrink-0" />
-                          : <ChevronDown size={15} className="text-gray-400 shrink-0" />
-                        }
-                        <div className={`p-1.5 rounded-lg ${color} shrink-0`}>
-                          <Icon size={13} className="text-white" />
-                        </div>
-                        <span className="font-bold text-gray-800 text-sm">{section}</span>
-                        <span className={`ml-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
-                          allOn  ? `${lightColor} ${textColor} border` :
-                          someOn ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                          'bg-gray-100 text-gray-400'
-                        }`}>
-                          {enabled}/{keyList.length}
-                        </span>
-                      </button>
+              <div className="flex items-center gap-2 border-2 border-gray-200 rounded-lg px-3 py-2 bg-white">
+                <Copy size={13} className="text-gray-400 shrink-0" />
+                <select
+                  value={copyFrom}
+                  onChange={e => { setCopyFrom(e.target.value); handleCopyFrom(e.target.value); }}
+                  className="text-sm text-gray-600 bg-transparent outline-none cursor-pointer"
+                >
+                  <option value="">Copy from role...</option>
+                  {roles.filter(r => r !== selectedRole).map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
 
-                      <button
-                        onClick={() => toggleSection(keyList)}
-                        className={`ml-3 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 ${
-                          allOn
-                            ? `${lightColor} ${textColor} border hover:opacity-80`
-                            : someOn
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
-                              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                        }`}
-                      >
-                        {allOn ? 'Deselect All' : 'Select All'}
-                      </button>
-                    </div>
-
-                    {/* Permission checkboxes */}
-                    {!isCollapsed && (
-                      <div className="px-4 py-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                        {keys.map(({ key, label }) => {
-                          const on = permissions.has(key);
-                          return (
-                            <label
-                              key={key}
-                              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer select-none transition-all text-sm border ${
-                                on
-                                  ? `${lightColor} ${textColor} font-semibold`
-                                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={on}
-                                onChange={() => toggle(key)}
-                                className="w-4 h-4 accent-violet-600 rounded shrink-0"
-                              />
-                              <span className="leading-tight text-xs">{label}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Bottom save bar */}
-          {dirty && (
-            <div className="fixed bottom-6 right-6 z-30 flex items-center gap-3 bg-white border-2 border-violet-200 rounded-2xl px-5 py-3 shadow-xl shadow-violet-100">
-              <AlertCircle size={16} className="text-amber-500" />
-              <span className="text-sm font-semibold text-gray-700">Unsaved changes for <span className="text-violet-700">{selectedRole}</span></span>
               <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold text-sm transition-all"
+                onClick={selectAll}
+                className="text-xs px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg border-2 border-emerald-200 hover:bg-emerald-100 font-semibold transition-all"
               >
-                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                Save
+                Select All
+              </button>
+              <button
+                onClick={clearAll}
+                className="text-xs px-3 py-2 bg-gray-100 text-gray-600 rounded-lg border-2 border-gray-200 hover:bg-gray-200 font-semibold transition-all"
+              >
+                Clear All
               </button>
             </div>
-          )}
+
+            {/* Sections */}
+            {filteredTree.length === 0 ? (
+              <div className="text-center py-16 text-gray-400">
+                <Search size={32} className="mx-auto mb-2 opacity-40" />
+                <p className="text-sm">No modules match &ldquo;{search}&rdquo;</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredTree.map(({ section, Icon, color, lightColor, textColor, keys }) => {
+                  const keyList    = keys.map(k => k.key);
+                  const enabled    = keyList.filter(k => permissions.has(k)).length;
+                  const allOn      = enabled === keyList.length;
+                  const someOn     = enabled > 0 && !allOn;
+                  const isCollapsed = collapsed[section];
+
+                  return (
+                    <div key={section} className="border-2 border-gray-100 rounded-xl overflow-hidden">
+
+                      {/* Section header */}
+                      <div className={`flex items-center px-4 py-3 ${allOn ? lightColor : 'bg-gray-50'}`}>
+                        <button
+                          onClick={() => setCollapsed(p => ({ ...p, [section]: !p[section] }))}
+                          className="flex items-center gap-2.5 flex-1 text-left min-w-0"
+                        >
+                          {isCollapsed
+                            ? <ChevronRight size={15} className="text-gray-400 shrink-0" />
+                            : <ChevronDown size={15} className="text-gray-400 shrink-0" />
+                          }
+                          <div className={`p-1.5 rounded-lg ${color} shrink-0`}>
+                            <Icon size={12} className="text-white" />
+                          </div>
+                          <span className="font-bold text-gray-800 text-sm">{section}</span>
+                          <span className={`ml-1.5 text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                            allOn  ? `${lightColor} ${textColor}` :
+                            someOn ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            'bg-gray-100 text-gray-400 border-gray-200'
+                          }`}>
+                            {enabled}/{keyList.length}
+                          </span>
+                        </button>
+
+                        <button
+                          onClick={() => toggleSection(keyList)}
+                          className={`ml-3 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 border ${
+                            allOn  ? `${lightColor} ${textColor} hover:opacity-80` :
+                            someOn ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' :
+                            'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'
+                          }`}
+                        >
+                          {allOn ? 'Deselect All' : 'Select All'}
+                        </button>
+                      </div>
+
+                      {/* Checkboxes */}
+                      {!isCollapsed && (
+                        <div className="px-4 py-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 bg-white">
+                          {keys.map(({ key, label }) => {
+                            const on = permissions.has(key);
+                            return (
+                              <label
+                                key={key}
+                                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer select-none transition-all text-xs border-2 ${
+                                  on
+                                    ? `${lightColor} ${textColor} font-semibold`
+                                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 hover:border-gray-300'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={on}
+                                  onChange={() => toggle(key)}
+                                  className="w-3.5 h-3.5 accent-emerald-600 rounded shrink-0"
+                                />
+                                <span className="leading-tight">{label}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Floating save bar */}
+      {dirty && (
+        <div className="fixed bottom-6 right-6 z-30 flex items-center gap-3 bg-white border-2 border-emerald-200 rounded-2xl px-5 py-3 shadow-xl">
+          <AlertCircle size={15} className="text-amber-500" />
+          <span className="text-sm font-semibold text-gray-700">
+            Unsaved changes for <span className="text-emerald-600">{selectedRole}</span>
+          </span>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-semibold text-sm transition-all"
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            Save
+          </button>
+        </div>
+      )}
     </div>
   );
 };
