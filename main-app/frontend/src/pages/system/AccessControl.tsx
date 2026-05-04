@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Shield, Save, Check, Loader2, ChevronDown, ChevronRight,
   Users, Copy, Search, AlertCircle, X,
-  LayoutDashboard, ShoppingCart, Package, UserCheck, Calculator, Settings,
+  LayoutDashboard, ShoppingCart, Package, UserCheck, Calculator, Settings, UtensilsCrossed,
 } from 'lucide-react';
 import api from '../../utils/api';
 
@@ -36,7 +36,16 @@ const MODULE_TREE = [
       { key: 'sales.targets',     label: 'Sales Targets' },
       { key: 'sales.deliveries',  label: 'Deliveries' },
       { key: 'sales.reports',     label: 'Sales Reports' },
-      { key: 'restaurant.tables', label: 'Tables (Restaurant)' },
+    ],
+  },
+  {
+    section: 'Restaurant',
+    Icon: UtensilsCrossed,
+    color: 'bg-pink-500',
+    lightColor: 'bg-pink-50 border-pink-200',
+    textColor: 'text-pink-700',
+    keys: [
+      { key: 'restaurant.tables', label: 'Table Management' },
     ],
   },
   {
