@@ -217,7 +217,7 @@ const AccessControl = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await api.put(`/permissions/${selectedRole}`, { permissions: Array.from(permissions) });
+      await api.put(`/permissions/${encodeURIComponent(selectedRole)}`, { permissions: Array.from(permissions) });
       setSavedPerms(prev => ({ ...prev, [selectedRole]: new Set(permissions) }));
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
