@@ -939,6 +939,16 @@ CREATE TABLE IF NOT EXISTS product_bundles (
     INDEX idx_product_bundles_active (is_active)
 );
 
+-- Restaurant Tables (dine-in table management)
+CREATE TABLE IF NOT EXISTS restaurant_tables (
+    table_id INT PRIMARY KEY AUTO_INCREMENT,
+    table_name VARCHAR(50) NOT NULL,
+    floor VARCHAR(50) DEFAULT 'Main',
+    capacity INT DEFAULT 4,
+    status ENUM('available', 'occupied') DEFAULT 'available',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Sales
 CREATE TABLE IF NOT EXISTS sales (
     sale_id INT PRIMARY KEY AUTO_INCREMENT,

@@ -1,6 +1,25 @@
 const { query } = require('../config/database');
 
+let tableSchemaEnsured = false;
+async function ensureTableSchema() {
+  if (tableSchemaEnsured) return;
+  tableSchemaEnsured = true;
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS restaurant_tables (
+        table_id INT PRIMARY KEY AUTO_INCREMENT,
+        table_name VARCHAR(50) NOT NULL,
+        floor VARCHAR(50) DEFAULT 'Main',
+        capacity INT DEFAULT 4,
+        status ENUM('available','occupied') DEFAULT 'available',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  } catch (e) { /* already exists */ }
+}
+
 exports.getTables = async (req, res) => {
+  await ensureTableSchema();
   try {
     const tables = await query(
       `SELECT t.*,
@@ -15,6 +34,7 @@ exports.getTables = async (req, res) => {
 };
 
 exports.createTable = async (req, res) => {
+  await ensureTableSchema();
   try {
     const { table_name, floor = 'Main', capacity = 4 } = req.body;
     if (!table_name || !table_name.trim()) {
