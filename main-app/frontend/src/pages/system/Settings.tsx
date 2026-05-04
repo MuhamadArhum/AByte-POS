@@ -31,8 +31,6 @@ import {
   Wifi,
   Usb,
   CheckCircle,
-  XCircle,
-  Play,
   Truck,
   UtensilsCrossed,
   Coffee,
@@ -145,34 +143,8 @@ const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Multi-printer management
-  interface CategoryOption { category_id: number; category_name: string; }
-  interface PrinterEntry {
-    printer_id: number;
-    name: string;
-    type: 'network' | 'usb';
-    ip_address: string | null;
-    port: number;
-    printer_share_name: string | null;
-    paper_width: number;
-    printer_type: 'invoice' | 'kot';
-    branch_id: number | null;
-    branch_name: string | null;
-    is_master: number;
-    is_active: number;
-    categories: { category_id: number; category_name: string }[];
-  }
-  const EMPTY_PRINTER_FORM = { name: '', type: 'network' as 'network' | 'usb', ip_address: '', port: 9100, printer_share_name: '', paper_width: 80, printer_type: 'invoice' as 'invoice' | 'kot', branch_id: '' as string, is_master: false, is_active: true, category_ids: [] as number[] };
-  const [printers, setPrinters] = useState<PrinterEntry[]>([]);
-  const [showPrinterModal, setShowPrinterModal] = useState(false);
-  const [editingPrinter, setEditingPrinter] = useState<PrinterEntry | null>(null);
-  const [printerForm, setPrinterForm] = useState(EMPTY_PRINTER_FORM);
-  const [printerSaving, setPrinterSaving] = useState(false);
-  const [testingPrinterId, setTestingPrinterId] = useState<number | null>(null);
-  const [printerTestResults, setPrinterTestResults] = useState<Record<number, { success: boolean; message: string }>>({});
   const [agentStatus, setAgentStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
   const [agentInfo, setAgentInfo] = useState<any>(null);
-  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
 
   const checkAgentStatus = async () => {
     setAgentStatus('checking');
@@ -183,28 +155,17 @@ const Settings = () => {
     } catch { setAgentStatus('unavailable'); }
   };
 
-  const fetchCategories = async () => {
-    try {
-      const res = await api.get('/settings/categories');
-      setCategoryOptions(res.data.data || []);
-    } catch { /* non-critical */ }
-  };
-
   useEffect(() => {
     fetchSettings();
     if (currentUser?.role_name === 'Admin') {
       fetchUsers();
       fetchRoles();
       fetchBranches();
-      fetchPrinters();
     }
   }, [currentUser]);
 
   useEffect(() => {
-    if (activeTab === 'printer') {
-      checkAgentStatus();
-      fetchCategories();
-    }
+    if (activeTab === 'printer') checkAgentStatus();
   }, [activeTab]);
 
   useEffect(() => {
@@ -263,83 +224,6 @@ const Settings = () => {
     }
   };
 
-  const fetchPrinters = async () => {
-    try {
-      const res = await api.get('/settings/printers');
-      setPrinters(res.data);
-    } catch (err) {
-      console.error('Failed to load printers', err);
-    }
-  };
-
-  const openPrinterModal = (printer?: PrinterEntry) => {
-    if (printer) {
-      setEditingPrinter(printer);
-      setPrinterForm({
-        name: printer.name,
-        type: printer.type,
-        ip_address: printer.ip_address || '',
-        port: printer.port || 9100,
-        printer_share_name: printer.printer_share_name || '',
-        paper_width: printer.paper_width || 80,
-        printer_type: printer.printer_type || 'invoice',
-        branch_id: printer.branch_id ? String(printer.branch_id) : '',
-        is_master: printer.is_master === 1,
-        is_active: printer.is_active === 1,
-        category_ids: (printer.categories || []).map(c => c.category_id),
-      });
-    } else {
-      setEditingPrinter(null);
-      setPrinterForm(EMPTY_PRINTER_FORM);
-    }
-    setShowPrinterModal(true);
-  };
-
-  const handlePrinterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPrinterSaving(true);
-    try {
-      const payload = { ...printerForm, branch_id: printerForm.branch_id ? Number(printerForm.branch_id) : null };
-      if (editingPrinter) {
-        await api.put(`/settings/printers/${editingPrinter.printer_id}`, payload);
-        toast.success('Printer updated');
-      } else {
-        await api.post('/settings/printers', payload);
-        toast.success('Printer added');
-      }
-      setShowPrinterModal(false);
-      setEditingPrinter(null);
-      fetchPrinters();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to save printer');
-    } finally {
-      setPrinterSaving(false);
-    }
-  };
-
-  const handleDeletePrinter = async (id: number) => {
-    if (!confirm('Delete this printer?')) return;
-    try {
-      await api.delete(`/settings/printers/${id}`);
-      toast.success('Printer deleted');
-      fetchPrinters();
-    } catch {
-      toast.error('Failed to delete printer');
-    }
-  };
-
-  const handleTestPrinterById = async (printer: PrinterEntry) => {
-    setTestingPrinterId(printer.printer_id);
-    setPrinterTestResults(prev => { const n = { ...prev }; delete n[printer.printer_id]; return n; });
-    try {
-      const res = await api.post(`/settings/printers/${printer.printer_id}/test`);
-      setPrinterTestResults(prev => ({ ...prev, [printer.printer_id]: { success: true, message: res.data.message } }));
-    } catch (err: any) {
-      setPrinterTestResults(prev => ({ ...prev, [printer.printer_id]: { success: false, message: err.response?.data?.message || 'Test failed' } }));
-    } finally {
-      setTestingPrinterId(null);
-    }
-  };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
