@@ -18,7 +18,7 @@ interface CheckoutModalProps {
 }
 
 const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSuccess, pendingSale, selectedCustomer, appliedBundles = [], deliveryId, deliveryCharges = 0 }) => {
-  const { cart, subtotal, clearCart, additionalRate, additionalAmount, bundleDiscount } = useCart();
+  const { cart, subtotal, clearCart, additionalRate, bundleDiscount } = useCart();
   const { user } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'online' | 'split' | 'credit'>('cash');
 
