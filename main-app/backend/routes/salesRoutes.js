@@ -25,6 +25,7 @@ router.put('/:id/complete', salesController.completeSale); // Complete a pending
 router.patch('/:id/kot-printed', salesController.markKotPrinted); // Mark KOT as printed
 router.put('/:id/items', salesController.updateSaleItems); // Update items of a pending sale
 router.post('/:id/refund', salesController.refundSale); // Refund a sale
+router.post('/:id/sync-tax', salesController.syncTax); // Sync invoice to tax dept
 router.delete('/:id', salesController.deleteSale); // Delete/Void a sale
 router.get('/today', salesController.getToday);  // Today's sales (must be before /:id)
 router.get('/', salesController.getAll);         // All sales history

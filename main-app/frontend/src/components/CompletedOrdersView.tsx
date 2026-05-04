@@ -9,7 +9,7 @@ import ReactDOM from 'react-dom';
 import {
   Search, Package, Calendar, User, DollarSign, CreditCard,
   Eye, Printer, RotateCcw, Archive, X, Lock, EyeOff, RefreshCw,
-  Clock, CheckCircle, AlertCircle
+  Clock, CheckCircle, AlertCircle, CloudUpload, Loader2
 } from 'lucide-react';
 import DateRangeFilter from './DateRangeFilter';
 import Pagination from './Pagination';
@@ -216,10 +216,12 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
   const [cs,         setCs]         = useState('Rs.');
 
   // Modals
-  const [previewId,  setPreviewId]  = useState<number | null>(null);
-  const [unlocked,   setUnlocked]   = useState(false);
-  const [pwModal,    setPwModal]    = useState<{ type: 'unlock' | 'refund'; refundId?: number } | null>(null);
-  const [passwords,  setPasswords]  = useState({ view_completed: '', refund: '' });
+  const [previewId,    setPreviewId]    = useState<number | null>(null);
+  const [unlocked,     setUnlocked]     = useState(false);
+  const [pwModal,      setPwModal]      = useState<{ type: 'unlock' | 'refund'; refundId?: number } | null>(null);
+  const [passwords,    setPasswords]    = useState({ view_completed: '', refund: '' });
+  const [syncingSaleId, setSyncingSaleId] = useState<number | null>(null);
+  const [syncedIds,    setSyncedIds]    = useState<Set<number>>(new Set());
 
   // ── Fetch settings ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -328,6 +330,18 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
   const handleRefundClick = (saleId: number) => {
     if (passwords.refund) setPwModal({ type: 'refund', refundId: saleId });
     else handleRefund(saleId);
+  };
+
+  const handleSyncTax = async (saleId: number) => {
+    setSyncingSaleId(saleId);
+    try {
+      await api.post(`/sales/${saleId}/sync-tax`);
+      setSyncedIds(prev => new Set(prev).add(saleId));
+    } catch {
+      alert('Sync to tax system failed');
+    } finally {
+      setSyncingSaleId(null);
+    }
   };
 
   // ── Shift info banner ───────────────────────────────────────────────────
@@ -641,6 +655,20 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                               title={sale.status === 'refunded' ? 'Already Refunded' : 'Refund Order'}
                             >
                               <RotateCcw size={15} />
+                            </button>
+                            <button
+                              onClick={() => handleSyncTax(sale.sale_id)}
+                              disabled={syncingSaleId === sale.sale_id || syncedIds.has(sale.sale_id)}
+                              className={`p-1.5 rounded-lg transition-all ${
+                                syncedIds.has(sale.sale_id)
+                                  ? 'text-green-600 bg-green-50'
+                                  : 'text-purple-500 hover:bg-purple-50'
+                              }`}
+                              title={syncedIds.has(sale.sale_id) ? 'Synced to FBR' : 'Sync to FBR / Tax Dept'}
+                            >
+                              {syncingSaleId === sale.sale_id
+                                ? <Loader2 size={15} className="animate-spin" />
+                                : <CloudUpload size={15} />}
                             </button>
                           </div>
                         </td>

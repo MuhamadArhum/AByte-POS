@@ -55,6 +55,7 @@ import {
   Table2,
   FlaskConical,
   Factory,
+  Shield,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -265,7 +266,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       moduleKey: 'system',
       color: 'gray',
       children: [
-{ icon: Store, label: 'Stores', path: '/stores', moduleKey: 'system.stores' },
+        { icon: Store, label: 'Stores', path: '/stores', moduleKey: 'system.stores' },
+        { icon: Shield, label: 'Access Control', path: '/access-control', moduleKey: 'system.settings' },
         { icon: ScrollText, label: 'Audit Log', path: '/audit-log', moduleKey: 'system.audit' },
         { icon: Database, label: 'Backup', path: '/backup', moduleKey: 'system.backup' },
         { icon: Bell, label: 'Email Notifications', path: '/email-settings', moduleKey: 'system.settings' },

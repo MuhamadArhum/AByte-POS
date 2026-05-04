@@ -14,12 +14,16 @@ interface ReceiptSale {
   note?: string;
   token_no?: string;
   invoice_no?: string;
+  order_type?: string;
+  table_name?: string;
+  cashier_name?: string;
   items: Array<{
     product_name: string;
     quantity: number;
     unit_price: number | string;
     discount?: number | string;
     subtotal?: number | string;
+    variant_name?: string;
   }>;
 }
 
@@ -110,16 +114,25 @@ export function generateReceiptHTML(
   const saleDate = sale.sale_date ? new Date(sale.sale_date) : new Date();
   const { dateStr, timeStr } = formatDate(saleDate);
 
+  // Order type label
+  const orderTypeMap: Record<string, string> = {
+    dine_in: 'DINE-IN', takeaway: 'TAKEAWAY', delivery: 'DELIVERY', on_spot: 'WALK-IN'
+  };
+  const orderTypeLabel = sale.order_type ? (orderTypeMap[sale.order_type] || sale.order_type.toUpperCase()) : '';
+  const tableName = escapeHtml(sale.table_name || '');
+
   // Generate item rows
   const itemRows = (sale.items || []).map((item) => {
     const qty = item.quantity;
     const price = parseNumber(item.unit_price);
     const itemDiscount = parseNumber(item.discount || 0);
     const lineSubtotal = (qty * price) - itemDiscount;
-    
+    const variantNote = item.variant_name ? `<div class="item-variant">${escapeHtml(item.variant_name)}</div>` : '';
+
     return `<tr>
       <td class="col-item">
         <div class="item-name">${escapeHtml(item.product_name)}</div>
+        ${variantNote}
         ${itemDiscount > 0 ? `<div class="item-discount">-${formatCurrency(itemDiscount, currencySymbol)}</div>` : ''}
       </td>
       <td class="col-qty">${qty}</td>
@@ -263,10 +276,32 @@ export function generateReceiptHTML(
     .item-name {
       font-weight: bold;
     }
+    .item-variant {
+      font-size: 8px;
+      color: #555;
+      font-style: italic;
+    }
     .item-discount {
       font-size: 8px;
       color: #d00;
       font-style: italic;
+    }
+    .order-type-banner {
+      text-align: center;
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      padding: 4px;
+      margin: 4px 0;
+      border: 2px solid #000;
+      background: #000;
+      color: #fff;
+    }
+    .table-info {
+      text-align: center;
+      font-size: 12px;
+      font-weight: bold;
+      margin: 2px 0 6px;
     }
     
     /* Totals Section */
@@ -407,6 +442,9 @@ export function generateReceiptHTML(
 
   ${headerNote ? `<div class="header-note">${headerNote}</div>` : ''}
 
+  ${orderTypeLabel ? `<div class="order-type-banner">${orderTypeLabel}</div>` : ''}
+  ${tableName ? `<div class="table-info">Table: ${tableName}</div>` : ''}
+
   <!-- Receipt Metadata -->
   <div class="receipt-meta">
     ${sale.invoice_no ? `
@@ -421,20 +459,26 @@ export function generateReceiptHTML(
     ${sale.token_no ? `
     <div class="meta-row">
       <span class="meta-label" style="font-weight:bold;">Token:</span>
-      <span style="font-weight:bold; font-size:1.2em;">${escapeHtml(sale.token_no)}</span>
+      <span style="font-weight:bold; font-size:1.3em;">${escapeHtml(sale.token_no)}</span>
     </div>` : ''}
     <div class="meta-row">
       <span class="meta-label">Date:</span>
       <span>${dateStr} ${timeStr}</span>
     </div>
     <div class="meta-row">
-      <span class="meta-label">Cashier:</span>
+      <span class="meta-label">Order Taker:</span>
       <span>${cashier}</span>
     </div>
     ${customer ? `
     <div class="meta-row">
       <span class="meta-label">Customer:</span>
       <span>${customer}</span>
+    </div>
+    ` : ''}
+    ${sale.payment_method ? `
+    <div class="meta-row">
+      <span class="meta-label">Payment:</span>
+      <span style="text-transform:uppercase;">${escapeHtml(sale.payment_method)}</span>
     </div>
     ` : ''}
   </div>

@@ -13,6 +13,7 @@ import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
 import { useToast } from '../../components/Toast';
 import { localToday, localMonthStart } from '../../utils/dateUtils';
+import CheckoutModal from '../../components/CheckoutModal';
 
 type Status = 'pending' | 'assigned' | 'dispatched' | 'in_transit' | 'delivered' | 'failed' | 'cancelled';
 
@@ -459,9 +460,6 @@ const Deliveries = () => {
   const [checkoutDelivery, setCheckoutDelivery] = useState<Delivery | null>(null);
   const [checkoutSale, setCheckoutSale]         = useState<any>(null);
   const [checkoutSaleLoading, setCheckoutSaleLoading] = useState(false);
-  const [checkoutPayMethod, setCheckoutPayMethod] = useState('cash');
-  const [checkoutAmountPaid, setCheckoutAmountPaid] = useState('');
-  const [checkoutProcessing, setCheckoutProcessing] = useState(false);
 
   const fetchDeliveries = useCallback(async () => {
     setLoading(true);
@@ -578,8 +576,6 @@ const Deliveries = () => {
     setCheckoutDelivery(d);
     setCheckoutSale(null);
     setCheckoutSaleLoading(true);
-    setCheckoutPayMethod('cash');
-    setCheckoutAmountPaid('');
     try {
       const res = await api.get(`/sales/${d.sale_id}`);
       setCheckoutSale(res.data);
@@ -588,30 +584,6 @@ const Deliveries = () => {
       setCheckoutDelivery(null);
     } finally {
       setCheckoutSaleLoading(false);
-    }
-  };
-
-  const handleCompleteCheckout = async () => {
-    if (!checkoutDelivery || !checkoutSale) return;
-    const delCharges = parseFloat(String(checkoutDelivery.delivery_charges || 0));
-    const grandTotal = parseFloat(checkoutSale.total_amount || 0) + delCharges;
-    const amountPaid = parseFloat(checkoutAmountPaid) || grandTotal;
-    setCheckoutProcessing(true);
-    try {
-      await api.put(`/sales/${checkoutSale.sale_id}/complete`, {
-        payment_method: checkoutPayMethod,
-        amount_paid: amountPaid,
-        total_amount: grandTotal,
-      });
-      await api.patch(`/deliveries/${checkoutDelivery.delivery_id}/status`, { status: 'delivered' });
-      toast.success(`${checkoutDelivery.delivery_number} — Delivered & Paid!`);
-      setCheckoutDelivery(null);
-      setCheckoutSale(null);
-      fetchDeliveries(); fetchStats();
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Checkout failed');
-    } finally {
-      setCheckoutProcessing(false);
     }
   };
 
@@ -1204,172 +1176,14 @@ const Deliveries = () => {
         ) : null
       )}
 
-      {/* ── Delivery Checkout Modal ──────────────────────────────────────── */}
-      {checkoutDelivery && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => !checkoutProcessing && setCheckoutDelivery(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-
-            <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-emerald-100 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <CreditCard size={20} className="text-emerald-600" /> Delivery Checkout
-                </h2>
-                <p className="text-sm text-blue-600 font-semibold flex items-center gap-1.5 mt-0.5">
-                  <Truck size={13} />{checkoutDelivery.delivery_number}
-                  <span className="text-gray-400 font-normal">·</span>
-                  <span className="text-gray-600 font-normal">{checkoutDelivery.customer_name}</span>
-                </p>
-              </div>
-              <button onClick={() => !checkoutProcessing && setCheckoutDelivery(null)} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-white/60 transition-all">
-                <X size={22} />
-              </button>
-            </div>
-
-            {checkoutSaleLoading ? (
-              <div className="flex-1 flex items-center justify-center py-16">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-10 w-10 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-3"></div>
-                  <p className="text-gray-500 text-sm">Loading order details...</p>
-                </div>
-              </div>
-            ) : checkoutSale ? (
-              <>
-                <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      ['Address', checkoutDelivery.delivery_address + (checkoutDelivery.delivery_city ? `, ${checkoutDelivery.delivery_city}` : '')],
-                      ['Rider', checkoutDelivery.rider_name || '—'],
-                    ].map(([label, value]) => (
-                      <div key={label} className="bg-blue-50 border border-blue-100 rounded-xl p-3">
-                        <p className="text-xs text-blue-500 font-medium mb-0.5">{label}</p>
-                        <p className="text-sm font-semibold text-gray-800">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200">
-                      <p className="text-xs font-bold text-gray-600 uppercase tracking-wide flex items-center gap-2">
-                        <Package size={13} /> Order Items
-                      </p>
-                    </div>
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-gray-50 border-b border-gray-100">
-                          <th className="px-4 py-2 text-left text-gray-600 font-semibold">Item</th>
-                          <th className="px-4 py-2 text-center text-gray-600 font-semibold">Qty</th>
-                          <th className="px-4 py-2 text-right text-gray-600 font-semibold">Price</th>
-                          <th className="px-4 py-2 text-right text-gray-600 font-semibold">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {(checkoutSale.items || []).map((item: any, idx: number) => (
-                          <tr key={idx} className="hover:bg-gray-50">
-                            <td className="px-4 py-2.5 text-gray-800 font-medium">{item.product_name}</td>
-                            <td className="px-4 py-2.5 text-center text-gray-600">{item.quantity}</td>
-                            <td className="px-4 py-2.5 text-right text-gray-600">{cs} {parseFloat(item.unit_price).toFixed(2)}</td>
-                            <td className="px-4 py-2.5 text-right font-semibold text-gray-800">
-                              {cs} {(parseFloat(item.unit_price) * parseFloat(item.quantity)).toFixed(2)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {(() => {
-                    const disc   = parseFloat(checkoutSale.discount || 0);
-                    const tax    = parseFloat(checkoutSale.tax_amount || 0);
-                    const svc    = parseFloat(checkoutSale.additional_charges_amount || 0);
-                    const delC   = parseFloat(String(checkoutDelivery.delivery_charges || 0));
-                    const saleT  = parseFloat(checkoutSale.total_amount || 0);
-                    const grandT = saleT + delC;
-                    const paid   = parseFloat(checkoutAmountPaid) || 0;
-                    const change = paid - grandT;
-                    return (
-                      <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-2">
-                        <div className="flex justify-between text-sm text-gray-600"><span>Sale Total</span><span>{cs} {saleT.toFixed(2)}</span></div>
-                        {disc > 0 && <div className="flex justify-between text-sm text-red-600"><span>Discount</span><span>- {cs} {disc.toFixed(2)}</span></div>}
-                        {tax > 0 && <div className="flex justify-between text-sm text-gray-600"><span>Tax</span><span>{cs} {tax.toFixed(2)}</span></div>}
-                        {svc > 0 && <div className="flex justify-between text-sm text-gray-600"><span>Service Charges</span><span>{cs} {svc.toFixed(2)}</span></div>}
-                        {delC > 0 && (
-                          <div className="flex justify-between text-sm text-blue-700 font-semibold">
-                            <span className="flex items-center gap-1.5"><Truck size={13} /> Delivery Charges</span>
-                            <span>{cs} {delC.toFixed(2)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between text-base font-bold text-gray-900 border-t border-gray-300 pt-2 mt-1">
-                          <span>Grand Total</span>
-                          <span className="text-emerald-600 text-lg">{cs} {grandT.toFixed(2)}</span>
-                        </div>
-                        {paid > 0 && (
-                          <div className={`flex justify-between text-sm font-semibold pt-1 ${change >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                            <span>{change >= 0 ? 'Change' : 'Short'}</span>
-                            <span>{cs} {Math.abs(change).toFixed(2)}</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  <div>
-                    <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">Payment Method</p>
-                    <div className="grid grid-cols-4 gap-2">
-                      {['cash', 'card', 'bank_transfer', 'online'].map(m => (
-                        <button
-                          key={m}
-                          onClick={() => setCheckoutPayMethod(m)}
-                          className={`py-2.5 rounded-xl text-sm font-semibold border-2 transition-all capitalize ${
-                            checkoutPayMethod === m
-                              ? 'bg-emerald-600 border-emerald-600 text-white shadow-md'
-                              : 'bg-white border-gray-200 text-gray-600 hover:border-emerald-300 hover:text-emerald-600'
-                          }`}
-                        >
-                          {m.replace('_', ' ')}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1.5 block">
-                      Amount Received ({cs})
-                    </label>
-                    <input
-                      type="number"
-                      className="form-input text-lg font-bold"
-                      placeholder={`${(parseFloat(checkoutSale.total_amount || 0) + parseFloat(String(checkoutDelivery.delivery_charges || 0))).toFixed(2)}`}
-                      value={checkoutAmountPaid}
-                      onChange={e => setCheckoutAmountPaid(e.target.value)}
-                      autoFocus
-                    />
-                  </div>
-                </div>
-
-                <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex gap-3 shrink-0">
-                  <button
-                    onClick={() => !checkoutProcessing && setCheckoutDelivery(null)}
-                    disabled={checkoutProcessing}
-                    className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-600 hover:bg-gray-100 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleCompleteCheckout}
-                    disabled={checkoutProcessing}
-                    className="flex-2 flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-60 shadow-md min-w-[180px]"
-                  >
-                    {checkoutProcessing
-                      ? <><Loader2 size={16} className="animate-spin" /> Processing...</>
-                      : <><CheckCircle size={16} /> Complete Payment</>
-                    }
-                  </button>
-                </div>
-              </>
-            ) : null}
-          </div>
-        </div>
-      )}
+      <CheckoutModal
+        isOpen={!!checkoutDelivery && !checkoutSaleLoading && !!checkoutSale}
+        onClose={() => { setCheckoutDelivery(null); setCheckoutSale(null); }}
+        onSuccess={() => { fetchDeliveries(); fetchStats(); }}
+        pendingSale={checkoutSale}
+        deliveryId={checkoutDelivery?.delivery_id}
+        deliveryCharges={parseFloat(String(checkoutDelivery?.delivery_charges || 0))}
+      />
     </div>
   );
 };

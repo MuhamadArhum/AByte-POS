@@ -576,6 +576,26 @@ exports.deleteSale = async (req, res) => {
   }
 };
 
+// --- Sync Invoice to Tax Department ---
+exports.syncTax = async (req, res) => {
+  try {
+    const { id } = req.params;
+    try { await query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS is_synced TINYINT(1) DEFAULT 0`); } catch (_) {}
+    try { await query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS synced_at DATETIME NULL`); } catch (_) {}
+
+    const sale = await query('SELECT sale_id, status FROM sales WHERE sale_id = ?', [id]);
+    if (sale.length === 0) return res.status(404).json({ message: 'Sale not found' });
+
+    await query('UPDATE sales SET is_synced = 1, synced_at = NOW() WHERE sale_id = ?', [id]);
+    await logAction(req.user.user_id, req.user.name, 'TAX_SYNCED', 'sale', parseInt(id), {}, req.ip);
+
+    res.json({ message: 'Invoice synced to tax system', synced_at: new Date().toISOString() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // --- Get Today's Sales ---
 exports.getToday = async (req, res) => {
   try {

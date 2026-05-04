@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { X, CreditCard, Banknote, Smartphone, Check, Loader2, Printer, Tag, Star, BookOpen, Percent } from 'lucide-react';
+import { X, CreditCard, Banknote, Smartphone, Check, Loader2, Printer, Tag, Star, BookOpen, Percent, CloudUpload, Truck, RotateCcw } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
@@ -13,9 +13,11 @@ interface CheckoutModalProps {
   pendingSale?: any;
   selectedCustomer?: any;
   appliedBundles?: any[];
+  deliveryId?: number;
+  deliveryCharges?: number;
 }
 
-const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSuccess, pendingSale, selectedCustomer, appliedBundles = [] }) => {
+const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSuccess, pendingSale, selectedCustomer, appliedBundles = [], deliveryId, deliveryCharges = 0 }) => {
   const { cart, subtotal, clearCart, additionalRate, additionalAmount, bundleDiscount } = useCart();
   const { user } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'online' | 'split' | 'credit'>('cash');
@@ -52,6 +54,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   // Credit sale state
   const [creditDueDate, setCreditDueDate] = useState('');
 
+  // Sync to tax dept
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [synced, setSynced] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       setSuccessSale(null);
@@ -87,13 +93,21 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   }, [paymentMethod]);
 
 
+  // When payment method changes in pending sale mode, auto-update GST rate
+  useEffect(() => {
+    if (pendingSale && !pendingSale.isCartEdit) {
+      setPendingTaxRate(paymentMethod === 'card' || paymentMethod === 'online' ? 5 : 16);
+    }
+  }, [paymentMethod]);
+
   const fetchPendingSaleDetails = async (saleId: number) => {
     setPendingItemsLoading(true);
     try {
       const res = await api.get(`/sales/${saleId}`);
       const saleData = res.data;
       setPendingItems(saleData.items || []);
-      setPendingTaxRate(parseFloat(saleData.tax_percent || 0));
+      // Set tax based on current payment method, not the stored value
+      setPendingTaxRate(paymentMethod === 'card' || paymentMethod === 'online' ? 5 : 16);
       setPendingAdditionalRate(parseFloat(saleData.additional_charges_percent || 0));
     } catch (err) {
       console.error('Failed to fetch pending sale details', err);
@@ -171,8 +185,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     ? (pendingSale.isCartEdit
         ? cartTotal  // Cart-edit mode: use GST-adjusted cart total
         : pendingItems.length > 0
-          ? pendingSubtotal + pendingTaxAmount + pendingAdditionalAmount
-          : parseFloat(pendingSale.total_amount || 0))
+          ? pendingSubtotal + pendingTaxAmount + pendingAdditionalAmount + deliveryCharges
+          : parseFloat(pendingSale.total_amount || 0) + deliveryCharges)
     : cartTotal;
 
   const discountValue = parseFloat(discount) || 0;
@@ -238,8 +252,14 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
           tax_percent: pendingTaxRate,
           additional_charges_percent: pendingAdditionalRate
         });
+        if (deliveryId) {
+          await api.patch(`/deliveries/${deliveryId}/status`, { status: 'delivered' });
+        }
         const fullSaleRes = await api.get(`/sales/${pendingSale.sale_id}`);
-        setSuccessSale(fullSaleRes.data);
+        const completedSale = fullSaleRes.data;
+        setSuccessSale(completedSale);
+        setSynced(false);
+        setTimeout(() => doPrint(completedSale), 300);
       } else {
         // Build loyalty redeem points
         let loyaltyRedeemPts = 0;
@@ -288,10 +308,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
         }
 
         const res = await api.post('/sales', payload);
-        setSuccessSale({
-          ...res.data,
-          amount_paid: finalAmountPaid
-        });
+        const newSale = { ...res.data, amount_paid: finalAmountPaid };
+        setSuccessSale(newSale);
+        setSynced(false);
+        setTimeout(() => doPrint(newSale), 300);
 
         clearCart();
       }
@@ -305,22 +325,26 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     }
   };
 
-  const handlePrint = async () => {
-    if (!successSale) return;
+  const doPrint = (sale: any) => {
+    if (!sale) return;
     if (isThermalPrinterAvailable(settings)) {
-      await printToThermalPrinter(
-        successSale,
-        settings,
-        user?.name || 'Staff',
-        selectedCustomer?.customer_name
-      );
+      printToThermalPrinter(sale, settings, user?.name || 'Staff', selectedCustomer?.customer_name);
     } else {
-      printReceipt(
-        successSale,
-        settings,
-        user?.name || 'Staff',
-        selectedCustomer?.customer_name
-      );
+      printReceipt(sale, settings, user?.name || 'Staff', selectedCustomer?.customer_name);
+    }
+  };
+
+  const handlePrint = () => doPrint(successSale);
+
+  const handleSyncTax = async (saleId: number) => {
+    setSyncLoading(true);
+    try {
+      await api.post(`/sales/${saleId}/sync-tax`);
+      setSynced(true);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Sync failed');
+    } finally {
+      setSyncLoading(false);
     }
   };
 
@@ -363,26 +387,33 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
             </p>
           )}
 
-          <div className="flex gap-4">
+          <p className="text-xs text-gray-400 mb-3 flex items-center justify-center gap-1">
+            <Printer size={12} /> Receipt auto-printed
+          </p>
+          <div className="flex gap-2 flex-wrap">
             <button
-              onClick={() => {
-                onClose();
-                setSuccessSale(null);
-              }}
+              onClick={() => { onClose(); setSuccessSale(null); }}
               className="flex-1 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 rounded-xl transition-colors"
             >
-              Paid
+              Done
             </button>
             <button
-              onClick={() => {
-                handlePrint();
-                onClose();
-                setSuccessSale(null);
-              }}
-              className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-colors"
+              onClick={handlePrint}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl transition-colors border border-blue-200"
             >
-              <Printer size={20} />
-              Paid & Print
+              <RotateCcw size={16} /> Reprint
+            </button>
+            <button
+              onClick={() => handleSyncTax(successSale.sale_id)}
+              disabled={syncLoading || synced}
+              className={`flex items-center justify-center gap-2 px-4 py-3 font-bold rounded-xl transition-colors border ${
+                synced
+                  ? 'bg-green-50 text-green-700 border-green-200'
+                  : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200'
+              }`}
+            >
+              {syncLoading ? <Loader2 size={16} className="animate-spin" /> : <CloudUpload size={16} />}
+              {synced ? 'Synced!' : 'Sync FBR'}
             </button>
           </div>
         </div>
@@ -521,6 +552,12 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
               <div className="flex justify-between items-center text-gray-500 text-sm">
                 <span>Additional ({additionalRate}%)</span>
                 <span>+ Rs. {additionalAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {deliveryCharges > 0 && (
+              <div className="flex justify-between items-center text-blue-600 text-sm">
+                <span className="flex items-center gap-1"><Truck size={12} /> Delivery Charges</span>
+                <span>+ Rs. {deliveryCharges.toFixed(2)}</span>
               </div>
             )}
             {/* Pending sale with no items loaded yet */}

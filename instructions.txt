@@ -6,3 +6,11 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
+Acha Ab Kuch Changes Sale Module main Hum Mazeed Krain Gy;
+1: Sbse Phly ye Dekho K Jab User Payment Py Click krta hai to usko manual card py gst 5% krni parti ghai button kaam ni kr rha proper Usko Check kro 
+2: Checkout Modal POri App main aik hi hona chaye lkin Hmary app main Delivery ka alehda hai or dosra alehda hai Inko Aik hi Kro 
+3: Access Control ko update kro yar Abhi tak Update ni hua 
+4: Jab Bhi order ko paid kiya jaye to uskka print auto py set krna hai 
+5: jab print ka option click krtry hain us main simple sa view show hota hai invoice ka usko detailed view main convert kro order details,Table No , Order taker, everthing jis trha aik proper restauarnmt invoice/bill hota hai 
+6: check uot modal main aik new button add krna hai sync (ye button click krny py invoice govt taxz department ko system k sath sysc ho jaye gi)
+7: agr wsy hi paid kr diya to bad main done order main ja kr bhi isko sync kiya ja skta hai 
