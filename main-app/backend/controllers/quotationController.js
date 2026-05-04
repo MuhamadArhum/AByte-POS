@@ -85,6 +85,8 @@ const getAll = async (req, res) => {
 const getById = async (req, res) => {
   try {
     const { id } = req.params;
+    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND q.branch_id = ?' : '';
+    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
 
     const quotations = await query(
       `SELECT q.*, c.customer_name AS customer_name, c.phone_number AS customer_phone,
@@ -92,8 +94,8 @@ const getById = async (req, res) => {
        FROM quotations q
        LEFT JOIN customers c ON q.customer_id = c.customer_id
        LEFT JOIN users u ON q.created_by = u.user_id
-       WHERE q.quotation_id = ?`,
-      [id]
+       WHERE q.quotation_id = ?${bClause}`,
+      [id, ...bParam]
     );
 
     if (quotations.length === 0) {
@@ -175,7 +177,9 @@ const update = async (req, res) => {
     const { id } = req.params;
     const { customer_id, items, discount, tax_amount, notes, valid_until } = req.body;
 
-    const existing = await conn.query('SELECT * FROM quotations WHERE quotation_id = ?', [id]);
+    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND branch_id = ?' : '';
+    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
+    const existing = await conn.query(`SELECT * FROM quotations WHERE quotation_id = ?${bClause}`, [id, ...bParam]);
     if (existing.length === 0) {
       await conn.rollback();
       conn.release();
@@ -235,8 +239,10 @@ const updateStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND branch_id = ?' : '';
+    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
 
-    const existing = await query('SELECT * FROM quotations WHERE quotation_id = ?', [id]);
+    const existing = await query(`SELECT * FROM quotations WHERE quotation_id = ?${bClause}`, [id, ...bParam]);
     if (existing.length === 0) {
       return res.status(404).json({ message: 'Quotation not found' });
     }

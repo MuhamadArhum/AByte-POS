@@ -742,7 +742,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto flex flex-col relative">
           <motion.div
-            key={location.pathname}
+            key={`${location.pathname}-${activeBranchId ?? 'all'}`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}

@@ -84,9 +84,11 @@ exports.getAll = async (req, res) => {
 
 exports.getById = async (req, res) => {
   try {
+    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND po.branch_id = ?' : '';
+    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
     const [po] = await query(
-      'SELECT po.*, s.supplier_name, u.name as created_by_name FROM purchase_orders po JOIN suppliers s ON po.supplier_id = s.supplier_id LEFT JOIN users u ON po.created_by = u.user_id WHERE po.po_id = ?',
-      [req.params.id]
+      `SELECT po.*, s.supplier_name, u.name as created_by_name FROM purchase_orders po JOIN suppliers s ON po.supplier_id = s.supplier_id LEFT JOIN users u ON po.created_by = u.user_id WHERE po.po_id = ?${bClause}`,
+      [req.params.id, ...bParam]
     );
     if (!po) return res.status(404).json({ message: 'PO not found' });
 

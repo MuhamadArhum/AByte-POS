@@ -5,8 +5,26 @@
 // Used by: /api/products routes
 // =============================================================
 
-const { query } = require('../config/database');  // Database query helper
+const { query } = require('../config/database');
 const { logAction } = require('../services/auditService');
+
+let productBranchEnsured = false;
+async function ensureProductBranch() {
+  if (productBranchEnsured) return;
+  productBranchEnsured = true;
+  try { await query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS branch_id INT NULL`); } catch (_) {}
+}
+
+// Branch filter helper
+function branchWhere(req, alias = 'p') {
+  if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+    return { clause: ` AND ${alias}.branch_id = ?`, params: [req.user.branch_id] };
+  }
+  if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+    return { clause: ` AND ${alias}.branch_id = ?`, params: [req.query.filter_branch] };
+  }
+  return { clause: '', params: [] };
+}
 
 // --- Get All Products ---
 // Returns all products with their category names and stock levels.
@@ -17,61 +35,48 @@ const { logAction } = require('../services/auditService');
 //   ?stock=out       - Show only out of stock (0 units)
 exports.getAll = async (req, res) => {
   try {
-    const { search, category, stock, type } = req.query;  // Get filter parameters from URL
+    await ensureProductBranch();
+    const { search, category, stock, type } = req.query;
+    const branch = branchWhere(req, 'p');
 
-    // Base query: JOIN products with categories and inventory tables
-    // LEFT JOIN because a product might not have a category or inventory record
-    // WHERE 1=1 is a trick that makes it easy to append AND conditions dynamically
     let sql = `SELECT p.*, c.category_name, i.available_stock
                FROM products p
                LEFT JOIN categories c ON p.category_id = c.category_id
                LEFT JOIN inventory i ON p.product_id = i.product_id
-               WHERE 1=1`;
-    const params = [];
+               WHERE 1=1${branch.clause}`;
+    const params = [...branch.params];
 
-    // If search keyword provided, filter by product name or barcode (partial match)
     if (search) {
       sql += ' AND (p.product_name LIKE ? OR p.barcode LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`);  // % = wildcard for partial matching
+      params.push(`%${search}%`, `%${search}%`);
     }
-    // If category filter provided, filter by exact category ID
-    if (category) {
-      sql += ' AND p.category_id = ?';
-      params.push(category);
-    }
-    // Product type filter (raw_material / finished_good)
-    if (type) {
-      sql += ' AND p.product_type = ?';
-      params.push(type);
-    }
-    // Stock level filters
-    if (stock === 'low') {
-      sql += ' AND i.available_stock > 0 AND i.available_stock < 10';  // Low: 1-9 units
-    } else if (stock === 'out') {
-      sql += ' AND (i.available_stock = 0 OR i.available_stock IS NULL)';  // Out of stock
-    }
+    if (category) { sql += ' AND p.category_id = ?'; params.push(category); }
+    if (type)     { sql += ' AND p.product_type = ?'; params.push(type); }
+    if (stock === 'low') sql += ' AND i.available_stock > 0 AND i.available_stock < 10';
+    else if (stock === 'out') sql += ' AND (i.available_stock = 0 OR i.available_stock IS NULL)';
 
-    // Pagination
     const { page, limit } = req.query;
     if (page && limit) {
       const pageNum = parseInt(page);
       const limitNum = parseInt(limit);
       const offset = (pageNum - 1) * limitNum;
 
-      // Count total records for pagination
-      const countSql = `SELECT COUNT(*) as total
-                        FROM products p
-                        LEFT JOIN categories c ON p.category_id = c.category_id
-                        LEFT JOIN inventory i ON p.product_id = i.product_id
-                        WHERE 1=1 ` +
-                        (search ? ' AND (p.product_name LIKE ? OR p.barcode LIKE ?)' : '') +
-                        (category ? ' AND p.category_id = ?' : '') +
-                        (type ? ' AND p.product_type = ?' : '') +
-                        (stock === 'low' ? ' AND i.available_stock > 0 AND i.available_stock < 10' : '') +
-                        (stock === 'out' ? ' AND (i.available_stock = 0 OR i.available_stock IS NULL)' : '');
-      
-      // params for count query (same as main query up to this point)
-      const countParams = [...params]; 
+      let countSql = `SELECT COUNT(*) as total
+                      FROM products p
+                      LEFT JOIN categories c ON p.category_id = c.category_id
+                      LEFT JOIN inventory i ON p.product_id = i.product_id
+                      WHERE 1=1${branch.clause}` +
+                      (search ? ' AND (p.product_name LIKE ? OR p.barcode LIKE ?)' : '') +
+                      (category ? ' AND p.category_id = ?' : '') +
+                      (type ? ' AND p.product_type = ?' : '') +
+                      (stock === 'low' ? ' AND i.available_stock > 0 AND i.available_stock < 10' : '') +
+                      (stock === 'out' ? ' AND (i.available_stock = 0 OR i.available_stock IS NULL)' : '');
+
+      const countParams = [...branch.params];
+      if (search) countParams.push(`%${search}%`, `%${search}%`);
+      if (category) countParams.push(category);
+      if (type) countParams.push(type);
+
       const countResult = await query(countSql, countParams);
       const total = Number(countResult[0].total);
 
@@ -79,19 +84,10 @@ exports.getAll = async (req, res) => {
       params.push(limitNum, offset);
 
       const rows = await query(sql, params);
-      
-      return res.json({
-        data: rows,
-        pagination: {
-          total,
-          page: pageNum,
-          limit: limitNum,
-          totalPages: Math.ceil(total / limitNum)
-        }
-      });
+      return res.json({ data: rows, pagination: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) } });
     }
 
-    sql += ' ORDER BY p.created_at DESC';  // Newest products first
+    sql += ' ORDER BY p.created_at DESC';
     const rows = await query(sql, params);
     res.json({ data: rows });
   } catch (err) {
@@ -175,10 +171,11 @@ exports.create = async (req, res) => {
       return res.status(400).json({ message: 'Price is required for finished goods' });
     }
 
-    // Insert the product into the products table
+    await ensureProductBranch();
+    const branch_id = req.user.branch_id || null;
     const result = await query(
-      'INSERT INTO products (product_name, category_id, price, stock_quantity, barcode, product_type, unit, cost_price, min_stock_level, sku, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [product_name, category_id || null, price || 0, stock_quantity || 0, barcode || null, product_type || 'finished_good', unit || 'pcs', cost_price || 0, min_stock_level || 0, sku || null, description || null]
+      'INSERT INTO products (product_name, category_id, price, stock_quantity, barcode, product_type, unit, cost_price, min_stock_level, sku, description, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [product_name, category_id || null, price || 0, stock_quantity || 0, barcode || null, product_type || 'finished_good', unit || 'pcs', cost_price || 0, min_stock_level || 0, sku || null, description || null, branch_id]
     );
 
     // Also create a corresponding inventory record to track stock separately

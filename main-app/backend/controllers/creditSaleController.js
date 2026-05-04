@@ -100,6 +100,8 @@ exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
 
+    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND cs.branch_id = ?' : '';
+    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
     const creditSales = await query(
       `SELECT cs.*, c.customer_name as customer_name, c.phone_number as customer_phone,
               u.name as created_by_name, s.sale_date, s.total_amount as sale_total
@@ -107,8 +109,8 @@ exports.getById = async (req, res) => {
        JOIN sales s ON cs.sale_id = s.sale_id
        JOIN customers c ON cs.customer_id = c.customer_id
        LEFT JOIN users u ON cs.created_by = u.user_id
-       WHERE cs.credit_sale_id = ?`,
-      [id]
+       WHERE cs.credit_sale_id = ?${bClause}`,
+      [id, ...bParam]
     );
 
     if (creditSales.length === 0) {
@@ -292,12 +294,18 @@ exports.getCustomerBalance = async (req, res) => {
 
 exports.getOverdue = async (req, res) => {
   try {
+    let bClause = '';
+    const bParam = [];
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) { bClause = ' AND cs.branch_id = ?'; bParam.push(req.user.branch_id); }
+    else if (req.user.role_name === 'Admin' && req.query.filter_branch) { bClause = ' AND cs.branch_id = ?'; bParam.push(req.query.filter_branch); }
+
     const overdue = await query(
       `SELECT cs.*, c.customer_name as customer_name, c.phone_number as customer_phone
        FROM credit_sales cs
        JOIN customers c ON cs.customer_id = c.customer_id
-       WHERE cs.due_date < CURDATE() AND cs.status IN ('pending', 'partial')
-       ORDER BY cs.due_date ASC`
+       WHERE cs.due_date < CURDATE() AND cs.status IN ('pending', 'partial')${bClause}
+       ORDER BY cs.due_date ASC`,
+      bParam
     );
 
     res.json({ data: overdue });
@@ -309,12 +317,18 @@ exports.getOverdue = async (req, res) => {
 
 exports.getStats = async (req, res) => {
   try {
+    let bClause = '';
+    const bParam = [];
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) { bClause = ' WHERE branch_id = ?'; bParam.push(req.user.branch_id); }
+    else if (req.user.role_name === 'Admin' && req.query.filter_branch) { bClause = ' WHERE branch_id = ?'; bParam.push(req.query.filter_branch); }
+
     const [stats] = await query(
       `SELECT
          COALESCE(SUM(CASE WHEN status != 'paid' THEN balance_due ELSE 0 END), 0) as total_outstanding,
          COALESCE(SUM(CASE WHEN due_date < CURDATE() AND status IN ('pending', 'partial') THEN 1 ELSE 0 END), 0) as overdue_count,
          COALESCE(SUM(CASE WHEN status IN ('pending', 'partial') THEN 1 ELSE 0 END), 0) as active_count
-       FROM credit_sales`
+       FROM credit_sales${bClause}`,
+      bParam
     );
 
     const [collected] = await query(

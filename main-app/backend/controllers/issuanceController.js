@@ -6,7 +6,15 @@ const pad = (n, len = 6) => String(n).padStart(len, '0');
 async function ensureColumns() {
   try {
     await query(`ALTER TABLE stock_issues ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+    await query(`ALTER TABLE stock_issue_returns ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+    await query(`ALTER TABLE raw_sales ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
   } catch (_) {}
+}
+
+function getBranch(req) {
+  if (req.user.role_name !== 'Admin' && req.user.branch_id) return { clause: ' AND branch_id = ?', params: [req.user.branch_id] };
+  if (req.user.role_name === 'Admin' && req.query.filter_branch)  return { clause: ' AND branch_id = ?', params: [req.query.filter_branch] };
+  return { clause: '', params: [] };
 }
 
 // ============ HELPERS ============
@@ -202,9 +210,10 @@ exports.getReturns = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const offset = (page - 1) * limit;
+    const branch = getBranch(req);
 
-    let where = 'WHERE 1=1';
-    const params = [];
+    let where = `WHERE 1=1${branch.clause.replace(' AND branch_id', ' AND sir.branch_id')}`;
+    const params = [...branch.params];
     if (section_id) { where += ' AND sir.section_id = ?'; params.push(section_id); }
     if (from_date)  { where += ' AND sir.return_date >= ?'; params.push(from_date); }
     if (to_date)    { where += ' AND sir.return_date <= ?'; params.push(to_date); }
@@ -238,9 +247,10 @@ exports.createReturn = async (req, res) => {
     await conn.beginTransaction();
     const return_number = await nextNumber('SIR', 'stock_issue_returns', 'return_number');
 
+    const branch_id = req.user.branch_id || null;
     const result = await conn.query(
-      'INSERT INTO stock_issue_returns (return_number, section_id, return_date, notes, created_by) VALUES (?, ?, ?, ?, ?)',
-      [return_number, section_id, return_date, notes || null, req.user.user_id]
+      'INSERT INTO stock_issue_returns (return_number, section_id, return_date, notes, created_by, branch_id) VALUES (?, ?, ?, ?, ?, ?)',
+      [return_number, section_id, return_date, notes || null, req.user.user_id, branch_id]
     );
     const returnId = Number(result.insertId);
 
@@ -290,9 +300,10 @@ exports.getRawSales = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const offset = (page - 1) * limit;
+    const branch = getBranch(req);
 
-    let where = 'WHERE 1=1';
-    const params = [];
+    let where = `WHERE 1=1${branch.clause.replace(' AND branch_id', ' AND rs.branch_id')}`;
+    const params = [...branch.params];
     if (section_id) { where += ' AND rs.section_id = ?'; params.push(section_id); }
     if (from_date)  { where += ' AND rs.sale_date >= ?'; params.push(from_date); }
     if (to_date)    { where += ' AND rs.sale_date <= ?'; params.push(to_date); }
@@ -345,9 +356,10 @@ exports.createRawSale = async (req, res) => {
     const sale_number = await nextNumber('RS', 'raw_sales', 'sale_number');
     const total = items.reduce((s, i) => s + Number(i.quantity) * Number(i.unit_price), 0);
 
+    const branch_id = req.user.branch_id || null;
     const result = await conn.query(
-      'INSERT INTO raw_sales (sale_number, section_id, customer_name, sale_date, total_amount, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [sale_number, section_id || null, customer_name || null, sale_date, total, notes || null, req.user.user_id]
+      'INSERT INTO raw_sales (sale_number, section_id, customer_name, sale_date, total_amount, notes, created_by, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [sale_number, section_id || null, customer_name || null, sale_date, total, notes || null, req.user.user_id, branch_id]
     );
     const saleId = Number(result.insertId);
 

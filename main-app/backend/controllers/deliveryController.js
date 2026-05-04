@@ -175,6 +175,8 @@ exports.getAll = async (req, res) => {
 // GET /api/deliveries/:id
 exports.getById = async (req, res) => {
   try {
+    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND d.branch_id = ?' : '';
+    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
     const rows = await query(`
       SELECT d.*,
              c.customer_name, c.phone_number AS customer_phone, c.email AS customer_email,
@@ -184,8 +186,8 @@ exports.getById = async (req, res) => {
       JOIN customers c ON d.customer_id = c.customer_id
       LEFT JOIN users u ON d.created_by = u.user_id
       LEFT JOIN sales s ON d.sale_id = s.sale_id
-      WHERE d.delivery_id = ?
-    `, [req.params.id]);
+      WHERE d.delivery_id = ?${bClause}
+    `, [req.params.id, ...bParam]);
 
     if (!rows.length) return res.status(404).json({ message: 'Delivery not found' });
     res.json(rows[0]);
@@ -260,7 +262,9 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const existing = await query('SELECT * FROM deliveries WHERE delivery_id = ?', [id]);
+    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND branch_id = ?' : '';
+    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
+    const existing = await query(`SELECT * FROM deliveries WHERE delivery_id = ?${bClause}`, [id, ...bParam]);
     if (!existing.length) return res.status(404).json({ message: 'Delivery not found' });
 
     const old = existing[0];
@@ -326,7 +330,9 @@ exports.updateStatus = async (req, res) => {
     const valid = ['pending', 'assigned', 'dispatched', 'in_transit', 'delivered', 'failed', 'cancelled'];
     if (!valid.includes(status)) return res.status(400).json({ message: 'Invalid status' });
 
-    const rows = await query('SELECT * FROM deliveries WHERE delivery_id = ?', [id]);
+    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND branch_id = ?' : '';
+    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
+    const rows = await query(`SELECT * FROM deliveries WHERE delivery_id = ?${bClause}`, [id, ...bParam]);
     if (!rows.length) return res.status(404).json({ message: 'Delivery not found' });
 
     const old = rows[0];
@@ -356,7 +362,9 @@ exports.updateStatus = async (req, res) => {
 // DELETE /api/deliveries/:id  (only pending/cancelled can be deleted)
 exports.remove = async (req, res) => {
   try {
-    const rows = await query('SELECT * FROM deliveries WHERE delivery_id = ?', [req.params.id]);
+    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND branch_id = ?' : '';
+    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
+    const rows = await query(`SELECT * FROM deliveries WHERE delivery_id = ?${bClause}`, [req.params.id, ...bParam]);
     if (!rows.length) return res.status(404).json({ message: 'Delivery not found' });
 
     const d = rows[0];

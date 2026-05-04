@@ -88,13 +88,15 @@ exports.getAll = async (req, res) => {
 
 exports.getById = async (req, res) => {
   try {
+    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND sa.branch_id = ?' : '';
+    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
     const [adjustment] = await query(
       `SELECT sa.*, p.product_name, p.barcode, u.name as created_by_name
        FROM stock_adjustments sa
        JOIN products p ON sa.product_id = p.product_id
        JOIN users u ON sa.created_by = u.user_id
-       WHERE sa.adjustment_id = ?`,
-      [req.params.id]
+       WHERE sa.adjustment_id = ?${bClause}`,
+      [req.params.id, ...bParam]
     );
     if (!adjustment) return res.status(404).json({ message: 'Adjustment not found' });
     res.json(adjustment);
