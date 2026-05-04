@@ -8,14 +8,26 @@
 const { query } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
+function branchWhere(req, alias = 'p') {
+  if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+    return { clause: ` AND ${alias}.branch_id = ?`, params: [req.user.branch_id] };
+  }
+  if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+    return { clause: ` AND ${alias}.branch_id = ?`, params: [req.query.filter_branch] };
+  }
+  return { clause: '', params: [] };
+}
+
 // GET /api/inventory
 // Supports: ?page, ?limit, ?search, ?category_id, ?product_type, ?stock_status
 exports.getAll = async (req, res) => {
   try {
     const { page, limit, search, category_id, product_type, stock_status } = req.query;
+    const branch = branchWhere(req, 'p');
 
     const conditions = ['p.is_active = 1'];
     const params = [];
+    if (branch.clause) { conditions.push(`p.branch_id = ?`); params.push(...branch.params); }
 
     if (search) {
       conditions.push('(p.product_name LIKE ? OR p.sku LIKE ? OR p.barcode LIKE ?)');
@@ -87,9 +99,11 @@ exports.getAll = async (req, res) => {
 };
 
 // GET /api/inventory/stats
-// Returns inventory summary counts and values
 exports.getStats = async (req, res) => {
   try {
+    const branch = branchWhere(req, 'p');
+    const bClause = branch.clause ? `AND p.branch_id = ?` : '';
+
     const overviewRows = await query(`
       SELECT
         COUNT(*)                                                        AS total_products,
@@ -100,8 +114,8 @@ exports.getStats = async (req, res) => {
         COALESCE(SUM(COALESCE(i.available_stock, 0) * COALESCE(p.cost_price, 0)), 0) AS inventory_value
       FROM inventory i
       JOIN products p ON i.product_id = p.product_id
-      WHERE p.is_active = 1
-    `);
+      WHERE p.is_active = 1 ${bClause}
+    `, branch.params);
 
     const byType = await query(`
       SELECT p.product_type,
@@ -110,9 +124,9 @@ exports.getStats = async (req, res) => {
              SUM(COALESCE(i.available_stock, 0) * COALESCE(p.cost_price, 0)) AS value
       FROM inventory i
       JOIN products p ON i.product_id = p.product_id
-      WHERE p.is_active = 1
+      WHERE p.is_active = 1 ${bClause}
       GROUP BY p.product_type
-    `);
+    `, branch.params);
 
     res.json({ overview: overviewRows[0] || {}, by_type: byType });
   } catch (err) {
@@ -122,15 +136,16 @@ exports.getStats = async (req, res) => {
 };
 
 // GET /api/inventory/low-stock
-// Returns products at or below their reorder level
 exports.getLowStock = async (req, res) => {
   try {
     const { product_type } = req.query;
+    const branch = branchWhere(req, 'p');
     const conditions = [
       'p.is_active = 1',
       'COALESCE(i.available_stock, 0) <= COALESCE(p.min_stock_level, 10)',
     ];
-    const params = [];
+    const params = [...branch.params];
+    if (branch.clause) conditions.push('p.branch_id = ?');
     if (product_type) { conditions.push('p.product_type = ?'); params.push(product_type); }
 
     const rows = await query(

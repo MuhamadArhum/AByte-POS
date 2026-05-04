@@ -15,7 +15,14 @@ async function ensureProductBranch() {
   try { await query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS branch_id INT NULL`); } catch (_) {}
 }
 
-// Branch filter helper
+let categoryBranchEnsured = false;
+async function ensureCategoryBranch() {
+  if (categoryBranchEnsured) return;
+  categoryBranchEnsured = true;
+  try { await query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS branch_id INT NULL`); } catch (_) {}
+}
+
+// Branch filter helper — works for any aliased table with a branch_id column
 function branchWhere(req, alias = 'p') {
   if (req.user.role_name !== 'Admin' && req.user.branch_id) {
     return { clause: ` AND ${alias}.branch_id = ?`, params: [req.user.branch_id] };
@@ -262,16 +269,18 @@ exports.remove = async (req, res) => {
 };
 
 // --- Get All Categories ---
-// Returns all product categories sorted alphabetically.
-// Used in product forms and filter dropdowns.
+// Returns categories filtered by branch (non-admin sees only their branch).
 exports.getCategories = async (req, res) => {
   try {
+    await ensureCategoryBranch();
     const { type } = req.query;
+    const branch = branchWhere(req, 'c');
+
     let sql = `SELECT c.*, COUNT(p.product_id) as product_count
                FROM categories c
-               LEFT JOIN products p ON c.category_id = p.category_id
-               WHERE 1=1`;
-    const params = [];
+               LEFT JOIN products p ON c.category_id = p.category_id AND p.branch_id = c.branch_id
+               WHERE 1=1${branch.clause}`;
+    const params = [...branch.params];
     if (type) {
       sql += ' AND c.category_type = ?';
       params.push(type);
@@ -286,16 +295,15 @@ exports.getCategories = async (req, res) => {
 };
 
 // --- Create New Category ---
-// Adds a new product category with type (raw_material / semi_finished / finished_good).
 exports.createCategory = async (req, res) => {
   try {
+    await ensureCategoryBranch();
     const { category_name, category_type, description, is_active, parent_id } = req.body;
     if (!category_name) return res.status(400).json({ message: 'Category name is required' });
 
     const validTypes = ['raw_material', 'semi_finished', 'finished_good'];
     const catType = validTypes.includes(category_type) ? category_type : 'finished_good';
 
-    // If parent given, inherit its type
     let resolvedType = catType;
     if (parent_id) {
       const [parent] = await query('SELECT category_type FROM categories WHERE category_id = ?', [parent_id]);
@@ -303,9 +311,10 @@ exports.createCategory = async (req, res) => {
       resolvedType = parent.category_type;
     }
 
+    const branch_id = req.user.branch_id || null;
     const result = await query(
-      'INSERT INTO categories (category_name, category_type, parent_id, description, is_active) VALUES (?, ?, ?, ?, ?)',
-      [category_name, resolvedType, parent_id || null, description || null, is_active !== undefined ? is_active : 1]
+      'INSERT INTO categories (category_name, category_type, parent_id, description, is_active, branch_id) VALUES (?, ?, ?, ?, ?, ?)',
+      [category_name, resolvedType, parent_id || null, description || null, is_active !== undefined ? is_active : 1, branch_id]
     );
     await logAction(req.user.user_id, req.user.name, 'CATEGORY_CREATED', 'category', result.insertId, { category_name, category_type: resolvedType, parent_id: parent_id || null }, req.ip);
     res.status(201).json({ message: 'Category created', category_id: Number(result.insertId) });

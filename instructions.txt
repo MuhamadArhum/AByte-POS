@@ -4,6 +4,8 @@ For Admin Panel
 cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
+Ok Ab Chalty Hain Branch Wise INventory Lkin yaad rahy k Ab Sale module main kuch changes ni krny without permission 
 
-Dekho Jab user GSt on Cash 16% Waly Button Py CLick kry to Bill Main Gst Us Hisab Sy Add Honi chaye
-or jsb 5% waly py click kry to to us hisab sy bill main add honi cahey
+1: Products Branch Wise Add Honi chaye or branch wise hi show honi chaye 
+2: category bhi branch wise add honi chaye or branch wise show honi chaye pos main 
+3: Infact inventory module main bhi har kaam branch wise hoga 
