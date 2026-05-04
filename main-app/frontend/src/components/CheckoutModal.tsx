@@ -71,6 +71,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       setPointsToRedeem('');
       setCreditDueDate('');
       setPendingItems([]);
+      setPendingTaxRate(0);
+      // For cart sales, initialize charges from CartContext immediately
+      if (!pendingSale || pendingSale.isCartEdit) {
+        setPendingAdditionalRate(additionalRate);
+      } else {
+        setPendingAdditionalRate(0);
+      }
       fetchSettings();
       if (selectedCustomer && selectedCustomer.customer_id !== 1) {
         fetchLoyaltyInfo(selectedCustomer.customer_id);
@@ -110,6 +117,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     try {
       const res = await api.get('/settings');
       setSettings(res.data);
+      // For cart sales, initialize tax rate from settings (cash default)
+      if (!pendingSale || pendingSale.isCartEdit) {
+        setPendingTaxRate(parseFloat(res.data?.tax_on_cash ?? 16));
+      }
     } catch (error) {
       console.error('Failed to fetch settings', error);
     }
@@ -163,15 +174,11 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   // (skip if original DB tax was 0 — those are 0-tax order types like TA)
   const handleSetPaymentMethod = (method: 'cash' | 'card' | 'online' | 'split' | 'credit') => {
     setPaymentMethod(method);
-    if (pendingSale && !pendingSale.isCartEdit) {
-      const rate =
-        method === 'card'    ? parseFloat(settings?.tax_on_card   ?? 5)
-        : method === 'online' ? parseFloat(settings?.tax_on_online ?? 5)
-        : method === 'credit' ? parseFloat(settings?.tax_on_cash   ?? 16)
-        : method === 'split'  ? parseFloat(settings?.tax_on_cash   ?? 16)
-        : parseFloat(settings?.tax_on_cash ?? 16);
-      setPendingTaxRate(rate);
-    }
+    const rate =
+      method === 'card'    ? parseFloat(settings?.tax_on_card   ?? 5)
+      : method === 'online' ? parseFloat(settings?.tax_on_online ?? 5)
+      : parseFloat(settings?.tax_on_cash ?? 16);
+    setPendingTaxRate(rate);
   };
 
   if (!isOpen) return null;
@@ -180,28 +187,19 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   const taxOnCash   = parseFloat(settings?.tax_on_cash   ?? 16);
   const taxOnCard   = parseFloat(settings?.tax_on_card   ?? 5);
   const taxOnOnline = parseFloat(settings?.tax_on_online ?? 5);
-  const gstRate = paymentMethod === 'card' ? taxOnCard
-                : paymentMethod === 'online' ? taxOnOnline
-                : taxOnCash;
-  const gstAmount = subtotal * gstRate / 100;
 
-  // For pending sales, recalculate from items + editable rates
+  // Unified: for pending sales use pendingItems; for cart use cart items
+  const isPendingMode = !!(pendingSale && !pendingSale.isCartEdit);
   const pendingSubtotal = pendingItems.reduce(
     (sum: number, item: any) => sum + parseFloat(item.unit_price) * parseFloat(item.quantity), 0
   );
-  const pendingTaxAmount = pendingSubtotal * pendingTaxRate / 100;
-  const pendingAdditionalAmount = pendingSubtotal * pendingAdditionalRate / 100;
+  const effectiveSubtotal = isPendingMode ? pendingSubtotal : subtotal;
+  const effectiveTaxAmount = effectiveSubtotal * pendingTaxRate / 100;
+  const effectiveChargesAmount = effectiveSubtotal * pendingAdditionalRate / 100;
 
-  // Cart total using local gstAmount (derived from paymentMethod, always in sync)
-  const cartTotal = subtotal + gstAmount + additionalAmount - bundleDiscount;
-
-  const baseTotal = pendingSale
-    ? (pendingSale.isCartEdit
-        ? cartTotal  // Cart-edit mode: use GST-adjusted cart total
-        : pendingItems.length > 0
-          ? pendingSubtotal + pendingTaxAmount + pendingAdditionalAmount + deliveryCharges
-          : parseFloat(pendingSale.total_amount || 0) + deliveryCharges)
-    : cartTotal;
+  const baseTotal = effectiveSubtotal + effectiveTaxAmount + effectiveChargesAmount
+    + (isPendingMode ? deliveryCharges : 0)
+    - (isPendingMode ? 0 : bundleDiscount);
 
   const discountValue = parseFloat(discount) || 0;
   const couponDiscount = appliedCoupon ? parseFloat(appliedCoupon.discount_amount) : 0;
@@ -303,8 +301,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
           amount_paid: finalAmountPaid,
           user_id: user?.user_id,
           status: paymentMethod === 'credit' ? 'completed' : 'completed',
-          tax_percent: gstRate,
-          additional_charges_percent: additionalRate,
+          tax_percent: pendingTaxRate,
+          additional_charges_percent: pendingAdditionalRate,
           note: noteStr,
           applied_bundles: appliedBundles || []
         };
@@ -460,15 +458,15 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
 
         <div className="p-6 space-y-5 overflow-y-auto">
 
-          {/* Pending Sale Items (read-only) - only shown when paying from Orders page, not cart-edit mode */}
-          {pendingSale && !pendingSale.isCartEdit && (
-            <div className="space-y-2">
-              {pendingItemsLoading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="animate-spin text-emerald-500" size={20} />
-                  <span className="ml-2 text-sm text-gray-500">Loading items...</span>
-                </div>
-              ) : pendingItems.length > 0 ? (
+          {/* Items table — always shown for all checkout types */}
+          <div className="space-y-2">
+            {isPendingMode && pendingItemsLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="animate-spin text-emerald-500" size={20} />
+                <span className="ml-2 text-sm text-gray-500">Loading items...</span>
+              </div>
+            ) : (
+              <>
                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
                     Order Items
@@ -483,21 +481,26 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {pendingItems.map((item: any, idx: number) => (
-                        <tr key={idx}>
-                          <td className="px-3 py-1.5 text-gray-800 font-medium text-xs">{item.product_name}</td>
-                          <td className="px-3 py-1.5 text-center text-gray-600 text-xs">{item.quantity}</td>
-                          <td className="px-3 py-1.5 text-right text-gray-600 text-xs">Rs. {parseFloat(item.unit_price).toFixed(2)}</td>
-                          <td className="px-3 py-1.5 text-right font-semibold text-gray-800 text-xs">Rs. {(parseFloat(item.unit_price) * parseFloat(item.quantity)).toFixed(2)}</td>
-                        </tr>
-                      ))}
+                      {(isPendingMode ? pendingItems : cart).map((item: any, idx: number) => {
+                        const price = parseFloat(item.unit_price ?? item.price ?? 0);
+                        const qty   = parseFloat(item.quantity ?? 1);
+                        return (
+                          <tr key={idx}>
+                            <td className="px-3 py-1.5 text-xs">
+                              <p className="text-gray-800 font-medium">{item.product_name}</p>
+                              {item.variant_name && <p className="text-gray-400">{item.variant_name}</p>}
+                            </td>
+                            <td className="px-3 py-1.5 text-center text-gray-600 text-xs">{qty}</td>
+                            <td className="px-3 py-1.5 text-right text-gray-600 text-xs">Rs. {price.toFixed(2)}</td>
+                            <td className="px-3 py-1.5 text-right font-semibold text-gray-800 text-xs">Rs. {(price * qty).toFixed(2)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
-              ) : null}
 
-              {/* Editable Tax & Additional Charges for pending sales */}
-              {pendingItems.length > 0 && (
+                {/* Editable Tax % and Charges % — same for all checkout types */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
                     <label className="text-xs font-semibold text-gray-500 flex items-center gap-1 mb-1.5">
@@ -508,11 +511,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                       value={pendingTaxRate}
                       onChange={e => setPendingTaxRate(parseFloat(e.target.value) || 0)}
                       className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-center text-sm font-bold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white"
-                      step="0.1"
-                      min="0"
+                      step="0.1" min="0"
                     />
                     {pendingTaxRate > 0 && (
-                      <p className="text-xs text-gray-400 mt-1 text-center">Rs. {pendingTaxAmount.toFixed(2)}</p>
+                      <p className="text-xs text-gray-400 mt-1 text-center">Rs. {effectiveTaxAmount.toFixed(2)}</p>
                     )}
                   </div>
                   <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
@@ -524,74 +526,51 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                       value={pendingAdditionalRate}
                       onChange={e => setPendingAdditionalRate(parseFloat(e.target.value) || 0)}
                       className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-center text-sm font-bold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white"
-                      step="0.1"
-                      min="0"
+                      step="0.1" min="0"
                     />
                     {pendingAdditionalRate > 0 && (
-                      <p className="text-xs text-gray-400 mt-1 text-center">Rs. {pendingAdditionalAmount.toFixed(2)}</p>
+                      <p className="text-xs text-gray-400 mt-1 text-center">Rs. {effectiveChargesAmount.toFixed(2)}</p>
                     )}
                   </div>
                 </div>
-              )}
-            </div>
-          )}
+              </>
+            )}
+          </div>
 
           {/* Price Summary */}
           <div className="space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100">
-            {pendingSale && pendingItems.length > 0 && (
-              <div className="flex justify-between items-center text-gray-600 text-sm">
-                <span>Subtotal</span>
-                <span>Rs. {pendingSubtotal.toFixed(2)}</span>
-              </div>
-            )}
-            {pendingSale && pendingTaxRate > 0 && pendingItems.length > 0 && (
-              <div className="flex justify-between items-center text-gray-600 text-sm">
-                <span>Tax ({pendingTaxRate}%)</span>
-                <span>Rs. {pendingTaxAmount.toFixed(2)}</span>
-              </div>
-            )}
-            {pendingSale && pendingAdditionalRate > 0 && pendingItems.length > 0 && (
-              <div className="flex justify-between items-center text-gray-600 text-sm">
-                <span>Charges ({pendingAdditionalRate}%)</span>
-                <span>Rs. {pendingAdditionalAmount.toFixed(2)}</span>
-              </div>
-            )}
-            {/* Non-pending: show proper breakdown (items → GST → discounts → total) */}
-            {!pendingSale && (
-              <div className="flex justify-between items-center text-gray-600">
-                <span>Items</span>
-                <span>Rs. {subtotal.toFixed(2)}</span>
-              </div>
-            )}
-            {!pendingSale && (
+            <div className="flex justify-between items-center text-gray-600 text-sm">
+              <span>Subtotal</span>
+              <span>Rs. {effectiveSubtotal.toFixed(2)}</span>
+            </div>
+            {pendingTaxRate > 0 && (
               <div className={`flex justify-between items-center text-sm font-semibold ${paymentMethod === 'card' || paymentMethod === 'online' ? 'text-blue-600' : 'text-orange-600'}`}>
                 <span className="flex items-center gap-1">
                   <Percent size={12} />
-                  GST ({gstRate}%)
+                  Tax ({pendingTaxRate}%)
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${paymentMethod === 'card' || paymentMethod === 'online' ? 'bg-blue-100' : 'bg-orange-100'}`}>
                     {paymentMethod === 'card' ? 'Card' : paymentMethod === 'online' ? 'Online' : paymentMethod === 'split' ? 'Split' : paymentMethod === 'credit' ? 'Credit' : 'Cash'}
                   </span>
                 </span>
-                <span>+ Rs. {gstAmount.toFixed(2)}</span>
+                <span>+ Rs. {effectiveTaxAmount.toFixed(2)}</span>
               </div>
             )}
-            {!pendingSale && additionalAmount > 0 && (
+            {pendingAdditionalRate > 0 && (
               <div className="flex justify-between items-center text-gray-500 text-sm">
-                <span>Additional ({additionalRate}%)</span>
-                <span>+ Rs. {additionalAmount.toFixed(2)}</span>
+                <span>Charges ({pendingAdditionalRate}%)</span>
+                <span>+ Rs. {effectiveChargesAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {!isPendingMode && bundleDiscount > 0 && (
+              <div className="flex justify-between items-center text-green-600 text-sm">
+                <span>Bundle Discount</span>
+                <span>- Rs. {bundleDiscount.toFixed(2)}</span>
               </div>
             )}
             {deliveryCharges > 0 && (
               <div className="flex justify-between items-center text-blue-600 text-sm">
                 <span className="flex items-center gap-1"><Truck size={12} /> Delivery Charges</span>
                 <span>+ Rs. {deliveryCharges.toFixed(2)}</span>
-              </div>
-            )}
-            {/* Pending sale with no items loaded yet */}
-            {pendingSale && pendingItems.length === 0 && (
-              <div className="flex justify-between items-center text-gray-600">
-                <span>Subtotal</span>
-                <span>Rs. {baseTotal.toFixed(2)}</span>
               </div>
             )}
             <div className="flex justify-between items-center text-gray-600">
@@ -622,9 +601,9 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
             <div className="flex justify-between items-center text-lg pt-2 border-t border-gray-200">
               <div>
                 <span className="font-bold text-gray-800">Net Payable</span>
-                {!pendingSale && (
+                {pendingTaxRate > 0 && (
                   <div className={`text-xs font-semibold mt-0.5 ${paymentMethod === 'card' || paymentMethod === 'online' ? 'text-blue-600' : 'text-orange-600'}`}>
-                    incl. GST {gstRate}%
+                    incl. Tax {pendingTaxRate}%
                   </div>
                 )}
               </div>
@@ -716,7 +695,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-700">Payment Method</label>
               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${paymentMethod === 'card' || paymentMethod === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                GST: {gstRate}% — Rs. {gstAmount.toFixed(2)}
+                Tax: {pendingTaxRate}% — Rs. {effectiveTaxAmount.toFixed(2)}
               </span>
             </div>
             <div className="grid grid-cols-4 gap-2">
