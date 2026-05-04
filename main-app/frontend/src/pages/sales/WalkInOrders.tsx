@@ -167,7 +167,7 @@ const WalkInOrders = () => {
     } finally {
       setActiveLoading(false);
     }
-  }, [activePage, activePerPage]);
+  }, [activePage, activePerPage, categoryFilter]);
 
   useEffect(() => { if (activeTab === 'active') fetchActive(); }, [activeTab, fetchActive, categoryFilter]);
 
@@ -239,7 +239,7 @@ const WalkInOrders = () => {
                 <ShoppingBag size={26} className="text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold tracking-tight text-gray-900">Walk-In Orders</h1>
+                <h1 className="text-xl font-semibold tracking-tight text-gray-900">Orders</h1>
                 <p className="text-sm text-gray-500">On-spot customer orders management</p>
               </div>
             </div>

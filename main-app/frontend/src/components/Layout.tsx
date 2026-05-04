@@ -153,7 +153,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       color: 'emerald',
       children: [
         { icon: ShoppingCart, label: 'POS', path: '/pos', moduleKey: 'sales.pos' },
-        { icon: ShoppingBag, label: 'Walk-In Orders', path: '/walk-in-orders', moduleKey: 'sales.pos' },
+        { icon: ShoppingBag, label: 'Orders', path: '/walk-in-orders', moduleKey: 'sales.pos' },
         { icon: Truck, label: 'Delivery', path: '/deliveries', moduleKey: 'sales.deliveries' },
         { icon: Wallet, label: 'Cash Register', path: '/cash-register', moduleKey: 'sales.register' },
         { icon: RotateCcw, label: 'Returns', path: '/returns', moduleKey: 'sales.returns' },
