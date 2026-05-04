@@ -5,12 +5,5 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
-
-Yar Abhi bhi System Wohi Issue kr rha hai 
-ye Chezain UPdate kro 
-1: Setting main jahan POS setting hain udr tax setting main ye chezain add krni hai (tax on cash , tax on card, tax on online) ye teeno trha sy tax settings save krwani hain 
-2: Checkout Modal Ko yehi Setting Use Krwani hain or usky Hisab sy bill Amount ko Change krna hai 
-3: Or han Lazmi bat Checkout main amount auto fetch ho rahi hai usko Remove kro user khud amount add kry or amount match hony py hi wo bill paid hona chaye
-4: Checkout main abhi bhi sync Wala Button ni lgaya tumny usko add kro Jahan Complete Payment ka button hai same usi jagha aik button bnao final payment  (Agr user complete payment py click kry ga to wo invoice fbr/Pra sy sync ni hogi or agr final payment py click kry ga to wo pra/fbr sy sync ho jani chaye)
-5: or unpaid order main jo print ka option bnaya hain us main print preview ko detail main bnao dobara
-
+Dekho Jab user GSt on Cash 16% Waly Button Py CLick kry to Bill Main Gst Us Hisab Sy Add Honi chaye
+or jsb 5% waly py click kry to to us hisab sy bill main add honi cahey

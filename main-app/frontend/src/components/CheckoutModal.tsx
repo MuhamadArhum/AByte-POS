@@ -34,6 +34,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   // Pending sale items & rates
   const [pendingItems, setPendingItems] = useState<any[]>([]);
   const [pendingTaxRate, setPendingTaxRate] = useState(0);
+  const [pendingOriginalTaxRate, setPendingOriginalTaxRate] = useState(0); // DB value — used to detect 0-tax orders (TA)
   const [pendingAdditionalRate, setPendingAdditionalRate] = useState(0);
   const [pendingItemsLoading, setPendingItemsLoading] = useState(false);
 
@@ -71,6 +72,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       setPointsToRedeem('');
       setCreditDueDate('');
       setPendingItems([]);
+      setPendingOriginalTaxRate(0);
       fetchSettings();
       if (selectedCustomer && selectedCustomer.customer_id !== 1) {
         fetchLoyaltyInfo(selectedCustomer.customer_id);
@@ -97,6 +99,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       const saleData = res.data;
       setPendingItems(saleData.items || []);
       const storedTax = parseFloat(saleData.tax_percent || 0);
+      setPendingOriginalTaxRate(storedTax);
       setPendingTaxRate(storedTax);
       setPendingAdditionalRate(parseFloat(saleData.additional_charges_percent || 0));
     } catch (err) {
@@ -157,6 +160,19 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     setAppliedCoupon(null);
     setCouponCode('');
     setCouponError('');
+  };
+
+  // When user clicks a payment method button, also sync pendingTaxRate for pending sales
+  // (skip if original DB tax was 0 — those are 0-tax order types like TA)
+  const handleSetPaymentMethod = (method: 'cash' | 'card' | 'online' | 'split' | 'credit') => {
+    setPaymentMethod(method);
+    if (pendingSale && !pendingSale.isCartEdit && pendingOriginalTaxRate > 0) {
+      const rate =
+        method === 'card'   ? parseFloat(settings?.tax_on_card   ?? 5)
+        : method === 'online' ? parseFloat(settings?.tax_on_online ?? 5)
+        : parseFloat(settings?.tax_on_cash ?? 16);
+      setPendingTaxRate(rate);
+    }
   };
 
   if (!isOpen) return null;
@@ -706,7 +722,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
             </div>
             <div className="grid grid-cols-4 gap-2">
               <button
-                onClick={() => setPaymentMethod('cash')}
+                onClick={() => handleSetPaymentMethod('cash')}
                 className={`p-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${
                   paymentMethod === 'cash'
                     ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
@@ -718,7 +734,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                 <span className="text-[10px] font-bold text-orange-500">GST {taxOnCash}%</span>
               </button>
               <button
-                onClick={() => setPaymentMethod('card')}
+                onClick={() => handleSetPaymentMethod('card')}
                 className={`p-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${
                   paymentMethod === 'card'
                     ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
@@ -730,7 +746,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                 <span className="text-[10px] font-bold text-blue-500">GST {taxOnCard}%</span>
               </button>
               <button
-                onClick={() => setPaymentMethod('online')}
+                onClick={() => handleSetPaymentMethod('online')}
                 className={`p-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${
                   paymentMethod === 'online'
                     ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
@@ -742,7 +758,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                 <span className="text-[10px] font-bold text-blue-500">GST {taxOnOnline}%</span>
               </button>
               <button
-                onClick={() => setPaymentMethod('credit')}
+                onClick={() => handleSetPaymentMethod('credit')}
                 className={`p-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${
                   paymentMethod === 'credit'
                     ? 'border-orange-500 bg-orange-50 text-orange-700'
@@ -754,7 +770,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
               </button>
             </div>
             <button
-                onClick={() => setPaymentMethod('split')}
+                onClick={() => handleSetPaymentMethod('split')}
                 className={`w-full mt-1 p-2 rounded-xl border flex items-center justify-center gap-2 transition-all ${
                   paymentMethod === 'split'
                     ? 'border-orange-500 bg-orange-50 text-orange-700'
