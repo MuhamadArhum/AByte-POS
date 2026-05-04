@@ -9,14 +9,25 @@
 const { getConnection, query } = require('../config/database');  // DB helpers (getConnection for transactions)
 const { logAction } = require('../services/auditService');
 
-// Ensure branch_id column exists on older tenant DBs
+// Ensure all required columns exist on older DBs (runs once per server start)
 let salesColumnsEnsured = false;
 async function ensureSalesColumns() {
   if (salesColumnsEnsured) return;
   salesColumnsEnsured = true;
-  try {
-    await query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-  } catch (e) { /* safe to ignore */ }
+  const cols = [
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS branch_id INT NULL`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS table_id INT NULL`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS order_type VARCHAR(30) NULL DEFAULT 'on_spot'`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS token_no VARCHAR(20) NULL`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS invoice_no VARCHAR(20) NULL`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS bundle_discount DECIMAL(10,2) DEFAULT 0.00`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS bundle_count INT DEFAULT 0`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS net_amount DECIMAL(10,2) DEFAULT 0.00`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS sub_total DECIMAL(10,2) DEFAULT 0.00`,
+  ];
+  for (const sql of cols) {
+    try { await query(sql); } catch (e) { /* column already exists */ }
+  }
 }
 
 // Helper: Round to 2 decimal places for currency
@@ -269,11 +280,16 @@ exports.createSale = async (req, res) => {
     res.status(201).json({ ...newSale[0], items: saleDetails });
 
   } catch (error) {
-    if (conn) await conn.rollback();  // Rollback on error
-    console.error('Create sale error:', error);
-    res.status(500).json({ message: 'Failed to create sale' });
+    if (conn) await conn.rollback();
+    console.error('Create sale error:', error.message || error);
+    const msg = error.code === 'ER_BAD_FIELD_ERROR'
+      ? `DB column missing: ${error.sqlMessage} — run ensureSalesColumns migration`
+      : error.code === 'ER_NO_SUCH_TABLE'
+      ? `Table missing: ${error.sqlMessage}`
+      : 'Failed to create sale';
+    res.status(500).json({ message: msg });
   } finally {
-    if (conn) conn.release();  // Release connection back to pool
+    if (conn) conn.release();
   }
 };
 

@@ -1,11 +1,3 @@
 {
-  "printer_type": "network",
-  "printer_ip": "192.168.111.206",
-  "printer_port": 9100,
-  "printer_com": "COM3",
-  "printer_baud": 9600,
-  "windows_printer_name": "",
-  "paper_width": 32,
-  "cut_paper": true,
-  "open_drawer": false
+  "printers": []
 }

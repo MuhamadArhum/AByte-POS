@@ -962,6 +962,8 @@ CREATE TABLE IF NOT EXISTS sales (
     token_no VARCHAR(20) NULL,
     invoice_no VARCHAR(20) NULL,
     branch_id INT NULL,
+    table_id INT NULL,
+    order_type VARCHAR(30) NULL DEFAULT 'on_spot',
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
     FOREIGN KEY (branch_id) REFERENCES stores(store_id) ON DELETE SET NULL,

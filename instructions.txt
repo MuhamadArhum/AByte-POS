@@ -7,6 +7,3 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
-main chahta hun k phly printers ka koi proper setup kiya jaye, mujy 2 types k printer chaye app main , aik invoice/bill or dosra kOT wagera k liye 
-us main scenario ye ho ga k hum multiple printers add kr skty hain branch wise or section wise KOT yani Menu category k hisab sy KOT us specific printer py nikal jaye or 
-kya ye possible hai or kesy manage hoga or hmain printer kesy install krny hongy .

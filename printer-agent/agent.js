@@ -336,6 +336,16 @@ function buildUI() {
   .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
   .section-title span { font-size: 15px; }
 
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-danger  { background: transparent; border: 1px solid var(--border); color: var(--red); font-size: 12px; padding: 4px 12px; border-radius: 20px; }
+  .btn-danger:hover  { background: rgba(239,68,68,.1); border-color: var(--red); }
+  .btn-ghost  { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 12px; padding: 5px 10px; border-radius: 6px; }
+  .btn-ghost:hover { border-color: var(--blue); color: var(--text); }
+  .btn-icon { padding: 5px 8px; font-size: 13px; }
+
   /* Stats row */
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); }
   .stat { background: var(--surface); padding: 16px 20px; }
@@ -347,9 +357,9 @@ function buildUI() {
   .stat-value.amber { color: var(--amber); }
 
   /* Printers grid */
-  .printers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; padding: 16px; }
+  .printers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; padding: 16px; }
   .printer-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
-  .printer-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .printer-card-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
   .printer-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
   .printer-icon.invoice { background: rgba(59,130,246,.15); }
   .printer-icon.kot     { background: rgba(249,115,22,.15); }
@@ -363,16 +373,16 @@ function buildUI() {
   .badge.usb     { background: rgba(168,85,247,.12); color: #d8b4fe; }
   .badge.windows { background: rgba(245,158,11,.12); color: #fcd34d; }
   .badge.master  { background: rgba(239,68,68,.12); color: #fca5a5; }
-  .no-printers   { padding: 32px; text-align: center; color: var(--muted); }
+  .printer-actions { margin-left: auto; display: flex; gap: 5px; flex-shrink: 0; }
+  .no-printers   { padding: 40px; text-align: center; color: var(--muted); }
+  .no-printers-icon { font-size: 36px; margin-bottom: 12px; }
 
   /* Jobs table */
-  .jobs-toolbar { display: flex; align-items: center; gap: 10px; }
+  .jobs-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .filter-group { display: flex; gap: 6px; }
   .filter-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 12px; padding: 4px 12px; border-radius: 20px; cursor: pointer; transition: all .15s; }
   .filter-btn:hover { border-color: var(--blue); color: var(--text); }
   .filter-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
-  .clear-btn { background: transparent; border: 1px solid var(--border); color: var(--red); font-size: 12px; padding: 4px 12px; border-radius: 20px; cursor: pointer; transition: all .15s; margin-left: auto; }
-  .clear-btn:hover { background: rgba(239,68,68,.1); border-color: var(--red); }
   .refresh-indicator { font-size: 11px; color: var(--muted); }
 
   .jobs-table { width: 100%; border-collapse: collapse; }
@@ -400,7 +410,7 @@ function buildUI() {
   .no-jobs { padding: 48px; text-align: center; color: var(--muted); }
   .no-jobs-icon { font-size: 40px; margin-bottom: 12px; }
 
-  /* Auto-refresh toggle */
+  /* Toggle */
   .toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
   .toggle input { display: none; }
   .toggle-track { width: 32px; height: 18px; background: var(--border); border-radius: 9px; position: relative; transition: background .2s; }
@@ -408,6 +418,47 @@ function buildUI() {
   .toggle-thumb { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: transform .2s; }
   .toggle input:checked ~ .toggle-track .toggle-thumb { transform: translateX(14px); }
   .toggle-label { font-size: 12px; color: var(--muted); }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal-overlay.hidden { display: none; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+  .modal-header { padding: 18px 20px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+  .modal-close:hover { color: var(--text); background: var(--border); }
+  .modal-body { padding: 20px; display: grid; gap: 16px; }
+  .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+
+  /* Form */
+  .form-group { display: grid; gap: 6px; }
+  .form-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+  .form-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 9px 12px; font-size: 14px; width: 100%; outline: none; transition: border-color .15s; }
+  .form-input:focus { border-color: var(--blue); }
+  .form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+  .form-hint { font-size: 11px; color: var(--muted); }
+  .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .type-card { border: 2px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; transition: all .15s; text-align: center; background: var(--bg); }
+  .type-card:hover { border-color: var(--muted); }
+  .type-card.selected-invoice { border-color: var(--blue); background: rgba(59,130,246,.08); }
+  .type-card.selected-kot { border-color: var(--orange); background: rgba(249,115,22,.08); }
+  .type-card-icon { font-size: 24px; margin-bottom: 4px; }
+  .type-card-label { font-size: 13px; font-weight: 700; }
+  .type-card-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .conn-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .conn-card { border: 2px solid var(--border); border-radius: 8px; padding: 10px 8px; cursor: pointer; text-align: center; transition: all .15s; background: var(--bg); }
+  .conn-card:hover { border-color: var(--muted); }
+  .conn-card.selected { border-color: var(--blue); background: rgba(59,130,246,.08); }
+  .conn-card-icon { font-size: 18px; margin-bottom: 3px; }
+  .conn-card-label { font-size: 12px; font-weight: 600; }
+  .form-check { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+  .form-check input { width: 16px; height: 16px; accent-color: var(--blue); cursor: pointer; }
+  .form-check-label { font-size: 13px; font-weight: 500; }
+  .form-check-desc { font-size: 11px; color: var(--muted); }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; font-size: 13px; font-weight: 500; z-index: 999; transform: translateY(80px); opacity: 0; transition: all .25s; box-shadow: 0 8px 32px rgba(0,0,0,.4); display: flex; align-items: center; gap: 8px; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.green { border-color: var(--green); color: #86efac; }
+  .toast.red   { border-color: var(--red);   color: #fca5a5; }
 
   @media (max-width: 640px) {
     .stats { grid-template-columns: repeat(2,1fr); }
@@ -437,7 +488,7 @@ function buildUI() {
 
   <!-- Stats -->
   <div class="section">
-    <div class="stats" id="stats">
+    <div class="stats">
       <div class="stat"><div class="stat-value blue" id="st-printers">-</div><div class="stat-label">Printers</div></div>
       <div class="stat"><div class="stat-value" id="st-total">-</div><div class="stat-label">Total Jobs</div></div>
       <div class="stat"><div class="stat-value green" id="st-success">-</div><div class="stat-label">Succeeded</div></div>
@@ -449,6 +500,7 @@ function buildUI() {
   <div class="section">
     <div class="section-header">
       <div class="section-title"><span>🖨️</span> Configured Printers</div>
+      <button class="btn btn-primary" id="add-printer-btn">+ Add Printer</button>
     </div>
     <div id="printers-container"></div>
   </div>
@@ -471,7 +523,7 @@ function buildUI() {
           <span class="toggle-label">Auto</span>
         </label>
         <span class="refresh-indicator" id="refresh-indicator"></span>
-        <button class="clear-btn" id="clear-jobs-btn">🗑 Clear</button>
+        <button class="btn-danger" id="clear-jobs-btn">🗑 Clear</button>
       </div>
     </div>
     <div id="jobs-container"></div>
@@ -479,11 +531,167 @@ function buildUI() {
 
 </div>
 
+<!-- Add / Edit Printer Modal -->
+<div class="modal-overlay hidden" id="printer-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Add Printer</div>
+      <button class="modal-close" id="modal-close-btn">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Name -->
+      <div class="form-group">
+        <label class="form-label">Printer Name *</label>
+        <input class="form-input" id="f-name" placeholder="e.g. Counter Receipt, Kitchen KOT" required>
+      </div>
+
+      <!-- Type -->
+      <div class="form-group">
+        <label class="form-label">Printer Type *</label>
+        <div class="type-grid">
+          <div class="type-card selected-invoice" data-type="invoice" id="tc-invoice">
+            <div class="type-card-icon">🧾</div>
+            <div class="type-card-label">Invoice</div>
+            <div class="type-card-desc">Receipts & bills</div>
+          </div>
+          <div class="type-card" data-type="kot" id="tc-kot">
+            <div class="type-card-icon">🍽️</div>
+            <div class="type-card-label">KOT</div>
+            <div class="type-card-desc">Kitchen orders</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KOT options -->
+      <div id="kot-options" style="display:none; gap:12px; flex-direction:column;">
+        <label class="form-check" id="master-check-wrap">
+          <input type="checkbox" id="f-master">
+          <div>
+            <div class="form-check-label">Master / XPR Printer</div>
+            <div class="form-check-desc">Receives complete order (all items). Use for expeditor screen.</div>
+          </div>
+        </label>
+        <div class="form-group" id="categories-group">
+          <label class="form-label">Category Filter <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+          <input class="form-input" id="f-categories" placeholder="e.g. Hot Food, Cold Drinks (comma separated)">
+          <span class="form-hint">Leave empty = catch-all (receives unmatched items)</span>
+        </div>
+      </div>
+
+      <!-- Connection -->
+      <div class="form-group">
+        <label class="form-label">Connection Type *</label>
+        <div class="conn-grid">
+          <div class="conn-card selected" data-conn="network" id="cc-network">
+            <div class="conn-card-icon">🌐</div>
+            <div class="conn-card-label">Network</div>
+          </div>
+          <div class="conn-card" data-conn="usb" id="cc-usb">
+            <div class="conn-card-icon">🔌</div>
+            <div class="conn-card-label">USB / COM</div>
+          </div>
+          <div class="conn-card" data-conn="windows" id="cc-windows">
+            <div class="conn-card-icon">🖥️</div>
+            <div class="conn-card-label">Windows</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Network fields -->
+      <div id="conn-network" style="display:grid;gap:12px;">
+        <div class="form-group">
+          <label class="form-label">IP Address *</label>
+          <input class="form-input" id="f-ip" placeholder="192.168.1.100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Port</label>
+          <input class="form-input" id="f-port" type="number" value="9100" placeholder="9100">
+          <span class="form-hint">Default: 9100 (most thermal printers)</span>
+        </div>
+      </div>
+
+      <!-- USB fields -->
+      <div id="conn-usb" style="display:none;gap:12px;">
+        <div class="form-group">
+          <label class="form-label">COM Port *</label>
+          <input class="form-input" id="f-com" placeholder="COM3">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Baud Rate</label>
+          <select class="form-input form-select" id="f-baud">
+            <option value="9600">9600 (default)</option>
+            <option value="19200">19200</option>
+            <option value="38400">38400</option>
+            <option value="57600">57600</option>
+            <option value="115200">115200</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Windows fields -->
+      <div id="conn-windows" style="display:none;gap:12px;">
+        <div class="form-group">
+          <label class="form-label">Windows Printer Name *</label>
+          <input class="form-input" id="f-winname" placeholder="e.g. EPSON TM-T20III">
+          <span class="form-hint">Exact name from Windows Printers & Scanners</span>
+        </div>
+      </div>
+
+      <!-- Paper width -->
+      <div class="form-group">
+        <label class="form-label">Paper Width</label>
+        <select class="form-input form-select" id="f-width">
+          <option value="80">80mm (standard)</option>
+          <option value="58">58mm (narrow)</option>
+        </select>
+      </div>
+
+      <!-- Extra options -->
+      <div style="display:grid;gap:8px;">
+        <label class="form-check">
+          <input type="checkbox" id="f-cut" checked>
+          <div>
+            <div class="form-check-label">Auto Cut Paper</div>
+            <div class="form-check-desc">Cut paper after each print</div>
+          </div>
+        </label>
+        <label class="form-check" id="drawer-option">
+          <input type="checkbox" id="f-drawer">
+          <div>
+            <div class="form-check-label">Open Cash Drawer</div>
+            <div class="form-check-desc">Open drawer after invoice print</div>
+          </div>
+        </label>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="modal-cancel-btn">Cancel</button>
+      <button class="btn btn-primary" id="modal-save-btn">Save Printer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
 <script>
-  let allJobs = [];
+  let allJobs      = [];
+  let allPrinters  = [];
   let activeFilter = 'all';
   let refreshTimer = null;
-  let lastRefresh = null;
+  let editingId    = null;  // printer id being edited
+
+  // ── Toast ──────────────────────────────────────────────────
+  let toastTimer;
+  function showToast(msg, type = 'green') {
+    const t = document.getElementById('toast');
+    t.textContent = (type === 'green' ? '✓ ' : '✗ ') + msg;
+    t.className = 'toast show ' + type;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+  }
 
   // ── Fetch & Render ─────────────────────────────────────────
   async function fetchData() {
@@ -495,12 +703,13 @@ function buildUI() {
       const health = await healthRes.json();
       const jobs   = await jobsRes.json();
 
-      allJobs = jobs.jobs || [];
+      allPrinters = health.printerList || [];
+      allJobs     = jobs.jobs || [];
+
       renderStats(health, jobs.stats);
-      renderPrinters(health.printerList || []);
+      renderPrinters();
       renderJobs();
-      lastRefresh = new Date();
-      document.getElementById('refresh-indicator').textContent = 'Updated ' + lastRefresh.toLocaleTimeString();
+      document.getElementById('refresh-indicator').textContent = 'Updated ' + new Date().toLocaleTimeString();
     } catch(e) {
       document.getElementById('refresh-indicator').textContent = 'Fetch error';
     }
@@ -513,35 +722,200 @@ function buildUI() {
     document.getElementById('st-failed').textContent   = stats?.failed  ?? '-';
   }
 
-  function renderPrinters(printers) {
+  function renderPrinters() {
     const c = document.getElementById('printers-container');
-    if (!printers.length) {
-      c.innerHTML = '<div class="no-printers">No printers configured. Add printers via the API or AByte POS Settings.</div>';
+    if (!allPrinters.length) {
+      c.innerHTML = \`<div class="no-printers">
+        <div class="no-printers-icon">🖨️</div>
+        <div style="font-weight:600;margin-bottom:6px;">No printers added yet</div>
+        <div style="font-size:12px;margin-bottom:16px;">Add an invoice printer for receipts, or a KOT printer for kitchen orders</div>
+        <button class="btn btn-primary" onclick="openAddModal()">+ Add First Printer</button>
+      </div>\`;
       return;
     }
-    const cards = printers.map(p => {
-      const target = p.connection === 'network' ? p.ip + ':' + (p.port || 9100) :
+    const cards = allPrinters.map(p => {
+      const target = p.connection === 'network' ? (p.ip + ':' + (p.port || 9100)) :
                      p.connection === 'usb'     ? (p.com || 'COM?') : (p.printer_name || '?');
-      const icon   = p.type === 'kot' ? '🍽️' : '🧾';
+      const icon = p.type === 'kot' ? '🍽️' : '🧾';
+      const cats = (p.categories || []);
       return \`<div class="printer-card">
         <div class="printer-card-header">
           <div class="printer-icon \${p.type}">\${icon}</div>
-          <div>
+          <div style="flex:1;min-width:0;">
             <div class="printer-name">\${esc(p.name)}</div>
             <div class="printer-meta">\${esc(target)}</div>
+          </div>
+          <div class="printer-actions">
+            <button class="btn btn-ghost btn-icon" title="Test print" onclick="testPrinter('\${p.id}', '\${esc(p.name)}', this)">▶</button>
+            <button class="btn btn-ghost btn-icon" title="Edit" onclick="openEditModal('\${p.id}')">✏️</button>
+            <button class="btn btn-ghost btn-icon" title="Delete" style="color:var(--red)" onclick="deletePrinter('\${p.id}', '\${esc(p.name)}')">🗑</button>
           </div>
         </div>
         <div class="printer-badges">
           <span class="badge \${p.type}">\${p.type.toUpperCase()}</span>
           <span class="badge \${p.connection}">\${p.connection.toUpperCase()}</span>
           \${p.is_master ? '<span class="badge master">MASTER</span>' : ''}
-          \${(p.categories||[]).length ? '<span class="badge" style="background:rgba(100,116,139,.15);color:#94a3b8;">' + p.categories.length + ' cats</span>' : ''}
+          \${cats.length ? \`<span class="badge" style="background:rgba(100,116,139,.15);color:#94a3b8;">\${cats.length} categories</span>\` : ''}
+          \${p.open_drawer ? '<span class="badge" style="background:rgba(34,197,94,.1);color:#86efac;">DRAWER</span>' : ''}
+          \${p.cut_paper === false ? '' : '<span class="badge" style="background:rgba(100,116,139,.1);color:#94a3b8;">AUTO CUT</span>'}
         </div>
+        \${cats.length ? \`<div style="margin-top:8px;font-size:11px;color:var(--muted);">Categories: \${cats.map(c => esc(String(c))).join(', ')}</div>\` : ''}
       </div>\`;
     }).join('');
     c.innerHTML = '<div class="printers-grid">' + cards + '</div>';
   }
 
+  // ── Test printer ───────────────────────────────────────────
+  async function testPrinter(id, name, btn) {
+    const orig = btn.textContent;
+    btn.textContent = '…';
+    btn.disabled = true;
+    try {
+      const res = await fetch('/printers/' + id + '/test', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) showToast('Test sent to ' + name);
+      else        showToast(data.error || 'Test failed', 'red');
+    } catch { showToast('Agent unreachable', 'red'); }
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+
+  // ── Delete printer ─────────────────────────────────────────
+  async function deletePrinter(id, name) {
+    if (!confirm('Delete printer "' + name + '"?')) return;
+    try {
+      await fetch('/printers/' + id, { method: 'DELETE' });
+      showToast(name + ' deleted');
+      fetchData();
+    } catch { showToast('Delete failed', 'red'); }
+  }
+
+  // ── Modal state ────────────────────────────────────────────
+  let selType = 'invoice';
+  let selConn = 'network';
+
+  function setType(t) {
+    selType = t;
+    document.getElementById('tc-invoice').className = 'type-card' + (t === 'invoice' ? ' selected-invoice' : '');
+    document.getElementById('tc-kot').className     = 'type-card' + (t === 'kot'     ? ' selected-kot'     : '');
+    document.getElementById('kot-options').style.display  = t === 'kot' ? 'flex' : 'none';
+    document.getElementById('drawer-option').style.display = t === 'invoice' ? '' : 'none';
+  }
+
+  function setConn(c) {
+    selConn = c;
+    ['network','usb','windows'].forEach(x => {
+      document.getElementById('cc-'+x).className = 'conn-card' + (x === c ? ' selected' : '');
+      document.getElementById('conn-'+x).style.display = x === c ? 'grid' : 'none';
+    });
+  }
+
+  function openAddModal() {
+    editingId = null;
+    document.getElementById('modal-title').textContent = 'Add Printer';
+    document.getElementById('modal-save-btn').textContent = 'Add Printer';
+    resetForm();
+    document.getElementById('printer-modal').classList.remove('hidden');
+  }
+
+  function openEditModal(id) {
+    const p = allPrinters.find(x => x.id === id);
+    if (!p) return;
+    editingId = id;
+    document.getElementById('modal-title').textContent = 'Edit Printer';
+    document.getElementById('modal-save-btn').textContent = 'Save Changes';
+    resetForm();
+
+    document.getElementById('f-name').value = p.name || '';
+    setType(p.type || 'invoice');
+    setConn(p.connection || 'network');
+
+    document.getElementById('f-ip').value      = p.ip || '';
+    document.getElementById('f-port').value    = p.port || 9100;
+    document.getElementById('f-com').value     = p.com || '';
+    document.getElementById('f-baud').value    = p.baud || 9600;
+    document.getElementById('f-winname').value = p.printer_name || '';
+    document.getElementById('f-width').value   = p.paper_width || 80;
+    document.getElementById('f-cut').checked   = p.cut_paper !== false;
+    document.getElementById('f-drawer').checked = !!p.open_drawer;
+    document.getElementById('f-master').checked = !!p.is_master;
+    document.getElementById('f-categories').value = (p.categories || []).join(', ');
+
+    document.getElementById('printer-modal').classList.remove('hidden');
+  }
+
+  function resetForm() {
+    document.getElementById('f-name').value       = '';
+    document.getElementById('f-ip').value         = '';
+    document.getElementById('f-port').value       = '9100';
+    document.getElementById('f-com').value        = '';
+    document.getElementById('f-baud').value       = '9600';
+    document.getElementById('f-winname').value    = '';
+    document.getElementById('f-width').value      = '80';
+    document.getElementById('f-cut').checked      = true;
+    document.getElementById('f-drawer').checked   = false;
+    document.getElementById('f-master').checked   = false;
+    document.getElementById('f-categories').value = '';
+    setType('invoice');
+    setConn('network');
+  }
+
+  function closeModal() {
+    document.getElementById('printer-modal').classList.add('hidden');
+    editingId = null;
+  }
+
+  // ── Save printer ───────────────────────────────────────────
+  async function savePrinter() {
+    const name = document.getElementById('f-name').value.trim();
+    if (!name) { showToast('Printer name is required', 'red'); return; }
+    if (selConn === 'network' && !document.getElementById('f-ip').value.trim()) {
+      showToast('IP address is required', 'red'); return;
+    }
+    if (selConn === 'usb' && !document.getElementById('f-com').value.trim()) {
+      showToast('COM port is required', 'red'); return;
+    }
+    if (selConn === 'windows' && !document.getElementById('f-winname').value.trim()) {
+      showToast('Printer name is required', 'red'); return;
+    }
+
+    const catRaw = document.getElementById('f-categories').value.trim();
+    const categories = catRaw ? catRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+    const payload = {
+      name,
+      type:         selType,
+      connection:   selConn,
+      ip:           document.getElementById('f-ip').value.trim() || null,
+      port:         parseInt(document.getElementById('f-port').value) || 9100,
+      com:          document.getElementById('f-com').value.trim() || null,
+      baud:         parseInt(document.getElementById('f-baud').value) || 9600,
+      printer_name: document.getElementById('f-winname').value.trim() || null,
+      paper_width:  parseInt(document.getElementById('f-width').value) || 80,
+      cut_paper:    document.getElementById('f-cut').checked,
+      open_drawer:  document.getElementById('f-drawer').checked,
+      is_master:    document.getElementById('f-master').checked,
+      categories,
+    };
+
+    const btn = document.getElementById('modal-save-btn');
+    btn.textContent = 'Saving…';
+    btn.disabled = true;
+
+    try {
+      const url    = editingId ? '/printers/' + editingId : '/printers';
+      const method = editingId ? 'PUT' : 'POST';
+      const res    = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data   = await res.json();
+      if (!res.ok) { showToast(data.error || 'Save failed', 'red'); return; }
+      showToast(editingId ? name + ' updated' : name + ' added');
+      closeModal();
+      fetchData();
+    } catch { showToast('Request failed', 'red'); }
+    finally { btn.textContent = editingId ? 'Save Changes' : 'Add Printer'; btn.disabled = false; }
+  }
+
+  // ── Jobs ───────────────────────────────────────────────────
   function renderJobs() {
     const c = document.getElementById('jobs-container');
     const filtered = activeFilter === 'all'    ? allJobs :
@@ -554,28 +928,24 @@ function buildUI() {
     }
 
     const rows = filtered.map(j => {
-      const timeAgo = formatAgo(j.ts);
+      const timeAgo  = formatAgo(j.ts);
       const fullTime = new Date(j.ts).toLocaleString();
 
-      // Sub-results for KOT multi-printer
       let subHtml = '';
       if (j.results && j.results.length > 1) {
         subHtml = '<div class="job-sub-results">' + j.results.map(r =>
-          \`<div class="sub-result"><div class="dot \${r.success ? 'ok' : 'err'}"></div><span style="color:var(--muted)">\${esc(r.printer)}</span>\${r.role ? ' <span style="font-size:10px;opacity:.6">(\${r.role})</span>' : ''}\${r.items ? ' · \${r.items} items' : ''}\${!r.success && r.error ? ' — <span style="color:var(--red)">\${esc(r.error)}</span>' : ''}</div>\`
+          \`<div class="sub-result"><div class="dot \${r.success ? 'ok' : 'err'}"></div><span style="color:var(--muted)">\${esc(r.printer)}</span>\${r.role ? ' <span style="font-size:10px;opacity:.6">(\${r.role})</span>' : ''}\${r.items != null ? ' · \${r.items} items' : ''}\${!r.success && r.error ? ' — <span style="color:var(--red)">\${esc(r.error)}</span>' : ''}</div>\`
         ).join('') + '</div>';
       }
 
-      // Error
-      const errHtml = j.error ? \`<div class="job-error">⚠ \${esc(j.error)}</div>\` : '';
-
-      // Detail line
-      const details = [];
+      const errHtml    = j.error ? \`<div class="job-error">⚠ \${esc(j.error)}</div>\` : '';
+      const details    = [];
       if (j.invoiceNo) details.push('Invoice: ' + j.invoiceNo);
       if (j.tokenNo)   details.push('Token: ' + j.tokenNo);
       if (j.items != null) details.push(j.items + ' items');
       if (j.printerCount > 1) details.push(j.printerCount + ' printers');
+      if (j.durationMs)    details.push(j.durationMs + 'ms');
       const detailHtml = details.length ? \`<div class="job-detail">\${esc(details.join(' · '))}</div>\` : '';
-
       const statusClass = j.status === 'success' ? 'success' : j.status === 'partial' ? 'partial' : 'failed';
       const statusLabel = j.status === 'success' ? '✓ Success' : j.status === 'partial' ? '⚡ Partial' : '✗ Failed';
 
@@ -583,9 +953,7 @@ function buildUI() {
         <td><span class="job-type \${j.type}">\${j.type.toUpperCase()}</span></td>
         <td>
           <div class="job-printer">\${esc(j.printer || '—')}</div>
-          \${detailHtml}
-          \${errHtml}
-          \${subHtml}
+          \${detailHtml}\${errHtml}\${subHtml}
         </td>
         <td><span class="status-pill \${statusClass}">\${statusLabel}</span></td>
         <td><span class="job-time" title="\${fullTime}">\${timeAgo}</span></td>
@@ -597,7 +965,7 @@ function buildUI() {
         <th style="width:90px">Type</th>
         <th>Printer / Detail</th>
         <th style="width:110px">Status</th>
-        <th style="width:100px">Time</th>
+        <th style="width:110px">Time</th>
       </tr></thead>
       <tbody>\${rows}</tbody>
     </table>\`;
@@ -605,18 +973,31 @@ function buildUI() {
 
   function formatAgo(ts) {
     const diff = Math.floor((Date.now() - new Date(ts)) / 1000);
-    if (diff < 5)   return 'just now';
-    if (diff < 60)  return diff + 's ago';
+    if (diff < 5)    return 'just now';
+    if (diff < 60)   return diff + 's ago';
     if (diff < 3600) return Math.floor(diff/60) + 'm ago';
     return new Date(ts).toLocaleTimeString();
   }
 
   function esc(s) {
     if (s == null) return '';
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  // ── Filter buttons ─────────────────────────────────────────
+  // ── Event bindings ─────────────────────────────────────────
+  document.getElementById('add-printer-btn').addEventListener('click', openAddModal);
+  document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+  document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
+  document.getElementById('modal-save-btn').addEventListener('click', savePrinter);
+  document.getElementById('printer-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+  document.querySelectorAll('[data-type]').forEach(el => {
+    el.addEventListener('click', () => setType(el.dataset.type));
+  });
+  document.querySelectorAll('[data-conn]').forEach(el => {
+    el.addEventListener('click', () => setConn(el.dataset.conn));
+  });
+
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -626,27 +1007,18 @@ function buildUI() {
     });
   });
 
-  // ── Clear jobs ─────────────────────────────────────────────
   document.getElementById('clear-jobs-btn').addEventListener('click', async () => {
     if (!confirm('Clear all job logs?')) return;
     await fetch('/jobs', { method: 'DELETE' });
     await fetchData();
   });
 
-  // ── Auto refresh ───────────────────────────────────────────
-  function startRefresh() {
-    stopRefresh();
-    refreshTimer = setInterval(fetchData, 3000);
-  }
-  function stopRefresh() {
-    if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
-  }
-
+  function startRefresh() { stopRefresh(); refreshTimer = setInterval(fetchData, 3000); }
+  function stopRefresh()  { if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; } }
   document.getElementById('auto-refresh').addEventListener('change', function() {
     this.checked ? startRefresh() : stopRefresh();
   });
 
-  // ── Init ───────────────────────────────────────────────────
   fetchData();
   startRefresh();
 </script>
