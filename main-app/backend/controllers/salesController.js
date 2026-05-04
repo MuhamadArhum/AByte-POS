@@ -138,10 +138,16 @@ exports.createSale = async (req, res) => {
     }
 
     // Step 3: Always generate invoice_no; also generate token_no for pending orders
+    // branch_id scopes the counters so each branch has its own TA-01, INV-00001, etc.
+    const branch_id = req.user.branch_id || null;
+    const branchParam = branch_id ? [branch_id] : [];
+    const branchClause = branch_id ? ' AND branch_id = ?' : '';
+
     let token_no = null;
     const invResult = await conn.query(
       `SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_no, 5) AS UNSIGNED)), 0) + 1 as next_inv
-       FROM sales WHERE invoice_no IS NOT NULL`
+       FROM sales WHERE invoice_no IS NOT NULL${branchClause}`,
+      branchParam
     );
     const invoice_no = `INV-${String(invResult[0].next_inv).padStart(5, '0')}`;
 
@@ -156,15 +162,14 @@ exports.createSale = async (req, res) => {
       const shiftStart = shiftRows.length > 0 ? shiftRows[0].opened_at : new Date().toISOString().slice(0, 10);
       const tokenResult = await conn.query(
         `SELECT COALESCE(MAX(CAST(REPLACE(token_no, ?, '') AS UNSIGNED)), 0) + 1 as next_token
-         FROM sales WHERE token_no LIKE ? AND sale_date >= ?`,
-        [`${prefix}-`, `${prefix}-%`, shiftStart]
+         FROM sales WHERE token_no LIKE ? AND sale_date >= ?${branchClause}`,
+        [`${prefix}-`, `${prefix}-%`, shiftStart, ...branchParam]
       );
       token_no = `${prefix}-${String(tokenResult[0].next_token).padStart(2, '0')}`;
     }
 
     // Step 4: Insert the sale header record
     const finalAmountPaid = is_credit ? 0 : (status === 'completed' ? (amount_paid || total_amount) : 0);
-    const branch_id = req.user.branch_id || null;
 
     const saleResult = await conn.query(
       `INSERT INTO sales (
@@ -315,6 +320,9 @@ exports.getPending = async (req, res) => {
     if (req.user.role_name !== 'Admin' && req.user.branch_id) {
       branchClause = ' AND s.branch_id = ?';
       filterParams.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      branchClause = ' AND s.branch_id = ?';
+      filterParams.push(req.query.filter_branch);
     }
 
     // Always compute summary (filtered)
