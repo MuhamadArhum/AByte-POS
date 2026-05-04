@@ -246,10 +246,51 @@ exports.checkPrinter = async (req, res) => {
 
 // ===================== PRINTER CRUD =====================
 
-// --- Get all printers ---
+// Migrate printers table to new schema on first use
+let printerSchemaMigrated = false;
+async function ensurePrinterSchema() {
+  if (printerSchemaMigrated) return;
+  printerSchemaMigrated = true;
+  try {
+    await query(`ALTER TABLE printers ADD COLUMN IF NOT EXISTS printer_type ENUM('invoice','kot') NOT NULL DEFAULT 'invoice'`);
+    await query(`ALTER TABLE printers ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+    await query(`
+      CREATE TABLE IF NOT EXISTS printer_category_mappings (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        printer_id INT NOT NULL,
+        category_id INT NOT NULL,
+        UNIQUE KEY uq_printer_cat (printer_id, category_id),
+        FOREIGN KEY (printer_id) REFERENCES printers(printer_id) ON DELETE CASCADE
+      )
+    `);
+  } catch (e) { /* ignore — columns may already exist */ }
+}
+
+// --- Get all printers (with category mappings) ---
 exports.getPrinters = async (req, res) => {
   try {
-    const printers = await query('SELECT * FROM printers ORDER BY purpose, created_at');
+    await ensurePrinterSchema();
+    const printers = await query(
+      `SELECT p.*, s.store_name AS branch_name
+       FROM printers p
+       LEFT JOIN stores s ON p.branch_id = s.store_id
+       ORDER BY p.printer_type, p.created_at`
+    );
+    // Attach category mappings
+    const mappings = await query(`
+      SELECT m.printer_id, m.category_id, c.category_name
+      FROM printer_category_mappings m
+      LEFT JOIN categories c ON m.category_id = c.category_id
+    `).catch(() => []);
+
+    const mappingMap = {};
+    for (const row of mappings) {
+      if (!mappingMap[row.printer_id]) mappingMap[row.printer_id] = [];
+      mappingMap[row.printer_id].push({ category_id: row.category_id, category_name: row.category_name });
+    }
+    for (const p of printers) {
+      p.categories = mappingMap[p.printer_id] || [];
+    }
     res.json(printers);
   } catch (err) {
     console.error(err);
@@ -260,19 +301,27 @@ exports.getPrinters = async (req, res) => {
 // --- Create printer ---
 exports.createPrinter = async (req, res) => {
   try {
-    const { name, type, ip_address, port, printer_share_name, paper_width, purpose } = req.body;
-    const validPurposes = ['receipt', 'invoice', 'quotation', 'return_receipt', 'credit_sale', 'layaway_receipt'];
-    if (!name || !type || !purpose) return res.status(400).json({ message: 'Name, type, and purpose are required' });
-    if (!validPurposes.includes(purpose)) return res.status(400).json({ message: 'Invalid purpose value' });
-    if (type === 'network' && !ip_address) return res.status(400).json({ message: 'IP address required for network printer' });
-    if (type === 'usb' && !printer_share_name) return res.status(400).json({ message: 'Printer share name required for USB printer' });
+    await ensurePrinterSchema();
+    const { name, type, ip_address, port, printer_share_name, paper_width, printer_type, branch_id, category_ids } = req.body;
+    if (!name || !type) return res.status(400).json({ message: 'Name and type are required' });
+    if (!['network', 'usb'].includes(type)) return res.status(400).json({ message: 'type must be network or usb' });
+    const pType = ['invoice', 'kot'].includes(printer_type) ? printer_type : 'invoice';
 
     const result = await query(
-      'INSERT INTO printers (name, type, ip_address, port, printer_share_name, paper_width, purpose, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
-      [name, type, ip_address || null, port || 9100, printer_share_name || null, paper_width || 80, purpose]
+      'INSERT INTO printers (name, type, ip_address, port, printer_share_name, paper_width, printer_type, branch_id, purpose, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)',
+      [name, type, ip_address || null, port || 9100, printer_share_name || null, paper_width || 80, pType, branch_id || null, pType]
     );
-    await logAction(req.user.user_id, req.user.name, 'PRINTER_ADDED', 'printers', result.insertId, { name, type, purpose }, req.ip);
-    res.status(201).json({ message: 'Printer added successfully', printer_id: result.insertId });
+    const printerId = result.insertId;
+
+    // Save category mappings for KOT printers
+    if (pType === 'kot' && Array.isArray(category_ids) && category_ids.length > 0) {
+      for (const catId of category_ids) {
+        await query('INSERT IGNORE INTO printer_category_mappings (printer_id, category_id) VALUES (?, ?)', [printerId, catId]);
+      }
+    }
+
+    await logAction(req.user.user_id, req.user.name, 'PRINTER_ADDED', 'printers', printerId, { name, type, printer_type: pType }, req.ip);
+    res.status(201).json({ message: 'Printer added successfully', printer_id: printerId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -282,13 +331,25 @@ exports.createPrinter = async (req, res) => {
 // --- Update printer ---
 exports.updatePrinter = async (req, res) => {
   try {
+    await ensurePrinterSchema();
     const { id } = req.params;
-    const { name, type, ip_address, port, printer_share_name, paper_width, purpose, is_active } = req.body;
+    const { name, type, ip_address, port, printer_share_name, paper_width, printer_type, branch_id, is_active, category_ids } = req.body;
+    const pType = ['invoice', 'kot'].includes(printer_type) ? printer_type : 'invoice';
+
     await query(
-      'UPDATE printers SET name=?, type=?, ip_address=?, port=?, printer_share_name=?, paper_width=?, purpose=?, is_active=? WHERE printer_id=?',
-      [name, type, ip_address || null, port || 9100, printer_share_name || null, paper_width || 80, purpose, is_active ? 1 : 0, id]
+      'UPDATE printers SET name=?, type=?, ip_address=?, port=?, printer_share_name=?, paper_width=?, printer_type=?, branch_id=?, purpose=?, is_active=? WHERE printer_id=?',
+      [name, type, ip_address || null, port || 9100, printer_share_name || null, paper_width || 80, pType, branch_id || null, pType, is_active ? 1 : 0, id]
     );
-    await logAction(req.user.user_id, req.user.name, 'PRINTER_UPDATED', 'printers', id, { name, type, purpose }, req.ip);
+
+    // Replace category mappings
+    await query('DELETE FROM printer_category_mappings WHERE printer_id = ?', [id]).catch(() => {});
+    if (pType === 'kot' && Array.isArray(category_ids) && category_ids.length > 0) {
+      for (const catId of category_ids) {
+        await query('INSERT IGNORE INTO printer_category_mappings (printer_id, category_id) VALUES (?, ?)', [id, catId]);
+      }
+    }
+
+    await logAction(req.user.user_id, req.user.name, 'PRINTER_UPDATED', 'printers', id, { name, type, printer_type: pType }, req.ip);
     res.json({ message: 'Printer updated successfully' });
   } catch (err) {
     console.error(err);
@@ -300,6 +361,7 @@ exports.updatePrinter = async (req, res) => {
 exports.deletePrinter = async (req, res) => {
   try {
     const { id } = req.params;
+    await query('DELETE FROM printer_category_mappings WHERE printer_id = ?', [id]).catch(() => {});
     await query('DELETE FROM printers WHERE printer_id = ?', [id]);
     await logAction(req.user.user_id, req.user.name, 'PRINTER_DELETED', 'printers', id, {}, req.ip);
     res.json({ message: 'Printer deleted successfully' });
@@ -321,8 +383,8 @@ exports.testPrinterById = async (req, res) => {
       ESC + '@' + ESC + 'a\x01' + ESC + '!\x10' + ESC + 'E\x01' +
       'PRINTER TEST\n' + ESC + '!\x00' + ESC + 'E\x00' +
       printer.name + '\n' +
-      'Purpose: ' + printer.purpose.toUpperCase() + '\n' +
-      'Type: ' + printer.type.toUpperCase() + '\n' +
+      'Role: ' + (printer.printer_type || printer.purpose || 'invoice').toUpperCase() + '\n' +
+      'Connection: ' + printer.type.toUpperCase() + '\n' +
       'Connection OK!\n' + new Date().toLocaleString() + '\n\n\n' +
       GS + 'V\x01',
       'binary'
@@ -569,6 +631,17 @@ function sendToUsbPrinter(printerName, data) {
     }
   });
 }
+
+// --- Get categories (for KOT printer mapping) ---
+exports.getCategories = async (req, res) => {
+  try {
+    const categories = await query('SELECT category_id, category_name FROM categories WHERE is_active = 1 ORDER BY category_name');
+    res.json({ data: categories });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 
 // --- Get System Info ---
 exports.getSystemInfo = async (req, res) => {

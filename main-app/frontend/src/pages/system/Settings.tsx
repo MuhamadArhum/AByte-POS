@@ -46,7 +46,6 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../components/Toast';
-import { isQZAvailable } from '../../utils/qzPrinter';
 
 interface User {
   user_id: number;
@@ -150,6 +149,7 @@ const Settings = () => {
   const [saving, setSaving] = useState(false);
 
   // Multi-printer management
+  interface CategoryOption { category_id: number; category_name: string; }
   interface PrinterEntry {
     printer_id: number;
     name: string;
@@ -158,50 +158,38 @@ const Settings = () => {
     port: number;
     printer_share_name: string | null;
     paper_width: number;
-    purpose: string;
+    printer_type: 'invoice' | 'kot';
+    branch_id: number | null;
+    branch_name: string | null;
     is_active: number;
+    categories: { category_id: number; category_name: string }[];
   }
-  type PrinterPurpose = 'receipt' | 'invoice' | 'quotation' | 'return_receipt' | 'credit_sale' | 'layaway_receipt';
+  const EMPTY_PRINTER_FORM = { name: '', type: 'network' as 'network' | 'usb', ip_address: '', port: 9100, printer_share_name: '', paper_width: 80, printer_type: 'invoice' as 'invoice' | 'kot', branch_id: '' as string, is_active: true, category_ids: [] as number[] };
   const [printers, setPrinters] = useState<PrinterEntry[]>([]);
   const [showPrinterModal, setShowPrinterModal] = useState(false);
   const [editingPrinter, setEditingPrinter] = useState<PrinterEntry | null>(null);
-  const [printerForm, setPrinterForm] = useState({ name: '', type: 'network' as 'network' | 'usb', ip_address: '', port: 9100, printer_share_name: '', paper_width: 80, purpose: 'receipt' as PrinterPurpose, is_active: true });
+  const [printerForm, setPrinterForm] = useState(EMPTY_PRINTER_FORM);
   const [printerSaving, setPrinterSaving] = useState(false);
   const [testingPrinterId, setTestingPrinterId] = useState<number | null>(null);
   const [printerTestResults, setPrinterTestResults] = useState<Record<number, { success: boolean; message: string }>>({});
-  const [qzStatus, setQzStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
   const [agentStatus, setAgentStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
   const [agentInfo, setAgentInfo] = useState<any>(null);
-  const [testingAgent, setTestingAgent] = useState(false);
-
+  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
 
   const checkAgentStatus = async () => {
     setAgentStatus('checking');
     try {
       const res = await fetch('http://localhost:3001/health', { signal: AbortSignal.timeout(2000) });
-      if (res.ok) {
-        const data = await res.json();
-        setAgentInfo(data);
-        setAgentStatus('available');
-      } else {
-        setAgentStatus('unavailable');
-      }
-    } catch {
-      setAgentStatus('unavailable');
-    }
+      if (res.ok) { setAgentInfo(await res.json()); setAgentStatus('available'); }
+      else setAgentStatus('unavailable');
+    } catch { setAgentStatus('unavailable'); }
   };
 
-  const handleTestAgent = async () => {
-    setTestingAgent(true);
+  const fetchCategories = async () => {
     try {
-      const res = await fetch('http://localhost:3001/test', { method: 'POST', signal: AbortSignal.timeout(8000) });
-      if (res.ok) toast.success('Test print sent! Check your printer.');
-      else { const e = await res.json().catch(() => ({})); toast.error('Test failed: ' + (e.error || 'Unknown error')); }
-    } catch (e: any) {
-      toast.error('Agent not reachable: ' + e.message);
-    } finally {
-      setTestingAgent(false);
-    }
+      const res = await api.get('/settings/categories');
+      setCategoryOptions(res.data.data || []);
+    } catch { /* non-critical */ }
   };
 
   useEffect(() => {
@@ -216,9 +204,8 @@ const Settings = () => {
 
   useEffect(() => {
     if (activeTab === 'printer') {
-      setQzStatus('checking');
-      isQZAvailable().then(ok => setQzStatus(ok ? 'available' : 'unavailable'));
       checkAgentStatus();
+      fetchCategories();
     }
   }, [activeTab]);
 
@@ -290,10 +277,21 @@ const Settings = () => {
   const openPrinterModal = (printer?: PrinterEntry) => {
     if (printer) {
       setEditingPrinter(printer);
-      setPrinterForm({ name: printer.name, type: printer.type, ip_address: printer.ip_address || '', port: printer.port || 9100, printer_share_name: printer.printer_share_name || '', paper_width: printer.paper_width || 80, purpose: printer.purpose as PrinterPurpose, is_active: printer.is_active === 1 });
+      setPrinterForm({
+        name: printer.name,
+        type: printer.type,
+        ip_address: printer.ip_address || '',
+        port: printer.port || 9100,
+        printer_share_name: printer.printer_share_name || '',
+        paper_width: printer.paper_width || 80,
+        printer_type: printer.printer_type || 'invoice',
+        branch_id: printer.branch_id ? String(printer.branch_id) : '',
+        is_active: printer.is_active === 1,
+        category_ids: (printer.categories || []).map(c => c.category_id),
+      });
     } else {
       setEditingPrinter(null);
-      setPrinterForm({ name: '', type: 'network', ip_address: '', port: 9100, printer_share_name: '', paper_width: 80, purpose: 'receipt', is_active: true });
+      setPrinterForm(EMPTY_PRINTER_FORM);
     }
     setShowPrinterModal(true);
   };
@@ -302,11 +300,12 @@ const Settings = () => {
     e.preventDefault();
     setPrinterSaving(true);
     try {
+      const payload = { ...printerForm, branch_id: printerForm.branch_id ? Number(printerForm.branch_id) : null };
       if (editingPrinter) {
-        await api.put(`/settings/printers/${editingPrinter.printer_id}`, printerForm);
+        await api.put(`/settings/printers/${editingPrinter.printer_id}`, payload);
         toast.success('Printer updated');
       } else {
-        await api.post('/settings/printers', printerForm);
+        await api.post('/settings/printers', payload);
         toast.success('Printer added');
       }
       setShowPrinterModal(false);
@@ -325,7 +324,7 @@ const Settings = () => {
       await api.delete(`/settings/printers/${id}`);
       toast.success('Printer deleted');
       fetchPrinters();
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete printer');
     }
   };
@@ -1166,121 +1165,78 @@ const Settings = () => {
           {activeTab === 'printer' && currentUser?.role_name === 'Admin' && (
             <div className="space-y-6">
 
-              {/* ── Printer Bridge Status ── */}
-              <div className="space-y-3">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Print Bridge Status (This PC)</p>
-
-                {/* Local Printer Agent — RECOMMENDED */}
-                <div className={`rounded-xl border-2 p-4 flex items-start gap-3 transition ${
-                  agentStatus === 'available'   ? 'border-emerald-300 bg-emerald-50' :
-                  agentStatus === 'unavailable' ? 'border-red-200 bg-red-50' :
-                                                  'border-gray-200 bg-gray-50'
+              {/* ── Print Agent Status ── */}
+              <div className={`rounded-xl border-2 p-4 flex items-start gap-3 transition ${
+                agentStatus === 'available'   ? 'border-emerald-300 bg-emerald-50' :
+                agentStatus === 'unavailable' ? 'border-amber-200 bg-amber-50' :
+                                                'border-gray-200 bg-gray-50'
+              }`}>
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                  agentStatus === 'available' ? 'bg-emerald-100' : agentStatus === 'unavailable' ? 'bg-amber-100' : 'bg-gray-100'
                 }`}>
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                    agentStatus === 'available' ? 'bg-emerald-100' : agentStatus === 'unavailable' ? 'bg-red-100' : 'bg-gray-100'
-                  }`}>
-                    {agentStatus === 'checking'   && <Loader2 size={18} className="animate-spin text-gray-400" />}
-                    {agentStatus === 'available'   && <CheckCircle size={18} className="text-emerald-600" />}
-                    {agentStatus === 'unavailable' && <XCircle size={18} className="text-red-500" />}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-gray-800">AByte Printer Agent</p>
-                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">RECOMMENDED</span>
-                    </div>
-                    {agentStatus === 'checking' && <p className="text-xs text-gray-500 mt-1">Checking localhost:3001...</p>}
-                    {agentStatus === 'available' && (
-                      <>
-                        <p className="text-xs text-emerald-700 mt-1 font-medium">
-                          Running — {agentInfo?.printer_type === 'network' ? `Network printer at ${agentInfo?.printer_target}` : agentInfo?.printer_target || 'Printer connected'}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <button onClick={handleTestAgent} disabled={testingAgent}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition disabled:opacity-60">
-                            {testingAgent ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
-                            Test Print
-                          </button>
-                          <button onClick={checkAgentStatus} className="text-xs text-emerald-700 underline hover:no-underline">Re-check</button>
-                        </div>
-                      </>
-                    )}
-                    {agentStatus === 'unavailable' && (
-                      <>
-                        <p className="text-xs text-red-600 mt-1">Not running on this PC. Install the agent for reliable direct printing.</p>
-                        <div className="mt-2 p-3 bg-white rounded-lg border border-red-100 space-y-1.5">
-                          <p className="text-xs font-semibold text-gray-700">Setup steps:</p>
-                          <p className="text-xs text-gray-600">1. Copy <code className="bg-gray-100 px-1 rounded">printer-agent/</code> folder to this cashier PC</p>
-                          <p className="text-xs text-gray-600">2. Edit <code className="bg-gray-100 px-1 rounded">config.json</code> — set your printer IP or COM port</p>
-                          <p className="text-xs text-gray-600">3. Run <code className="bg-gray-100 px-1 rounded">install-service.bat</code> as Administrator</p>
-                          <p className="text-xs text-gray-500 italic">Agent starts automatically at Windows login — no user action needed.</p>
-                        </div>
-                        <button onClick={checkAgentStatus} className="text-xs text-red-600 underline hover:no-underline mt-2 block">Re-check</button>
-                      </>
-                    )}
-                  </div>
+                  {agentStatus === 'checking'   && <Loader2 size={18} className="animate-spin text-gray-400" />}
+                  {agentStatus === 'available'   && <CheckCircle size={18} className="text-emerald-600" />}
+                  {agentStatus === 'unavailable' && <Server size={18} className="text-amber-500" />}
                 </div>
-
-                {/* QZ Tray — legacy/fallback */}
-                <div className={`rounded-xl border p-3 flex items-center gap-3 ${
-                  qzStatus === 'available' ? 'border-sky-200 bg-sky-50' : 'border-gray-200 bg-gray-50'
-                }`}>
-                  {qzStatus === 'checking'    && <Loader2 size={16} className="animate-spin text-gray-400 shrink-0" />}
-                  {qzStatus === 'available'   && <CheckCircle size={16} className="text-sky-600 shrink-0" />}
-                  {qzStatus === 'unavailable' && <XCircle size={16} className="text-gray-400 shrink-0" />}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-semibold text-gray-700">QZ Tray (fallback)</p>
-                      {qzStatus === 'available' && <span className="text-xs text-sky-600 font-medium">Running</span>}
-                      {qzStatus === 'unavailable' && <span className="text-xs text-gray-400">Not detected</span>}
-                    </div>
-                    <p className="text-xs text-gray-400 mt-0.5">Used only if Agent is not running. Has certificate issues on HTTPS.</p>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-bold text-gray-800">AByte Printer Agent</p>
+                    <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">localhost:3001</span>
+                    {agentStatus === 'available' && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">RUNNING</span>}
+                    {agentStatus === 'unavailable' && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">NOT RUNNING</span>}
                   </div>
-                  <button
-                    onClick={() => { setQzStatus('checking'); isQZAvailable().then(ok => setQzStatus(ok ? 'available' : 'unavailable')); }}
-                    className="text-xs text-gray-400 hover:text-gray-600 underline shrink-0"
-                  >Check</button>
+                  {agentStatus === 'checking' && <p className="text-xs text-gray-500 mt-1">Checking...</p>}
+                  {agentStatus === 'available' && agentInfo && (
+                    <p className="text-xs text-emerald-700 mt-1 font-medium">
+                      v{agentInfo.version} · {agentInfo.printers} printer{agentInfo.printers !== 1 ? 's' : ''} configured
+                      {agentInfo.invoice > 0 && ` · ${agentInfo.invoice} invoice`}
+                      {agentInfo.kot > 0 && ` · ${agentInfo.kot} KOT`}
+                    </p>
+                  )}
+                  {agentStatus === 'unavailable' && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs text-amber-700">Install the Printer Agent on the cashier PC that is connected to printers.</p>
+                      <p className="text-xs text-gray-500">1. Copy <code className="bg-white px-1 rounded border">printer-agent/</code> folder to the cashier PC</p>
+                      <p className="text-xs text-gray-500">2. Run <code className="bg-white px-1 rounded border">npm install</code> then <code className="bg-white px-1 rounded border">node agent.js</code></p>
+                      <p className="text-xs text-gray-500">3. Configure printers using the Printers list below — then add them in the agent too.</p>
+                    </div>
+                  )}
+                  <button onClick={checkAgentStatus} className="text-xs text-gray-500 underline hover:no-underline mt-2 block">Re-check</button>
+                </div>
+              </div>
+
+              {/* ── Printer Overview ── */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className={`p-4 rounded-xl border-2 ${printers.filter(p => p.printer_type === 'invoice' && p.is_active).length > 0 ? 'border-emerald-200 bg-emerald-50' : 'border-gray-200 bg-gray-50'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Receipt size={16} className={printers.filter(p => p.printer_type === 'invoice' && p.is_active).length > 0 ? 'text-emerald-600' : 'text-gray-400'} />
+                    <span className="font-semibold text-sm text-gray-700">Invoice Printers</span>
+                    <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full ${printers.filter(p => p.printer_type === 'invoice' && p.is_active).length > 0 ? 'bg-emerald-200 text-emerald-800' : 'bg-gray-200 text-gray-500'}`}>
+                      {printers.filter(p => p.printer_type === 'invoice' && p.is_active).length}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500">Receipts, invoices, quotations</p>
+                </div>
+                <div className={`p-4 rounded-xl border-2 ${printers.filter(p => p.printer_type === 'kot' && p.is_active).length > 0 ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-gray-50'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <UtensilsCrossed size={16} className={printers.filter(p => p.printer_type === 'kot' && p.is_active).length > 0 ? 'text-orange-600' : 'text-gray-400'} />
+                    <span className="font-semibold text-sm text-gray-700">KOT Printers</span>
+                    <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full ${printers.filter(p => p.printer_type === 'kot' && p.is_active).length > 0 ? 'bg-orange-200 text-orange-800' : 'bg-gray-200 text-gray-500'}`}>
+                      {printers.filter(p => p.printer_type === 'kot' && p.is_active).length}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500">Kitchen order tickets, category-routed</p>
                 </div>
               </div>
 
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-base font-semibold text-gray-800">Printer Management</h2>
-                  <p className="text-sm text-gray-500 mt-1">Add multiple printers and assign each to a specific purpose (Receipt, Invoice, Quotation)</p>
+                  <p className="text-sm text-gray-500 mt-1">Add invoice printers for receipts and KOT printers for kitchen/bar orders</p>
                 </div>
                 <button onClick={() => openPrinterModal()} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-semibold transition">
                   <Plus size={18} /> Add Printer
                 </button>
-              </div>
-
-              {/* Purpose legend — Sales Module Sections */}
-              <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Sales Module — Printer Assignment Status</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {[
-                    { purpose: 'receipt',        label: 'POS Receipt',    desc: 'Sale receipts',       icon: Receipt },
-                    { purpose: 'invoice',         label: 'Invoice',        desc: 'Customer invoices',   icon: FileText },
-                    { purpose: 'quotation',       label: 'Quotation',      desc: 'Price quotes',        icon: Tag },
-                    { purpose: 'return_receipt',  label: 'Return Receipt', desc: 'Return/exchange',     icon: RotateCcw },
-                    { purpose: 'credit_sale',     label: 'Credit Sale',    desc: 'Credit documents',    icon: CreditCard },
-                    { purpose: 'layaway_receipt', label: 'Layaway',        desc: 'Layaway receipts',    icon: Package },
-                  ].map(item => {
-                    const Icon = item.icon;
-                    const hasPrinter = printers.some(p => p.purpose === item.purpose && p.is_active);
-                    return (
-                      <div key={item.purpose} className={`p-3 rounded-xl border-2 ${hasPrinter ? 'border-emerald-200 bg-emerald-50' : 'border-gray-200 bg-gray-50'}`}>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Icon size={14} className={hasPrinter ? 'text-emerald-600' : 'text-gray-400'} />
-                          <span className="font-semibold text-xs text-gray-700">{item.label}</span>
-                          {hasPrinter ? <CheckCircle size={12} className="text-emerald-500 ml-auto" /> : <XCircle size={12} className="text-gray-300 ml-auto" />}
-                        </div>
-                        <p className="text-xs text-gray-400">{item.desc}</p>
-                        <p className={`text-xs font-semibold mt-1 ${hasPrinter ? 'text-emerald-600' : 'text-gray-400'}`}>
-                          {hasPrinter ? '✓ Configured' : 'Not set'}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
 
               {/* Printers List */}
@@ -1288,7 +1244,7 @@ const Settings = () => {
                 <div className="text-center py-16 border-2 border-dashed border-gray-200 rounded-xl">
                   <Printer size={40} className="text-gray-300 mx-auto mb-3" />
                   <p className="text-gray-500 font-medium">No printers added yet</p>
-                  <p className="text-sm text-gray-400 mb-4">Add your first printer to enable direct printing</p>
+                  <p className="text-sm text-gray-400 mb-4">Add an invoice printer for receipts, or a KOT printer for kitchen orders</p>
                   <button onClick={() => openPrinterModal()} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-semibold">
                     Add First Printer
                   </button>
@@ -1297,27 +1253,44 @@ const Settings = () => {
                 <div className="space-y-3">
                   {printers.map(printer => {
                     const testResult = printerTestResults[printer.printer_id];
-                    const purposeColors: Record<string, string> = { receipt: 'bg-emerald-100 text-emerald-700', invoice: 'bg-emerald-100 text-emerald-700', quotation: 'bg-emerald-100 text-emerald-700', return_receipt: 'bg-orange-100 text-orange-700', credit_sale: 'bg-rose-100 text-rose-700', layaway_receipt: 'bg-emerald-100 text-emerald-700' };
-                    const purposeLabels: Record<string, string> = { receipt: 'POS Receipt', invoice: 'Invoice', quotation: 'Quotation', return_receipt: 'Return', credit_sale: 'Credit Sale', layaway_receipt: 'Layaway' };
-                    const typeColors: Record<string, string> = { network: 'bg-sky-100 text-sky-700', usb: 'bg-orange-100 text-orange-700' };
+                    const isKOT = printer.printer_type === 'kot';
                     return (
                       <div key={printer.printer_id} className={`p-4 rounded-xl border-2 flex items-start gap-4 ${printer.is_active ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-50 opacity-60'}`}>
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${printer.type === 'network' ? 'bg-sky-100' : 'bg-orange-100'}`}>
-                          {printer.type === 'network' ? <Wifi size={20} className="text-sky-600" /> : <Usb size={20} className="text-orange-600" />}
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${isKOT ? 'bg-orange-100' : 'bg-emerald-100'}`}>
+                          {isKOT ? <UtensilsCrossed size={20} className="text-orange-600" /> : <Receipt size={20} className="text-emerald-600" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-gray-800">{printer.name}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${purposeColors[printer.purpose]}`}>{purposeLabels[printer.purpose] || printer.purpose.toUpperCase()}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${typeColors[printer.type]}`}>{printer.type === 'network' ? 'Network' : 'USB'}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${isKOT ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                              {isKOT ? 'KOT' : 'Invoice'}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-100 text-sky-700">
+                              {printer.type === 'network' ? 'Network' : 'USB'}
+                            </span>
+                            {printer.branch_name && (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">{printer.branch_name}</span>
+                            )}
                             {!printer.is_active && <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">INACTIVE</span>}
                           </div>
                           <p className="text-sm text-gray-500 mt-1">
                             {printer.type === 'network' ? `${printer.ip_address}:${printer.port}` : printer.printer_share_name}
-                            {' · '}Paper: {printer.paper_width}mm
+                            {' · '}{printer.paper_width}mm
                           </p>
+                          {isKOT && printer.categories && printer.categories.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {printer.categories.map(c => (
+                                <span key={c.category_id} className="px-1.5 py-0.5 bg-orange-50 border border-orange-200 text-orange-700 text-xs rounded">
+                                  {c.category_name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {isKOT && (!printer.categories || printer.categories.length === 0) && (
+                            <p className="text-xs text-amber-600 mt-1">Catch-all — receives items not matched by other KOT printers</p>
+                          )}
                           {testResult && (
-                            <div className={`flex items-center gap-1 text-xs font-medium mt-1 ${testResult.success ? 'text-emerald-600' : 'text-red-500'}`}>
+                            <div className={`flex items-center gap-1 text-xs font-medium mt-1.5 ${testResult.success ? 'text-emerald-600' : 'text-red-500'}`}>
                               {testResult.success ? <CheckCircle size={12} /> : <XCircle size={12} />}
                               {testResult.message}
                             </div>
@@ -2083,51 +2056,91 @@ const Settings = () => {
 
       {/* Add/Edit Printer Modal */}
       {showPrinterModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full my-4">
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-800">
+              <h3 className="text-base font-semibold text-gray-800">
                 {editingPrinter ? 'Edit Printer' : 'Add New Printer'}
               </h3>
               <button onClick={() => { setShowPrinterModal(false); setEditingPrinter(null); }} className="text-gray-400 hover:text-gray-600">
                 <X size={24} />
               </button>
             </div>
-            <form onSubmit={handlePrinterSubmit} className="p-6 space-y-4">
+            <form onSubmit={handlePrinterSubmit} className="p-6 space-y-5">
+
               {/* Name */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Printer Name *</label>
                 <input type="text" value={printerForm.name} onChange={e => setPrinterForm({ ...printerForm, name: e.target.value })}
                   className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                  placeholder="e.g. Counter Receipt Printer" required />
+                  placeholder="e.g. Counter Printer, Kitchen Printer" required />
               </div>
 
-              {/* Purpose */}
+              {/* Printer Type */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Purpose *</label>
-                <p className="text-xs text-gray-400 mb-2">Select what this printer will be used for in the Sales module</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: 'receipt',        label: 'POS Receipt',    desc: 'Sale receipts' },
-                    { value: 'invoice',         label: 'Invoice',        desc: 'Customer bills' },
-                    { value: 'quotation',       label: 'Quotation',      desc: 'Price quotes' },
-                    { value: 'return_receipt',  label: 'Return',         desc: 'Return/exchange' },
-                    { value: 'credit_sale',     label: 'Credit Sale',    desc: 'Credit docs' },
-                    { value: 'layaway_receipt', label: 'Layaway',        desc: 'Layaway orders' },
-                  ].map(p => (
-                    <button key={p.value} type="button"
-                      onClick={() => setPrinterForm({ ...printerForm, purpose: p.value as any })}
-                      className={`p-2.5 rounded-lg border-2 text-center transition-all ${printerForm.purpose === p.value ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                      <p className={`font-semibold text-xs ${printerForm.purpose === p.value ? 'text-emerald-700' : 'text-gray-800'}`}>{p.label}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{p.desc}</p>
-                    </button>
-                  ))}
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Printer Type *</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button type="button" onClick={() => setPrinterForm({ ...printerForm, printer_type: 'invoice' })}
+                    className={`p-3 rounded-xl border-2 text-left transition-all ${printerForm.printer_type === 'invoice' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <Receipt size={20} className={`mb-1 ${printerForm.printer_type === 'invoice' ? 'text-emerald-600' : 'text-gray-400'}`} />
+                    <p className={`font-semibold text-sm ${printerForm.printer_type === 'invoice' ? 'text-emerald-700' : 'text-gray-800'}`}>Invoice</p>
+                    <p className="text-xs text-gray-500">Receipts, invoices, quotations</p>
+                  </button>
+                  <button type="button" onClick={() => setPrinterForm({ ...printerForm, printer_type: 'kot' })}
+                    className={`p-3 rounded-xl border-2 text-left transition-all ${printerForm.printer_type === 'kot' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <UtensilsCrossed size={20} className={`mb-1 ${printerForm.printer_type === 'kot' ? 'text-orange-600' : 'text-gray-400'}`} />
+                    <p className={`font-semibold text-sm ${printerForm.printer_type === 'kot' ? 'text-orange-700' : 'text-gray-800'}`}>KOT</p>
+                    <p className="text-xs text-gray-500">Kitchen / bar order tickets</p>
+                  </button>
                 </div>
               </div>
 
+              {/* Branch */}
+              {branches.length > 0 && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Branch (optional)</label>
+                  <select value={printerForm.branch_id} onChange={e => setPrinterForm({ ...printerForm, branch_id: e.target.value })}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white">
+                    <option value="">All branches</option>
+                    {branches.map(b => <option key={b.store_id} value={b.store_id}>{b.store_name}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* KOT Category Mapping */}
+              {printerForm.printer_type === 'kot' && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Category Routing</label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Select which categories this printer handles. Leave empty to make it a catch-all (receives unmatched items).
+                  </p>
+                  {categoryOptions.length === 0 ? (
+                    <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">No categories found. Add product categories first.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border-2 border-gray-200 rounded-lg p-3">
+                      {categoryOptions.map(cat => (
+                        <label key={cat.category_id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                          <input type="checkbox"
+                            checked={printerForm.category_ids.includes(cat.category_id)}
+                            onChange={e => {
+                              const ids = e.target.checked
+                                ? [...printerForm.category_ids, cat.category_id]
+                                : printerForm.category_ids.filter(id => id !== cat.category_id);
+                              setPrinterForm({ ...printerForm, category_ids: ids });
+                            }}
+                            className="w-4 h-4 text-orange-500 rounded"
+                          />
+                          <span className="text-sm text-gray-700">{cat.category_name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Connection Type */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Connection Type *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Connection *</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button type="button" onClick={() => setPrinterForm({ ...printerForm, type: 'network' })}
                     className={`p-3 rounded-lg border-2 flex items-center gap-2 transition-all ${printerForm.type === 'network' ? 'border-sky-500 bg-sky-50' : 'border-gray-200 hover:bg-gray-50'}`}>
@@ -2173,7 +2186,7 @@ const Settings = () => {
                   <input type="text" value={printerForm.printer_share_name} onChange={e => setPrinterForm({ ...printerForm, printer_share_name: e.target.value })}
                     className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
                     placeholder="e.g. \\localhost\ThermalPrinter" required />
-                  <p className="text-xs text-gray-400 mt-1">Windows: \\computername\ShareName &nbsp;|&nbsp; Linux: /dev/usb/lp0</p>
+                  <p className="text-xs text-gray-400 mt-1">Windows: \\computername\ShareName</p>
                 </div>
               )}
 
@@ -2181,28 +2194,26 @@ const Settings = () => {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Paper Width</label>
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => setPrinterForm({ ...printerForm, paper_width: 58 })}
-                    className={`flex-1 py-2.5 rounded-lg border-2 font-medium text-sm transition-all ${printerForm.paper_width === 58 ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-                    58mm (Small)
-                  </button>
-                  <button type="button" onClick={() => setPrinterForm({ ...printerForm, paper_width: 80 })}
-                    className={`flex-1 py-2.5 rounded-lg border-2 font-medium text-sm transition-all ${printerForm.paper_width === 80 ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-                    80mm (Standard)
-                  </button>
+                  {[58, 80].map(w => (
+                    <button key={w} type="button" onClick={() => setPrinterForm({ ...printerForm, paper_width: w })}
+                      className={`flex-1 py-2.5 rounded-lg border-2 font-medium text-sm transition-all ${printerForm.paper_width === w ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                      {w}mm {w === 58 ? '(Small)' : '(Standard)'}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Active toggle (only for edit) */}
+              {/* Active toggle */}
               {editingPrinter && (
                 <div className="flex items-center gap-3">
                   <input type="checkbox" id="printerActive" checked={printerForm.is_active}
                     onChange={e => setPrinterForm({ ...printerForm, is_active: e.target.checked })}
                     className="w-4 h-4 rounded text-emerald-600" />
-                  <label htmlFor="printerActive" className="text-sm font-semibold text-gray-700">Active (printer is available for use)</label>
+                  <label htmlFor="printerActive" className="text-sm font-semibold text-gray-700">Active</label>
                 </div>
               )}
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => { setShowPrinterModal(false); setEditingPrinter(null); }}
                   className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold transition">
                   Cancel

@@ -821,18 +821,18 @@ export async function printToThermalPrinter(
   };
 
   // ── 1. Local Printer Agent — highest priority ──────────────────────
-  const printerAgentUrl = import.meta.env.VITE_PRINTER_AGENT_URL || 'http://localhost:3001';
+  const printerAgentUrl = 'http://localhost:3001';
   try {
     const agentRes = await fetch(`${printerAgentUrl}/health`, { signal: AbortSignal.timeout(1000) });
     if (agentRes.ok) {
-      const printRes = await fetch(`${printerAgentUrl}/print`, {
+      const printRes = await fetch(`${printerAgentUrl}/print/invoice`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ purpose: 'receipt', receiptData }),
+        body: JSON.stringify({ receiptData }),
       });
       if (printRes.ok) return true;
       const err = await printRes.json().catch(() => ({}));
-      console.warn('Printer agent print failed:', err.message);
+      console.warn('Printer agent print failed:', err.error || err.message);
     }
   } catch {
     // Agent not running — try next method

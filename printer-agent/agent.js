@@ -1,20 +1,22 @@
 // =============================================================
-// AByte Printer Agent v1.1
-// Runs on cashier PC — bridges AByte POS web app to local printer
+// AByte Printer Agent v2.0
+// Runs on cashier PC — bridges AByte POS web app to local printers
 //
-// Supports:
-//   - Network thermal printers (TCP/IP, port 9100)
-//   - USB/Serial printers (COM port)
-//   - Windows shared printers
+// Supports multiple printers per PC:
+//   - Invoice printers  (receipts, invoices)
+//   - KOT printers      (kitchen order tickets, category-routed)
+//
+// Connection types: network (TCP), usb (serial), windows (shared)
 //
 // Endpoints:
-//   GET  /health        — liveness + printer info
-//   GET  /config        — show current config
-//   POST /config        — update config (saves to config.json)
-//   GET  /printers      — list COM ports + Windows printers
-//   POST /print         — print a receipt
-//   POST /test          — print a test page
-//   GET  /test          — friendly usage message
+//   GET  /health                — liveness + printer summary
+//   GET  /printers              — list configured printers
+//   POST /printers              — add printer
+//   PUT  /printers/:id          — update printer
+//   DELETE /printers/:id        — remove printer
+//   POST /printers/:id/test     — send test page to specific printer
+//   POST /print/invoice         — print receipt / invoice
+//   POST /print/kot             — print KOT (routes to printers by category)
 // =============================================================
 
 const express  = require('express');
@@ -23,6 +25,7 @@ const net      = require('net');
 const fs       = require('fs');
 const path     = require('path');
 const { exec } = require('child_process');
+const crypto   = require('crypto');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -31,51 +34,35 @@ const PORT = process.env.PORT || 3001;
 const CONFIG_FILE = path.join(__dirname, 'config.json');
 
 const DEFAULT_CONFIG = {
-  printer_type:         'network',
-  printer_ip:           '192.168.1.100',
-  printer_port:         9100,
-  printer_com:          'COM3',
-  printer_baud:         9600,
-  windows_printer_name: '',
-  paper_width:          32,
-  cut_paper:            true,
-  open_drawer:          false,
+  printers: [],
 };
 
 function loadConfig() {
   try {
     if (fs.existsSync(CONFIG_FILE)) {
-      return { ...DEFAULT_CONFIG, ...JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')) };
+      const data = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+      if (!Array.isArray(data.printers)) data.printers = [];
+      return data;
     }
   } catch (e) {
-    console.warn('Config read error:', e.message, '— using defaults');
+    console.warn('[config] Read error:', e.message, '— using defaults');
   }
   return { ...DEFAULT_CONFIG };
 }
 
-function saveConfig(cfg) {
+function saveConfig() {
   try {
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
   } catch (e) {
-    console.error('Config save error:', e.message);
+    console.error('[config] Save error:', e.message);
   }
 }
 
 let config = loadConfig();
-console.log(`  Config loaded: ${CONFIG_FILE}`);
-
-// Live reload config.json when file changes on disk
-fs.watch(CONFIG_FILE, (event) => {
-  if (event === 'change') {
-    const fresh = loadConfig();
-    config = fresh;
-    console.log(`[config] Reloaded — printer: ${config.printer_type} ${config.printer_type === 'network' ? config.printer_ip + ':' + config.printer_port : config.printer_com}`);
-  }
-});
 
 // ── Middleware ─────────────────────────────────────────────────
 app.use(cors({ origin: '*' }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '2mb' }));
 
 // ── ESC/POS Commands ──────────────────────────────────────────
 const ESC = 0x1B;
@@ -85,102 +72,145 @@ const CMD = {
   INIT:          Buffer.from([ESC, 0x40]),
   ALIGN_CENTER:  Buffer.from([ESC, 0x61, 0x01]),
   ALIGN_LEFT:    Buffer.from([ESC, 0x61, 0x00]),
+  ALIGN_RIGHT:   Buffer.from([ESC, 0x61, 0x02]),
   BOLD_ON:       Buffer.from([ESC, 0x45, 0x01]),
   BOLD_OFF:      Buffer.from([ESC, 0x45, 0x00]),
+  DOUBLE_SIZE:   Buffer.from([ESC, 0x21, 0x30]),
   DOUBLE_HEIGHT: Buffer.from([ESC, 0x21, 0x10]),
   NORMAL_SIZE:   Buffer.from([ESC, 0x21, 0x00]),
   CUT_PARTIAL:   Buffer.from([GS,  0x56, 0x41, 0x05]),
   CUT_FULL:      Buffer.from([GS,  0x56, 0x00]),
   OPEN_DRAWER:   Buffer.from([ESC, 0x70, 0x00, 0x19, 0xFA]),
   FEED_3:        Buffer.from([ESC, 0x64, 0x03]),
+  FEED_5:        Buffer.from([ESC, 0x64, 0x05]),
 };
 
-function buildESCPOS(d, cfg) {
-  const W      = cfg.paper_width || 32;
-  const buffers = [];
+function txt(s) { return Buffer.from(String(s) + '\n', 'utf8'); }
 
-  const push   = (...bufs) => bufs.forEach(b => buffers.push(b));
-  const line   = (s) => Buffer.from(String(s).substring(0, W * 2) + '\n', 'utf8');
+function buildInvoiceESCPOS(d, printerCfg) {
+  const W      = printerCfg.paper_width === 58 ? 32 : 42;
+  const bufs   = [];
+  const push   = (...b) => b.forEach(x => bufs.push(x));
   const dashes = '-'.repeat(W);
   const equals = '='.repeat(W);
 
-  const center = (s) => {
-    s = String(s).substring(0, W);
-    const pad = Math.floor((W - s.length) / 2);
-    return ' '.repeat(Math.max(0, pad)) + s;
-  };
-  const split  = (l, r) => {
+  const split = (l, r) => {
     l = String(l); r = String(r);
     const gap = W - l.length - r.length;
-    if (gap > 0) return l + ' '.repeat(gap) + r;
-    return l.substring(0, W - r.length - 1) + ' ' + r;
+    return gap > 0 ? l + ' '.repeat(gap) + r : l.slice(0, W - r.length - 1) + ' ' + r;
   };
-  const padR   = (s, n) => String(s).substring(0, n).padEnd(n);
-  const padL   = (s, n) => String(s).substring(0, n).padStart(n);
+  const padR = (s, n) => String(s).slice(0, n).padEnd(n);
+  const padL = (s, n) => String(s).slice(0, n).padStart(n);
 
   push(CMD.INIT);
 
-  // Store header
+  // Header
   push(CMD.ALIGN_CENTER, CMD.BOLD_ON, CMD.DOUBLE_HEIGHT);
-  push(line((d.storeName || 'Store').toUpperCase()));
+  push(txt((d.storeName || 'Store').toUpperCase()));
   push(CMD.NORMAL_SIZE, CMD.BOLD_OFF);
-  if (d.storeAddress) push(line(d.storeAddress));
-  if (d.storePhone)   push(line('Tel: ' + d.storePhone));
-  push(CMD.ALIGN_LEFT, line(dashes));
+  if (d.storeAddress) push(txt(d.storeAddress));
+  if (d.storePhone)   push(txt('Tel: ' + d.storePhone));
+  push(CMD.ALIGN_LEFT, txt(dashes));
 
   // Meta
   push(CMD.BOLD_ON);
-  push(line(d.invoiceNo ? split('Invoice:', d.invoiceNo) : split('Receipt #:', String(d.saleId))));
+  if (d.invoiceNo) push(txt(split('Invoice:', d.invoiceNo)));
+  else             push(txt(split('Receipt #:', String(d.saleId || ''))));
   push(CMD.BOLD_OFF);
+
   if (d.tokenNo) {
     push(CMD.ALIGN_CENTER, CMD.BOLD_ON, CMD.DOUBLE_HEIGHT);
-    push(line('Token: ' + d.tokenNo));
+    push(txt('Token: ' + d.tokenNo));
     push(CMD.NORMAL_SIZE, CMD.BOLD_OFF, CMD.ALIGN_LEFT);
   }
-  push(line(split('Date:', d.date)));
-  push(line(split('Cashier:', d.cashierName || '')));
-  if (d.customerName) push(line(split('Customer:', d.customerName)));
-  push(line(dashes));
+  push(txt(split('Date:', d.date || new Date().toLocaleString())));
+  push(txt(split('Cashier:', d.cashierName || '')));
+  if (d.customerName) push(txt(split('Customer:', d.customerName)));
+  if (d.tableNo)      push(txt(split('Table:', d.tableNo)));
+  push(txt(dashes));
 
-  // Items
+  // Items header
   const nameW = W - 16;
   push(CMD.BOLD_ON);
-  push(line(padR('Item', nameW) + padR('Qty', 5) + padL('Price', 11)));
-  push(CMD.BOLD_OFF);
-  push(line(dashes));
+  push(txt(padR('Item', nameW) + padR('Qty', 5) + padL('Price', 11)));
+  push(CMD.BOLD_OFF, txt(dashes));
 
+  const cs = d.currencySymbol || 'Rs.';
   for (const item of (d.items || [])) {
-    const cs    = d.currencySymbol || 'Rs.';
-    const name  = padR(item.name, nameW);
-    const qty   = padR(item.quantity, 5);
-    const price = padL(cs + Number(item.price).toFixed(2), 11);
-    push(line(name + qty + price));
+    push(txt(padR(item.name, nameW) + padR(item.quantity, 5) + padL(cs + Number(item.price).toFixed(2), 11)));
+    if (item.note) push(txt('  * ' + item.note));
   }
-  push(line(dashes));
+  push(txt(dashes));
 
   // Totals
-  const cs = d.currencySymbol || 'Rs.';
-  if (Number(d.discount)      > 0) push(line(split('Discount:',            `-${cs}${Number(d.discount).toFixed(2)}`)));
-  if (Number(d.taxAmount)     > 0) push(line(split(`Tax (${d.taxPercent}%):`, `${cs}${Number(d.taxAmount).toFixed(2)}`)));
-  if (Number(d.chargesAmount) > 0) push(line(split('Charges:',             `${cs}${Number(d.chargesAmount).toFixed(2)}`)));
-  push(line(equals));
+  if (Number(d.discount)      > 0) push(txt(split('Discount:',           `-${cs}${Number(d.discount).toFixed(2)}`)));
+  if (Number(d.taxAmount)     > 0) push(txt(split(`Tax (${d.taxPercent || 0}%):`, `${cs}${Number(d.taxAmount).toFixed(2)}`)));
+  if (Number(d.chargesAmount) > 0) push(txt(split('Charges:',            `${cs}${Number(d.chargesAmount).toFixed(2)}`)));
+  push(txt(equals));
   push(CMD.BOLD_ON, CMD.DOUBLE_HEIGHT);
-  push(line(split('TOTAL:', `${cs}${Number(d.totalAmount).toFixed(2)}`)));
-  push(CMD.NORMAL_SIZE, CMD.BOLD_OFF);
-  push(line(equals));
-  push(line(split(`Paid (${d.paymentMethod || 'cash'}):`, `${cs}${Number(d.amountPaid).toFixed(2)}`)));
-  if (Number(d.changeDue) > 0) push(line(split('Change Due:', `${cs}${Number(d.changeDue).toFixed(2)}`)));
-  push(line(dashes));
+  push(txt(split('TOTAL:', `${cs}${Number(d.totalAmount || 0).toFixed(2)}`)));
+  push(CMD.NORMAL_SIZE, CMD.BOLD_OFF, txt(equals));
+  push(txt(split(`Paid (${d.paymentMethod || 'Cash'}):`, `${cs}${Number(d.amountPaid || 0).toFixed(2)}`)));
+  if (Number(d.changeDue) > 0) push(txt(split('Change Due:', `${cs}${Number(d.changeDue).toFixed(2)}`)));
+  push(txt(dashes));
 
   // Footer
   push(CMD.ALIGN_CENTER);
-  push(line(d.footer || 'Thank you!'));
-  push(CMD.ALIGN_LEFT);
-  push(CMD.FEED_3);
-  if (cfg.cut_paper)    push(CMD.CUT_PARTIAL);
-  if (cfg.open_drawer)  push(CMD.OPEN_DRAWER);
+  push(txt(d.footer || 'Thank you!'));
+  push(CMD.ALIGN_LEFT, CMD.FEED_3);
+  if (printerCfg.cut_paper  !== false) push(CMD.CUT_PARTIAL);
+  if (printerCfg.open_drawer)          push(CMD.OPEN_DRAWER);
 
-  return Buffer.concat(buffers);
+  return Buffer.concat(bufs);
+}
+
+function buildKOTESCPOS(d, printerCfg) {
+  const W    = printerCfg.paper_width === 58 ? 32 : 42;
+  const bufs = [];
+  const push = (...b) => b.forEach(x => bufs.push(x));
+
+  push(CMD.INIT);
+
+  // KOT Header
+  push(CMD.ALIGN_CENTER, CMD.BOLD_ON, CMD.DOUBLE_SIZE);
+  push(txt('KOT'));
+  push(CMD.NORMAL_SIZE, CMD.BOLD_OFF);
+  push(txt('='.repeat(W)));
+  push(CMD.ALIGN_LEFT);
+
+  // Order info
+  if (d.tokenNo) {
+    push(CMD.BOLD_ON, CMD.DOUBLE_HEIGHT, CMD.ALIGN_CENTER);
+    push(txt('Token: ' + d.tokenNo));
+    push(CMD.NORMAL_SIZE, CMD.BOLD_OFF, CMD.ALIGN_LEFT);
+  }
+  if (d.tableNo) {
+    push(CMD.BOLD_ON, CMD.DOUBLE_HEIGHT, CMD.ALIGN_CENTER);
+    push(txt('Table: ' + d.tableNo));
+    push(CMD.NORMAL_SIZE, CMD.BOLD_OFF, CMD.ALIGN_LEFT);
+  }
+  push(txt(d.date || new Date().toLocaleString()));
+  if (d.cashierName) push(txt('By: ' + d.cashierName));
+  if (d.categoryName) {
+    push(CMD.ALIGN_CENTER, CMD.BOLD_ON);
+    push(txt('[ ' + d.categoryName + ' ]'));
+    push(CMD.BOLD_OFF, CMD.ALIGN_LEFT);
+  }
+  push(txt('-'.repeat(W)));
+
+  // Items — large and clear
+  for (const item of (d.items || [])) {
+    push(CMD.BOLD_ON, CMD.DOUBLE_HEIGHT);
+    push(txt(`${item.quantity}x  ${item.name}`));
+    push(CMD.NORMAL_SIZE, CMD.BOLD_OFF);
+    if (item.note) push(txt('   -> ' + item.note));
+  }
+
+  push(txt('='.repeat(W)));
+  push(CMD.FEED_5);
+  if (printerCfg.cut_paper !== false) push(CMD.CUT_PARTIAL);
+
+  return Buffer.concat(bufs);
 }
 
 // ── Print methods ─────────────────────────────────────────────
@@ -189,7 +219,7 @@ function printNetwork(buf, ip, port) {
     const socket  = new net.Socket();
     const timeout = setTimeout(() => {
       socket.destroy();
-      reject(new Error(`Printer at ${ip}:${port} not reachable (timeout 5s). Check IP and port.`));
+      reject(new Error(`Printer at ${ip}:${port} not reachable (timeout 5s)`));
     }, 5000);
 
     socket.connect(port, ip, () => {
@@ -222,10 +252,10 @@ function printUSB(buf, comPort, baudRate) {
 }
 
 function printWindows(buf, printerName) {
+  const os      = require('os');
+  const tmpFile = path.join(os.tmpdir(), `abyte_${Date.now()}.bin`);
+  fs.writeFileSync(tmpFile, buf);
   return new Promise((resolve, reject) => {
-    const os      = require('os');
-    const tmpFile = path.join(os.tmpdir(), `abyte_${Date.now()}.bin`);
-    fs.writeFileSync(tmpFile, buf);
     exec(`copy /B "${tmpFile}" "\\\\localhost\\${printerName}"`, (err) => {
       fs.unlink(tmpFile, () => {});
       if (err) reject(new Error('Windows print failed: ' + err.message));
@@ -234,138 +264,239 @@ function printWindows(buf, printerName) {
   });
 }
 
-async function doPrint(cfg, buf) {
-  switch (cfg.printer_type) {
-    case 'network': return printNetwork(buf, cfg.printer_ip, cfg.printer_port || 9100);
-    case 'usb':     return printUSB(buf, cfg.printer_com, cfg.printer_baud);
-    case 'windows': return printWindows(buf, cfg.windows_printer_name);
-    default:        throw new Error(`Unknown printer_type: "${cfg.printer_type}". Use network | usb | windows`);
+async function sendToPrinter(printerCfg, buf) {
+  switch (printerCfg.connection) {
+    case 'network': return printNetwork(buf, printerCfg.ip, printerCfg.port || 9100);
+    case 'usb':     return printUSB(buf, printerCfg.com, printerCfg.baud);
+    case 'windows': return printWindows(buf, printerCfg.printer_name);
+    default:        throw new Error(`Unknown connection type: "${printerCfg.connection}". Use network | usb | windows`);
   }
 }
+
+// ── Printer list helpers ──────────────────────────────────────
+function getPrinters()           { return config.printers || []; }
+function getPrinterById(id)      { return getPrinters().find(p => p.id === id) || null; }
+function savePrinters(printers)  { config.printers = printers; saveConfig(); }
 
 // ── Routes ────────────────────────────────────────────────────
 
 app.get('/health', (req, res) => {
+  const printers = getPrinters();
   res.json({
-    status:          'ok',
-    version:         '1.1.0',
-    printer_type:    config.printer_type,
-    printer_target:  config.printer_type === 'network'
-      ? `${config.printer_ip}:${config.printer_port}`
-      : config.printer_type === 'usb'
-      ? config.printer_com
-      : config.windows_printer_name || '(not set)',
-    config_file:     CONFIG_FILE,
+    status:    'ok',
+    version:   '2.0.0',
+    printers:  printers.length,
+    invoice:   printers.filter(p => p.type === 'invoice').length,
+    kot:       printers.filter(p => p.type === 'kot').length,
   });
 });
 
-app.get('/config',  (req, res) => res.json(config));
-
-app.post('/config', (req, res) => {
-  config = { ...config, ...req.body };
-  saveConfig(config);
-  console.log('[config] Updated via API:', req.body);
-  res.json({ success: true, config });
+// List all printers
+app.get('/printers', (req, res) => {
+  res.json({ data: getPrinters() });
 });
 
-app.get('/printers', async (req, res) => {
-  const result = { com_ports: [], windows_printers: [] };
-  try {
-    const { SerialPort } = require('serialport');
-    const ports = await SerialPort.list();
-    result.com_ports = ports.map(p => ({ path: p.path, manufacturer: p.manufacturer || '' }));
-  } catch { /* serialport not installed */ }
+// Add printer
+app.post('/printers', (req, res) => {
+  const { name, type, connection, ip, port, com, baud, printer_name, paper_width, categories, cut_paper, open_drawer } = req.body;
+  if (!name || !type || !connection) return res.status(400).json({ error: 'name, type, and connection are required' });
+  if (!['invoice', 'kot'].includes(type)) return res.status(400).json({ error: 'type must be invoice or kot' });
+  if (!['network', 'usb', 'windows'].includes(connection)) return res.status(400).json({ error: 'connection must be network | usb | windows' });
 
-  exec('wmic printer get name /format:list', (err, stdout) => {
-    if (!err) {
-      result.windows_printers = stdout
-        .split('\n')
-        .map(l => l.replace('Name=', '').trim())
-        .filter(Boolean);
-    }
-    res.json(result);
-  });
-});
-
-app.get('/test', (req, res) => {
-  res.json({
-    message: 'Use POST /test to send a test print. GET is not supported for printing.',
-    example: 'Invoke-RestMethod -Method POST -Uri http://localhost:3001/test',
-    current_config: {
-      printer_type:   config.printer_type,
-      printer_target: config.printer_type === 'network'
-        ? `${config.printer_ip}:${config.printer_port}`
-        : config.printer_com,
-    },
-  });
-});
-
-app.post('/test', async (req, res) => {
-  const testData = {
-    storeName:     'AByte POS',
-    storeAddress:  'Printer Test Page',
-    storePhone:    '',
-    saleId:        1,
-    invoiceNo:     'TEST-001',
-    date:          new Date().toLocaleString(),
-    cashierName:   'System',
-    currencySymbol:'Rs.',
-    items:         [{ name: 'Test Item', quantity: 1, price: 100 }],
-    subtotal:      100, discount: 0, taxAmount: 0, taxPercent: 0,
-    chargesAmount: 0,   totalAmount: 100, amountPaid: 100, changeDue: 0,
-    paymentMethod: 'cash',
-    footer:        'Printer working correctly!',
+  const printer = {
+    id:           crypto.randomUUID(),
+    name,
+    type,
+    connection,
+    ip:           ip || null,
+    port:         port || 9100,
+    com:          com || null,
+    baud:         baud || 9600,
+    printer_name: printer_name || null,
+    paper_width:  paper_width || 80,
+    categories:   type === 'kot' ? (categories || []) : [],
+    cut_paper:    cut_paper !== false,
+    open_drawer:  open_drawer || false,
   };
+
+  const printers = getPrinters();
+  printers.push(printer);
+  savePrinters(printers);
+  console.log(`[printers] Added: ${name} (${type}, ${connection})`);
+  res.status(201).json({ success: true, printer });
+});
+
+// Update printer
+app.put('/printers/:id', (req, res) => {
+  const printers = getPrinters();
+  const idx = printers.findIndex(p => p.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Printer not found' });
+
+  const { name, type, connection, ip, port, com, baud, printer_name, paper_width, categories, cut_paper, open_drawer } = req.body;
+  printers[idx] = {
+    ...printers[idx],
+    name:         name         ?? printers[idx].name,
+    type:         type         ?? printers[idx].type,
+    connection:   connection   ?? printers[idx].connection,
+    ip:           ip           !== undefined ? ip : printers[idx].ip,
+    port:         port         ?? printers[idx].port,
+    com:          com          !== undefined ? com : printers[idx].com,
+    baud:         baud         ?? printers[idx].baud,
+    printer_name: printer_name !== undefined ? printer_name : printers[idx].printer_name,
+    paper_width:  paper_width  ?? printers[idx].paper_width,
+    categories:   printers[idx].type === 'kot' ? (categories ?? printers[idx].categories) : [],
+    cut_paper:    cut_paper    !== undefined ? cut_paper : printers[idx].cut_paper,
+    open_drawer:  open_drawer  !== undefined ? open_drawer : printers[idx].open_drawer,
+  };
+  savePrinters(printers);
+  console.log(`[printers] Updated: ${printers[idx].name}`);
+  res.json({ success: true, printer: printers[idx] });
+});
+
+// Delete printer
+app.delete('/printers/:id', (req, res) => {
+  const printers = getPrinters();
+  const idx = printers.findIndex(p => p.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Printer not found' });
+  const [removed] = printers.splice(idx, 1);
+  savePrinters(printers);
+  console.log(`[printers] Deleted: ${removed.name}`);
+  res.json({ success: true });
+});
+
+// Test specific printer
+app.post('/printers/:id/test', async (req, res) => {
+  const printer = getPrinterById(req.params.id);
+  if (!printer) return res.status(404).json({ error: 'Printer not found' });
+
   try {
-    const buf = buildESCPOS(testData, config);
-    await doPrint(config, buf);
-    console.log('[test] Test print successful');
-    res.json({ success: true, message: 'Test page sent to printer' });
+    let buf;
+    if (printer.type === 'kot') {
+      buf = buildKOTESCPOS({
+        tokenNo:      'TEST',
+        date:         new Date().toLocaleString(),
+        cashierName:  'System',
+        categoryName: 'All Categories',
+        items:        [{ name: 'Test Item', quantity: 2 }, { name: 'Another Item', quantity: 1 }],
+      }, printer);
+    } else {
+      buf = buildInvoiceESCPOS({
+        storeName:     'AByte POS',
+        storeAddress:  'Printer Test',
+        saleId:        1,
+        invoiceNo:     'TEST-001',
+        date:          new Date().toLocaleString(),
+        cashierName:   'System',
+        currencySymbol:'Rs.',
+        items:         [{ name: 'Test Item', quantity: 1, price: 100 }],
+        totalAmount:   100, amountPaid: 100, changeDue: 0,
+        footer:        'Printer working!',
+      }, printer);
+    }
+
+    await sendToPrinter(printer, buf);
+    console.log(`[test] OK: ${printer.name}`);
+    res.json({ success: true, message: `Test page sent to "${printer.name}"` });
   } catch (e) {
-    console.error('[test] Failed:', e.message);
-    res.status(500).json({ error: e.message, config: { printer_type: config.printer_type, printer_ip: config.printer_ip } });
+    console.error(`[test] FAIL: ${printer.name} —`, e.message);
+    res.status(500).json({ error: e.message, printer: { name: printer.name, connection: printer.connection } });
   }
 });
 
-app.post('/print', async (req, res) => {
-  const { receiptData, overrideConfig } = req.body;
+// Print invoice / receipt
+app.post('/print/invoice', async (req, res) => {
+  const { receiptData, printerId } = req.body;
   if (!receiptData) return res.status(400).json({ error: 'receiptData is required' });
 
-  const printCfg = overrideConfig ? { ...config, ...overrideConfig } : config;
+  const printers = getPrinters().filter(p => p.type === 'invoice');
+  if (printers.length === 0) return res.status(400).json({ error: 'No invoice printer configured. Add one in Printer settings.' });
+
+  // Use specific printer if requested, else first configured
+  const printer = printerId ? printers.find(p => p.id === printerId) || printers[0] : printers[0];
+
   try {
-    const buf = buildESCPOS(receiptData, printCfg);
-    await doPrint(printCfg, buf);
-    res.json({ success: true, method: printCfg.printer_type });
+    const buf = buildInvoiceESCPOS(receiptData, printer);
+    await sendToPrinter(printer, buf);
+    console.log(`[print/invoice] OK — printer: ${printer.name}`);
+    res.json({ success: true, printer: printer.name });
   } catch (e) {
-    console.error('[print] Error:', e.message);
+    console.error('[print/invoice] Error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
+// Print KOT — routes items to printers by category
+app.post('/print/kot', async (req, res) => {
+  const { kotData } = req.body;
+  if (!kotData) return res.status(400).json({ error: 'kotData is required' });
+
+  const kotPrinters = getPrinters().filter(p => p.type === 'kot');
+  if (kotPrinters.length === 0) return res.status(400).json({ error: 'No KOT printer configured. Add one in Printer settings.' });
+
+  // Group items by which printer should handle them
+  // Items with no category or unmatched category go to any printer with empty categories array (catch-all)
+  const printerJobs = new Map(); // printer.id → { printer, items }
+
+  for (const item of (kotData.items || [])) {
+    const catId = item.category_id ? Number(item.category_id) : null;
+
+    // Find a KOT printer that handles this category
+    let matched = null;
+    for (const p of kotPrinters) {
+      if (!p.categories || p.categories.length === 0) continue; // catch-all — check later
+      if (catId && p.categories.map(Number).includes(catId)) { matched = p; break; }
+    }
+    // Fallback: first catch-all printer (empty categories = handles everything)
+    if (!matched) {
+      matched = kotPrinters.find(p => !p.categories || p.categories.length === 0) || kotPrinters[0];
+    }
+
+    if (!printerJobs.has(matched.id)) {
+      printerJobs.set(matched.id, { printer: matched, items: [] });
+    }
+    printerJobs.get(matched.id).items.push(item);
+  }
+
+  const results = [];
+  for (const { printer, items } of printerJobs.values()) {
+    try {
+      const buf = buildKOTESCPOS({ ...kotData, items }, printer);
+      await sendToPrinter(printer, buf);
+      results.push({ printer: printer.name, items: items.length, success: true });
+      console.log(`[print/kot] OK — ${printer.name}: ${items.length} items`);
+    } catch (e) {
+      results.push({ printer: printer.name, items: items.length, success: false, error: e.message });
+      console.error(`[print/kot] FAIL — ${printer.name}:`, e.message);
+    }
+  }
+
+  const allOk = results.every(r => r.success);
+  res.status(allOk ? 200 : 207).json({ success: allOk, results });
+});
+
 // ── Start ─────────────────────────────────────────────────────
-const server = app.listen(PORT, '127.0.0.1', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
+  const printers = getPrinters();
   console.log(`\n========================================`);
-  console.log(`  AByte Printer Agent v1.1 — RUNNING`);
+  console.log(`  AByte Printer Agent v2.0 — RUNNING`);
   console.log(`========================================`);
-  console.log(`  URL     : http://localhost:${PORT}`);
-  console.log(`  Printer : ${config.printer_type.toUpperCase()} — ${
-    config.printer_type === 'network' ? config.printer_ip + ':' + config.printer_port :
-    config.printer_type === 'usb'     ? config.printer_com :
-                                        config.windows_printer_name || '(not set)'
-  }`);
-  console.log(`  Config  : ${CONFIG_FILE}`);
-  console.log(`----------------------------------------`);
-  console.log(`  Edit config.json to change printer.`);
-  console.log(`  Changes apply instantly (no restart).`);
+  console.log(`  URL       : http://localhost:${PORT}`);
+  console.log(`  Printers  : ${printers.length} configured`);
+  printers.forEach(p => {
+    const target = p.connection === 'network' ? `${p.ip}:${p.port}` :
+                   p.connection === 'usb'     ? p.com :
+                                                p.printer_name || '(not set)';
+    console.log(`    - [${p.type.toUpperCase()}] ${p.name} → ${target}`);
+  });
+  console.log(`  Config    : ${CONFIG_FILE}`);
   console.log(`========================================\n`);
 });
 
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
     console.error(`\n[ERROR] Port ${PORT} is already in use.`);
-    console.error(`  Another instance of AByte Printer Agent is already running.`);
-    console.error(`  To stop it: taskkill /F /IM node.exe`);
-    console.error(`  Then run start.bat again.\n`);
+    console.error(`  Another instance of AByte Printer Agent may be running.`);
+    console.error(`  Stop it: taskkill /F /IM node.exe  then run start.bat again.\n`);
   } else {
     console.error('[ERROR]', err.message);
   }

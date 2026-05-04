@@ -31,6 +31,9 @@ router.put('/printers/:id', authorize('Admin'), settingsController.updatePrinter
 router.delete('/printers/:id', authorize('Admin'), settingsController.deletePrinter);
 router.post('/printers/:id/test', authorize('Admin'), settingsController.testPrinterById);
 
+// Get categories for KOT printer mapping
+router.get('/categories', settingsController.getCategories);
+
 // Test printer connection (legacy): Admin only
 router.post('/test-printer', authorize('Admin'), settingsController.testPrinter);
 
