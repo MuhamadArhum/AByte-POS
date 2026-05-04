@@ -605,7 +605,7 @@ export function printReceipt(
     showPrintDialog = true,
     printTimeout = 400,
     copyToClipboard = false,
-    openInNewWindow = true
+    openInNewWindow = false  // default: iframe (no popup window)
   } = printOptions;
 
   const html = generateReceiptHTML(sale, settings, cashierName, customerName);
@@ -695,11 +695,11 @@ function printUsingIframe(html: string, showPrintDialog: boolean, printTimeout: 
     setTimeout(() => {
       iframe.contentWindow?.focus();
       iframe.contentWindow?.print();
-      
-      // Cleanup
+
+      // Cleanup after print dialog closes
       setTimeout(() => {
-        document.body.removeChild(iframe);
-      }, 1000);
+        if (document.body.contains(iframe)) document.body.removeChild(iframe);
+      }, 5000);
     }, printTimeout);
   }
 }
