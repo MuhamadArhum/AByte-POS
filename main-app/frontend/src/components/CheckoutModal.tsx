@@ -34,7 +34,6 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   // Pending sale items & rates
   const [pendingItems, setPendingItems] = useState<any[]>([]);
   const [pendingTaxRate, setPendingTaxRate] = useState(0);
-  const [pendingOriginalTaxRate, setPendingOriginalTaxRate] = useState(0); // DB value — used to detect 0-tax orders (TA)
   const [pendingAdditionalRate, setPendingAdditionalRate] = useState(0);
   const [pendingItemsLoading, setPendingItemsLoading] = useState(false);
 
@@ -72,7 +71,6 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       setPointsToRedeem('');
       setCreditDueDate('');
       setPendingItems([]);
-      setPendingOriginalTaxRate(0);
       fetchSettings();
       if (selectedCustomer && selectedCustomer.customer_id !== 1) {
         fetchLoyaltyInfo(selectedCustomer.customer_id);
@@ -98,9 +96,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       const res = await api.get(`/sales/${saleId}`);
       const saleData = res.data;
       setPendingItems(saleData.items || []);
-      const storedTax = parseFloat(saleData.tax_percent || 0);
-      setPendingOriginalTaxRate(storedTax);
-      setPendingTaxRate(storedTax);
+      // Initial rate = cash rate from settings (payment default is cash); user can override manually
+      setPendingTaxRate(parseFloat(settings?.tax_on_cash ?? 16));
       setPendingAdditionalRate(parseFloat(saleData.additional_charges_percent || 0));
     } catch (err) {
       console.error('Failed to fetch pending sale details', err);
@@ -166,10 +163,12 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   // (skip if original DB tax was 0 — those are 0-tax order types like TA)
   const handleSetPaymentMethod = (method: 'cash' | 'card' | 'online' | 'split' | 'credit') => {
     setPaymentMethod(method);
-    if (pendingSale && !pendingSale.isCartEdit && pendingOriginalTaxRate > 0) {
+    if (pendingSale && !pendingSale.isCartEdit) {
       const rate =
-        method === 'card'   ? parseFloat(settings?.tax_on_card   ?? 5)
+        method === 'card'    ? parseFloat(settings?.tax_on_card   ?? 5)
         : method === 'online' ? parseFloat(settings?.tax_on_online ?? 5)
+        : method === 'credit' ? parseFloat(settings?.tax_on_cash   ?? 16)
+        : method === 'split'  ? parseFloat(settings?.tax_on_cash   ?? 16)
         : parseFloat(settings?.tax_on_cash ?? 16);
       setPendingTaxRate(rate);
     }
