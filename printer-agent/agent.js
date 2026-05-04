@@ -1,5 +1,5 @@
 // =============================================================
-// AByte Printer Agent v2.0
+// AByte Printer Agent v2.1
 // Runs on cashier PC — bridges AByte POS web app to local printers
 //
 // Supports multiple printers per PC:
@@ -9,7 +9,10 @@
 // Connection types: network (TCP), usb (serial), windows (shared)
 //
 // Endpoints:
+//   GET  /                      — Web UI dashboard
 //   GET  /health                — liveness + printer summary
+//   GET  /jobs                  — job log (last 500)
+//   DELETE /jobs                — clear job log
 //   GET  /printers              — list configured printers
 //   POST /printers              — add printer
 //   PUT  /printers/:id          — update printer
@@ -27,8 +30,9 @@ const path     = require('path');
 const { exec } = require('child_process');
 const crypto   = require('crypto');
 
-const app  = express();
-const PORT = process.env.PORT || 3001;
+const app     = express();
+const PORT    = process.env.PORT || 3001;
+const VERSION = '2.1.0';
 
 // ── Config ────────────────────────────────────────────────────
 const CONFIG_FILE = path.join(__dirname, 'config.json');
@@ -59,6 +63,15 @@ function saveConfig() {
 }
 
 let config = loadConfig();
+
+// ── Job Log ───────────────────────────────────────────────────
+const MAX_JOBS = 500;
+let jobLog = [];
+
+function addJob(job) {
+  jobLog.unshift({ id: crypto.randomUUID(), ts: new Date().toISOString(), ...job });
+  if (jobLog.length > MAX_JOBS) jobLog = jobLog.slice(0, MAX_JOBS);
+}
 
 // ── Middleware ─────────────────────────────────────────────────
 app.use(cors({ origin: '*' }));
@@ -278,17 +291,416 @@ function getPrinters()           { return config.printers || []; }
 function getPrinterById(id)      { return getPrinters().find(p => p.id === id) || null; }
 function savePrinters(printers)  { config.printers = printers; saveConfig(); }
 
+// ── Web UI ────────────────────────────────────────────────────
+function buildUI() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AByte Printer Agent</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #0f1117;
+    --surface: #1a1d27;
+    --border:  #2a2d3a;
+    --text:    #e2e8f0;
+    --muted:   #64748b;
+    --green:   #22c55e;
+    --red:     #ef4444;
+    --amber:   #f59e0b;
+    --blue:    #3b82f6;
+    --purple:  #a855f7;
+    --orange:  #f97316;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; min-height: 100vh; }
+
+  /* Header */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
+  .header-logo { width: 32px; height: 32px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: #fff; flex-shrink: 0; }
+  .header-title { font-size: 16px; font-weight: 700; }
+  .header-sub { font-size: 12px; color: var(--muted); }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.5;} }
+  .status-label { font-size: 12px; color: var(--green); font-weight: 600; }
+  .version-badge { background: var(--border); color: var(--muted); font-size: 11px; padding: 2px 8px; border-radius: 20px; }
+
+  /* Main layout */
+  .main { max-width: 1100px; margin: 0 auto; padding: 24px; display: grid; gap: 20px; }
+
+  /* Section */
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .section-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .section-title span { font-size: 15px; }
+
+  /* Stats row */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); }
+  .stat { background: var(--surface); padding: 16px 20px; }
+  .stat-value { font-size: 28px; font-weight: 800; line-height: 1; }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .4px; }
+  .stat-value.green { color: var(--green); }
+  .stat-value.red   { color: var(--red); }
+  .stat-value.blue  { color: var(--blue); }
+  .stat-value.amber { color: var(--amber); }
+
+  /* Printers grid */
+  .printers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; padding: 16px; }
+  .printer-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .printer-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .printer-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .printer-icon.invoice { background: rgba(59,130,246,.15); }
+  .printer-icon.kot     { background: rgba(249,115,22,.15); }
+  .printer-name { font-weight: 700; font-size: 14px; }
+  .printer-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .printer-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge.invoice { background: rgba(59,130,246,.15); color: #93c5fd; }
+  .badge.kot     { background: rgba(249,115,22,.15); color: #fdba74; }
+  .badge.network { background: rgba(34,197,94,.12); color: #86efac; }
+  .badge.usb     { background: rgba(168,85,247,.12); color: #d8b4fe; }
+  .badge.windows { background: rgba(245,158,11,.12); color: #fcd34d; }
+  .badge.master  { background: rgba(239,68,68,.12); color: #fca5a5; }
+  .no-printers   { padding: 32px; text-align: center; color: var(--muted); }
+
+  /* Jobs table */
+  .jobs-toolbar { display: flex; align-items: center; gap: 10px; }
+  .filter-group { display: flex; gap: 6px; }
+  .filter-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 12px; padding: 4px 12px; border-radius: 20px; cursor: pointer; transition: all .15s; }
+  .filter-btn:hover { border-color: var(--blue); color: var(--text); }
+  .filter-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .clear-btn { background: transparent; border: 1px solid var(--border); color: var(--red); font-size: 12px; padding: 4px 12px; border-radius: 20px; cursor: pointer; transition: all .15s; margin-left: auto; }
+  .clear-btn:hover { background: rgba(239,68,68,.1); border-color: var(--red); }
+  .refresh-indicator { font-size: 11px; color: var(--muted); }
+
+  .jobs-table { width: 100%; border-collapse: collapse; }
+  .jobs-table th { text-align: left; padding: 10px 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .jobs-table td { padding: 10px 20px; border-bottom: 1px solid rgba(42,45,58,.6); vertical-align: top; }
+  .jobs-table tr:last-child td { border-bottom: none; }
+  .jobs-table tr:hover td { background: rgba(255,255,255,.02); }
+  .job-type { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .job-type.invoice { background: rgba(59,130,246,.15); color: #93c5fd; }
+  .job-type.kot     { background: rgba(249,115,22,.15); color: #fdba74; }
+  .job-type.test    { background: rgba(168,85,247,.12); color: #d8b4fe; }
+  .status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .status-pill.success { background: rgba(34,197,94,.12); color: #86efac; }
+  .status-pill.failed  { background: rgba(239,68,68,.12); color: #fca5a5; }
+  .status-pill.partial { background: rgba(245,158,11,.12); color: #fcd34d; }
+  .job-printer { font-size: 13px; font-weight: 500; }
+  .job-detail  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .job-error   { font-size: 11px; color: var(--red); margin-top: 3px; font-family: monospace; }
+  .job-time    { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .job-sub-results { margin-top: 6px; display: grid; gap: 3px; }
+  .sub-result { font-size: 11px; padding: 2px 0; display: flex; align-items: center; gap: 6px; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .dot.ok  { background: var(--green); }
+  .dot.err { background: var(--red); }
+  .no-jobs { padding: 48px; text-align: center; color: var(--muted); }
+  .no-jobs-icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* Auto-refresh toggle */
+  .toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+  .toggle input { display: none; }
+  .toggle-track { width: 32px; height: 18px; background: var(--border); border-radius: 9px; position: relative; transition: background .2s; }
+  .toggle input:checked + .toggle-track { background: var(--blue); }
+  .toggle-thumb { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: transform .2s; }
+  .toggle input:checked ~ .toggle-track .toggle-thumb { transform: translateX(14px); }
+  .toggle-label { font-size: 12px; color: var(--muted); }
+
+  @media (max-width: 640px) {
+    .stats { grid-template-columns: repeat(2,1fr); }
+    .main  { padding: 16px; }
+    .jobs-table th:nth-child(4), .jobs-table td:nth-child(4) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">A</div>
+  <div>
+    <div class="header-title">AByte Printer Agent</div>
+    <div class="header-sub">Local thermal printer bridge</div>
+  </div>
+  <div class="header-right">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <div class="status-dot"></div>
+      <span class="status-label">RUNNING</span>
+    </div>
+    <span class="version-badge">v${VERSION}</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Stats -->
+  <div class="section">
+    <div class="stats" id="stats">
+      <div class="stat"><div class="stat-value blue" id="st-printers">-</div><div class="stat-label">Printers</div></div>
+      <div class="stat"><div class="stat-value" id="st-total">-</div><div class="stat-label">Total Jobs</div></div>
+      <div class="stat"><div class="stat-value green" id="st-success">-</div><div class="stat-label">Succeeded</div></div>
+      <div class="stat"><div class="stat-value red" id="st-failed">-</div><div class="stat-label">Failed</div></div>
+    </div>
+  </div>
+
+  <!-- Printers -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title"><span>🖨️</span> Configured Printers</div>
+    </div>
+    <div id="printers-container"></div>
+  </div>
+
+  <!-- Jobs -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title"><span>📋</span> Print Jobs</div>
+      <div class="jobs-toolbar">
+        <div class="filter-group">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="invoice">Invoice</button>
+          <button class="filter-btn" data-filter="kot">KOT</button>
+          <button class="filter-btn" data-filter="test">Test</button>
+          <button class="filter-btn" data-filter="failed">Failed</button>
+        </div>
+        <label class="toggle" title="Auto-refresh every 3s">
+          <input type="checkbox" id="auto-refresh" checked>
+          <div class="toggle-track"><div class="toggle-thumb"></div></div>
+          <span class="toggle-label">Auto</span>
+        </label>
+        <span class="refresh-indicator" id="refresh-indicator"></span>
+        <button class="clear-btn" id="clear-jobs-btn">🗑 Clear</button>
+      </div>
+    </div>
+    <div id="jobs-container"></div>
+  </div>
+
+</div>
+
+<script>
+  let allJobs = [];
+  let activeFilter = 'all';
+  let refreshTimer = null;
+  let lastRefresh = null;
+
+  // ── Fetch & Render ─────────────────────────────────────────
+  async function fetchData() {
+    try {
+      const [healthRes, jobsRes] = await Promise.all([
+        fetch('/health'),
+        fetch('/jobs'),
+      ]);
+      const health = await healthRes.json();
+      const jobs   = await jobsRes.json();
+
+      allJobs = jobs.jobs || [];
+      renderStats(health, jobs.stats);
+      renderPrinters(health.printerList || []);
+      renderJobs();
+      lastRefresh = new Date();
+      document.getElementById('refresh-indicator').textContent = 'Updated ' + lastRefresh.toLocaleTimeString();
+    } catch(e) {
+      document.getElementById('refresh-indicator').textContent = 'Fetch error';
+    }
+  }
+
+  function renderStats(health, stats) {
+    document.getElementById('st-printers').textContent = health.printers ?? '-';
+    document.getElementById('st-total').textContent    = stats?.total   ?? allJobs.length;
+    document.getElementById('st-success').textContent  = stats?.success ?? '-';
+    document.getElementById('st-failed').textContent   = stats?.failed  ?? '-';
+  }
+
+  function renderPrinters(printers) {
+    const c = document.getElementById('printers-container');
+    if (!printers.length) {
+      c.innerHTML = '<div class="no-printers">No printers configured. Add printers via the API or AByte POS Settings.</div>';
+      return;
+    }
+    const cards = printers.map(p => {
+      const target = p.connection === 'network' ? p.ip + ':' + (p.port || 9100) :
+                     p.connection === 'usb'     ? (p.com || 'COM?') : (p.printer_name || '?');
+      const icon   = p.type === 'kot' ? '🍽️' : '🧾';
+      return \`<div class="printer-card">
+        <div class="printer-card-header">
+          <div class="printer-icon \${p.type}">\${icon}</div>
+          <div>
+            <div class="printer-name">\${esc(p.name)}</div>
+            <div class="printer-meta">\${esc(target)}</div>
+          </div>
+        </div>
+        <div class="printer-badges">
+          <span class="badge \${p.type}">\${p.type.toUpperCase()}</span>
+          <span class="badge \${p.connection}">\${p.connection.toUpperCase()}</span>
+          \${p.is_master ? '<span class="badge master">MASTER</span>' : ''}
+          \${(p.categories||[]).length ? '<span class="badge" style="background:rgba(100,116,139,.15);color:#94a3b8;">' + p.categories.length + ' cats</span>' : ''}
+        </div>
+      </div>\`;
+    }).join('');
+    c.innerHTML = '<div class="printers-grid">' + cards + '</div>';
+  }
+
+  function renderJobs() {
+    const c = document.getElementById('jobs-container');
+    const filtered = activeFilter === 'all'    ? allJobs :
+                     activeFilter === 'failed' ? allJobs.filter(j => j.status === 'failed' || j.status === 'partial') :
+                     allJobs.filter(j => j.type === activeFilter);
+
+    if (!filtered.length) {
+      c.innerHTML = '<div class="no-jobs"><div class="no-jobs-icon">📭</div><div>No ' + (activeFilter === 'all' ? '' : activeFilter + ' ') + 'jobs yet</div></div>';
+      return;
+    }
+
+    const rows = filtered.map(j => {
+      const timeAgo = formatAgo(j.ts);
+      const fullTime = new Date(j.ts).toLocaleString();
+
+      // Sub-results for KOT multi-printer
+      let subHtml = '';
+      if (j.results && j.results.length > 1) {
+        subHtml = '<div class="job-sub-results">' + j.results.map(r =>
+          \`<div class="sub-result"><div class="dot \${r.success ? 'ok' : 'err'}"></div><span style="color:var(--muted)">\${esc(r.printer)}</span>\${r.role ? ' <span style="font-size:10px;opacity:.6">(\${r.role})</span>' : ''}\${r.items ? ' · \${r.items} items' : ''}\${!r.success && r.error ? ' — <span style="color:var(--red)">\${esc(r.error)}</span>' : ''}</div>\`
+        ).join('') + '</div>';
+      }
+
+      // Error
+      const errHtml = j.error ? \`<div class="job-error">⚠ \${esc(j.error)}</div>\` : '';
+
+      // Detail line
+      const details = [];
+      if (j.invoiceNo) details.push('Invoice: ' + j.invoiceNo);
+      if (j.tokenNo)   details.push('Token: ' + j.tokenNo);
+      if (j.items != null) details.push(j.items + ' items');
+      if (j.printerCount > 1) details.push(j.printerCount + ' printers');
+      const detailHtml = details.length ? \`<div class="job-detail">\${esc(details.join(' · '))}</div>\` : '';
+
+      const statusClass = j.status === 'success' ? 'success' : j.status === 'partial' ? 'partial' : 'failed';
+      const statusLabel = j.status === 'success' ? '✓ Success' : j.status === 'partial' ? '⚡ Partial' : '✗ Failed';
+
+      return \`<tr>
+        <td><span class="job-type \${j.type}">\${j.type.toUpperCase()}</span></td>
+        <td>
+          <div class="job-printer">\${esc(j.printer || '—')}</div>
+          \${detailHtml}
+          \${errHtml}
+          \${subHtml}
+        </td>
+        <td><span class="status-pill \${statusClass}">\${statusLabel}</span></td>
+        <td><span class="job-time" title="\${fullTime}">\${timeAgo}</span></td>
+      </tr>\`;
+    }).join('');
+
+    c.innerHTML = \`<table class="jobs-table">
+      <thead><tr>
+        <th style="width:90px">Type</th>
+        <th>Printer / Detail</th>
+        <th style="width:110px">Status</th>
+        <th style="width:100px">Time</th>
+      </tr></thead>
+      <tbody>\${rows}</tbody>
+    </table>\`;
+  }
+
+  function formatAgo(ts) {
+    const diff = Math.floor((Date.now() - new Date(ts)) / 1000);
+    if (diff < 5)   return 'just now';
+    if (diff < 60)  return diff + 's ago';
+    if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+    return new Date(ts).toLocaleTimeString();
+  }
+
+  function esc(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Filter buttons ─────────────────────────────────────────
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.filter;
+      renderJobs();
+    });
+  });
+
+  // ── Clear jobs ─────────────────────────────────────────────
+  document.getElementById('clear-jobs-btn').addEventListener('click', async () => {
+    if (!confirm('Clear all job logs?')) return;
+    await fetch('/jobs', { method: 'DELETE' });
+    await fetchData();
+  });
+
+  // ── Auto refresh ───────────────────────────────────────────
+  function startRefresh() {
+    stopRefresh();
+    refreshTimer = setInterval(fetchData, 3000);
+  }
+  function stopRefresh() {
+    if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+  }
+
+  document.getElementById('auto-refresh').addEventListener('change', function() {
+    this.checked ? startRefresh() : stopRefresh();
+  });
+
+  // ── Init ───────────────────────────────────────────────────
+  fetchData();
+  startRefresh();
+</script>
+</body>
+</html>`;
+}
+
 // ── Routes ────────────────────────────────────────────────────
 
+// Web UI
+app.get('/', (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(buildUI());
+});
+
+// Health check
 app.get('/health', (req, res) => {
   const printers = getPrinters();
+  const stats = {
+    total:   jobLog.length,
+    success: jobLog.filter(j => j.status === 'success').length,
+    failed:  jobLog.filter(j => j.status === 'failed' || j.status === 'partial').length,
+  };
   res.json({
-    status:    'ok',
-    version:   '2.0.0',
-    printers:  printers.length,
-    invoice:   printers.filter(p => p.type === 'invoice').length,
-    kot:       printers.filter(p => p.type === 'kot').length,
+    status:      'ok',
+    version:     VERSION,
+    printers:    printers.length,
+    invoice:     printers.filter(p => p.type === 'invoice').length,
+    kot:         printers.filter(p => p.type === 'kot').length,
+    printerList: printers,
+    jobStats:    stats,
   });
+});
+
+// Job log
+app.get('/jobs', (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit) || 200, MAX_JOBS);
+  const type  = req.query.type;
+  const jobs  = type ? jobLog.filter(j => j.type === type) : jobLog;
+  res.json({
+    jobs: jobs.slice(0, limit),
+    stats: {
+      total:   jobLog.length,
+      success: jobLog.filter(j => j.status === 'success').length,
+      failed:  jobLog.filter(j => j.status === 'failed').length,
+      partial: jobLog.filter(j => j.status === 'partial').length,
+    },
+  });
+});
+
+app.delete('/jobs', (req, res) => {
+  jobLog = [];
+  console.log('[jobs] Log cleared');
+  res.json({ success: true, message: 'Job log cleared' });
 });
 
 // List all printers
@@ -371,6 +783,7 @@ app.post('/printers/:id/test', async (req, res) => {
   const printer = getPrinterById(req.params.id);
   if (!printer) return res.status(404).json({ error: 'Printer not found' });
 
+  const started = Date.now();
   try {
     let buf;
     if (printer.type === 'kot') {
@@ -397,10 +810,28 @@ app.post('/printers/:id/test', async (req, res) => {
     }
 
     await sendToPrinter(printer, buf);
-    console.log(`[test] OK: ${printer.name}`);
+    const ms = Date.now() - started;
+
+    addJob({
+      type:    'test',
+      printer: printer.name,
+      status:  'success',
+      items:   null,
+      durationMs: ms,
+    });
+
+    console.log(`[test] OK: ${printer.name} (${ms}ms)`);
     res.json({ success: true, message: `Test page sent to "${printer.name}"` });
   } catch (e) {
-    console.error(`[test] FAIL: ${printer.name} —`, e.message);
+    const ms = Date.now() - started;
+    addJob({
+      type:    'test',
+      printer: printer.name,
+      status:  'failed',
+      error:   e.message,
+      durationMs: ms,
+    });
+    console.error(`[test] FAIL: ${printer.name} (${ms}ms) —`, e.message);
     res.status(500).json({ error: e.message, printer: { name: printer.name, connection: printer.connection } });
   }
 });
@@ -411,18 +842,44 @@ app.post('/print/invoice', async (req, res) => {
   if (!receiptData) return res.status(400).json({ error: 'receiptData is required' });
 
   const printers = getPrinters().filter(p => p.type === 'invoice');
-  if (printers.length === 0) return res.status(400).json({ error: 'No invoice printer configured. Add one in Printer settings.' });
+  if (printers.length === 0) {
+    addJob({ type: 'invoice', printer: '(none)', status: 'failed', error: 'No invoice printer configured' });
+    return res.status(400).json({ error: 'No invoice printer configured. Add one in Printer settings.' });
+  }
 
-  // Use specific printer if requested, else first configured
   const printer = printerId ? printers.find(p => p.id === printerId) || printers[0] : printers[0];
+  const started = Date.now();
 
   try {
     const buf = buildInvoiceESCPOS(receiptData, printer);
     await sendToPrinter(printer, buf);
-    console.log(`[print/invoice] OK — printer: ${printer.name}`);
+    const ms = Date.now() - started;
+
+    addJob({
+      type:       'invoice',
+      printer:    printer.name,
+      status:     'success',
+      invoiceNo:  receiptData.invoiceNo || null,
+      tokenNo:    receiptData.tokenNo   || null,
+      items:      (receiptData.items || []).length,
+      durationMs: ms,
+    });
+
+    console.log(`[print/invoice] OK — ${printer.name} (${ms}ms)`);
     res.json({ success: true, printer: printer.name });
   } catch (e) {
-    console.error('[print/invoice] Error:', e.message);
+    const ms = Date.now() - started;
+    addJob({
+      type:       'invoice',
+      printer:    printer.name,
+      status:     'failed',
+      invoiceNo:  receiptData.invoiceNo || null,
+      tokenNo:    receiptData.tokenNo   || null,
+      items:      (receiptData.items || []).length,
+      error:      e.message,
+      durationMs: ms,
+    });
+    console.error(`[print/invoice] FAIL — ${printer.name} (${ms}ms):`, e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -433,69 +890,88 @@ app.post('/print/kot', async (req, res) => {
   if (!kotData) return res.status(400).json({ error: 'kotData is required' });
 
   const allKOT = getPrinters().filter(p => p.type === 'kot');
-  if (allKOT.length === 0) return res.status(400).json({ error: 'No KOT printer configured. Add one in Printer settings.' });
+  if (allKOT.length === 0) {
+    addJob({ type: 'kot', printer: '(none)', status: 'failed', error: 'No KOT printer configured' });
+    return res.status(400).json({ error: 'No KOT printer configured. Add one in Printer settings.' });
+  }
 
   const masterPrinters  = allKOT.filter(p => p.is_master);
   const sectionPrinters = allKOT.filter(p => !p.is_master);
   const items           = kotData.items || [];
   const results         = [];
+  const started         = Date.now();
 
   // ── 1. Master / XPR printers — receive COMPLETE order ────────────
   for (const printer of masterPrinters) {
+    const t0 = Date.now();
     try {
       const buf = buildKOTESCPOS({ ...kotData, items, categoryName: 'Complete Order' }, printer);
       await sendToPrinter(printer, buf);
-      results.push({ printer: printer.name, role: 'master', items: items.length, success: true });
-      console.log(`[print/kot] MASTER OK — ${printer.name}: all ${items.length} items`);
+      results.push({ printer: printer.name, role: 'master', items: items.length, success: true, durationMs: Date.now()-t0 });
+      console.log(`[print/kot] MASTER OK — ${printer.name}: all ${items.length} items (${Date.now()-t0}ms)`);
     } catch (e) {
-      results.push({ printer: printer.name, role: 'master', items: items.length, success: false, error: e.message });
+      results.push({ printer: printer.name, role: 'master', items: items.length, success: false, error: e.message, durationMs: Date.now()-t0 });
       console.error(`[print/kot] MASTER FAIL — ${printer.name}:`, e.message);
     }
   }
 
   // ── 2. Section printers — routed by category ──────────────────────
   if (sectionPrinters.length > 0) {
-    const printerJobs = new Map(); // printer.id → { printer, items }
+    const printerJobs = new Map();
 
     for (const item of items) {
       const catId = item.category_id ? Number(item.category_id) : null;
 
-      // Find section printer that handles this category
       let matched = null;
       for (const p of sectionPrinters) {
-        if (!p.categories || p.categories.length === 0) continue; // catch-all — prefer specific match first
+        if (!p.categories || p.categories.length === 0) continue;
         if (catId && p.categories.map(Number).includes(catId)) { matched = p; break; }
       }
-      // Fallback: catch-all section printer (empty categories)
-      if (!matched) {
-        matched = sectionPrinters.find(p => !p.categories || p.categories.length === 0);
-      }
-      // Last resort: first section printer
+      if (!matched) matched = sectionPrinters.find(p => !p.categories || p.categories.length === 0);
       if (!matched) matched = sectionPrinters[0];
 
-      if (!printerJobs.has(matched.id)) {
-        printerJobs.set(matched.id, { printer: matched, items: [] });
-      }
+      if (!printerJobs.has(matched.id)) printerJobs.set(matched.id, { printer: matched, items: [] });
       printerJobs.get(matched.id).items.push(item);
     }
 
     for (const { printer, items: sectionItems } of printerJobs.values()) {
-      // Derive section label from matched categories
       const catNames = [...new Set(sectionItems.map(i => i.category_name).filter(Boolean))];
       const label    = catNames.length > 0 ? catNames.join(' / ') : printer.name;
+      const t0 = Date.now();
       try {
         const buf = buildKOTESCPOS({ ...kotData, items: sectionItems, categoryName: label }, printer);
         await sendToPrinter(printer, buf);
-        results.push({ printer: printer.name, role: 'section', items: sectionItems.length, success: true });
-        console.log(`[print/kot] SECTION OK — ${printer.name} [${label}]: ${sectionItems.length} items`);
+        results.push({ printer: printer.name, role: 'section', items: sectionItems.length, success: true, durationMs: Date.now()-t0 });
+        console.log(`[print/kot] SECTION OK — ${printer.name} [${label}]: ${sectionItems.length} items (${Date.now()-t0}ms)`);
       } catch (e) {
-        results.push({ printer: printer.name, role: 'section', items: sectionItems.length, success: false, error: e.message });
+        results.push({ printer: printer.name, role: 'section', items: sectionItems.length, success: false, error: e.message, durationMs: Date.now()-t0 });
         console.error(`[print/kot] SECTION FAIL — ${printer.name}:`, e.message);
       }
     }
   }
 
-  const allOk = results.every(r => r.success);
+  const allOk    = results.every(r => r.success);
+  const anyOk    = results.some(r => r.success);
+  const jobStatus = allOk ? 'success' : anyOk ? 'partial' : 'failed';
+  const ms        = Date.now() - started;
+
+  // Single printer → simple log; multiple → show all
+  const printerLabel = results.length === 1 ? results[0].printer : `${results.length} printers`;
+  const firstError   = results.find(r => !r.success)?.error || null;
+
+  addJob({
+    type:         'kot',
+    printer:      printerLabel,
+    status:       jobStatus,
+    tokenNo:      kotData.tokenNo || null,
+    tableNo:      kotData.tableNo || null,
+    items:        items.length,
+    printerCount: results.length,
+    results,
+    error:        firstError,
+    durationMs:   ms,
+  });
+
   res.status(allOk ? 200 : 207).json({ success: allOk, results });
 });
 
@@ -503,9 +979,10 @@ app.post('/print/kot', async (req, res) => {
 const server = app.listen(PORT, '0.0.0.0', () => {
   const printers = getPrinters();
   console.log(`\n========================================`);
-  console.log(`  AByte Printer Agent v2.0 — RUNNING`);
+  console.log(`  AByte Printer Agent v${VERSION} — RUNNING`);
   console.log(`========================================`);
   console.log(`  URL       : http://localhost:${PORT}`);
+  console.log(`  UI        : http://localhost:${PORT}/`);
   console.log(`  Printers  : ${printers.length} configured`);
   printers.forEach(p => {
     const target = p.connection === 'network' ? `${p.ip}:${p.port}` :

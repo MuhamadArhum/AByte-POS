@@ -130,7 +130,12 @@
       "Bash(awk '/^CREATE TABLE.*branch_id/ {flag=1} flag {print; if\\(/;$/\\) flag=0}' /d/AByte-POS/database/schema.sql)",
       "Bash(awk ' *)",
       "Bash(pm2 restart *)",
-      "Bash(npx pm2 *)"
+      "Bash(npx pm2 *)",
+      "Bash(taskkill /F /FI \"WINDOWTITLE eq*\" /IM node.exe)",
+      "Bash(kill %1)",
+      "Read(//d/AByte-POS/printer-agent/**)",
+      "Bash(taskkill /F /IM node.exe echo \"UI check done\")",
+      "Bash(taskkill /F /IM node.exe)"
     ]
   }
 }
