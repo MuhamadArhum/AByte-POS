@@ -171,9 +171,6 @@ const Settings = () => {
     if (activeTab === 'system' && currentUser?.role_name === 'Admin' && !systemInfo) {
       fetchSystemInfo();
     }
-    if (activeTab === 'access' && currentUser?.role_name === 'Admin') {
-      fetchPermissions();
-    }
   }, [activeTab]);
 
   const fetchSettings = async () => {
@@ -353,10 +350,6 @@ const Settings = () => {
     return `${h}h ${m}m`;
   };
 
-  // ===== ACCESS CONTROL STATE =====
-  const [perms, setPerms] = useState<Record<string, Set<string>>>({});
-  const [permLoading, setPermLoading] = useState(false);
-  const [permSaving, setPermSaving] = useState<Record<string, boolean>>({});
 
   if (loading) {
     return (
@@ -369,154 +362,6 @@ const Settings = () => {
     );
   }
 
-  const MODULE_TREE = [
-    {
-      key: 'dashboard', label: 'Dashboard', children: [],
-    },
-    {
-      key: 'sales', label: 'Sales', children: [
-        { key: 'sales.pos',        label: 'POS Terminal' },
-        { key: 'sales.orders',     label: 'Orders' },
-        { key: 'sales.register',   label: 'Cash Register' },
-        { key: 'sales.customers',  label: 'Customers' },
-        { key: 'sales.returns',    label: 'Returns' },
-        { key: 'sales.quotations', label: 'Quotations' },
-        { key: 'sales.credit',     label: 'Credit Sales' },
-        { key: 'sales.pricerules', label: 'Price Rules' },
-        { key: 'sales.targets',    label: 'Sales Targets' },
-        { key: 'sales.deliveries', label: 'Delivery' },
-        { key: 'sales.reports',    label: 'Sales Reports' },
-      ],
-    },
-    {
-      key: 'restaurant', label: 'Restaurant', children: [
-        { key: 'restaurant.tables', label: 'Table Management' },
-      ],
-    },
-    {
-      key: 'inventory', label: 'Inventory', children: [
-        { key: 'inventory.products',     label: 'Products' },
-        { key: 'inventory.categories',   label: 'Categories' },
-        { key: 'inventory.purchases',    label: 'Purchase Orders' },
-        { key: 'inventory.transfers',    label: 'Stock Transfers' },
-        { key: 'inventory.adjustments',  label: 'Stock Adjustments / Issuance' },
-        { key: 'inventory.alerts',       label: 'Stock Alerts' },
-        { key: 'inventory.suppliers',    label: 'Suppliers' },
-        { key: 'inventory.bundles',      label: 'Bundles' },
-        { key: 'inventory.variants',     label: 'Product Variants' },
-        { key: 'inventory.stockcount',   label: 'Stock Count' },
-        { key: 'inventory.reports',      label: 'Inventory Reports' },
-      ],
-    },
-    {
-      key: 'hr', label: 'Human Resources', children: [
-        { key: 'hr.staff',              label: 'Staff' },
-        { key: 'hr.attendance',         label: 'Attendance' },
-        { key: 'hr.daily-attendance',   label: 'Daily Attendance' },
-        { key: 'hr.salary-sheet',       label: 'Salary Sheet' },
-        { key: 'hr.payroll',            label: 'Payroll Processing' },
-        { key: 'hr.advances',           label: 'Advance Payments' },
-        { key: 'hr.loans',              label: 'Loans' },
-        { key: 'hr.increments',         label: 'Increments' },
-        { key: 'hr.ledger',             label: 'Employee Ledger' },
-        { key: 'hr.holidays',           label: 'Holidays' },
-        { key: 'hr.leaves',             label: 'Leave Requests & Policies' },
-        { key: 'hr.departments',        label: 'Departments' },
-        { key: 'hr.salary-components',  label: 'Salary Components' },
-        { key: 'hr.appraisals',         label: 'Appraisals' },
-        { key: 'hr.exit',               label: 'Exit Management' },
-        { key: 'hr.reports',            label: 'Staff Reports' },
-      ],
-    },
-    {
-      key: 'accounts', label: 'Accounts', children: [
-        { key: 'accounts.chart',              label: 'Chart of Accounts' },
-        { key: 'accounts.journal',            label: 'Journal Voucher' },
-        { key: 'accounts.ledger',             label: 'Account Ledger' },
-        { key: 'accounts.trial-balance',      label: 'Trial Balance' },
-        { key: 'accounts.trial-balance-6col', label: 'Trial Balance 6 Col' },
-        { key: 'accounts.profit-loss',        label: 'Profit & Loss' },
-        { key: 'accounts.balance-sheet',      label: 'Balance Sheet' },
-        { key: 'accounts.bank-accounts',      label: 'Bank Accounts' },
-        { key: 'accounts.payment-vouchers',   label: 'Payment Vouchers' },
-        { key: 'accounts.receipt-vouchers',   label: 'Receipt Vouchers' },
-        { key: 'accounts.analytics',          label: 'Analytics' },
-        { key: 'accounts.reports',            label: 'Reports' },
-      ],
-    },
-    {
-      key: 'system', label: 'System', children: [
-        { key: 'system.stores',    label: 'Stores' },
-        { key: 'system.audit',     label: 'Audit Log' },
-        { key: 'system.backup',    label: 'Backup' },
-        { key: 'system.settings',  label: 'Settings' },
-        { key: 'system.ai_widget', label: 'AI Assistant' },
-      ],
-    },
-  ];
-
-  const fetchPermissions = async () => {
-    setPermLoading(true);
-    try {
-      const res = await api.get('/permissions');
-      const data = res.data as Record<string, string[]>;
-      const mapped: Record<string, Set<string>> = {};
-      for (const [role, keys] of Object.entries(data)) {
-        mapped[role] = new Set(keys);
-      }
-      setPerms(mapped);
-    } catch (err) {
-      console.error('Failed to load permissions', err);
-      toast.error('Failed to load permissions');
-    } finally {
-      setPermLoading(false);
-    }
-  };
-
-  const savePermissions = async (role: string) => {
-    setPermSaving(prev => ({ ...prev, [role]: true }));
-    try {
-      await api.put(`/permissions/${role}`, { permissions: Array.from(perms[role] || []) });
-      toast.success(`${role} permissions saved`);
-    } catch (err) {
-      console.error('Failed to save permissions', err);
-      toast.error('Failed to save permissions');
-    } finally {
-      setPermSaving(prev => ({ ...prev, [role]: false }));
-    }
-  };
-
-  const togglePerm = (role: string, key: string, isParent: boolean, childKeys: string[]) => {
-    setPerms(prev => {
-      const next = new Set(prev[role] || []);
-      if (isParent) {
-        if (next.has(key)) {
-          // Parent OFF → remove parent + all children
-          next.delete(key);
-          childKeys.forEach(c => next.delete(c));
-        } else {
-          // Parent ON → add parent only (children stay unchanged)
-          next.add(key);
-        }
-      } else {
-        // Child toggle
-        const parentKey = key.split('.')[0];
-        if (next.has(key)) {
-          // Child OFF
-          next.delete(key);
-          // If no children of parent remain, also remove parent
-          const siblingKeys = childKeys; // childKeys = all siblings
-          const anyChildLeft = siblingKeys.some(c => c !== key && next.has(c));
-          if (!anyChildLeft) next.delete(parentKey);
-        } else {
-          // Child ON → also auto-enable parent
-          next.add(key);
-          next.add(parentKey);
-        }
-      }
-      return { ...prev, [role]: next };
-    });
-  };
 
   const tabs = [
     { id: 'store',      name: 'Store Info',       icon: Building2 },
