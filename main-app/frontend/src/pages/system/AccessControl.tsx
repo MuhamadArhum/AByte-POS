@@ -3,15 +3,14 @@ import {
   Shield, Save, Check, Loader2, ChevronDown, ChevronRight,
   Users, Copy, Search, AlertCircle, X,
   LayoutDashboard, ShoppingCart, Package, UserCheck, Calculator, Settings, UtensilsCrossed,
-  Eye, Plus, Pencil, Trash2,
 } from 'lucide-react';
 import api from '../../utils/api';
 
 // ─── CRUD actions ─────────────────────────────────────────────────────────────
 const CRUD = [
-  { action: 'create', Icon: Plus,    label: 'Create', short: 'C', color: 'bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-200', activeColor: 'bg-emerald-500 text-white border-emerald-600' },
-  { action: 'update', Icon: Pencil,  label: 'Update', short: 'U', color: 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200',             activeColor: 'bg-blue-500 text-white border-blue-600'       },
-  { action: 'delete', Icon: Trash2,  label: 'Delete', short: 'D', color: 'bg-red-100 text-red-700 border-red-300 hover:bg-red-200',                  activeColor: 'bg-red-500 text-white border-red-600'         },
+  { action: 'create', label: 'Create', accent: 'accent-emerald-500' },
+  { action: 'update', label: 'Update', accent: 'accent-blue-500'    },
+  { action: 'delete', label: 'Delete', accent: 'accent-red-500'     },
 ] as const;
 
 // ─── Module tree ──────────────────────────────────────────────────────────────
@@ -398,18 +397,6 @@ const AccessControl = () => {
           {/* ── Right: Permission editor ─────────────────────────────────── */}
           <div className="flex-1 min-w-0 p-6">
 
-            {/* CRUD legend */}
-            <div className="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b border-gray-100">
-              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Legend:</span>
-              <span className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg border border-gray-200">
-                <Eye size={11} /> View — can access the page
-              </span>
-              {CRUD.map(({ Icon, label, activeColor }) => (
-                <span key={label} className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border ${activeColor}`}>
-                  <Icon size={11} /> {label}
-                </span>
-              ))}
-            </div>
 
             {/* Toolbar */}
             <div className="flex flex-wrap items-center gap-3 mb-5">
@@ -511,9 +498,9 @@ const AccessControl = () => {
                           <div className="grid grid-cols-[1fr_auto] items-center px-4 py-1.5 bg-gray-50/80">
                             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Module</span>
                             <div className="flex items-center gap-1.5">
-                              <span className="w-16 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">View</span>
+                              <span className="w-14 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">View</span>
                               {CRUD.map(c => (
-                                <span key={c.action} className="w-16 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">{c.label}</span>
+                                <span key={c.action} className="w-14 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">{c.label}</span>
                               ))}
                             </div>
                           </div>
@@ -532,42 +519,33 @@ const AccessControl = () => {
                                   {label}
                                 </span>
 
-                                {/* View + CRUD toggles */}
+                                {/* View + CRUD checkboxes */}
                                 <div className="flex items-center gap-1.5">
                                   {/* View (base key) */}
-                                  <button
-                                    onClick={() => toggleBase(key)}
-                                    title="View / Access"
-                                    className={`w-16 flex items-center justify-center gap-1 py-1.5 rounded-lg border-2 text-xs font-bold transition-all ${
-                                      hasView
-                                        ? 'bg-gray-700 text-white border-gray-800'
-                                        : 'bg-gray-100 text-gray-400 border-gray-200 hover:border-gray-400 hover:text-gray-600'
-                                    }`}
-                                  >
-                                    <Eye size={11} />
-                                    {hasView ? 'On' : 'Off'}
-                                  </button>
+                                  <div className="w-14 flex justify-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={hasView}
+                                      onChange={() => toggleBase(key)}
+                                      className="w-4 h-4 rounded cursor-pointer accent-gray-700"
+                                    />
+                                  </div>
 
                                   {/* Create / Update / Delete */}
-                                  {CRUD.map(({ action, Icon: CIcon, label: cLabel, color: offColor, activeColor }) => {
+                                  {CRUD.map(({ action, label: cLabel, accent }) => {
                                     const subKey = `${key}.${action}`;
                                     const on     = permissions.has(subKey);
                                     return (
-                                      <button
-                                        key={action}
-                                        onClick={() => hasView ? toggleSub(key, subKey) : toggleBase(key)}
-                                        title={hasView ? cLabel : `Enable View first, then ${cLabel}`}
-                                        className={`w-16 flex items-center justify-center gap-1 py-1.5 rounded-lg border-2 text-xs font-bold transition-all ${
-                                          !hasView
-                                            ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-60'
-                                            : on
-                                              ? activeColor
-                                              : offColor
-                                        }`}
-                                      >
-                                        <CIcon size={11} />
-                                        {on && hasView ? 'On' : 'Off'}
-                                      </button>
+                                      <div key={action} className="w-14 flex justify-center">
+                                        <input
+                                          type="checkbox"
+                                          checked={on}
+                                          disabled={!hasView}
+                                          onChange={() => hasView ? toggleSub(key, subKey) : undefined}
+                                          title={hasView ? cLabel : `Enable View first`}
+                                          className={`w-4 h-4 rounded cursor-pointer disabled:cursor-not-allowed disabled:opacity-30 ${accent}`}
+                                        />
+                                      </div>
                                     );
                                   })}
                                 </div>
