@@ -9,3 +9,10 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 System Logical Error dy Raha hai 
 1: TA k order main humny GST & Service Charges 0 rakhy hain lkin jab checkout krty hain to udr included hain us main unko manual minus krna par raha hai 
 2: Print auto py lgao print popup aaa raha hai abhi jo ni aana chaye jb print k button py click kiya jaye to printwindow open ni krna direct print hona chaye 
+
+
+System Abhi tak WOhi Repeat Kr rha hai 
+1: checkout Ko Kharab Kr diya hai Checkout ab button Click krny py to kaam kr rha hai lkin agr for examle manual tax ya servioce add krni ho to wo kaam ni kr rha 
+2: Tax Settings System main save hain udr sy fetch kro 
+3: Invoice print hogi ya nai ye bhi System setting main sy fetch kro
+4: Checkout Modal mai Sync Wala Button Add Ni Hua Usko Add Kro 

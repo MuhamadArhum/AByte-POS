@@ -22,8 +22,9 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   const { user } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'online' | 'split' | 'credit'>('cash');
 
-  // GST derived directly from paymentMethod — no state, no effect, always in sync
-  const gstRate   = (paymentMethod === 'card' || paymentMethod === 'online') ? 5 : 16;
+  // GST derived from paymentMethod + settings (card/online fixed at 5%, cash uses settings.tax_rate)
+  const settingsTaxRate = parseFloat(settings?.tax_rate || 16);
+  const gstRate   = (paymentMethod === 'card' || paymentMethod === 'online') ? 5 : settingsTaxRate;
   const gstAmount = subtotal * gstRate / 100;
   const [amountPaid, setAmountPaid] = useState('');
   const [splitCash, setSplitCash] = useState('');
@@ -94,17 +95,6 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     setAmountPaid('');
   }, [paymentMethod]);
 
-
-  // When payment method changes in pending sale mode, adjust tax only if original was non-zero
-  useEffect(() => {
-    if (pendingSale && !pendingSale.isCartEdit) {
-      if (paymentMethod === 'card' || paymentMethod === 'online') {
-        setPendingTaxRate(pendingOriginalTaxRate > 0 ? 5 : 0);
-      } else {
-        setPendingTaxRate(pendingOriginalTaxRate);
-      }
-    }
-  }, [paymentMethod, pendingOriginalTaxRate]);
 
   const fetchPendingSaleDetails = async (saleId: number) => {
     setPendingItemsLoading(true);
@@ -266,7 +256,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
         const completedSale = fullSaleRes.data;
         setSuccessSale(completedSale);
         setSynced(false);
-        setTimeout(() => doPrint(completedSale), 300);
+        if (settings?.auto_print_receipt) setTimeout(() => doPrint(completedSale), 300);
       } else {
         // Build loyalty redeem points
         let loyaltyRedeemPts = 0;
@@ -315,10 +305,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
         }
 
         const res = await api.post('/sales', payload);
-        const newSale = { ...res.data, amount_paid: finalAmountPaid };
+        const newSale = { ...res.data, sale_id: res.data.sale_id || res.data.id, amount_paid: finalAmountPaid };
         setSuccessSale(newSale);
         setSynced(false);
-        setTimeout(() => doPrint(newSale), 300);
+        if (settings?.auto_print_receipt) setTimeout(() => doPrint(newSale), 300);
 
         clearCart();
       }
@@ -394,9 +384,11 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
             </p>
           )}
 
-          <p className="text-xs text-gray-400 mb-3 flex items-center justify-center gap-1">
-            <Printer size={12} /> Receipt auto-printed
-          </p>
+          {settings?.auto_print_receipt && (
+            <p className="text-xs text-gray-400 mb-3 flex items-center justify-center gap-1">
+              <Printer size={12} /> Receipt auto-printed
+            </p>
+          )}
           <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => { onClose(); setSuccessSale(null); }}
@@ -602,9 +594,11 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
             <div className="flex justify-between items-center text-lg pt-2 border-t border-gray-200">
               <div>
                 <span className="font-bold text-gray-800">Net Payable</span>
-                <div className={`text-xs font-semibold mt-0.5 ${paymentMethod === 'card' || paymentMethod === 'online' ? 'text-blue-600' : 'text-orange-600'}`}>
-                  incl. GST {gstRate}%
-                </div>
+                {!pendingSale && (
+                  <div className={`text-xs font-semibold mt-0.5 ${paymentMethod === 'card' || paymentMethod === 'online' ? 'text-blue-600' : 'text-orange-600'}`}>
+                    incl. GST {gstRate}%
+                  </div>
+                )}
               </div>
               <span className="font-bold text-2xl text-emerald-600">Rs. {finalTotal.toFixed(2)}</span>
             </div>
@@ -708,7 +702,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
               >
                 <Banknote size={20} />
                 <span className="text-xs font-medium">Cash</span>
-                <span className="text-[10px] font-bold text-orange-500">GST 16%</span>
+                <span className="text-[10px] font-bold text-orange-500">GST {settingsTaxRate}%</span>
               </button>
               <button
                 onClick={() => setPaymentMethod('card')}
