@@ -3,10 +3,18 @@ import {
   Shield, Save, Check, Loader2, ChevronDown, ChevronRight,
   Users, Copy, Search, AlertCircle, X,
   LayoutDashboard, ShoppingCart, Package, UserCheck, Calculator, Settings, UtensilsCrossed,
+  Eye, Plus, Pencil, Trash2,
 } from 'lucide-react';
 import api from '../../utils/api';
 
-// ─── Comprehensive module tree ────────────────────────────────────────────────
+// ─── CRUD actions ─────────────────────────────────────────────────────────────
+const CRUD = [
+  { action: 'create', Icon: Plus,    label: 'Create', short: 'C', color: 'bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-200', activeColor: 'bg-emerald-500 text-white border-emerald-600' },
+  { action: 'update', Icon: Pencil,  label: 'Update', short: 'U', color: 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200',             activeColor: 'bg-blue-500 text-white border-blue-600'       },
+  { action: 'delete', Icon: Trash2,  label: 'Delete', short: 'D', color: 'bg-red-100 text-red-700 border-red-300 hover:bg-red-200',                  activeColor: 'bg-red-500 text-white border-red-600'         },
+] as const;
+
+// ─── Module tree ──────────────────────────────────────────────────────────────
 const MODULE_TREE = [
   {
     section: 'Dashboard',
@@ -130,8 +138,17 @@ const MODULE_TREE = [
   },
 ];
 
-const ALL_KEYS = MODULE_TREE.flatMap(s => s.keys.map(k => k.key));
-const TOTAL    = ALL_KEYS.length;
+// All base module keys (used for access/view progress %)
+const BASE_KEYS = MODULE_TREE.flatMap(s => s.keys.map(k => k.key));
+const TOTAL_MODULES = BASE_KEYS.length;
+
+// All keys including CRUD sub-keys (used for Select All)
+const ALL_KEYS = MODULE_TREE.flatMap(s =>
+  s.keys.flatMap(k => [k.key, ...CRUD.map(c => `${k.key}.${c.action}`)])
+);
+
+// Sub-keys for a given base key
+const subKeys = (base: string) => CRUD.map(c => `${base}.${c.action}`);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const AccessControl = () => {
@@ -156,6 +173,7 @@ const AccessControl = () => {
     setSaved(false);
   }, [selectedRole]);
 
+  // ── Load ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     setLoading(true);
     Promise.all([api.get('/users/roles'), api.get('/permissions')])
@@ -178,6 +196,7 @@ const AccessControl = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  // ── Dirty check ───────────────────────────────────────────────────────────
   const isDirty = useCallback((role: string) => {
     const curr = allPerms[role]   || new Set<string>();
     const orig = savedPerms[role] || new Set<string>();
@@ -186,19 +205,42 @@ const AccessControl = () => {
     return false;
   }, [allPerms, savedPerms]);
 
-  const toggle = (key: string) => {
+  // ── Toggle base key (View) ────────────────────────────────────────────────
+  const toggleBase = (baseKey: string) => {
     setPermissions(prev => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
+      if (next.has(baseKey)) {
+        next.delete(baseKey);
+        subKeys(baseKey).forEach(k => next.delete(k));
+      } else {
+        next.add(baseKey);
+      }
       return next;
     });
   };
 
-  const toggleSection = (keys: string[]) => {
-    const allOn = keys.every(k => permissions.has(k));
+  // ── Toggle CRUD sub-key ───────────────────────────────────────────────────
+  const toggleSub = (baseKey: string, subKey: string) => {
     setPermissions(prev => {
       const next = new Set(prev);
-      allOn ? keys.forEach(k => next.delete(k)) : keys.forEach(k => next.add(k));
+      if (next.has(subKey)) {
+        next.delete(subKey);
+      } else {
+        next.add(subKey);
+        next.add(baseKey); // auto-enable base (view) when enabling CRUD
+      }
+      return next;
+    });
+  };
+
+  // ── Section toggle (all base + CRUD) ─────────────────────────────────────
+  const toggleSection = (keys: string[]) => {
+    const allModuleKeys = keys.flatMap(k => [k, ...subKeys(k)]);
+    const allOn = allModuleKeys.every(k => permissions.has(k));
+    setPermissions(prev => {
+      const next = new Set(prev);
+      if (allOn) allModuleKeys.forEach(k => next.delete(k));
+      else       allModuleKeys.forEach(k => next.add(k));
       return next;
     });
   };
@@ -214,10 +256,13 @@ const AccessControl = () => {
     setCopyFrom('');
   };
 
+  // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     setSaving(true);
     try {
-      await api.put(`/permissions/${encodeURIComponent(selectedRole)}`, { permissions: Array.from(permissions) });
+      await api.put(`/permissions/${encodeURIComponent(selectedRole)}`, {
+        permissions: Array.from(permissions),
+      });
       setSavedPerms(prev => ({ ...prev, [selectedRole]: new Set(permissions) }));
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -228,6 +273,7 @@ const AccessControl = () => {
     }
   };
 
+  // ── Filtered tree ─────────────────────────────────────────────────────────
   const filteredTree = useMemo(() => {
     if (!search.trim()) return MODULE_TREE;
     const q = search.toLowerCase();
@@ -236,9 +282,11 @@ const AccessControl = () => {
       .filter(s => s.keys.length > 0);
   }, [search]);
 
+  // ── Role stats (count base modules with view access) ──────────────────────
   const roleStats = useCallback((role: string) => {
-    const cnt = (allPerms[role] || new Set()).size;
-    return { count: cnt, pct: Math.round((cnt / TOTAL) * 100) };
+    const perms = allPerms[role] || new Set<string>();
+    const count = BASE_KEYS.filter(k => perms.has(k)).length;
+    return { count, pct: Math.round((count / TOTAL_MODULES) * 100) };
   }, [allPerms]);
 
   if (loading) {
@@ -252,14 +300,13 @@ const AccessControl = () => {
     );
   }
 
-  const currentCount = permissions.size;
-  const currentPct   = Math.round((currentCount / TOTAL) * 100);
-  const dirty        = isDirty(selectedRole);
+  const { count: currentCount, pct: currentPct } = roleStats(selectedRole);
+  const dirty = isDirty(selectedRole);
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
 
-      {/* Page header */}
+      {/* ── Page header ───────────────────────────────────────────────────── */}
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-gray-900 mb-2 flex items-center gap-3">
@@ -268,14 +315,14 @@ const AccessControl = () => {
             </div>
             Access Control
           </h1>
-          <p className="text-gray-600">Configure module permissions per role — Admin always has full access</p>
+          <p className="text-gray-600">Configure module access and CRUD permissions per role — Admin always has full access</p>
         </div>
 
         <div className="flex items-center gap-3">
           {selectedRole && (
             <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm">
               <span className="text-sm font-semibold text-gray-700">{selectedRole}</span>
-              <span className="text-xs text-gray-400">{currentCount}/{TOTAL}</span>
+              <span className="text-xs text-gray-400">{currentCount}/{TOTAL_MODULES} modules</span>
               <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                 <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${currentPct}%` }} />
               </div>
@@ -302,11 +349,11 @@ const AccessControl = () => {
         </div>
       </div>
 
-      {/* Main card */}
+      {/* ── Main card ─────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex gap-0 min-h-[600px]">
+        <div className="flex min-h-[600px]">
 
-          {/* ── Left: Role sidebar ─────────────────────────────────────────── */}
+          {/* ── Role sidebar ────────────────────────────────────────────── */}
           <div className="w-56 shrink-0 border-r border-gray-100 p-4 space-y-2 bg-gray-50/50">
             <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider px-1 mb-3">
               <Users size={12} /> Roles
@@ -316,8 +363,8 @@ const AccessControl = () => {
               <p className="text-xs text-gray-400 px-1">No non-Admin roles found.</p>
             ) : roles.map(role => {
               const { count, pct } = roleStats(role);
-              const active   = selectedRole === role;
-              const hasDirt  = isDirty(role);
+              const active  = selectedRole === role;
+              const hasDirt = isDirty(role);
               return (
                 <button
                   key={role}
@@ -341,7 +388,7 @@ const AccessControl = () => {
                     />
                   </div>
                   <span className={`text-xs ${active ? 'text-emerald-100' : 'text-gray-400'}`}>
-                    {count}/{TOTAL} · {pct}%
+                    {count}/{TOTAL_MODULES} modules · {pct}%
                   </span>
                 </button>
               );
@@ -351,6 +398,19 @@ const AccessControl = () => {
           {/* ── Right: Permission editor ─────────────────────────────────── */}
           <div className="flex-1 min-w-0 p-6">
 
+            {/* CRUD legend */}
+            <div className="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b border-gray-100">
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Legend:</span>
+              <span className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg border border-gray-200">
+                <Eye size={11} /> View — can access the page
+              </span>
+              {CRUD.map(({ Icon, label, activeColor }) => (
+                <span key={label} className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border ${activeColor}`}>
+                  <Icon size={11} /> {label}
+                </span>
+              ))}
+            </div>
+
             {/* Toolbar */}
             <div className="flex flex-wrap items-center gap-3 mb-5">
               <div className="relative flex-1 min-w-44">
@@ -359,7 +419,7 @@ const AccessControl = () => {
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder="Search permissions..."
+                  placeholder="Search modules..."
                   className="w-full pl-8 pr-8 py-2 border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                 />
                 {search && (
@@ -383,16 +443,10 @@ const AccessControl = () => {
                 </select>
               </div>
 
-              <button
-                onClick={selectAll}
-                className="text-xs px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg border-2 border-emerald-200 hover:bg-emerald-100 font-semibold transition-all"
-              >
+              <button onClick={selectAll} className="text-xs px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg border-2 border-emerald-200 hover:bg-emerald-100 font-semibold">
                 Select All
               </button>
-              <button
-                onClick={clearAll}
-                className="text-xs px-3 py-2 bg-gray-100 text-gray-600 rounded-lg border-2 border-gray-200 hover:bg-gray-200 font-semibold transition-all"
-              >
+              <button onClick={clearAll} className="text-xs px-3 py-2 bg-gray-100 text-gray-600 rounded-lg border-2 border-gray-200 hover:bg-gray-200 font-semibold">
                 Clear All
               </button>
             </div>
@@ -406,10 +460,10 @@ const AccessControl = () => {
             ) : (
               <div className="space-y-3">
                 {filteredTree.map(({ section, Icon, color, lightColor, textColor, keys }) => {
-                  const keyList    = keys.map(k => k.key);
-                  const enabled    = keyList.filter(k => permissions.has(k)).length;
-                  const allOn      = enabled === keyList.length;
-                  const someOn     = enabled > 0 && !allOn;
+                  const keyList     = keys.map(k => k.key);
+                  const viewEnabled = keyList.filter(k => permissions.has(k)).length;
+                  const allOn       = keys.flatMap(k => [k.key, ...subKeys(k.key)]).every(k => permissions.has(k));
+                  const someOn      = viewEnabled > 0 && !allOn;
                   const isCollapsed = collapsed[section];
 
                   return (
@@ -423,7 +477,7 @@ const AccessControl = () => {
                         >
                           {isCollapsed
                             ? <ChevronRight size={15} className="text-gray-400 shrink-0" />
-                            : <ChevronDown size={15} className="text-gray-400 shrink-0" />
+                            : <ChevronDown  size={15} className="text-gray-400 shrink-0" />
                           }
                           <div className={`p-1.5 rounded-lg ${color} shrink-0`}>
                             <Icon size={12} className="text-white" />
@@ -432,46 +486,92 @@ const AccessControl = () => {
                           <span className={`ml-1.5 text-xs font-semibold px-2 py-0.5 rounded-full border ${
                             allOn  ? `${lightColor} ${textColor}` :
                             someOn ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                            'bg-gray-100 text-gray-400 border-gray-200'
+                                     'bg-gray-100 text-gray-400 border-gray-200'
                           }`}>
-                            {enabled}/{keyList.length}
+                            {viewEnabled}/{keyList.length}
                           </span>
                         </button>
-
                         <button
                           onClick={() => toggleSection(keyList)}
                           className={`ml-3 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 border ${
                             allOn  ? `${lightColor} ${textColor} hover:opacity-80` :
                             someOn ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' :
-                            'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'
+                                     'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'
                           }`}
                         >
                           {allOn ? 'Deselect All' : 'Select All'}
                         </button>
                       </div>
 
-                      {/* Checkboxes */}
+                      {/* Module rows */}
                       {!isCollapsed && (
-                        <div className="px-4 py-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 bg-white">
+                        <div className="divide-y divide-gray-50 bg-white">
+
+                          {/* Column header */}
+                          <div className="grid grid-cols-[1fr_auto] items-center px-4 py-1.5 bg-gray-50/80">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Module</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-16 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">View</span>
+                              {CRUD.map(c => (
+                                <span key={c.action} className="w-16 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">{c.label}</span>
+                              ))}
+                            </div>
+                          </div>
+
                           {keys.map(({ key, label }) => {
-                            const on = permissions.has(key);
+                            const hasView = permissions.has(key);
                             return (
-                              <label
+                              <div
                                 key={key}
-                                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer select-none transition-all text-xs border-2 ${
-                                  on
-                                    ? `${lightColor} ${textColor} font-semibold`
-                                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 hover:border-gray-300'
+                                className={`grid grid-cols-[1fr_auto] items-center px-4 py-2.5 transition-colors ${
+                                  hasView ? `${lightColor.split(' ')[0]} hover:opacity-95` : 'hover:bg-gray-50'
                                 }`}
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={on}
-                                  onChange={() => toggle(key)}
-                                  className="w-3.5 h-3.5 accent-emerald-600 rounded shrink-0"
-                                />
-                                <span className="leading-tight">{label}</span>
-                              </label>
+                                {/* Module name */}
+                                <span className={`text-sm font-medium ${hasView ? textColor : 'text-gray-600'}`}>
+                                  {label}
+                                </span>
+
+                                {/* View + CRUD toggles */}
+                                <div className="flex items-center gap-1.5">
+                                  {/* View (base key) */}
+                                  <button
+                                    onClick={() => toggleBase(key)}
+                                    title="View / Access"
+                                    className={`w-16 flex items-center justify-center gap-1 py-1.5 rounded-lg border-2 text-xs font-bold transition-all ${
+                                      hasView
+                                        ? 'bg-gray-700 text-white border-gray-800'
+                                        : 'bg-gray-100 text-gray-400 border-gray-200 hover:border-gray-400 hover:text-gray-600'
+                                    }`}
+                                  >
+                                    <Eye size={11} />
+                                    {hasView ? 'On' : 'Off'}
+                                  </button>
+
+                                  {/* Create / Update / Delete */}
+                                  {CRUD.map(({ action, Icon: CIcon, label: cLabel, color: offColor, activeColor }) => {
+                                    const subKey = `${key}.${action}`;
+                                    const on     = permissions.has(subKey);
+                                    return (
+                                      <button
+                                        key={action}
+                                        onClick={() => hasView ? toggleSub(key, subKey) : toggleBase(key)}
+                                        title={hasView ? cLabel : `Enable View first, then ${cLabel}`}
+                                        className={`w-16 flex items-center justify-center gap-1 py-1.5 rounded-lg border-2 text-xs font-bold transition-all ${
+                                          !hasView
+                                            ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-60'
+                                            : on
+                                              ? activeColor
+                                              : offColor
+                                        }`}
+                                      >
+                                        <CIcon size={11} />
+                                        {on && hasView ? 'On' : 'Off'}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
                             );
                           })}
                         </div>

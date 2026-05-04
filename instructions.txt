@@ -4,3 +4,5 @@ For Admin Panel
 cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
+
+
